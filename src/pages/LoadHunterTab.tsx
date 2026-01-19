@@ -701,7 +701,7 @@ export default function LoadHunterTab() {
   // If no vehicles assigned, show nothing (0 counts) - user needs to be assigned trucks first
   
   // Get filtered matches for unreviewed - USE SERVER-SIDE VIEW DATA for scalability
-  const filteredMatches = activeFilter === 'unreviewed'
+  const filteredMatchesRaw = activeFilter === 'unreviewed'
     ? unreviewedViewData
         .filter(match => {
           // Filter by specific vehicle if filterVehicleId is set (badge click)
@@ -742,6 +742,49 @@ export default function LoadHunterTab() {
         .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
     : [];
 
+  // GROUP MATCHES BY LOAD EMAIL: Consolidate multiple vehicle matches into single rows
+  // - Admin mode (Option B): Show all matches, prioritize user's vehicles for display
+  // - Dispatch mode (Option A): Only count/show user's matches (already filtered above)
+  const groupMatchesByLoad = (matches: any[]): any[] => {
+    if (matches.length === 0) return [];
+    
+    const grouped = new Map<string, any[]>();
+    matches.forEach(match => {
+      const key = match.load_email_id;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(match);
+    });
+    
+    // Convert grouped map to array of "primary" matches with count metadata
+    const result: any[] = [];
+    grouped.forEach((matchesForLoad, loadEmailId) => {
+      // Sort matches: prioritize user's vehicles first, then by distance
+      const sortedMatches = [...matchesForLoad].sort((a, b) => {
+        const aIsMyVehicle = myVehicleIds.includes(a.vehicle_id) ? 0 : 1;
+        const bIsMyVehicle = myVehicleIds.includes(b.vehicle_id) ? 0 : 1;
+        if (aIsMyVehicle !== bIsMyVehicle) return aIsMyVehicle - bIsMyVehicle;
+        return (a.distance_miles || 999) - (b.distance_miles || 999);
+      });
+      
+      // Primary match is the first (user's vehicle or closest)
+      const primaryMatch = sortedMatches[0];
+      result.push({
+        ...primaryMatch,
+        _allMatches: sortedMatches, // Store all matches for popup
+        _matchCount: sortedMatches.length, // Count for badge
+        _isGrouped: sortedMatches.length > 1, // Flag for UI
+      });
+    });
+    
+    // Sort grouped results by received_at
+    return result.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+  };
+  
+  // Apply grouping to filtered matches
+  const filteredMatches = groupMatchesByLoad(filteredMatchesRaw);
+
   // Apply vehicle filter to other match types as well
   const filteredSkippedMatches = filterVehicleId 
     ? skippedMatches.filter(m => m.vehicle_id === filterVehicleId)
@@ -758,17 +801,12 @@ export default function LoadHunterTab() {
   
   // Debug logging for filtered results
   if (activeFilter === 'unreviewed') {
-    console.log(`📊 filteredMatches: ${filteredMatches.length} (from ${unreviewedViewData.length} total, mode: ${activeMode}, myVehicles: ${myVehicleIds.length})`);
+    console.log(`📊 filteredMatches: ${filteredMatches.length} grouped (from ${filteredMatchesRaw.length} raw, mode: ${activeMode}, myVehicles: ${myVehicleIds.length})`);
   }
 
-  // Count uses server-side view data for accuracy
+  // Count uses raw filtered data (not grouped) for accuracy - shows actual match count
   // In dispatch mode, only count matches for assigned vehicles (show 0 if none assigned)
-  const unreviewedCount = unreviewedViewData.filter(match => {
-    if (activeMode === 'dispatch') {
-      if (!myVehicleIds.includes(match.vehicle_id)) return false;
-    }
-    return true;
-  }).length;
+  const unreviewedCount = filteredMatches.length; // Use grouped count for badge
   
   // Filter helper for dispatch mode - only show matches for assigned vehicles
   const filterByAssignedVehicles = <T extends { vehicle_id?: string | null }>(items: T[]) => {
@@ -5612,28 +5650,30 @@ export default function LoadHunterTab() {
                                   toast.error(`Processing failed: ${email.issue_notes || 'Unknown error'}`);
                                   return;
                                 }
-                                // Check if this load has multiple matches
-                                const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
                                 
-                                if (matchesForLoad.length > 1) {
-                                  // Fetch vehicle details for all matches
-                                  const vehicleIds = matchesForLoad.map(m => m.vehicle_id);
+                                // Check if this is a grouped row with multiple matches
+                                const isGroupedRow = activeFilter === 'unreviewed' && (item as any)._isGrouped;
+                                const allMatchesForRow = (item as any)._allMatches as any[] | undefined;
+                                
+                                if (isGroupedRow && allMatchesForRow && allMatchesForRow.length > 1) {
+                                  // Use pre-grouped matches from the row data
+                                  const vehicleIds = allMatchesForRow.map(m => m.vehicle_id);
                                   const { data: vehicleData } = await supabase
                                     .from('vehicles')
                                     .select('*')
                                     .in('id', vehicleIds);
                                   
                                   if (vehicleData) {
-                                    const enrichedMatches = matchesForLoad.map(match => {
-                                      const vehicle = vehicleData.find(v => v.id === match.vehicle_id);
+                                    const enrichedMatches = allMatchesForRow.map(matchItem => {
+                                      const vehicle = vehicleData.find(v => v.id === matchItem.vehicle_id);
                                       return {
-                                        id: match.id,
-                                        vehicle_id: match.vehicle_id,
-                                        load_email_id: match.load_email_id,
+                                        id: matchItem.match_id || matchItem.id,
+                                        vehicle_id: matchItem.vehicle_id,
+                                        load_email_id: matchItem.load_email_id,
                                         vehicle_number: vehicle?.vehicle_number || 'Unknown',
-                                        distance_miles: match.distance_miles,
+                                        distance_miles: matchItem.distance_miles,
                                         current_location: vehicle?.last_location || vehicle?.formatted_address,
-                                        last_updated: vehicle?.last_updated,
+                                        last_updated: vehicle?.updated_at,
                                         status: vehicle?.status,
                                         oil_change_due: vehicle?.oil_change_remaining ? vehicle.oil_change_remaining < 0 : false,
                                       };
@@ -5643,11 +5683,43 @@ export default function LoadHunterTab() {
                                     setShowMultipleMatchesDialog(true);
                                   }
                                 } else {
-                                  // Single match or no match - show detail directly
-                                  setSelectedEmailForDetail(email);
-                                  setSelectedMatchForDetail(match);
-                                  if (match) {
-                                    setSelectedEmailDistance((match as any).distance_miles);
+                                  // Check old way for non-grouped tabs (skipped, mybids, etc.)
+                                  const matchesForLoad = loadMatches.filter(m => m.load_email_id === email.id);
+                                  
+                                  if (matchesForLoad.length > 1) {
+                                    // Fetch vehicle details for all matches
+                                    const vehicleIds = matchesForLoad.map(m => m.vehicle_id);
+                                    const { data: vehicleData } = await supabase
+                                      .from('vehicles')
+                                      .select('*')
+                                      .in('id', vehicleIds);
+                                    
+                                    if (vehicleData) {
+                                      const enrichedMatches = matchesForLoad.map(matchItem => {
+                                        const vehicle = vehicleData.find(v => v.id === matchItem.vehicle_id);
+                                        return {
+                                          id: matchItem.id,
+                                          vehicle_id: matchItem.vehicle_id,
+                                          load_email_id: matchItem.load_email_id,
+                                          vehicle_number: vehicle?.vehicle_number || 'Unknown',
+                                          distance_miles: matchItem.distance_miles,
+                                          current_location: vehicle?.last_location || vehicle?.formatted_address,
+                                          last_updated: vehicle?.updated_at,
+                                          status: vehicle?.status,
+                                          oil_change_due: vehicle?.oil_change_remaining ? vehicle.oil_change_remaining < 0 : false,
+                                        };
+                                      });
+                                      
+                                      setMultipleMatches(enrichedMatches);
+                                      setShowMultipleMatchesDialog(true);
+                                    }
+                                  } else {
+                                    // Single match or no match - show detail directly
+                                    setSelectedEmailForDetail(email);
+                                    setSelectedMatchForDetail(match);
+                                    if (match) {
+                                      setSelectedEmailDistance((match as any).distance_miles);
+                                    }
                                   }
                                 }
                               }}
@@ -5711,6 +5783,10 @@ export default function LoadHunterTab() {
                                   // Get broker info from parsed data
                                   const brokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email.split('@')[0];
                                   
+                                  // Check for grouped matches (multiple vehicles matched this load)
+                                  const isGroupedRow = activeFilter === 'unreviewed' && (item as any)._isGrouped;
+                                  const matchCount = (item as any)._matchCount || 1;
+                                  
                                   if ((activeFilter === 'unreviewed' || activeFilter === 'missed' || activeFilter === 'skipped' || activeFilter === 'mybids' || activeFilter === 'booked' || activeFilter === 'undecided' || activeFilter === 'waitlist') && match) {
                                     // For match-based tabs (unreviewed/missed/skipped/mybids), show the matched truck directly
                                     const vehicle = vehicles.find(v => v.id === (match as any).vehicle_id);
@@ -5718,13 +5794,25 @@ export default function LoadHunterTab() {
                                       const driverName = getDriverName(vehicle.driver_1_id) || "No Driver Assigned";
                                       const carrierName = vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier";
                                       return (
-                                        <div>
-                                          <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
-                                            {vehicle.vehicle_number || "N/A"} - {driverName}
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
+                                              {vehicle.vehicle_number || "N/A"} - {driverName}
+                                            </div>
+                                            <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
+                                              {carrierName}
+                                            </div>
                                           </div>
-                                          <div className="text-[12px] text-muted-foreground truncate leading-tight whitespace-nowrap">
-                                            {carrierName}
-                                          </div>
+                                          {/* Match count badge for grouped rows */}
+                                          {isGroupedRow && matchCount > 1 && (
+                                            <Badge 
+                                              className="h-5 px-1.5 text-[10px] font-bold bg-gradient-to-b from-blue-500 to-blue-600 text-white border-0 shadow-sm flex items-center gap-0.5 flex-shrink-0"
+                                              title={`${matchCount} vehicles matched this load`}
+                                            >
+                                              <Truck className="h-3 w-3" />
+                                              {matchCount}
+                                            </Badge>
+                                          )}
                                         </div>
                                       );
                                     }

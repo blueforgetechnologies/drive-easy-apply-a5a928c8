@@ -132,13 +132,47 @@ export default function LoadHunterMobile({
     }
   };
 
+  // Group matches by load_email_id for unreviewed tab
+  const groupMatchesByLoad = (matches: any[]): any[] => {
+    if (matches.length === 0) return [];
+    
+    const grouped = new Map<string, any[]>();
+    matches.forEach(match => {
+      const key = match.load_email_id;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(match);
+    });
+    
+    const result: any[] = [];
+    grouped.forEach((matchesForLoad) => {
+      // Sort: prioritize user's vehicles first, then by distance
+      const sortedMatches = [...matchesForLoad].sort((a, b) => {
+        const aIsMyVehicle = myVehicleIds.includes(a.vehicle_id) ? 0 : 1;
+        const bIsMyVehicle = myVehicleIds.includes(b.vehicle_id) ? 0 : 1;
+        if (aIsMyVehicle !== bIsMyVehicle) return aIsMyVehicle - bIsMyVehicle;
+        return (a.distance_miles || 999) - (b.distance_miles || 999);
+      });
+      
+      const primaryMatch = sortedMatches[0];
+      result.push({
+        ...primaryMatch,
+        _allMatches: sortedMatches,
+        _matchCount: sortedMatches.length,
+        _isGrouped: sortedMatches.length > 1,
+      });
+    });
+    
+    return result.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+  };
+
   // Get display data based on active filter
   const getDisplayData = () => {
     let data: any[] = [];
     
     switch (activeFilter) {
       case 'unreviewed':
-        data = unreviewedViewData;
+        // Apply grouping for unreviewed matches
+        data = groupMatchesByLoad(unreviewedViewData);
         break;
       case 'skipped':
         data = skippedMatches.map(m => ({
@@ -766,10 +800,20 @@ export default function LoadHunterMobile({
                       <div className="pt-1.5 border-t space-y-1">
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-5 bg-blue-500 rounded-full" />
-                          <p className="text-xs">
+                          <p className="text-xs flex-1">
                             <span className="font-semibold">{vehicle.vehicle_number}</span>
                             <span className="text-muted-foreground"> · {getDriverName(vehicle.driver_1_id) || 'No Driver'}</span>
                           </p>
+                          {/* Match count badge for grouped rows */}
+                          {activeFilter === 'unreviewed' && (item as any)._isGrouped && (item as any)._matchCount > 1 && (
+                            <Badge 
+                              className="h-5 px-1.5 text-[10px] font-bold bg-gradient-to-b from-blue-500 to-blue-600 text-white border-0 shadow-sm flex items-center gap-0.5"
+                              title={`${(item as any)._matchCount} vehicles matched this load`}
+                            >
+                              <Truck className="h-3 w-3" />
+                              {(item as any)._matchCount}
+                            </Badge>
+                          )}
                         </div>
                         {/* Carrier Name */}
                         {vehicle.carrier && carriersMap[vehicle.carrier] && (
