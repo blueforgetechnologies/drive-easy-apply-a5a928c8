@@ -192,6 +192,10 @@ export default function LoadHunterTab() {
   const loadUnreviewedReqIdRef = useRef(0);
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
   const [loadHunterTheme, setLoadHunterTheme] = useState<'classic' | 'aurora'>('classic'); // Theme selector: classic = current look, aurora = new glassmorphic
+  const [groupMatchesEnabled, setGroupMatchesEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('loadHunterGroupMatches');
+    return saved !== null ? saved === 'true' : true; // Default: enabled
+  });
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
   
@@ -745,8 +749,21 @@ export default function LoadHunterTab() {
   // GROUP MATCHES BY LOAD EMAIL: Consolidate multiple vehicle matches into single rows
   // - Admin mode (Option B): Show all matches, prioritize user's vehicles for display
   // - Dispatch mode (Option A): Only count/show user's matches (already filtered above)
+  // - Toggle: groupMatchesEnabled controls whether grouping is active
   const groupMatchesByLoad = (matches: any[]): any[] => {
     if (matches.length === 0) return [];
+    
+    // If grouping is disabled, return matches as-is (each match = own row)
+    if (!groupMatchesEnabled) {
+      return matches
+        .map(match => ({
+          ...match,
+          _allMatches: [match],
+          _matchCount: 1,
+          _isGrouped: false,
+        }))
+        .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+    }
     
     const grouped = new Map<string, any[]>();
     matches.forEach(match => {
@@ -4047,6 +4064,27 @@ export default function LoadHunterTab() {
                   }}
                 >
                   Expired ({expiredCount})
+                </DropdownMenuItem>
+                <div className="h-px bg-border my-1" />
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Display</div>
+                <DropdownMenuItem
+                  className={groupMatchesEnabled ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => {
+                    const newValue = !groupMatchesEnabled;
+                    setGroupMatchesEnabled(newValue);
+                    localStorage.setItem('loadHunterGroupMatches', String(newValue));
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {groupMatchesEnabled ? (
+                      <div className="w-4 h-4 rounded-sm bg-primary/20 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-sm bg-primary" />
+                      </div>
+                    ) : (
+                      <div className="w-4 h-4 rounded-sm border border-muted-foreground/40" />
+                    )}
+                    Group Matches by Load
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
