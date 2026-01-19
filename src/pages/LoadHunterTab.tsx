@@ -3790,32 +3790,6 @@ export default function LoadHunterTab() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 bg-background z-50">
-                {/* Time Window Options */}
-                <DropdownMenuItem
-                  className={emailTimeWindow === 'session' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setEmailTimeWindow('session')}
-                >
-                  Since open
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={emailTimeWindow === '30m' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setEmailTimeWindow('30m')}
-                >
-                  30m
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={emailTimeWindow === '6h' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setEmailTimeWindow('6h')}
-                >
-                  6h
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={emailTimeWindow === '24h' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setEmailTimeWindow('24h')}
-                >
-                  24h
-                </DropdownMenuItem>
-                <div className="h-px bg-border my-1" />
                 <DropdownMenuItem
                   className={activeFilter === 'expired' ? 'bg-primary/10 text-primary' : ''}
                   onClick={() => {
