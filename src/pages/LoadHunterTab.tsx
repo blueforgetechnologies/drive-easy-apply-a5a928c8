@@ -3401,19 +3401,33 @@ export default function LoadHunterTab() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className={`flex flex-col flex-1 min-h-0 ${
+      loadHunterTheme === 'aurora' ? 'bg-gradient-to-b from-slate-900 via-purple-950/30 to-slate-900' : ''
+    }`}>
       {/* Filter Bar - Full Width - Always Visible */}
-      <div className="flex items-center gap-2 py-2 px-2 bg-background border-y overflow-x-auto flex-shrink-0 relative z-10">
+      <div className={`flex items-center gap-2 py-2 px-2 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
+        loadHunterTheme === 'aurora'
+          ? 'bg-gradient-to-r from-slate-900/95 via-purple-900/50 to-slate-900/95 border-purple-500/30 backdrop-blur-md shadow-[0_4px_20px_-5px_rgba(168,85,247,0.3)]'
+          : 'bg-background'
+      }`}>
           
           {/* Mode Buttons - Merged Toggle */}
-          <div className="flex items-center overflow-hidden rounded-full border border-primary/30 flex-shrink-0">
+          <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
+            loadHunterTheme === 'aurora'
+              ? 'border border-purple-400/40 shadow-[0_0_15px_-5px_rgba(168,85,247,0.5)]'
+              : 'border border-primary/30'
+          }`}>
             <Button 
               variant="ghost"
               size="sm" 
               className={`h-7 px-3.5 text-xs font-semibold !rounded-none !rounded-l-full border-0 ${
-                activeMode === 'admin' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
+                loadHunterTheme === 'aurora'
+                  ? activeMode === 'admin'
+                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                    : 'bg-slate-800/60 text-purple-200 hover:bg-slate-700/60'
+                  : activeMode === 'admin' 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700'
               }`}
               onClick={() => setActiveMode('admin')}
             >
@@ -3424,9 +3438,13 @@ export default function LoadHunterTab() {
               variant="ghost"
               size="sm" 
               className={`h-7 px-3.5 text-xs font-medium !rounded-none !rounded-r-full border-0 ${
-                activeMode === 'dispatch' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
+                loadHunterTheme === 'aurora'
+                  ? activeMode === 'dispatch'
+                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                    : 'bg-slate-800/60 text-purple-200 hover:bg-slate-700/60'
+                  : activeMode === 'dispatch' 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveMode('dispatch');
@@ -3443,7 +3461,11 @@ export default function LoadHunterTab() {
           <div className="flex-shrink-0">
             <Button 
               size="sm" 
-              className="h-7 px-3.5 text-xs font-medium rounded-full border-0 btn-glossy-success text-white"
+              className={`h-7 px-3.5 text-xs font-medium rounded-full border-0 ${
+                loadHunterTheme === 'aurora'
+                  ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[0_0_15px_-3px_rgba(52,211,153,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-emerald-300 hover:to-emerald-500'
+                  : 'btn-glossy-success text-white'
+              }`}
             >
               Add Vehicle
             </Button>
@@ -3456,7 +3478,11 @@ export default function LoadHunterTab() {
               value={matchSearchQuery}
               onChange={(e) => setMatchSearchQuery(e.target.value)}
               onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className="h-7 w-36 text-xs rounded-full px-3.5 input-inset"
+              className={`h-7 w-36 text-xs rounded-full px-3.5 ${
+                loadHunterTheme === 'aurora'
+                  ? 'bg-slate-800/60 border-purple-500/30 text-purple-100 placeholder:text-purple-300/50 focus:border-purple-400/60 focus:ring-purple-500/20'
+                  : 'input-inset'
+              }`}
             />
             {isSearchingArchive && (
               <div className="absolute right-5 top-1.5">
@@ -3519,18 +3545,26 @@ export default function LoadHunterTab() {
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className={`flex items-center gap-1 flex-shrink-0 ${
+            loadHunterTheme === 'aurora' ? 'text-purple-100' : ''
+          }`}>
             {/* Merged button group: All, Unreviewed, Sound */}
-            <div className="flex items-center overflow-hidden rounded-full">
+            <div className={`flex items-center overflow-hidden rounded-full ${
+              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
+            }`}>
               {/* All tab only visible in Admin mode when showAllTabEnabled */}
               {showAllTabEnabled && activeMode === 'admin' && (
                 <Button 
                   variant="ghost"
                   size="sm" 
                   className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                    activeFilter === 'all' 
-                      ? 'btn-glossy-dark text-white' 
-                      : 'btn-glossy text-gray-700'
+                    loadHunterTheme === 'aurora'
+                      ? activeFilter === 'all'
+                        ? 'bg-gradient-to-b from-slate-600 to-slate-800 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                        : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                      : activeFilter === 'all' 
+                        ? 'btn-glossy-dark text-white' 
+                        : 'btn-glossy text-gray-700'
                   }`}
                   onClick={() => {
                     setActiveFilter('all');
@@ -3550,9 +3584,13 @@ export default function LoadHunterTab() {
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
                   !(showAllTabEnabled && activeMode === 'admin') ? '!rounded-l-full' : ''
                 } ${
-                  activeFilter === 'unreviewed' 
-                    ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'unreviewed'
+                      ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'unreviewed' 
+                      ? 'btn-glossy-primary text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('unreviewed');
@@ -3562,13 +3600,21 @@ export default function LoadHunterTab() {
                 }}
               >
                 Unreviewed
-                <span className="badge-inset-danger-bright text-[10px] h-5">{unreviewedCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-rose-500/80 text-white px-1.5 rounded-full'
+                    : 'badge-inset-danger-bright'
+                }`}>{unreviewedCount}</span>
               </Button>
               
               <Button 
                 variant="ghost"
                 size="sm" 
-                className="h-7 w-7 p-0 !rounded-none border-0 btn-glossy text-gray-700"
+                className={`h-7 w-7 p-0 !rounded-none border-0 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : 'btn-glossy text-gray-700'
+                }`}
                 onClick={toggleSound}
                 title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
               >
@@ -3581,7 +3627,11 @@ export default function LoadHunterTab() {
                   <Button 
                     variant="ghost"
                     size="sm" 
-                    className="h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 btn-glossy text-gray-700"
+                    className={`h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 ${
+                      loadHunterTheme === 'aurora'
+                        ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                        : 'btn-glossy text-gray-700'
+                    }`}
                     title="Sound settings"
                   >
                     <Settings className="h-3.5 w-3.5" />
@@ -3594,9 +3644,13 @@ export default function LoadHunterTab() {
               variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                activeFilter === 'missed' 
-                  ? 'btn-glossy-danger text-white' 
-                  : 'btn-glossy text-gray-700'
+                loadHunterTheme === 'aurora'
+                  ? activeFilter === 'missed'
+                    ? 'bg-gradient-to-b from-rose-500 to-rose-700 text-white shadow-[0_0_12px_-3px_rgba(244,63,94,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                    : 'bg-slate-800/40 border border-purple-400/20 text-purple-200/70 hover:bg-slate-700/40'
+                  : activeFilter === 'missed' 
+                    ? 'btn-glossy-danger text-white' 
+                    : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('missed');
@@ -3606,18 +3660,28 @@ export default function LoadHunterTab() {
               }}
             >
               Missed
-              <span className="badge-inset-danger text-[10px] h-5">{missedCount}</span>
+              <span className={`text-[10px] h-5 ${
+                loadHunterTheme === 'aurora'
+                  ? 'bg-rose-600/60 text-white px-1.5 rounded-full'
+                  : 'badge-inset-danger'
+              }`}>{missedCount}</span>
             </Button>
             
             {/* Merged button group: Wait, Undec, Skip */}
-            <div className="flex items-center overflow-hidden rounded-full">
+            <div className={`flex items-center overflow-hidden rounded-full ${
+              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
+            }`}>
               <Button 
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                  activeFilter === 'waitlist' 
-                    ? 'btn-glossy-warning text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'waitlist'
+                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'waitlist' 
+                      ? 'btn-glossy-warning text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('waitlist');
@@ -3627,16 +3691,24 @@ export default function LoadHunterTab() {
                 }}
               >
                 Wait
-                <span className="badge-inset-warning text-[10px] h-5">{waitlistCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset-warning'
+                }`}>{waitlistCount}</span>
               </Button>
               
               <Button 
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
-                  activeFilter === 'undecided' 
-                    ? 'btn-glossy-warning text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'undecided'
+                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'undecided' 
+                      ? 'btn-glossy-warning text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('undecided');
@@ -3646,16 +3718,24 @@ export default function LoadHunterTab() {
                 }}
               >
                 Undec
-                <span className="badge-inset-warning text-[10px] h-5">{undecidedCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset-warning'
+                }`}>{undecidedCount}</span>
               </Button>
               
               <Button 
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
-                  activeFilter === 'skipped' 
-                    ? 'btn-glossy-dark text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'skipped'
+                      ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'skipped' 
+                      ? 'btn-glossy-dark text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('skipped');
@@ -3665,19 +3745,29 @@ export default function LoadHunterTab() {
                 }}
               >
                 Skip
-                <span className="badge-inset text-[10px] h-5">{skippedCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-slate-600/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset'
+                }`}>{skippedCount}</span>
               </Button>
             </div>
             
             {/* Merged button group: Bids, Booked */}
-            <div className="flex items-center overflow-hidden rounded-full">
+            <div className={`flex items-center overflow-hidden rounded-full ${
+              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
+            }`}>
               <Button 
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                  activeFilter === 'mybids' 
-                    ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'mybids'
+                      ? 'bg-gradient-to-b from-cyan-400 to-cyan-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'mybids' 
+                      ? 'btn-glossy-primary text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('mybids');
@@ -3687,16 +3777,24 @@ export default function LoadHunterTab() {
                 }}
               >
                 Bids
-                <span className="badge-inset-primary text-[10px] h-5">{bidCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-cyan-500/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset-primary'
+                }`}>{bidCount}</span>
               </Button>
               
               <Button
                 variant="ghost"
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
-                  activeFilter === 'booked' 
-                    ? 'btn-glossy-success text-white' 
-                    : 'btn-glossy text-gray-700'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'booked'
+                      ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                    : activeFilter === 'booked' 
+                      ? 'btn-glossy-success text-white' 
+                      : 'btn-glossy text-gray-700'
                 }`}
                 onClick={() => {
                   setActiveFilter('booked');
@@ -3705,7 +3803,11 @@ export default function LoadHunterTab() {
                 }}
               >
                 Booked
-                <span className="badge-inset-success text-[10px] h-5">{bookedCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-emerald-500/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset-success'
+                }`}>{bookedCount}</span>
               </Button>
             </div>
             
@@ -3713,9 +3815,13 @@ export default function LoadHunterTab() {
               <Button
                 size="sm" 
                 className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                  activeFilter === 'issues' 
-                    ? 'btn-glossy-warning text-white' 
-                    : 'btn-glossy text-amber-600'
+                  loadHunterTheme === 'aurora'
+                    ? activeFilter === 'issues'
+                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[0_0_12px_-3px_rgba(251,191,36,0.6)]'
+                      : 'bg-slate-800/40 border border-amber-400/30 text-amber-400 hover:bg-slate-700/40'
+                    : activeFilter === 'issues' 
+                      ? 'btn-glossy-warning text-white' 
+                      : 'btn-glossy text-amber-600'
                 }`}
                 onClick={() => {
                   setActiveFilter('issues');
@@ -3724,7 +3830,11 @@ export default function LoadHunterTab() {
                 }}
               >
                 ⚠️
-                <span className="badge-inset-warning text-[10px] h-5">{issuesCount}</span>
+                <span className={`text-[10px] h-5 ${
+                  loadHunterTheme === 'aurora'
+                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
+                    : 'badge-inset-warning'
+                }`}>{issuesCount}</span>
               </Button>
             )}
           </div>
@@ -3736,9 +3846,13 @@ export default function LoadHunterTab() {
               variant="ghost"
               size="sm" 
               className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'dispatcher-metrix' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
+                loadHunterTheme === 'aurora'
+                  ? activeFilter === 'dispatcher-metrix'
+                    ? 'bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white shadow-[0_0_15px_-3px_rgba(217,70,239,0.6),inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                    : 'bg-slate-800/40 border border-fuchsia-400/30 text-fuchsia-300 hover:bg-slate-700/40'
+                  : activeFilter === 'dispatcher-metrix' 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('dispatcher-metrix');
@@ -3754,9 +3868,13 @@ export default function LoadHunterTab() {
               variant="ghost"
               size="sm"
               className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'vehicle-assignment'
-                  ? 'btn-glossy-primary text-white'
-                  : 'btn-glossy text-gray-700'
+                loadHunterTheme === 'aurora'
+                  ? activeFilter === 'vehicle-assignment'
+                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                    : 'bg-slate-800/40 border border-purple-400/30 text-purple-300 hover:bg-slate-700/40'
+                  : activeFilter === 'vehicle-assignment'
+                    ? 'btn-glossy-primary text-white'
+                    : 'btn-glossy text-gray-700'
               }`}
               onClick={() => {
                 setActiveFilter('vehicle-assignment');
@@ -3833,7 +3951,11 @@ export default function LoadHunterTab() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 rounded-full border-0 btn-glossy text-gray-700"
+                  className={`h-7 w-7 p-0 rounded-full border-0 ${
+                    loadHunterTheme === 'aurora'
+                      ? 'bg-slate-800/60 border border-purple-400/30 text-purple-200 hover:bg-slate-700/60 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]'
+                      : 'btn-glossy text-gray-700'
+                  }`}
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
@@ -3877,9 +3999,15 @@ export default function LoadHunterTab() {
         </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3">
+      <div className={`flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3 ${
+        loadHunterTheme === 'aurora' ? 'bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900' : ''
+      }`}>
         {/* Left Sidebar - Vehicles - Always Visible */}
-        <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
+        <div className={`w-64 flex-shrink-0 space-y-1 overflow-y-auto pr-2 ${
+          loadHunterTheme === 'aurora' 
+            ? 'border-r border-purple-500/30' 
+            : 'border-r'
+        }`}>
           {loading ? (
             <div className="text-xs text-muted-foreground">Loading...</div>
           ) : vehicles.filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id)).length === 0 ? (
@@ -3906,35 +4034,55 @@ export default function LoadHunterTab() {
               const isOilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
               // Check if vehicle has active fault codes
               const hasFaultCodes = Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
-              return (
+                return (
                 <div 
                   key={vehicle.id} 
-                  className={`p-2.5 cursor-pointer rounded-lg relative transition-all duration-200 ${selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'}`}
+                  className={`p-2.5 cursor-pointer rounded-lg relative transition-all duration-200 ${
+                    loadHunterTheme === 'aurora'
+                      ? selectedVehicle?.id === vehicle.id
+                        ? 'bg-gradient-to-br from-violet-600/40 via-purple-600/30 to-fuchsia-600/40 border border-purple-400/50 shadow-[0_0_20px_-5px_rgba(168,85,247,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-md'
+                        : 'bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 border border-purple-500/20 shadow-[0_4px_15px_-5px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.05)] backdrop-blur-sm hover:border-purple-400/40 hover:shadow-[0_0_15px_-5px_rgba(168,85,247,0.4)]'
+                      : selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'
+                  }`}
                   style={{ 
-                    borderLeft: hasEnabledHunt ? '5px solid #3b82f6' : '5px solid #d1d5db'
+                    borderLeft: loadHunterTheme === 'aurora'
+                      ? hasEnabledHunt ? '4px solid #a855f7' : '4px solid rgba(168,85,247,0.3)'
+                      : hasEnabledHunt ? '5px solid #3b82f6' : '5px solid #d1d5db'
                   }}
                   onClick={() => setSelectedVehicle(vehicle)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-16">
-                      <div className="font-medium text-sm leading-tight text-carved truncate">
+                      <div className={`font-medium text-sm leading-tight truncate ${
+                        loadHunterTheme === 'aurora' ? 'text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]' : 'text-carved'
+                      }`}>
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
-                      <div className="text-xs text-carved-light leading-tight truncate">
+                      <div className={`text-xs leading-tight truncate ${
+                        loadHunterTheme === 'aurora' ? 'text-purple-200/80' : 'text-carved-light'
+                      }`}>
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                         {enabledHuntPlan?.availableFeet && (
-                          <span className="ml-1.5 text-primary font-medium">| Avail: {enabledHuntPlan.availableFeet}'</span>
+                          <span className={`ml-1.5 font-medium ${loadHunterTheme === 'aurora' ? 'text-cyan-400' : 'text-primary'}`}>| Avail: {enabledHuntPlan.availableFeet}'</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-carved-light truncate leading-tight opacity-70">
+                      <div className={`text-[11px] truncate leading-tight ${
+                        loadHunterTheme === 'aurora' ? 'text-purple-300/50' : 'text-carved-light opacity-70'
+                      }`}>
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
                     </div>
                     {/* Merged badge pill - glossy 3D button style, flush with edge */}
-                    <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg">
+                    <div className={`absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg ${
+                      loadHunterTheme === 'aurora' ? 'shadow-[0_0_10px_-2px_rgba(168,85,247,0.5)]' : ''
+                    }`}>
                       {/* GREEN = Unreviewed */}
                       <div 
-                        className="btn-glossy-success h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
+                        className={`h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer transition-all !py-0 flex items-center justify-center ${
+                          loadHunterTheme === 'aurora'
+                            ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-emerald-300 hover:to-emerald-500'
+                            : 'btn-glossy-success hover:brightness-110'
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('unreviewed');
@@ -3948,7 +4096,11 @@ export default function LoadHunterTab() {
                       </div>
                       {/* GRAY = Skipped */}
                       <div 
-                        className="btn-glossy h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] text-gray-600 cursor-pointer hover:brightness-95 transition-all !py-0 flex items-center justify-center"
+                        className={`h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer transition-all !py-0 flex items-center justify-center ${
+                          loadHunterTheme === 'aurora'
+                            ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-slate-200 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] hover:from-slate-400 hover:to-slate-600'
+                            : 'btn-glossy text-gray-600 hover:brightness-95'
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('skipped');
@@ -3960,9 +4112,13 @@ export default function LoadHunterTab() {
                       >
                         {skippedCount}
                       </div>
-                      {/* BLUE = My Bids */}
+                      {/* CYAN = My Bids (Aurora) / BLUE = My Bids (Classic) */}
                       <div 
-                        className="btn-glossy-primary h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer hover:brightness-110 transition-all !py-0 flex items-center justify-center"
+                        className={`h-6 px-2.5 !rounded-none !border-0 !border-b-0 text-[11px] cursor-pointer transition-all !py-0 flex items-center justify-center ${
+                          loadHunterTheme === 'aurora'
+                            ? 'bg-gradient-to-b from-cyan-400 to-cyan-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-cyan-300 hover:to-cyan-500'
+                            : 'btn-glossy-primary hover:brightness-110'
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilter('mybids');
