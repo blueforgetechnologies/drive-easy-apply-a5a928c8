@@ -3777,6 +3777,24 @@ export default function LoadHunterTab() {
             >
               Dispatcher Score Card
             </Button>
+
+            {/* Assign Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
+                activeFilter === 'vehicle-assignment'
+                  ? 'btn-glossy-primary text-white'
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('vehicle-assignment');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Assign
+            </Button>
             
             {/* More Actions Dropdown */}
             <DropdownMenu>
@@ -3800,42 +3818,6 @@ export default function LoadHunterTab() {
                   }}
                 >
                   Expired ({expiredCount})
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={activeFilter === 'vehicle-assignment' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => {
-                    setActiveFilter('vehicle-assignment');
-                    setSelectedVehicle(null);
-                    setSelectedEmailForDetail(null);
-                  }}
-                >
-                  Assign
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    setRefreshing(true);
-                    try {
-                      await handleRefreshLoads();
-                      const enabledHunts = huntPlans.filter(h => h.enabled);
-                      if (enabledHunts.length > 0) {
-                        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-                        const recentLoads = loadEmails.filter(email => {
-                          const receivedAt = new Date(email.received_at);
-                          return receivedAt >= thirtyMinutesAgo && email.status === 'new';
-                        });
-                        toast.success(`Refreshed ${recentLoads.length} loads against ${enabledHunts.length} active hunt(s)`);
-                      }
-                    } catch (error) {
-                      console.error("Error refreshing:", error);
-                      toast.error("Failed to refresh");
-                    } finally {
-                      setRefreshing(false);
-                    }
-                  }}
-                  disabled={refreshing}
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-                  Refresh
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
