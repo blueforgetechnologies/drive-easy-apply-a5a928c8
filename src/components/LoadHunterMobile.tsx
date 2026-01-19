@@ -711,12 +711,16 @@ export default function LoadHunterMobile({
 
                     {/* Secondary Details Row - Vehicle Type, Dims, Amount */}
                     <div className="flex items-center gap-2 text-xs flex-wrap">
-                      {data.vehicle_type && (
-                        <Badge variant="outline" className="text-[10px] h-5">
-                          <Truck className="h-3 w-3 mr-1" />
-                          {data.vehicle_type.replace(/<[^>]*>/g, '').trim()}
-                        </Badge>
-                      )}
+                      {data.vehicle_type && (() => {
+                        const cleanVehicleType = data.vehicle_type.replace(/<[^>]*>/g, '').trim();
+                        const displayVehicleType = cleanVehicleType.length > 18 ? cleanVehicleType.slice(0, 16) + '…' : cleanVehicleType;
+                        return (
+                          <Badge variant="outline" className="text-[10px] h-5" title={cleanVehicleType.length > 18 ? cleanVehicleType : undefined}>
+                            <Truck className="h-3 w-3 mr-1" />
+                            {displayVehicleType}
+                          </Badge>
+                        );
+                      })()}
                       {data.dimensions && (
                         <Badge variant="outline" className="text-[10px] h-5">
                           <Box className="h-3 w-3 mr-1" />

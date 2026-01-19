@@ -5834,7 +5834,20 @@ export default function LoadHunterTab() {
                                 </div>
                               </TableCell>
                               <TableCell className="py-1">
-                                <div className="text-[13px] leading-tight whitespace-nowrap">{data.vehicle_type?.replace(/<[^>]*>/g, '').trim() || '—'}</div>
+                                {(() => {
+                                  const cleanVehicleType = data.vehicle_type?.replace(/<[^>]*>/g, '').trim() || '';
+                                  const displayVehicleType = cleanVehicleType.length > 20 ? cleanVehicleType.slice(0, 18) + '…' : cleanVehicleType;
+                                  return cleanVehicleType.length > 20 ? (
+                                    <HoverCard>
+                                      <HoverCardTrigger asChild>
+                                        <div className="text-[13px] leading-tight whitespace-nowrap cursor-help">{displayVehicleType || '—'}</div>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent className="w-auto max-w-xs text-sm">{cleanVehicleType}</HoverCardContent>
+                                    </HoverCard>
+                                  ) : (
+                                    <div className="text-[13px] leading-tight whitespace-nowrap">{displayVehicleType || '—'}</div>
+                                  );
+                                })()}
                                 <div className="text-[13px] leading-tight whitespace-nowrap">{data.weight !== undefined && data.weight !== null ? `${data.weight} lbs` : '—'}</div>
                               </TableCell>
                               <TableCell className="py-1">
