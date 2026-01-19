@@ -214,7 +214,7 @@ export function ReleaseControlTab() {
       case "active":
         return <Badge variant="default" className="bg-gradient-to-b from-green-500 to-green-700 text-white !px-3 !py-1.5 shadow-md">Active</Badge>;
       case "trial":
-        return <Badge variant="secondary">Trial</Badge>;
+        return <Badge className="bg-gradient-to-b from-slate-400 to-slate-600 text-white !px-3 !py-1.5 shadow-md border-0">Trial</Badge>;
       case "suspended":
         return <Badge variant="destructive">Suspended</Badge>;
       default:
