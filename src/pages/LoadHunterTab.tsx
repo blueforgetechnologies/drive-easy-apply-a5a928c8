@@ -3767,17 +3767,15 @@ export default function LoadHunterTab() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`h-8 px-4 text-xs font-semibold gap-2 rounded-full border border-white/40 bg-gradient-to-br from-violet-500/90 via-purple-500/90 to-fuchsia-500/90 text-white shadow-[0_4px_20px_-2px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md hover:shadow-[0_6px_28px_-2px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ${
-                    selectedSources.length < 2 ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''
-                  }`}
+                  className="h-8 px-4 text-xs font-semibold gap-2 rounded-full border border-white/40 bg-gradient-to-br from-violet-500/90 via-purple-500/90 to-fuchsia-500/90 text-white shadow-[0_4px_20px_-2px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md hover:shadow-[0_6px_28px_-2px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                 >
-                  <svg className={`h-3.5 w-3.5 drop-shadow-sm ${selectedSources.length < 2 ? 'animate-[ping_1.5s_ease-in-out_infinite]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg className="h-3.5 w-3.5 drop-shadow-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Source
                   <span className={`flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-[10px] font-bold rounded-full border shadow-inner transition-colors ${
                     selectedSources.length < 2 
-                      ? 'bg-amber-400/90 border-amber-300 text-amber-900' 
+                      ? 'bg-amber-400 border-amber-300 text-amber-900 animate-pulse' 
                       : 'bg-white/25 backdrop-blur-sm border-white/40'
                   }`}>
                     {selectedSources.length}
