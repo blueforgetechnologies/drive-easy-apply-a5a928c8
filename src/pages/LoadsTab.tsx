@@ -627,6 +627,13 @@ export default function LoadsTab() {
 
   const handleAddLoad = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // CRITICAL: Ensure tenant_id is set to prevent cross-tenant data leakage
+    if (!tenantId) {
+      toast.error("No tenant selected. Please select an organization first.");
+      return;
+    }
+    
     try {
       const estimatedMiles = formData.estimated_miles ? parseFloat(formData.estimated_miles) : null;
       
@@ -634,6 +641,7 @@ export default function LoadsTab() {
         .from("loads") as any)
         .insert({
           ...formData,
+          tenant_id: tenantId, // CRITICAL: Explicitly set tenant_id
           status: "available",
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
           cargo_pieces: formData.cargo_pieces ? parseInt(formData.cargo_pieces, 10) : null,
@@ -693,6 +701,7 @@ export default function LoadsTab() {
             .from('load_documents')
             .insert({
               load_id: loadId,
+              tenant_id: tenantId, // CRITICAL: Explicitly set tenant_id
               document_type: 'rate_confirmation',
               file_name: rateConfirmationFile.name,
               file_url: fileName,
