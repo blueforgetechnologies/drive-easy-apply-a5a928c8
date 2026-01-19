@@ -5474,7 +5474,7 @@ export default function LoadHunterTab() {
                           : activeFilter === 'expired' ? [...filteredExpiredMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
                           : activeFilter === 'missed' ? filteredMissedHistory : filteredEmails)
                           .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                          .map((item) => {
+                          .map((item, rowIndex) => {
                           // For unreviewed, item is from view with email data included
                           // For skipped/mybids/booked/undecided/waitlist/expired, item is a match that needs email lookup
                           // For missed, item is from missedHistory with email data
@@ -5693,16 +5693,21 @@ export default function LoadHunterTab() {
                           <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
                               className={`h-11 cursor-pointer transition-all duration-150 border-b ${
-                                loadHunterTheme === 'aurora' ? 'border-purple-200/40' : 'border-border/50'
+                                loadHunterTheme === 'aurora' ? 'border-purple-200/40 !bg-none' : 'border-border/50'
                               } ${
                                 isFailed 
                                   ? 'bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 hover:from-red-100 hover:to-red-150' 
                                   : isNewlyProcessed 
                                     ? 'bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20' 
                                     : loadHunterTheme === 'aurora'
-                                      ? 'bg-gradient-to-r from-white/70 via-violet-50/50 to-white/70 hover:from-violet-100/80 hover:via-purple-100/60 hover:to-violet-100/80 even:from-violet-50/60 even:via-purple-50/40 even:to-violet-50/60'
+                                      ? ''
                                       : 'hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 even:bg-muted/30'
                               }`}
+                              style={loadHunterTheme === 'aurora' && !isFailed && !isNewlyProcessed ? {
+                                background: (rowIndex % 2 === 0) 
+                                  ? 'linear-gradient(to right, rgba(255,255,255,0.7), rgba(238,232,255,0.5), rgba(255,255,255,0.7))'
+                                  : 'linear-gradient(to right, rgba(245,243,255,0.6), rgba(233,225,255,0.4), rgba(245,243,255,0.6))'
+                              } : undefined}
                               onClick={async () => {
                                 // Don't open failed items for detail view
                                 if (isFailed) {
