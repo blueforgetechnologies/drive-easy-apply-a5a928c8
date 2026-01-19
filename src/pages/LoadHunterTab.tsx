@@ -5407,17 +5407,18 @@ export default function LoadHunterTab() {
                     <div className="flex-1 overflow-auto min-h-0">
                       <Table className={loadHunterTheme === 'aurora' ? '' : 'table-glossy'}>
                       <TableHeader 
-                        className={loadHunterTheme === 'aurora' ? '[&]:!bg-violet-600 rounded-t-lg [&_th]:!shadow-none' : ''}
+                        className={loadHunterTheme === 'aurora' ? 'rounded-t-lg' : ''}
                         style={loadHunterTheme === 'aurora' ? { 
-                          background: '#7c3aed',
-                          borderBottom: '2px solid #6d28d9',
+                          background: 'linear-gradient(180deg, #a78bfa 0%, #8b5cf6 40%, #7c3aed 100%)',
+                          borderBottom: '3px solid #5b21b6',
+                          boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.15), 0 4px 8px rgba(91,33,182,0.35)',
                           textShadow: 'none'
                         } : undefined}
                       >
                         <TableRow 
-                          className={loadHunterTheme === 'aurora' ? 'h-11' : 'h-9'}
+                          className={loadHunterTheme === 'aurora' ? 'h-12' : 'h-9'}
                           style={loadHunterTheme === 'aurora' ? { 
-                            background: '#7c3aed', 
+                            background: 'transparent', 
                             boxShadow: 'none',
                             textShadow: 'none'
                           } : undefined}
