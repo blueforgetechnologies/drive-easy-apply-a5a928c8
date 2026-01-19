@@ -5406,7 +5406,10 @@ export default function LoadHunterTab() {
                   <>
                     <div className="flex-1 overflow-auto min-h-0">
                       <Table className={loadHunterTheme === 'aurora' ? '' : 'table-glossy'}>
-                      <TableHeader className={loadHunterTheme === 'aurora' ? 'bg-gradient-to-r from-violet-200/90 via-purple-100/80 to-violet-200/90 border-b border-purple-300/50' : ''}>
+                      <TableHeader 
+                        className={loadHunterTheme === 'aurora' ? 'border-b-2 border-purple-400/60' : ''}
+                        style={loadHunterTheme === 'aurora' ? { background: '#c4b5fd' } : undefined}
+                      >
                         <TableRow className="h-9">
                           <TableHead className={`w-0 p-0 relative ${loadHunterTheme === 'aurora' ? 'text-purple-800' : 'text-white'}`}>
                             <Button
