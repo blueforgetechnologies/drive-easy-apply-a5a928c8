@@ -3775,7 +3775,7 @@ export default function LoadHunterTab() {
                 setSelectedEmailForDetail(null);
               }}
             >
-              Metrics
+              Dispatcher Score Card
             </Button>
             
             {/* More Actions Dropdown */}
