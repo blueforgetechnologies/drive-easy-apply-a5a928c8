@@ -4093,12 +4093,12 @@ export default function LoadHunterTab() {
 
       {/* Main Content Area */}
       <div className={`flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3 ${
-        loadHunterTheme === 'aurora' ? 'bg-gradient-to-br from-violet-100/80 via-purple-50/60 to-violet-100/80' : ''
+        loadHunterTheme === 'aurora' ? 'bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900' : ''
       }`}>
         {/* Left Sidebar - Vehicles - Always Visible */}
         <div className={`w-64 flex-shrink-0 space-y-1 overflow-y-auto pr-2 ${
           loadHunterTheme === 'aurora' 
-            ? 'border-r border-purple-300/50' 
+            ? 'border-r border-purple-500/30' 
             : 'border-r'
         }`}>
           {loading ? (
@@ -4133,8 +4133,8 @@ export default function LoadHunterTab() {
                   className={`p-2.5 cursor-pointer rounded-lg relative transition-all duration-200 ${
                     loadHunterTheme === 'aurora'
                       ? selectedVehicle?.id === vehicle.id
-                        ? 'bg-gradient-to-br from-violet-200/80 via-purple-100/70 to-fuchsia-200/80 border border-purple-400/60 shadow-[0_2px_10px_-3px_rgba(168,85,247,0.3)] backdrop-blur-sm'
-                        : 'bg-gradient-to-br from-white/70 via-violet-50/50 to-white/70 border border-purple-200/50 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.1)] hover:border-purple-400/60 hover:shadow-[0_2px_12px_-3px_rgba(168,85,247,0.25)]'
+                        ? 'bg-gradient-to-b from-purple-900/80 to-violet-900/60 border border-purple-400/60 shadow-lg shadow-purple-500/30'
+                        : 'bg-gradient-to-b from-purple-900/40 to-violet-900/30 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-md hover:shadow-purple-500/20'
                       : selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'
                   }`}
                   style={{ 
@@ -4147,20 +4147,20 @@ export default function LoadHunterTab() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-16">
                       <div className={`font-medium text-sm leading-tight truncate ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-900' : 'text-carved'
+                        loadHunterTheme === 'aurora' ? 'text-purple-200' : 'text-carved'
                       }`}>
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
                       <div className={`text-xs leading-tight truncate ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-700/80' : 'text-carved-light'
+                        loadHunterTheme === 'aurora' ? 'text-purple-300/70' : 'text-carved-light'
                       }`}>
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                         {enabledHuntPlan?.availableFeet && (
-                          <span className={`ml-1.5 font-medium ${loadHunterTheme === 'aurora' ? 'text-violet-600' : 'text-primary'}`}>| Avail: {enabledHuntPlan.availableFeet}'</span>
+                          <span className={`ml-1.5 font-medium ${loadHunterTheme === 'aurora' ? 'text-emerald-400' : 'text-primary'}`}>| Avail: {enabledHuntPlan.availableFeet}'</span>
                         )}
                       </div>
                       <div className={`text-[11px] truncate leading-tight ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-500/70' : 'text-carved-light opacity-70'
+                        loadHunterTheme === 'aurora' ? 'text-purple-400/70' : 'text-carved-light opacity-70'
                       }`}>
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
@@ -5693,14 +5693,14 @@ export default function LoadHunterTab() {
                           <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
                               className={`h-11 cursor-pointer transition-all duration-150 border-b ${
-                                loadHunterTheme === 'aurora' ? 'border-purple-200/40' : 'border-border/50'
+                                loadHunterTheme === 'aurora' ? 'border-purple-500/20' : 'border-border/50'
                               } ${
                                 isFailed 
                                   ? 'bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 hover:from-red-100 hover:to-red-150' 
                                   : isNewlyProcessed 
                                     ? 'bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20' 
                                     : loadHunterTheme === 'aurora'
-                                      ? 'hover:bg-violet-100/60 even:bg-purple-50/40 odd:bg-white/60'
+                                      ? 'hover:bg-purple-900/30 even:bg-purple-950/20'
                                       : 'hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 even:bg-muted/30'
                               }`}
                               onClick={async () => {
