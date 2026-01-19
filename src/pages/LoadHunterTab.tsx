@@ -5692,8 +5692,10 @@ export default function LoadHunterTab() {
                           return (
                           <TableRow 
                               key={activeFilter === 'unreviewed' ? (match as any).id : email.id} 
-                              className={`h-11 cursor-pointer transition-all duration-150 border-b ${
-                                loadHunterTheme === 'aurora' ? 'border-purple-200/40 !bg-none' : 'border-border/50'
+                              className={`cursor-pointer transition-all duration-150 ${
+                                loadHunterTheme === 'aurora' 
+                                  ? 'h-12 border-0 rounded-md my-0.5 mx-1 hover:scale-[1.005] hover:shadow-md' 
+                                  : 'h-11 border-b border-border/50'
                               } ${
                                 isFailed 
                                   ? 'bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 hover:from-red-100 hover:to-red-150' 
@@ -5705,9 +5707,11 @@ export default function LoadHunterTab() {
                               }`}
                               style={loadHunterTheme === 'aurora' && !isFailed && !isNewlyProcessed ? {
                                 background: (rowIndex % 2 === 0) 
-                                  ? '#f3e8ff'
-                                  : '#ede9fe',
-                                boxShadow: 'none'
+                                  ? 'linear-gradient(180deg, #f5f0ff 0%, #ede5ff 100%)'
+                                  : 'linear-gradient(180deg, #ebe5fc 0%, #e0d8f5 100%)',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(139,92,246,0.15), 0 1px 2px rgba(139,92,246,0.1)',
+                                borderTop: '1px solid rgba(255,255,255,0.8)',
+                                borderBottom: '1px solid rgba(139,92,246,0.2)'
                               } : undefined}
                               onClick={async () => {
                                 // Don't open failed items for detail view
