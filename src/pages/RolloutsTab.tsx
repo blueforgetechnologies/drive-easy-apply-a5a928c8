@@ -607,9 +607,9 @@ export default function RolloutsTab() {
   function getChannelBadge(channel: string) {
     switch (channel) {
       case 'internal':
-        return <Badge className="bg-red-600">Internal</Badge>;
+        return <Badge className="bg-gradient-to-b from-red-500 to-red-700 text-white !px-3 !py-1.5 shadow-md">Internal</Badge>;
       case 'pilot':
-        return <Badge className="bg-amber-500 text-black">Pilot</Badge>;
+        return <Badge className="bg-gradient-to-b from-amber-400 to-amber-600 text-black !px-3 !py-1.5 shadow-md">Pilot</Badge>;
       case 'general':
         return <Badge variant="outline" className="border-green-500 text-green-600">General</Badge>;
       default:

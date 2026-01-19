@@ -89,7 +89,7 @@ export default function DevelopmentTab() {
               {/* Step 1 */}
               <div className="border-l-4 border-blue-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-blue-500">Step 1</Badge>
+                  <Badge className="bg-gradient-to-b from-blue-400 to-blue-600 text-white !px-3 !py-1.5 shadow-md">Step 1</Badge>
                   <span className="font-semibold">Email Arrival</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
@@ -107,7 +107,7 @@ export default function DevelopmentTab() {
               {/* Step 2 */}
               <div className="border-l-4 border-green-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-green-500">Step 2</Badge>
+                  <Badge className="bg-gradient-to-b from-green-400 to-green-600 text-white !px-3 !py-1.5 shadow-md">Step 2</Badge>
                   <span className="font-semibold">Token Retrieval</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
@@ -125,7 +125,7 @@ export default function DevelopmentTab() {
               {/* Step 3 */}
               <div className="border-l-4 border-yellow-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-yellow-500">Step 3</Badge>
+                  <Badge className="bg-gradient-to-b from-yellow-400 to-yellow-600 text-black !px-3 !py-1.5 shadow-md">Step 3</Badge>
                   <span className="font-semibold">Email Fetching</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
@@ -143,7 +143,7 @@ export default function DevelopmentTab() {
               {/* Step 4 */}
               <div className="border-l-4 border-orange-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-orange-500">Step 4</Badge>
+                  <Badge className="bg-gradient-to-b from-orange-400 to-orange-600 text-white !px-3 !py-1.5 shadow-md">Step 4</Badge>
                   <span className="font-semibold">Email Parsing (Sylectus Format)</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
@@ -171,7 +171,7 @@ export default function DevelopmentTab() {
               {/* Step 5 */}
               <div className="border-l-4 border-purple-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-purple-500">Step 5</Badge>
+                  <Badge className="bg-gradient-to-b from-purple-400 to-purple-600 text-white !px-3 !py-1.5 shadow-md">Step 5</Badge>
                   <span className="font-semibold">Database Storage</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
@@ -190,7 +190,7 @@ export default function DevelopmentTab() {
               {/* Step 6 */}
               <div className="border-l-4 border-pink-500 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-pink-500">Step 6</Badge>
+                  <Badge className="bg-gradient-to-b from-pink-400 to-pink-600 text-white !px-3 !py-1.5 shadow-md">Step 6</Badge>
                   <span className="font-semibold">Hunt Plan Matching</span>
                 </div>
                 <div className="text-sm space-y-2 text-muted-foreground">
