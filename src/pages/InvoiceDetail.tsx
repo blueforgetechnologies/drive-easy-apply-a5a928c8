@@ -8,12 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, Trash2, Save, Send, Download } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import { useTenantId } from "@/hooks/useTenantId";
 interface InvoiceLoad {
   id: string;
   load_id: string;
@@ -24,8 +24,10 @@ interface InvoiceLoad {
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const tenantId = useTenantId();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [submittingToOtr, setSubmittingToOtr] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceLoads, setInvoiceLoads] = useState<InvoiceLoad[]>([]);
   const [availableLoads, setAvailableLoads] = useState<any[]>([]);
@@ -171,6 +173,45 @@ export default function InvoiceDetail() {
     }
   };
 
+  const handleSubmitToOtr = async (quickPay = false) => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
+    setSubmittingToOtr(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke('submit-otr-invoice', {
+        body: {
+          tenant_id: tenantId,
+          invoice_id: id,
+          quick_pay: quickPay
+        },
+        headers: {
+          Authorization: `Bearer ${session?.session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to submit invoice');
+      }
+
+      const result = response.data;
+      if (result.success) {
+        toast.success(result.message || 'Invoice submitted to OTR (Staging)');
+        loadData();
+      } else {
+        toast.error(result.error || 'Failed to submit invoice to OTR');
+      }
+    } catch (error: any) {
+      console.error('OTR submission error:', error);
+      toast.error("Failed to submit to OTR: " + error.message);
+    } finally {
+      setSubmittingToOtr(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
@@ -179,6 +220,19 @@ export default function InvoiceDetail() {
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
     };
     const config = configs[status] || configs.draft;
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  const getOtrStatusBadge = () => {
+    if (!invoice.otr_status) return null;
+    const configs: Record<string, { label: string; className: string }> = {
+      submitted: { label: "OTR: Submitted", className: "bg-blue-500 hover:bg-blue-600" },
+      processing: { label: "OTR: Processing", className: "bg-yellow-500 hover:bg-yellow-600" },
+      approved: { label: "OTR: Approved", className: "bg-green-500 hover:bg-green-600" },
+      funded: { label: "OTR: Funded", className: "bg-green-600 hover:bg-green-700" },
+      rejected: { label: "OTR: Rejected", className: "bg-red-500 hover:bg-red-600" },
+    };
+    const config = configs[invoice.otr_status] || { label: `OTR: ${invoice.otr_status}`, className: "bg-gray-500" };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -205,7 +259,7 @@ export default function InvoiceDetail() {
               <p className="text-muted-foreground">{invoice.customer_name}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={handleSave} disabled={saving} variant="outline">
               <Save className="h-4 w-4 mr-2" />
               Save
@@ -220,6 +274,22 @@ export default function InvoiceDetail() {
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
+            {/* OTR Factoring Submission */}
+            {!invoice.otr_submitted_at && invoice.status !== "draft" && (
+              <Button 
+                onClick={() => handleSubmitToOtr(false)} 
+                disabled={submittingToOtr}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {submittingToOtr ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <DollarSign className="h-4 w-4 mr-2" />
+                )}
+                Submit to OTR (Staging)
+              </Button>
+            )}
+            {invoice.otr_submitted_at && getOtrStatusBadge()}
           </div>
         </div>
 

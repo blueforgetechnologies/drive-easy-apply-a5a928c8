@@ -2249,6 +2249,7 @@ export type Database = {
           created_at: string | null
           customer_address: string | null
           customer_email: string | null
+          customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
           due_date: string | null
@@ -2257,6 +2258,9 @@ export type Database = {
           invoice_date: string | null
           invoice_number: string
           notes: string | null
+          otr_invoice_id: string | null
+          otr_status: string | null
+          otr_submitted_at: string | null
           paid_at: string | null
           payment_date: string | null
           payment_method: string | null
@@ -2278,6 +2282,7 @@ export type Database = {
           created_at?: string | null
           customer_address?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           due_date?: string | null
@@ -2286,6 +2291,9 @@ export type Database = {
           invoice_date?: string | null
           invoice_number: string
           notes?: string | null
+          otr_invoice_id?: string | null
+          otr_status?: string | null
+          otr_submitted_at?: string | null
           paid_at?: string | null
           payment_date?: string | null
           payment_method?: string | null
@@ -2307,6 +2315,7 @@ export type Database = {
           created_at?: string | null
           customer_address?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           due_date?: string | null
@@ -2315,6 +2324,9 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string
           notes?: string | null
+          otr_invoice_id?: string | null
+          otr_status?: string | null
+          otr_submitted_at?: string | null
           paid_at?: string | null
           payment_date?: string | null
           payment_method?: string | null
@@ -2329,6 +2341,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -4027,6 +4046,78 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      otr_invoice_submissions: {
+        Row: {
+          broker_mc: string
+          broker_name: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          invoice_amount: number
+          invoice_id: string | null
+          invoice_number: string
+          otr_invoice_id: string | null
+          quick_pay: boolean | null
+          raw_request: Json | null
+          raw_response: Json | null
+          status: string
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          broker_mc: string
+          broker_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          invoice_amount: number
+          invoice_id?: string | null
+          invoice_number: string
+          otr_invoice_id?: string | null
+          quick_pay?: boolean | null
+          raw_request?: Json | null
+          raw_response?: Json | null
+          status?: string
+          submitted_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          broker_mc?: string
+          broker_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          invoice_amount?: number
+          invoice_id?: string | null
+          invoice_number?: string
+          otr_invoice_id?: string | null
+          quick_pay?: boolean | null
+          raw_request?: Json | null
+          raw_response?: Json | null
+          status?: string
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "otr_invoice_submissions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "otr_invoice_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
