@@ -1393,6 +1393,14 @@ export default function LoadHunterTab() {
             console.warn('[Realtime] IGNORED cross-tenant match change');
             return;
           }
+          
+          // PERFORMANCE: Skip reload for skip/bid actions - already handled optimistically
+          // Only reload for new matches or external changes
+          if (payload.eventType === 'UPDATE' && record?.match_status === 'skipped') {
+            console.log(`[Realtime] Skipped match update (already handled optimistically)`);
+            return; // Skip was already removed from UI optimistically
+          }
+          
           console.log(`[Realtime] Match change for tenant ${tenantId}:`, payload);
           loadHuntMatches();
           loadUnreviewedMatches();
@@ -2446,14 +2454,14 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleSkipMatch = async (matchId: string) => {
+  const handleSkipMatch = (matchId: string) => {
     setMatchActionTaken(true); // Mark that action was taken
     
     // Optimistic update - immediately remove from unreviewed UI for instant feedback
     setUnreviewedViewData(prev => prev.filter(m => m.match_id !== matchId));
     setLoadMatches(prev => prev.filter(m => m.id !== matchId));
     
-    // Fire-and-forget: run DB operations in background without blocking UI
+    // Fire-and-forget: run DB operations in background - no reload needed
     Promise.all([
       trackDispatcherAction(matchId, 'skipped'),
       supabase
@@ -2464,13 +2472,11 @@ export default function LoadHunterTab() {
       if (error) {
         console.error('Error skipping match:', error);
         toast.error('Failed to skip match');
-        // Refetch on error to restore correct state
+        // Only refetch on error to restore correct state
         loadHuntMatches();
         loadUnreviewedMatches();
-      } else {
-        // Background refresh to update counts (won't block UI)
-        loadHuntMatches();
       }
+      // Success: no reload - optimistic update already handled it
     }).catch(err => {
       console.error('Error skipping match:', err);
       toast.error('Failed to skip match');
@@ -2568,38 +2574,35 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleSkipEmail = async (emailId: string, matchId?: string) => {
+  const handleSkipEmail = (emailId: string, matchId?: string) => {
     // Optimistic update - immediately remove from UI
     setLoadEmails(prev => prev.filter(e => e.id !== emailId));
     setUnreviewedViewData(prev => prev.filter(m => (m as any).load_email_id !== emailId));
     
-    // Fire-and-forget: run DB operations in background without blocking UI
+    // Fire-and-forget: run DB operations in background - no reload on success
     (async () => {
       try {
-        // Track the skip action if we have a match ID
+        // Track the skip action if we have a match ID (fire-and-forget)
         if (matchId) {
-          trackDispatcherAction(matchId, 'skipped'); // Don't await
+          trackDispatcherAction(matchId, 'skipped');
         }
         
         const { error } = await supabase
           .from('load_emails')
           .update({ 
             status: 'skipped',
-            marked_missed_at: null // Clear missed tracking when skipped
+            marked_missed_at: null
           })
           .eq('id', emailId);
 
         if (error) {
           console.error('Error skipping email:', error);
           toast.error('Failed to skip email');
-          // Refetch on error to restore correct state
-          loadLoadEmails();
-          loadUnreviewedMatches();
-        } else {
-          // Background refresh to update counts
+          // Only refetch on error to restore correct state
           loadLoadEmails();
           loadUnreviewedMatches();
         }
+        // Success: no reload - optimistic update already handled it
       } catch (error) {
         console.error('Error skipping email:', error);
         toast.error('Failed to skip email');
