@@ -219,16 +219,18 @@ async function quarantineEmail(
   }
 }
 
-// Check tenant rate limit using atomic DB function
+// Check tenant rate limit using atomic DB function (dry_run=true means check without incrementing)
 async function checkRateLimit(
   tenantId: string, 
   limitPerMinute: number, 
-  limitPerDay: number
+  limitPerDay: number,
+  dryRun: boolean = false
 ): Promise<{ allowed: boolean; reason: string | null; minuteCount: number; dayCount: number }> {
   const { data, error } = await supabase.rpc('check_tenant_rate_limit', {
     p_tenant_id: tenantId,
     p_limit_per_minute: limitPerMinute,
     p_limit_per_day: limitPerDay,
+    p_dry_run: dryRun,
   });
   
   if (error) {
@@ -242,6 +244,20 @@ async function checkRateLimit(
     minuteCount: data.minute_count,
     dayCount: data.day_count,
   };
+}
+
+// Increment tenant rate counter by a specific count (after dedup)
+async function incrementRateCount(tenantId: string, count: number): Promise<void> {
+  if (count <= 0) return;
+  
+  const { error } = await supabase.rpc('increment_tenant_rate_count', {
+    p_tenant_id: tenantId,
+    p_count: count,
+  });
+  
+  if (error) {
+    console.error('[gmail-webhook] Rate count increment failed:', error);
+  }
 }
 
 // Check if a feature is enabled for a tenant
@@ -762,10 +778,11 @@ serve(async (req) => {
         continue;
       }
       
-      // Check rate limit for this tenant
-      const rateCheck = await checkRateLimit(tenantInfo.tenantId, tenantInfo.rateLimitPerMinute, tenantInfo.rateLimitPerDay);
+      // Check rate limit for this tenant (DRY RUN - check without incrementing)
+      // We'll increment AFTER we know how many were actually queued (post-dedup)
+      const rateCheck = await checkRateLimit(tenantInfo.tenantId, tenantInfo.rateLimitPerMinute, tenantInfo.rateLimitPerDay, true);
       if (!rateCheck.allowed) {
-        console.warn(`Rate limit exceeded for tenant ${tenantInfo.tenantName}, skipping message ${message.id}`);
+        console.warn(`Rate limit exceeded for tenant ${tenantInfo.tenantName} (day: ${rateCheck.dayCount}/${tenantInfo.rateLimitPerDay}), skipping message ${message.id}`);
         skippedCount++;
         continue;
       }
@@ -916,6 +933,10 @@ serve(async (req) => {
       if (queued > 0) {
         tenantResults.push({ tenantId, queued });
         console.log(`📧 Queued ${queued} for tenant ${tenantId}`);
+        
+        // INCREMENT rate counter by actual queued count (post-dedup)
+        // This ensures we only count emails that were actually processed, not duplicates
+        await incrementRateCount(tenantId, queued);
       }
     }
     
