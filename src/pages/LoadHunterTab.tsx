@@ -2622,6 +2622,8 @@ export default function LoadHunterTab() {
     // Optimistic update - immediately remove from UI
     setLoadEmails(prev => prev.filter(e => e.id !== emailId));
     setUnreviewedViewData(prev => prev.filter(m => (m as any).load_email_id !== emailId));
+    // Also remove from loadMatches to prevent reappearing in other views
+    setLoadMatches(prev => prev.filter(m => m.load_email_id !== emailId));
     
     // Fire-and-forget: run DB operations in background - no reload on success
     (async () => {
@@ -2631,20 +2633,35 @@ export default function LoadHunterTab() {
           trackDispatcherAction(matchId, 'skipped');
         }
         
-        const { error } = await supabase
-          .from('load_emails')
-          .update({ 
-            status: 'skipped',
-            marked_missed_at: null
-          })
-          .eq('id', emailId);
+        // Update email status AND all related matches in parallel
+        const [emailResult, matchesResult] = await Promise.all([
+          supabase
+            .from('load_emails')
+            .update({ 
+              status: 'skipped',
+              marked_missed_at: null
+            })
+            .eq('id', emailId),
+          // Also mark all matches for this email as skipped/inactive
+          // This ensures they don't reappear in unreviewed_matches view on refresh
+          supabase
+            .from('load_hunt_matches')
+            .update({ 
+              match_status: 'skipped',
+              is_active: false
+            })
+            .eq('load_email_id', emailId)
+        ]);
 
-        if (error) {
-          console.error('Error skipping email:', error);
+        if (emailResult.error) {
+          console.error('Error skipping email:', emailResult.error);
           toast.error('Failed to skip email');
           // Only refetch on error to restore correct state
           loadLoadEmails();
           loadUnreviewedMatches();
+        }
+        if (matchesResult.error) {
+          console.error('Error skipping matches:', matchesResult.error);
         }
         // Success: no reload - optimistic update already handled it
       } catch (error) {
