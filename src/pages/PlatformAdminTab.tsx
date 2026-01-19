@@ -926,11 +926,18 @@ export default function PlatformAdminTab() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={
-                        tenant.is_paused ? "destructive" :
-                        tenant.status === "active" ? "default" :
-                        tenant.status === "trial" ? "secondary" : "outline"
-                      }>
+                      <Badge
+                        variant="outline"
+                        className={`!px-3 !py-1.5 shadow-md border-0 bg-gradient-to-b ${
+                          tenant.is_paused
+                            ? "from-destructive/70 to-destructive text-destructive-foreground"
+                            : tenant.status === "active"
+                              ? "from-success/70 to-success text-success-foreground"
+                              : tenant.status === "trial"
+                                ? "from-secondary/70 to-secondary text-secondary-foreground"
+                                : "from-muted/70 to-muted text-muted-foreground"
+                        }`}
+                      >
                         {tenant.is_paused ? "Paused" : tenant.status}
                       </Badge>
                     </TableCell>
