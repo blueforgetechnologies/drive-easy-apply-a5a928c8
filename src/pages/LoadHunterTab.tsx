@@ -5705,8 +5705,9 @@ export default function LoadHunterTab() {
                               }`}
                               style={loadHunterTheme === 'aurora' && !isFailed && !isNewlyProcessed ? {
                                 background: (rowIndex % 2 === 0) 
-                                  ? 'linear-gradient(to right, rgba(255,255,255,0.7), rgba(238,232,255,0.5), rgba(255,255,255,0.7))'
-                                  : 'linear-gradient(to right, rgba(245,243,255,0.6), rgba(233,225,255,0.4), rgba(245,243,255,0.6))'
+                                  ? '#f3e8ff'
+                                  : '#ede9fe',
+                                boxShadow: 'none'
                               } : undefined}
                               onClick={async () => {
                                 // Don't open failed items for detail view
