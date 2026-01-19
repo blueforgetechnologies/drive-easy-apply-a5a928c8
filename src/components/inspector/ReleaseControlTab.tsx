@@ -203,7 +203,7 @@ export function ReleaseControlTab() {
       case "pilot":
         return <Badge className="bg-gradient-to-b from-amber-400 to-amber-600 text-black !px-3 !py-1.5 shadow-md">Pilot</Badge>;
       case "general":
-        return <Badge variant="outline" className="border-green-500 text-green-600">General</Badge>;
+        return <Badge className="bg-gradient-to-b from-green-500 to-green-700 text-white !px-3 !py-1.5 shadow-md border-0">General</Badge>;
       default:
         return <Badge variant="outline">{channel}</Badge>;
     }
