@@ -3741,22 +3741,21 @@ export default function LoadHunterTab() {
               Assign
             </Button>
 
-            {/* Source Filter Popover */}
+            {/* Source Filter Popover - Special Button */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`h-7 px-3 text-xs font-medium gap-1.5 rounded-full border-0 ${
-                    selectedSources.length < 2
-                      ? 'btn-glossy-primary text-white'
-                      : 'btn-glossy text-gray-700'
-                  }`}
+                  className="h-7 px-3 text-xs font-medium gap-1.5 rounded-full border-0 bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md hover:from-violet-600 hover:to-purple-700 hover:shadow-lg transition-all duration-200"
                 >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                   Source
-                  {selectedSources.length < 2 && (
-                    <span className="badge-inset text-[10px] h-5">{selectedSources.length}</span>
-                  )}
+                  <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
+                    {selectedSources.length}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-52 p-2" align="start">
