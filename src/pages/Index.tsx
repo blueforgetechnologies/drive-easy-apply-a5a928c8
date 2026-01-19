@@ -1,48 +1,48 @@
 import { Link, useSearchParams, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Truck, MapPin, BarChart3, Users, Shield, Clock, ChevronRight, Sparkles, ArrowRight } from "lucide-react";
+import { Code2, Cpu, Zap, Users, Shield, Rocket, ChevronRight, Sparkles, ArrowRight, Terminal, Layers, Globe, Braces } from "lucide-react";
 
-const partners = [
-  { name: "Samsara", description: "Fleet Telematics" },
-  { name: "Motive", description: "ELD & Compliance" },
-  { name: "Highway", description: "Carrier Verification" },
-  { name: "Trimble", description: "Transportation Solutions" },
-  { name: "FMCSA", description: "Safety Compliance" },
-  { name: "Mapbox", description: "Route Optimization" },
-  { name: "Weather API", description: "Real-time Weather" },
-  { name: "WhatsApp", description: "Driver Communication" },
+const technologies = [
+  { name: "React", description: "Frontend Framework" },
+  { name: "Node.js", description: "Backend Runtime" },
+  { name: "TypeScript", description: "Type Safety" },
+  { name: "PostgreSQL", description: "Database" },
+  { name: "AWS", description: "Cloud Infrastructure" },
+  { name: "Docker", description: "Containerization" },
+  { name: "GraphQL", description: "API Layer" },
+  { name: "Kubernetes", description: "Orchestration" },
 ];
 
 const features = [
   {
-    icon: Truck,
-    title: "Fleet Management",
-    description: "Track and manage your entire fleet in real-time with advanced telematics integration.",
+    icon: Code2,
+    title: "Custom Development",
+    description: "Bespoke software solutions crafted to solve your unique business challenges with cutting-edge technology.",
   },
   {
-    icon: MapPin,
-    title: "Route Optimization",
-    description: "Optimize routes for fuel efficiency and on-time delivery with smart planning tools.",
+    icon: Cpu,
+    title: "AI & Machine Learning",
+    description: "Intelligent systems that learn and adapt, transforming data into actionable insights and automation.",
   },
   {
-    icon: BarChart3,
-    title: "Analytics & Reporting",
-    description: "Gain insights with comprehensive analytics on loads, revenue, and fleet performance.",
+    icon: Globe,
+    title: "Cloud Solutions",
+    description: "Scalable, secure cloud architecture that grows with your business and optimizes performance.",
   },
   {
-    icon: Users,
-    title: "Driver Management",
-    description: "Streamline driver onboarding, compliance tracking, and performance management.",
+    icon: Layers,
+    title: "System Integration",
+    description: "Seamlessly connect disparate systems into a unified, efficient digital ecosystem.",
   },
   {
     icon: Shield,
-    title: "Compliance & Safety",
-    description: "Stay compliant with FMCSA regulations and maintain safety ratings effortlessly.",
+    title: "Cybersecurity",
+    description: "Robust security protocols protecting your digital assets from evolving threats.",
   },
   {
-    icon: Clock,
-    title: "Real-time Dispatch",
-    description: "Dispatch loads instantly with automated matching and live tracking capabilities.",
+    icon: Rocket,
+    title: "DevOps & Automation",
+    description: "Streamlined CI/CD pipelines and infrastructure automation for rapid, reliable deployments.",
   },
 ];
 
@@ -56,28 +56,51 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+      {/* Animated background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-violet-600/20 rounded-full blur-[128px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-indigo-600/10 rounded-full blur-[150px]" />
+        {/* Grid overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px'
+          }}
+        />
+      </div>
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-violet-500/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
-                <Truck className="h-5 w-5 text-primary-foreground" />
+            <div className="flex items-center gap-3">
+              <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+                <Braces className="h-5 w-5 text-white" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-400/50 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
               </div>
-              <span className="text-lg sm:text-xl font-bold text-foreground hidden sm:inline">NexusTech Solution</span>
-              <span className="text-lg font-bold text-foreground sm:hidden">NexusTech</span>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold bg-gradient-to-r from-violet-200 via-purple-200 to-violet-200 bg-clip-text text-transparent hidden sm:inline">
+                  Blueforge Technologies
+                </span>
+                <span className="text-lg font-bold bg-gradient-to-r from-violet-200 to-purple-200 bg-clip-text text-transparent sm:hidden">
+                  Blueforge
+                </span>
+                <span className="text-[10px] text-violet-400/60 tracking-[0.2em] uppercase hidden sm:inline">Software Innovation</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/apply">
-                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-                  <span className="hidden sm:inline">Driver Application</span>
-                  <span className="sm:hidden">Apply</span>
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-violet-300 hover:text-violet-100 hover:bg-violet-500/10">
+                  <span className="hidden sm:inline">Careers</span>
+                  <span className="sm:hidden">Jobs</span>
                 </Button>
               </Link>
               <Link to="/auth">
-                <Button size="sm" className="rounded-xl text-xs sm:text-sm shadow-sm">
-                  <span className="hidden sm:inline">Admin Login</span>
+                <Button size="sm" className="rounded-xl text-xs sm:text-sm bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/25 border-0">
+                  <span className="hidden sm:inline">Client Portal</span>
                   <span className="sm:hidden">Login</span>
                 </Button>
               </Link>
@@ -87,100 +110,152 @@ const Index = () => {
       </nav>
 
       {/* Hero Section */}
-      <header className="relative pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/3 to-background pointer-events-none" />
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
-        
+      <header className="relative pt-28 sm:pt-40 pb-20 sm:pb-32 px-4 overflow-hidden">
         <div className="relative max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Sparkles className="h-4 w-4" />
-            <span>Modern Fleet Management</span>
+          {/* Floating code elements */}
+          <div className="absolute top-10 left-10 text-violet-500/20 font-mono text-sm hidden lg:block animate-pulse">
+            {'<innovation>'}
+          </div>
+          <div className="absolute top-20 right-16 text-purple-500/20 font-mono text-sm hidden lg:block animate-pulse" style={{ animationDelay: '0.5s' }}>
+            {'const future = await build();'}
+          </div>
+          <div className="absolute bottom-10 left-20 text-indigo-500/20 font-mono text-sm hidden lg:block animate-pulse" style={{ animationDelay: '1s' }}>
+            {'</innovation>'}
           </div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-            Transportation
-            <span className="block text-primary">Management Software</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-sm font-medium mb-8 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Terminal className="h-4 w-4" />
+            <span>Building Tomorrow's Technology</span>
+            <Sparkles className="h-4 w-4" />
+          </div>
+          
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+            <span className="text-white">We Forge</span>
+            <br />
+            <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+              Digital Excellence
+            </span>
           </h1>
           
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 px-4">
-            Streamline your trucking operations with our all-in-one platform. 
-            From dispatch to delivery, manage your fleet with ease.
+          <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 px-4 leading-relaxed">
+            Transform your vision into powerful software solutions. 
+            We architect, design, and build applications that drive innovation and accelerate growth.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 px-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 px-4">
             <Link to="/auth">
-              <Button size="lg" className="w-full sm:w-auto rounded-xl gap-2 h-12 px-6 text-base shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all">
-                Get Started <ArrowRight className="h-4 w-4" />
+              <Button size="lg" className="w-full sm:w-auto rounded-xl gap-2 h-14 px-8 text-base bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500 shadow-2xl shadow-violet-500/30 hover:shadow-violet-500/40 transition-all duration-300 border-0 group">
+                Start Your Project 
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link to="/apply">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto rounded-xl h-12 px-6 text-base">
-                Apply as Driver
+              <Button size="lg" variant="outline" className="w-full sm:w-auto rounded-xl h-14 px-8 text-base border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-200 backdrop-blur-sm">
+                <Zap className="h-4 w-4 mr-2" />
+                Join Our Team
               </Button>
             </Link>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-16 sm:mt-20 grid grid-cols-3 gap-4 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">
+            {[
+              { value: '150+', label: 'Projects Delivered' },
+              { value: '99%', label: 'Client Satisfaction' },
+              { value: '24/7', label: 'Support Available' },
+            ].map((stat, i) => (
+              <div key={i} className="text-center p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10 backdrop-blur-sm">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-violet-300 to-purple-300 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
+                <div className="text-xs sm:text-sm text-slate-500 mt-1">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main>
+      <main className="relative">
         {/* Features Section */}
-        <section className="py-16 sm:py-24 px-4">
+        <section className="py-20 sm:py-32 px-4">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
-                Everything You Need to Run Your Fleet
+            <div className="text-center mb-16 sm:mb-20">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-4">
+                <Code2 className="h-3 w-3" />
+                Our Services
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                Full-Stack{' '}
+                <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                  Capabilities
+                </span>
               </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
-                Powerful tools designed specifically for trucking companies of all sizes.
+              <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base">
+                From concept to deployment, we deliver end-to-end software solutions that power modern businesses.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className="group p-5 sm:p-6 rounded-2xl border bg-card hover:shadow-lg hover:border-primary/20 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+                  className="group relative p-6 sm:p-8 rounded-2xl bg-slate-900/50 border border-violet-500/10 hover:border-violet-500/30 backdrop-blur-sm transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 overflow-hidden"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                  {/* Hover glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600/0 to-purple-600/0 group-hover:from-violet-600/5 group-hover:to-purple-600/10 transition-all duration-500" />
+                  
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/20 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-violet-500/20 transition-all duration-300">
+                      <feature.icon className="h-7 w-7 text-violet-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-violet-200 transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-card-foreground mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">{feature.description}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Partners Section */}
-        <section className="py-16 sm:py-24 px-4 bg-muted/30">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
-                Our Integration Partners
+        {/* Tech Stack Section */}
+        <section className="py-20 sm:py-32 px-4 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-600/5 via-purple-600/5 to-transparent" />
+          <div className="max-w-7xl mx-auto relative">
+            <div className="text-center mb-16 sm:mb-20">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-4">
+                <Cpu className="h-3 w-3" />
+                Tech Stack
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                Powered by{' '}
+                <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                  Modern Tech
+                </span>
               </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
-                Seamlessly connected with industry-leading platforms to power your operations.
+              <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base">
+                We leverage cutting-edge technologies to build scalable, maintainable, and performant applications.
               </p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-              {partners.map((partner, index) => (
+              {technologies.map((tech, index) => (
                 <div
-                  key={partner.name}
-                  className="group p-4 sm:p-6 rounded-2xl border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-300 text-center animate-in fade-in slide-in-from-bottom-4"
+                  key={tech.name}
+                  className="group relative p-5 sm:p-6 rounded-2xl bg-slate-900/30 border border-violet-500/10 hover:border-violet-500/30 backdrop-blur-sm transition-all duration-300 text-center animate-in fade-in slide-in-from-bottom-4 overflow-hidden"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-lg sm:text-xl font-bold text-primary">
-                      {partner.name.charAt(0)}
-                    </span>
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600/0 to-purple-600/0 group-hover:from-violet-600/10 group-hover:to-purple-600/5 transition-all duration-300" />
+                  <div className="relative">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:border-violet-500/40 transition-all duration-300">
+                      <span className="text-xl sm:text-2xl font-bold bg-gradient-to-br from-violet-300 to-purple-300 bg-clip-text text-transparent">
+                        {tech.name.charAt(0)}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-white text-sm sm:text-base group-hover:text-violet-200 transition-colors">{tech.name}</h3>
+                    <p className="text-xs sm:text-sm text-slate-500">{tech.description}</p>
                   </div>
-                  <h3 className="font-semibold text-card-foreground text-sm sm:text-base">{partner.name}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{partner.description}</p>
                 </div>
               ))}
             </div>
@@ -188,25 +263,52 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 sm:py-24 px-4">
+        <section className="py-20 sm:py-32 px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="relative rounded-3xl bg-gradient-to-br from-primary to-primary/80 p-8 sm:p-12 text-center overflow-hidden">
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            <div className="relative rounded-3xl overflow-hidden">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent" />
               
-              <div className="relative">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-                  Ready to Transform Your Fleet Operations?
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+              <div className="absolute bottom-0 left-0 w-60 h-60 bg-fuchsia-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+              
+              {/* Grid pattern */}
+              <div 
+                className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                  backgroundSize: '40px 40px'
+                }}
+              />
+              
+              <div className="relative p-8 sm:p-12 md:p-16 text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-medium mb-6">
+                  <Rocket className="h-4 w-4" />
+                  Ready to Launch?
+                </div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
+                  Let's Build Something
+                  <span className="block mt-2">Extraordinary Together</span>
                 </h2>
-                <p className="text-white/80 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                  Join hundreds of trucking companies that trust NexusTech Solution to manage their operations efficiently.
+                <p className="text-white/80 mb-10 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+                  Partner with Blueforge Technologies and transform your ideas into powerful, scalable software solutions.
                 </p>
-                <Link to="/auth">
-                  <Button size="lg" variant="secondary" className="rounded-xl gap-2 h-12 px-6 text-base shadow-lg">
-                    Start Today <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link to="/auth">
+                    <Button size="lg" className="w-full sm:w-auto rounded-xl gap-2 h-14 px-8 text-base bg-white text-violet-700 hover:bg-white/90 shadow-2xl shadow-black/20 group">
+                      Get Started 
+                      <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </Link>
+                  <Link to="/apply">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto rounded-xl h-14 px-8 text-base border-white/30 text-white hover:bg-white/10 hover:border-white/50">
+                      <Users className="h-4 w-4 mr-2" />
+                      We're Hiring
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -214,24 +316,27 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-card border-t py-8 sm:py-12">
+      <footer className="relative bg-slate-900/50 border-t border-violet-500/10 py-10 sm:py-14 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Truck className="h-4 w-4 text-primary-foreground" />
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 justify-center sm:justify-start">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <Braces className="h-4 w-4 text-white" />
               </div>
-              <span className="font-semibold text-foreground">NexusTech Solution</span>
+              <div>
+                <span className="font-semibold text-white">Blueforge Technologies</span>
+                <p className="text-xs text-violet-400/60">Software Innovation</p>
+              </div>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground text-center">
-              © {new Date().getFullYear()} NexusTech Solution. All rights reserved.
+            <p className="text-xs sm:text-sm text-slate-500 text-center order-last sm:order-none">
+              © {new Date().getFullYear()} Blueforge Technologies. All rights reserved.
             </p>
             <div className="flex gap-6 justify-center">
-              <Link to="/apply" className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors">
-                Driver Application
+              <Link to="/apply" className="text-xs sm:text-sm text-slate-400 hover:text-violet-400 transition-colors">
+                Careers
               </Link>
-              <Link to="/auth" className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors">
-                Admin Portal
+              <Link to="/auth" className="text-xs sm:text-sm text-slate-400 hover:text-violet-400 transition-colors">
+                Client Portal
               </Link>
             </div>
           </div>
