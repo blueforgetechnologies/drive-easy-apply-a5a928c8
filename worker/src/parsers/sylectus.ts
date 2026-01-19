@@ -56,10 +56,33 @@ export function extractBrokerEmail(subject: string, bodyText: string): string | 
   return bodyMatch ? bodyMatch[0] : null;
 }
 
+// Strip HTML tags from text to get clean plain text
+function stripHtmlTags(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')          // Convert <br> to newlines
+    .replace(/<\/p>/gi, '\n')               // Convert </p> to newlines
+    .replace(/<\/div>/gi, '\n')             // Convert </div> to newlines
+    .replace(/<\/tr>/gi, '\n')              // Convert </tr> to newlines
+    .replace(/<\/td>/gi, ' ')               // Convert </td> to spaces
+    .replace(/<[^>]*>/g, '')                // Remove all remaining HTML tags
+    .replace(/&nbsp;/gi, ' ')               // Convert &nbsp; to spaces
+    .replace(/&amp;/gi, '&')                // Convert &amp; to &
+    .replace(/&lt;/gi, '<')                 // Convert &lt; to <
+    .replace(/&gt;/gi, '>')                 // Convert &gt; to >
+    .replace(/&quot;/gi, '"')               // Convert &quot; to "
+    .replace(/&#39;/gi, "'")                // Convert &#39; to '
+    .replace(/\s+/g, ' ')                   // Collapse multiple whitespace
+    .trim();
+}
+
 export function parseSylectusEmail(subject: string, bodyText: string): ParsedEmailData {
   const data: ParsedEmailData = {};
+  
+  // Clean body text - strip any HTML if present
+  const cleanBodyText = stripHtmlTags(bodyText);
 
-  data.broker_email = extractBrokerEmail(subject, bodyText) || undefined;
+  data.broker_email = extractBrokerEmail(subject, cleanBodyText) || undefined;
 
   const bidOrderMatch = bodyText?.match(/Bid on Order #(\d+)/i);
   if (bidOrderMatch) {
@@ -95,21 +118,23 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     data.broker_phone = brokerPhoneHtmlMatch[1].trim();
   }
 
+  // Plain text patterns - use cleaned body text (HTML stripped) to avoid capturing HTML tags
   const patterns: Record<string, RegExp> = {
-    broker_name: /(?:Contact|Rep|Agent)[\s:]+([A-Za-z\s]+?)(?:\n|$)/i,
+    broker_name: /(?:Contact|Rep|Agent)[\s:]+([A-Za-z\s]+?)(?:\s|$)/i,
     broker_company: /(?:Company|Broker)[\s:]+([^\n]+)/i,
     broker_phone: /(?:Phone|Tel|Ph)[\s:]+([0-9\s\-\(\)\.]+)/i,
     origin_city: /(?:Origin|Pick\s*up|From)[\s:]+([A-Za-z\s]+),?\s*([A-Z]{2})/i,
     destination_city: /(?:Destination|Deliver|To)[\s:]+([A-Za-z\s]+),?\s*([A-Z]{2})/i,
     posted_amount: /Posted\s*Amount[\s:]*\$?([\d,]+(?:\.\d{2})?)/i,
-    vehicle_type: /(?:Equipment|Vehicle|Truck)[\s:]+([^\n]+)/i,
-    load_type: /(?:Load\s*Type|Type)[\s:]+([^\n]+)/i,
+    vehicle_type: /(?:Equipment|Vehicle|Truck|Required)[\s:]+([A-Za-z0-9\s]+)/i,  // More restrictive capture to avoid HTML
+    load_type: /(?:Load\s*Type|Type)[\s:]+([A-Za-z\s]+)/i,
   };
 
   for (const [key, pattern] of Object.entries(patterns)) {
     if ((data as any)[key]) continue;
 
-    const match = bodyText?.match(pattern);
+    // Use cleaned body text for pattern matching to avoid HTML issues
+    const match = cleanBodyText?.match(pattern);
     if (match) {
       if (key === 'origin_city' && match[2]) {
         data.origin_city = match[1].trim();
@@ -178,10 +203,10 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Vehicle type detection
-  const vehicleTypes = ['CARGO VAN', 'SPRINTER', 'SMALL STRAIGHT', 'LARGE STRAIGHT', 'FLATBED', 'TRACTOR', 'VAN'];
+  // Vehicle type detection - scan for known types in cleaned body text
+  const vehicleTypes = ['CARGO VAN', 'SPRINTER', 'SMALL STRAIGHT', 'LARGE STRAIGHT', 'FLATBED', 'TRACTOR', 'LIFTGATE', 'BOX TRUCK', 'HOT SHOT', 'VAN'];
   for (const vt of vehicleTypes) {
-    if (bodyText?.toUpperCase().includes(vt)) {
+    if (cleanBodyText?.toUpperCase().includes(vt)) {
       data.vehicle_type = vt;
       break;
     }
@@ -336,8 +361,9 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
 export function parseSubjectLine(subject: string): ParsedEmailData {
   const data: ParsedEmailData = {};
 
+  // Match vehicle types at the start of subject line - include LIFTGATE, BOX TRUCK, FOOT, etc.
   const subjectMatch = subject.match(
-    /^([A-Z\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER)[A-Z\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i
+    /^([A-Z0-9\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER|LIFTGATE|FOOT|BOX\s*TRUCK|HOT\s*SHOT)[A-Z0-9\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i
   );
   if (subjectMatch) {
     data.vehicle_type = subjectMatch[1].trim().toUpperCase();
