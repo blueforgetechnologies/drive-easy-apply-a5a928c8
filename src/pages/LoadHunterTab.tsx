@@ -3776,19 +3776,6 @@ export default function LoadHunterTab() {
               </PopoverContent>
             </Popover>
             
-            {/* DEBUG: Time Window Selector */}
-            <Select value={emailTimeWindow} onValueChange={(v: '30m' | '6h' | '24h' | 'session') => setEmailTimeWindow(v)}>
-              <SelectTrigger className={`h-7 w-[90px] text-xs rounded-full border-0 ${emailTimeWindow === 'session' ? 'btn-glossy-success text-white' : 'btn-glossy'}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="session">Since open</SelectItem>
-                <SelectItem value="30m">30m</SelectItem>
-                <SelectItem value="6h">6h</SelectItem>
-                <SelectItem value="24h">24h</SelectItem>
-              </SelectContent>
-            </Select>
-            
             {/* More Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -3800,7 +3787,33 @@ export default function LoadHunterTab() {
                   <Menu className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 bg-background z-50">
+              <DropdownMenuContent align="end" className="w-44 bg-background z-50">
+                {/* Time Window Options */}
+                <DropdownMenuItem
+                  className={emailTimeWindow === 'session' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setEmailTimeWindow('session')}
+                >
+                  Since open
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={emailTimeWindow === '30m' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setEmailTimeWindow('30m')}
+                >
+                  30m
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={emailTimeWindow === '6h' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setEmailTimeWindow('6h')}
+                >
+                  6h
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={emailTimeWindow === '24h' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setEmailTimeWindow('24h')}
+                >
+                  24h
+                </DropdownMenuItem>
+                <div className="h-px bg-border my-1" />
                 <DropdownMenuItem
                   className={activeFilter === 'vehicle-assignment' ? 'bg-primary/10 text-primary' : ''}
                   onClick={() => {
