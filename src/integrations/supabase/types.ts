@@ -6450,14 +6450,24 @@ export type Database = {
         Args: { p_feature_key: string; p_tenant_id: string }
         Returns: Json
       }
-      check_tenant_rate_limit: {
-        Args: {
-          p_limit_per_day?: number
-          p_limit_per_minute?: number
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      check_tenant_rate_limit:
+        | {
+            Args: {
+              p_limit_per_day?: number
+              p_limit_per_minute?: number
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_dry_run?: boolean
+              p_limit_per_day?: number
+              p_limit_per_minute?: number
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       claim_email_queue_batch: {
         Args: { p_batch_size?: number }
         Returns: {
@@ -6568,6 +6578,10 @@ export type Database = {
       has_tenant_role: {
         Args: { _role: string; _tenant_id: string; _user_id: string }
         Returns: boolean
+      }
+      increment_tenant_rate_count: {
+        Args: { p_count?: number; p_tenant_id: string }
+        Returns: Json
       }
       is_email_invited: { Args: { check_email: string }; Returns: boolean }
       is_feature_enabled: {
