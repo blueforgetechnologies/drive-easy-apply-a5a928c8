@@ -5407,10 +5407,13 @@ export default function LoadHunterTab() {
                     <div className="flex-1 overflow-auto min-h-0">
                       <Table className={loadHunterTheme === 'aurora' ? '' : 'table-glossy'}>
                       <TableHeader 
-                        className={loadHunterTheme === 'aurora' ? 'border-b-2 border-purple-400/60' : ''}
-                        style={loadHunterTheme === 'aurora' ? { background: '#c4b5fd' } : undefined}
+                        className={loadHunterTheme === 'aurora' ? '!bg-none border-b-2 border-purple-400/60' : ''}
+                        style={loadHunterTheme === 'aurora' ? { background: '#c4b5fd !important' } : undefined}
                       >
-                        <TableRow className="h-9">
+                        <TableRow 
+                          className="h-9"
+                          style={loadHunterTheme === 'aurora' ? { background: '#c4b5fd', boxShadow: 'none' } : undefined}
+                        >
                           <TableHead className={`w-0 p-0 relative ${loadHunterTheme === 'aurora' ? 'text-purple-800' : 'text-white'}`}>
                             <Button
                               variant="ghost"
