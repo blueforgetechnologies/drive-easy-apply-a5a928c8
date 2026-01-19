@@ -3705,6 +3705,42 @@ export default function LoadHunterTab() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+            {/* Metrics Button */}
+            <Button
+              variant="ghost"
+              size="sm" 
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
+                activeFilter === 'dispatcher-metrix' 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('dispatcher-metrix');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Dispatcher Score Card
+            </Button>
+
+            {/* Assign Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
+                activeFilter === 'vehicle-assignment'
+                  ? 'btn-glossy-primary text-white'
+                  : 'btn-glossy text-gray-700'
+              }`}
+              onClick={() => {
+                setActiveFilter('vehicle-assignment');
+                setSelectedVehicle(null);
+                setSelectedEmailForDetail(null);
+              }}
+            >
+              Assign
+            </Button>
+
             {/* Source Filter Popover */}
             <Popover>
               <PopoverTrigger asChild>
@@ -3759,42 +3795,6 @@ export default function LoadHunterTab() {
                 </div>
               </PopoverContent>
             </Popover>
-            
-            {/* Metrics Button */}
-            <Button
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'dispatcher-metrix' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('dispatcher-metrix');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Dispatcher Score Card
-            </Button>
-
-            {/* Assign Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                activeFilter === 'vehicle-assignment'
-                  ? 'btn-glossy-primary text-white'
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('vehicle-assignment');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Assign
-            </Button>
             
             {/* More Actions Dropdown */}
             <DropdownMenu>
