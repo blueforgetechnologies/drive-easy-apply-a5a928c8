@@ -373,6 +373,13 @@ All colors MUST be HSL.
   .dark .table-header-glossy {
     background: linear-gradient(180deg, hsl(221 83% 53% / 0.15) 0%, hsl(221 83% 53% / 0.20) 100%);
   }
+  /* Override for solid blue header in table-glossy */
+  .table-glossy .table-header-glossy {
+    background: hsl(221 83% 53%);
+  }
+  .dark .table-glossy .table-header-glossy {
+    background: hsl(221 83% 53%);
+  }
   
   .table-row-glossy {
     background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 99%) 100%);
