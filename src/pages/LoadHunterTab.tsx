@@ -191,6 +191,7 @@ export default function LoadHunterTab() {
   const loadMatchesReqIdRef = useRef(0);
   const loadUnreviewedReqIdRef = useRef(0);
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
+  const [loadHunterTheme, setLoadHunterTheme] = useState<'classic' | 'aurora'>('classic'); // Theme selector: classic = current look, aurora = new glassmorphic
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
   
@@ -3837,7 +3838,28 @@ export default function LoadHunterTab() {
                   <Menu className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 bg-background z-50">
+              <DropdownMenuContent align="end" className="w-52 bg-background z-50">
+                {/* Theme Selection */}
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Theme</div>
+                <DropdownMenuItem
+                  className={loadHunterTheme === 'classic' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setLoadHunterTheme('classic')}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300" />
+                    Classic
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={loadHunterTheme === 'aurora' ? 'bg-primary/10 text-primary' : ''}
+                  onClick={() => setLoadHunterTheme('aurora')}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 border border-white/40 shadow-[0_2px_8px_-2px_rgba(139,92,246,0.5)]" />
+                    Aurora
+                  </div>
+                </DropdownMenuItem>
+                <div className="h-px bg-border my-1" />
                 <DropdownMenuItem
                   className={activeFilter === 'expired' ? 'bg-primary/10 text-primary' : ''}
                   onClick={() => {
