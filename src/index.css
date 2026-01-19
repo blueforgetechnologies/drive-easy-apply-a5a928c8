@@ -1449,23 +1449,20 @@ All colors MUST be HSL.
 .table-glossy thead {
   @apply sticky top-0 z-10;
   background: linear-gradient(180deg, 
-    hsl(220 15% 96%) 0%,
-    hsl(220 10% 92%) 50%,
-    hsl(220 10% 88%) 100%);
-  border-bottom: 2px solid hsl(220 10% 78%);
+    hsl(221 83% 65%) 0%,
+    hsl(221 83% 53%) 40%,
+    hsl(221 83% 45%) 100%);
+  border-bottom: 3px solid hsl(221 83% 35%);
   box-shadow: 
-    inset 0 1px 0 hsl(0 0% 100%),
-    inset 0 -1px 0 hsl(220 10% 85%),
-    0 2px 8px hsl(220 20% 50% / 0.12);
+    inset 0 2px 4px hsl(0 0% 100% / 0.3),
+    inset 0 -2px 4px hsl(221 83% 25% / 0.15),
+    0 4px 8px hsl(221 83% 30% / 0.35);
 }
 
 .table-glossy thead th {
-  @apply px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase;
-  color: hsl(221 70% 45%);
-  text-shadow: 
-    0 2px 0 hsl(0 0% 100%),
-    0 -1px 0 hsl(221 50% 25% / 0.3),
-    0 3px 6px hsl(221 50% 30% / 0.25);
+  @apply px-3 py-3 text-left text-xs font-semibold tracking-wide uppercase;
+  color: hsl(0 0% 100%);
+  text-shadow: none;
 }
 
 .table-glossy tbody tr {
