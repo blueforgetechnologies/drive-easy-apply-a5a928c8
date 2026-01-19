@@ -6017,11 +6017,8 @@ export default function LoadHunterTab() {
                                       aria-label="Skip load or match"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (activeFilter === 'unreviewed' && match) {
-                                          handleSkipMatch((match as any).id);
-                                        } else {
-                                          handleSkipEmail(email.id, match?.id);
-                                        }
+                                        // Always skip the entire email/load for instant row removal
+                                        handleSkipEmail(email.id, match?.id);
                                       }}
                                     >
                                       <X className="h-4 w-4" />
