@@ -2453,27 +2453,30 @@ export default function LoadHunterTab() {
     setUnreviewedViewData(prev => prev.filter(m => m.match_id !== matchId));
     setLoadMatches(prev => prev.filter(m => m.id !== matchId));
     
-    try {
-      // Run DB operations in parallel for speed
-      const [, { error }] = await Promise.all([
-        trackDispatcherAction(matchId, 'skipped'),
-        supabase
-          .from('load_hunt_matches')
-          .update({ match_status: 'skipped', is_active: false })
-          .eq('id', matchId)
-      ]);
-
-      if (error) throw error;
-      
-      // Refresh all match data to update counts (skip, vehicle badges, etc.)
-      await loadHuntMatches();
-    } catch (err) {
+    // Fire-and-forget: run DB operations in background without blocking UI
+    Promise.all([
+      trackDispatcherAction(matchId, 'skipped'),
+      supabase
+        .from('load_hunt_matches')
+        .update({ match_status: 'skipped', is_active: false })
+        .eq('id', matchId)
+    ]).then(([, { error }]) => {
+      if (error) {
+        console.error('Error skipping match:', error);
+        toast.error('Failed to skip match');
+        // Refetch on error to restore correct state
+        loadHuntMatches();
+        loadUnreviewedMatches();
+      } else {
+        // Background refresh to update counts (won't block UI)
+        loadHuntMatches();
+      }
+    }).catch(err => {
       console.error('Error skipping match:', err);
       toast.error('Failed to skip match');
-      // Refetch all on error to restore correct state
-      await loadHuntMatches();
-      await loadUnreviewedMatches();
-    }
+      loadHuntMatches();
+      loadUnreviewedMatches();
+    });
   };
 
   // Handle bid placed - move match to MY BIDS and skip all sibling matches
@@ -2566,30 +2569,44 @@ export default function LoadHunterTab() {
   };
 
   const handleSkipEmail = async (emailId: string, matchId?: string) => {
-    try {
-      // Track the skip action if we have a match ID
-      if (matchId) {
-        await trackDispatcherAction(matchId, 'skipped');
+    // Optimistic update - immediately remove from UI
+    setLoadEmails(prev => prev.filter(e => e.id !== emailId));
+    setUnreviewedViewData(prev => prev.filter(m => (m as any).load_email_id !== emailId));
+    
+    // Fire-and-forget: run DB operations in background without blocking UI
+    (async () => {
+      try {
+        // Track the skip action if we have a match ID
+        if (matchId) {
+          trackDispatcherAction(matchId, 'skipped'); // Don't await
+        }
+        
+        const { error } = await supabase
+          .from('load_emails')
+          .update({ 
+            status: 'skipped',
+            marked_missed_at: null // Clear missed tracking when skipped
+          })
+          .eq('id', emailId);
+
+        if (error) {
+          console.error('Error skipping email:', error);
+          toast.error('Failed to skip email');
+          // Refetch on error to restore correct state
+          loadLoadEmails();
+          loadUnreviewedMatches();
+        } else {
+          // Background refresh to update counts
+          loadLoadEmails();
+          loadUnreviewedMatches();
+        }
+      } catch (error) {
+        console.error('Error skipping email:', error);
+        toast.error('Failed to skip email');
+        loadLoadEmails();
+        loadUnreviewedMatches();
       }
-      
-      const { error } = await supabase
-        .from('load_emails')
-        .update({ 
-          status: 'skipped',
-          marked_missed_at: null // Clear missed tracking when skipped
-        })
-        .eq('id', emailId);
-
-      if (error) throw error;
-
-      // Reload emails to update counts and filtered view
-      await loadLoadEmails();
-      await loadUnreviewedMatches();
-      toast.success('Load skipped');
-    } catch (error) {
-      console.error('Error skipping email:', error);
-      toast.error('Failed to skip email');
-    }
+    })();
   };
 
   const handleReviewEmail = async (emailId: string) => {
