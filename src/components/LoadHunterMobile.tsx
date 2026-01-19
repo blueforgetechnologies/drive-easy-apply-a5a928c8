@@ -720,7 +720,7 @@ export default function LoadHunterMobile({
                       {data.dimensions && (
                         <Badge variant="outline" className="text-[10px] h-5">
                           <Box className="h-3 w-3 mr-1" />
-                          {data.dimensions}
+                          {data.dimensions.trim().toLowerCase() === 'no dimensions specified' ? 'No Dim Specified' : data.dimensions}
                         </Badge>
                       )}
                       {data.available_feet && (
