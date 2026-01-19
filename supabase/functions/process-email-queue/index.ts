@@ -1334,9 +1334,13 @@ function parseFullCircleTMSEmail(subject: string, bodyText: string, bodyHtml?: s
 function parseSubjectLine(subject: string): Record<string, any> {
   const data: Record<string, any> = {};
   
-  const subjectMatch = subject.match(/^([A-Z\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER)[A-Z\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
+  // Handle patterns like "W/ LIFT GATE from Jackson, TN to Northbrook, IL"
+  const subjectMatch = subject.match(/^(?:W\/?\s*)?((?:CARGO\s*)?VAN|(?:SMALL|LARGE)\s*STRAIGHT|SPRINTER|TRACTOR(?:\s*FLATBED)?|FLATBED|REEFER|LIFT\s*GATE|LIFTGATE|(?:\d+['']?\s*)?FOOT|BOX\s*TRUCK|HOT\s*SHOT)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i);
   if (subjectMatch) {
-    data.vehicle_type = subjectMatch[1].trim().toUpperCase();
+    // Normalize vehicle type (e.g., "LIFT GATE" -> "LIFTGATE")
+    let vehicleType = subjectMatch[1].trim().toUpperCase();
+    vehicleType = vehicleType.replace(/LIFT\s+GATE/i, 'LIFTGATE');
+    data.vehicle_type = vehicleType;
     data.origin_city = subjectMatch[2].trim();
     data.origin_state = subjectMatch[3].trim();
     data.destination_city = subjectMatch[4].trim();

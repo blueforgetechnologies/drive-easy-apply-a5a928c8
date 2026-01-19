@@ -362,11 +362,15 @@ export function parseSubjectLine(subject: string): ParsedEmailData {
   const data: ParsedEmailData = {};
 
   // Match vehicle types at the start of subject line - include LIFTGATE, BOX TRUCK, FOOT, etc.
+  // Handle patterns like "W/ LIFT GATE from Jackson, TN to Northbrook, IL"
   const subjectMatch = subject.match(
-    /^([A-Z0-9\s]+(?:VAN|STRAIGHT|SPRINTER|TRACTOR|FLATBED|REEFER|LIFTGATE|FOOT|BOX\s*TRUCK|HOT\s*SHOT)[A-Z0-9\s]*)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i
+    /^(?:W\/?\s*)?((?:CARGO\s*)?VAN|(?:SMALL|LARGE)\s*STRAIGHT|SPRINTER|TRACTOR(?:\s*FLATBED)?|FLATBED|REEFER|LIFT\s*GATE|LIFTGATE|(?:\d+['']?\s*)?FOOT|BOX\s*TRUCK|HOT\s*SHOT)\s+(?:from|-)\s+([^,]+),\s*([A-Z]{2})\s+to\s+([^,]+),\s*([A-Z]{2})/i
   );
   if (subjectMatch) {
-    data.vehicle_type = subjectMatch[1].trim().toUpperCase();
+    // Normalize vehicle type (e.g., "LIFT GATE" -> "LIFTGATE")
+    let vehicleType = subjectMatch[1].trim().toUpperCase();
+    vehicleType = vehicleType.replace(/LIFT\s+GATE/i, 'LIFTGATE');
+    data.vehicle_type = vehicleType;
     data.origin_city = subjectMatch[2].trim();
     data.origin_state = subjectMatch[3].trim();
     data.destination_city = subjectMatch[4].trim();
