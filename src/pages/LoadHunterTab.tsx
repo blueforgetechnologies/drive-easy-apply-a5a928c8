@@ -4133,8 +4133,8 @@ export default function LoadHunterTab() {
                   className={`p-2.5 cursor-pointer rounded-lg relative transition-all duration-200 ${
                     loadHunterTheme === 'aurora'
                       ? selectedVehicle?.id === vehicle.id
-                        ? 'bg-gradient-to-br from-violet-200/80 via-purple-100/70 to-fuchsia-200/80 border border-purple-400/60 shadow-[0_2px_10px_-3px_rgba(168,85,247,0.3)] backdrop-blur-sm'
-                        : 'bg-gradient-to-br from-white/70 via-violet-50/50 to-white/70 border border-purple-200/50 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.1)] hover:border-purple-400/60 hover:shadow-[0_2px_12px_-3px_rgba(168,85,247,0.25)]'
+                        ? 'bg-gradient-to-br from-purple-500/20 via-fuchsia-500/15 to-violet-500/20 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.2)] backdrop-blur-sm'
+                        : 'bg-gradient-to-br from-slate-800/80 via-purple-900/30 to-slate-800/80 border border-purple-500/20 shadow-[0_0_8px_rgba(0,0,0,0.3)] hover:border-purple-500/40 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]'
                       : selectedVehicle?.id === vehicle.id ? 'card-glossy-selected' : 'card-glossy'
                   }`}
                   style={{ 
@@ -4147,20 +4147,20 @@ export default function LoadHunterTab() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-0.5 pr-16">
                       <div className={`font-medium text-sm leading-tight truncate ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-900' : 'text-carved'
+                        loadHunterTheme === 'aurora' ? 'text-purple-200' : 'text-carved'
                       }`}>
                         {vehicle.vehicle_number || "N/A"} - {getDriverName(vehicle.driver_1_id) || "No Driver Assigned"}
                       </div>
                       <div className={`text-xs leading-tight truncate ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-700/80' : 'text-carved-light'
+                        loadHunterTheme === 'aurora' ? 'text-purple-300/80' : 'text-carved-light'
                       }`}>
                         {vehicle.dimensions_length ? `${vehicle.dimensions_length}' ` : ''}{vehicle.asset_subtype || vehicle.asset_type || "Asset Type"}
                         {enabledHuntPlan?.availableFeet && (
-                          <span className={`ml-1.5 font-medium ${loadHunterTheme === 'aurora' ? 'text-violet-600' : 'text-primary'}`}>| Avail: {enabledHuntPlan.availableFeet}'</span>
+                          <span className={`ml-1.5 font-medium ${loadHunterTheme === 'aurora' ? 'text-fuchsia-300' : 'text-primary'}`}>| Avail: {enabledHuntPlan.availableFeet}'</span>
                         )}
                       </div>
                       <div className={`text-[11px] truncate leading-tight ${
-                        loadHunterTheme === 'aurora' ? 'text-purple-500/70' : 'text-carved-light opacity-70'
+                        loadHunterTheme === 'aurora' ? 'text-purple-400/70' : 'text-carved-light opacity-70'
                       }`}>
                         {vehicle.carrier ? (carriersMap[vehicle.carrier] || "No Carrier") : "No Carrier"}
                       </div>
