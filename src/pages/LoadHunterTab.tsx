@@ -5839,7 +5839,7 @@ export default function LoadHunterTab() {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces !== undefined && data?.pieces !== null ? data.pieces : '—'}</div>
-                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions || '—'}</div>
+                                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions && data.dimensions.toLowerCase() !== 'no dimensions specified' ? data.dimensions : 'No Dim Specified'}</div>
                               </TableCell>
                               <TableCell className="py-1">
                                 {matchHuntPlan?.availableFeet ? (
