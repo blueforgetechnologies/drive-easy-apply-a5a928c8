@@ -5667,15 +5667,27 @@ export default function LoadHunterTab() {
                                     : rawEmailSource;
                                   const emailSource = inferredSource;
 
-                                  const sourceConfig: Record<string, { label: string; bg: string; text: string }> = {
-                                    sylectus: { label: 'Sylectus', bg: 'bg-blue-100', text: 'text-blue-700' },
-                                    fullcircle: { label: 'FullCircle', bg: 'bg-purple-100', text: 'text-purple-700' },
+                                  const sourceConfig: Record<string, { label: string; gradient: string; shadow: string }> = {
+                                    sylectus: { 
+                                      label: 'Sylectus', 
+                                      gradient: 'bg-gradient-to-br from-blue-400/90 via-blue-500/90 to-indigo-500/90',
+                                      shadow: 'shadow-[0_3px_12px_-2px_rgba(59,130,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                                    },
+                                    fullcircle: { 
+                                      label: 'FullCircle', 
+                                      gradient: 'bg-gradient-to-br from-purple-400/90 via-purple-500/90 to-fuchsia-500/90',
+                                      shadow: 'shadow-[0_3px_12px_-2px_rgba(168,85,247,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                                    },
                                   };
-                                  const config = sourceConfig[emailSource] || { label: emailSource, bg: 'bg-gray-100', text: 'text-gray-700' };
+                                  const config = sourceConfig[emailSource] || { 
+                                    label: emailSource, 
+                                    gradient: 'bg-gradient-to-br from-gray-400/90 to-gray-500/90',
+                                    shadow: 'shadow-[0_3px_12px_-2px_rgba(107,114,128,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                                  };
                                   return (
                                     <Badge 
                                       variant="secondary" 
-                                      className={`text-[10px] h-4 px-1.5 font-semibold ${config.bg} ${config.text} border-0 whitespace-nowrap`}
+                                      className={`text-[10px] h-5 px-2 font-semibold text-white border border-white/30 backdrop-blur-sm whitespace-nowrap ${config.gradient} ${config.shadow} hover:scale-105 transition-transform duration-150`}
                                     >
                                       {config.label}
                                     </Badge>
