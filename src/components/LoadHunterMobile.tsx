@@ -714,7 +714,7 @@ export default function LoadHunterMobile({
                       {data.vehicle_type && (
                         <Badge variant="outline" className="text-[10px] h-5">
                           <Truck className="h-3 w-3 mr-1" />
-                          {data.vehicle_type}
+                          {data.vehicle_type.replace(/<[^>]*>/g, '').trim()}
                         </Badge>
                       )}
                       {data.dimensions && (
