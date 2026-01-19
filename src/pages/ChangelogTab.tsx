@@ -159,7 +159,7 @@ export default function ChangelogTab() {
 
           <div className="border-l-4 border-blue-500 pl-4">
             <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-blue-500">Interval</Badge>
+              <Badge className="bg-gradient-to-b from-blue-400 to-blue-600 text-white !px-3 !py-1.5 shadow-md">Interval</Badge>
               <span className="text-sm font-semibold">Email Queue Processing - 20 seconds</span>
             </div>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
@@ -173,7 +173,7 @@ export default function ChangelogTab() {
 
           <div className="border-l-4 border-green-500 pl-4">
             <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-green-500">Interval</Badge>
+              <Badge className="bg-gradient-to-b from-green-400 to-green-600 text-white !px-3 !py-1.5 shadow-md">Interval</Badge>
               <span className="text-sm font-semibold">Load Emails Refresh - 20 seconds</span>
             </div>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
@@ -187,7 +187,7 @@ export default function ChangelogTab() {
 
           <div className="border-l-4 border-yellow-500 pl-4">
             <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-yellow-500">Interval</Badge>
+              <Badge className="bg-gradient-to-b from-yellow-400 to-yellow-600 text-black !px-3 !py-1.5 shadow-md">Interval</Badge>
               <span className="text-sm font-semibold">Unreviewed Matches Refresh - 20 seconds</span>
             </div>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
@@ -201,7 +201,7 @@ export default function ChangelogTab() {
 
           <div className="border-l-4 border-orange-500 pl-4">
             <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-orange-500">Interval</Badge>
+              <Badge className="bg-gradient-to-b from-orange-400 to-orange-600 text-white !px-3 !py-1.5 shadow-md">Interval</Badge>
               <span className="text-sm font-semibold">Hunt Matching Re-run - 30 seconds</span>
             </div>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">

@@ -386,7 +386,7 @@ export default function IntegrationsTab() {
                     </div>
                     <div className="flex items-center gap-3">
                       {status.configured ? (
-                        <Badge className="bg-green-500">Configured</Badge>
+                        <Badge className="bg-gradient-to-b from-green-400 to-green-600 text-white !px-3 !py-1.5 shadow-md">Configured</Badge>
                       ) : (
                         <Badge variant="secondary">Not Configured</Badge>
                       )}

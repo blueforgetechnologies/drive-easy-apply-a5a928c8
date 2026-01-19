@@ -312,13 +312,13 @@ Please proceed with scaffolding now.`;
       case 'scaffolding':
         return <Badge variant="secondary">Scaffolding</Badge>;
       case 'development':
-        return <Badge className="bg-blue-600">Development</Badge>;
+        return <Badge className="bg-gradient-to-b from-blue-500 to-blue-700 text-white !px-3 !py-1.5 shadow-md">Development</Badge>;
       case 'testing':
-        return <Badge className="bg-amber-500 text-black">Testing</Badge>;
+        return <Badge className="bg-gradient-to-b from-amber-400 to-amber-600 text-black !px-3 !py-1.5 shadow-md">Testing</Badge>;
       case 'pilot':
-        return <Badge className="bg-purple-600">Pilot</Badge>;
+        return <Badge className="bg-gradient-to-b from-purple-500 to-purple-700 text-white !px-3 !py-1.5 shadow-md">Pilot</Badge>;
       case 'promoted':
-        return <Badge className="bg-green-600">Promoted</Badge>;
+        return <Badge className="bg-gradient-to-b from-green-500 to-green-700 text-white !px-3 !py-1.5 shadow-md">Promoted</Badge>;
       case 'deprecated':
         return <Badge variant="destructive">Deprecated</Badge>;
       default:

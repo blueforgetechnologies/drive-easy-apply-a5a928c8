@@ -63,7 +63,7 @@ export function TenantDebugBadge({ className = "", showFull = false }: TenantDeb
           </Badge>
           
           {isImpersonating && (
-            <Badge variant="secondary" className="bg-amber-500 text-white">
+            <Badge variant="secondary" className="bg-gradient-to-b from-amber-400 to-amber-600 text-white !px-3 !py-1.5 shadow-md">
               IMPERSONATING
             </Badge>
           )}

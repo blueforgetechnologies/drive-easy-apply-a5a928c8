@@ -429,7 +429,7 @@ export default function UsersTab() {
                           </TableCell>
                           <TableCell>
                             {invite.accepted_at ? (
-                              <Badge className="bg-green-600 hover:bg-green-700">Accepted</Badge>
+                              <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1.5 shadow-md">Accepted</Badge>
                             ) : (
                               <Badge variant="secondary">Pending</Badge>
                             )}

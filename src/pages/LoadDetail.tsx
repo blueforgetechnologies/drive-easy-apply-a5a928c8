@@ -1865,9 +1865,9 @@ export default function LoadDetail() {
                       <Badge variant="outline">Solo Driver</Badge>
                     )}
                     {optimizationResult.hosCompliant ? (
-                      <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> HOS Compliant</Badge>
+                      <Badge className="bg-gradient-to-b from-green-400 to-green-600 text-white !px-3 !py-1.5 shadow-md"><CheckCircle className="h-3 w-3 mr-1" /> HOS Compliant</Badge>
                     ) : (
-                      <Badge className="bg-orange-500"><AlertCircle className="h-3 w-3 mr-1" /> HOS Attention Required</Badge>
+                      <Badge className="bg-gradient-to-b from-orange-400 to-orange-600 text-white !px-3 !py-1.5 shadow-md"><AlertCircle className="h-3 w-3 mr-1" /> HOS Attention Required</Badge>
                     )}
                   </div>
                   <div className="flex gap-2">

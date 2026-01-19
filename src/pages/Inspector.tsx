@@ -439,9 +439,9 @@ export default function Inspector() {
   function getSourceBadge(source: string) {
     switch (source) {
       case "tenant_override":
-        return <Badge variant="default" className="bg-purple-600">Tenant Override</Badge>;
+        return <Badge variant="default" className="bg-gradient-to-b from-purple-500 to-purple-700 text-white !px-3 !py-1.5 shadow-md">Tenant Override</Badge>;
       case "release_channel":
-        return <Badge variant="secondary" className="bg-orange-500 text-white">Release Channel</Badge>;
+        return <Badge variant="secondary" className="bg-gradient-to-b from-orange-400 to-orange-600 text-white !px-3 !py-1.5 shadow-md">Release Channel</Badge>;
       case "global_default":
         return <Badge variant="outline">Global Default</Badge>;
       default:

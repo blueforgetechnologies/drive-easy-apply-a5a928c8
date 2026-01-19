@@ -709,7 +709,7 @@ export default function DriversTab() {
                       </TableCell>
                       <TableCell>
                         {invite.completed ? (
-                          <Badge className="bg-green-600 hover:bg-green-700">Completed</Badge>
+                          <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1.5 shadow-md">Completed</Badge>
                         ) : invite.application_started_at ? (
                           <Badge variant="default">Started</Badge>
                         ) : invite.opened_at ? (
