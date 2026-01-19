@@ -5816,15 +5816,15 @@ export default function LoadHunterTab() {
                                   {(() => {
                                     // First check match distance (for unreviewed view data)
                                     if (match && (match as any).distance_miles != null) {
-                                      return `${Math.round((match as any).distance_miles)} mi`;
+                                      return `${Number((match as any).distance_miles).toFixed(2)} mi`;
                                     }
                                     // Then check loadDistances map
                                     if (loadDistances.has(email.id)) {
-                                      return `${loadDistances.get(email.id)} mi`;
+                                      return `${Number(loadDistances.get(email.id)).toFixed(2)} mi`;
                                     }
                                     // Finally check parsed data
                                     if (data.empty_miles != null) {
-                                      return `${data.empty_miles} mi`;
+                                      return `${Number(data.empty_miles).toFixed(2)} mi`;
                                     }
                                     return '—';
                                   })()}

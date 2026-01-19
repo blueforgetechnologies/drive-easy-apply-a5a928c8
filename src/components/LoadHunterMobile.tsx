@@ -692,7 +692,7 @@ export default function LoadHunterMobile({
                       <div className="bg-muted/50 rounded p-0.5 text-center">
                         <div className="text-muted-foreground">Out</div>
                         <div className="font-semibold text-primary">
-                          {match?.distance_miles ? `${Math.round(match.distance_miles)}` : data.empty_miles || '—'}
+                          {match?.distance_miles ? `${Number(match.distance_miles).toFixed(2)}` : (data.empty_miles ? Number(data.empty_miles).toFixed(2) : '—')}
                         </div>
                       </div>
                       <div className="bg-muted/50 rounded p-0.5 text-center">
