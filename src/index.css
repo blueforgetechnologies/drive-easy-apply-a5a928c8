@@ -1454,7 +1454,7 @@ All colors MUST be HSL.
 
 .table-glossy thead th {
   @apply px-3 py-3 text-left text-xs font-semibold tracking-wide uppercase;
-  color: hsl(0 0% 100%);
+  color: hsl(221 83% 53%);
 }
 
 .table-glossy tbody tr {
