@@ -3662,42 +3662,45 @@ export default function LoadHunterTab() {
               <span className="badge-inset text-[10px] h-5">{expiredCount}</span>
             </Button>
             
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                activeFilter === 'mybids' 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('mybids');
-                setFilterVehicleId(null);
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Bids
-              <span className="badge-inset-primary text-[10px] h-5">{bidCount}</span>
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                activeFilter === 'booked' 
-                  ? 'btn-glossy-success text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('booked');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Booked
-              <span className="badge-inset-success text-[10px] h-5">{bookedCount}</span>
-            </Button>
+            {/* Merged button group: Bids, Booked */}
+            <div className="flex items-center overflow-hidden rounded-full">
+              <Button 
+                variant="ghost"
+                size="sm" 
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+                  activeFilter === 'mybids' 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700'
+                }`}
+                onClick={() => {
+                  setActiveFilter('mybids');
+                  setFilterVehicleId(null);
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Bids
+                <span className="badge-inset-primary text-[10px] h-5">{bidCount}</span>
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm" 
+                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
+                  activeFilter === 'booked' 
+                    ? 'btn-glossy-success text-white' 
+                    : 'btn-glossy text-gray-700'
+                }`}
+                onClick={() => {
+                  setActiveFilter('booked');
+                  setSelectedVehicle(null);
+                  setSelectedEmailForDetail(null);
+                }}
+              >
+                Booked
+                <span className="badge-inset-success text-[10px] h-5">{bookedCount}</span>
+              </Button>
+            </div>
             
             {issuesCount > 0 && (
               <Button
