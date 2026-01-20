@@ -2055,12 +2055,12 @@ export default function LoadsTab() {
                                 return rcDoc ? (
                                   <button
                                     onClick={() => handleOpenDocument(rcDoc, 'Rate Confirmation')}
-                                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
+                                    className="inline-flex items-center justify-center px-2.5 py-1 text-[11px] font-semibold text-primary bg-gradient-to-b from-primary/10 to-primary/5 rounded-full shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.9)] hover:scale-105 transition-all duration-200 cursor-pointer border border-primary/20"
                                   >
                                     RC
                                   </button>
                                 ) : (
-                                  <span className="text-muted-foreground">N/A</span>
+                                  <span className="text-muted-foreground text-xs">N/A</span>
                                 );
                               })()}
                             </TableCell>
@@ -2073,12 +2073,12 @@ export default function LoadsTab() {
                                 return bolDoc ? (
                                   <button
                                     onClick={() => handleOpenDocument(bolDoc, 'Bill of Lading')}
-                                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
+                                    className="inline-flex items-center justify-center px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-500 bg-gradient-to-b from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20 rounded-full shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.9)] hover:scale-105 transition-all duration-200 cursor-pointer border border-amber-300/50 dark:border-amber-600/30"
                                   >
                                     BOL
                                   </button>
                                 ) : (
-                                  <span className="text-muted-foreground">N/A</span>
+                                  <span className="text-muted-foreground text-xs">N/A</span>
                                 );
                               })()}
                             </TableCell>
