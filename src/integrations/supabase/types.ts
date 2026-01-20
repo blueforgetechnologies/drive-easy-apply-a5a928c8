@@ -5403,6 +5403,8 @@ export type Database = {
           is_paused: boolean | null
           last_email_received_at: string | null
           logo_url: string | null
+          match_notification_emails: string[] | null
+          match_notifications_enabled: boolean | null
           max_hunt_plans: number | null
           max_users: number | null
           max_vehicles: number | null
@@ -5434,6 +5436,8 @@ export type Database = {
           is_paused?: boolean | null
           last_email_received_at?: string | null
           logo_url?: string | null
+          match_notification_emails?: string[] | null
+          match_notifications_enabled?: boolean | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
@@ -5465,6 +5469,8 @@ export type Database = {
           is_paused?: boolean | null
           last_email_received_at?: string | null
           logo_url?: string | null
+          match_notification_emails?: string[] | null
+          match_notifications_enabled?: boolean | null
           max_hunt_plans?: number | null
           max_users?: number | null
           max_vehicles?: number | null
