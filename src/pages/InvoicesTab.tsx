@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2 } from "lucide-react";
 import InvoicePreview from "@/components/InvoicePreview";
+import { OtrVerificationDialog } from "@/components/OtrVerificationDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Invoice {
@@ -88,6 +89,8 @@ export default function InvoicesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedLoadId, setExpandedLoadId] = useState<string | null>(null);
   const [sendingOtrLoadId, setSendingOtrLoadId] = useState<string | null>(null);
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [selectedLoadForOtr, setSelectedLoadForOtr] = useState<PendingLoad | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -211,23 +214,16 @@ export default function InvoicesTab() {
     }
   };
 
-  const sendToOtr = async (load: PendingLoad, e: React.MouseEvent) => {
+  const openOtrVerification = (load: PendingLoad, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (!tenantId) {
-      toast.error("Tenant context required");
-      return;
-    }
+    setSelectedLoadForOtr(load);
+    setVerificationDialogOpen(true);
+  };
 
-    // Check if customer has MC number
-    if (!load.customers?.mc_number) {
-      toast.error("Customer MC number required. Please update the customer record.");
-      return;
-    }
-
-    // Check if approved for factoring
-    if (load.customers?.factoring_approval !== 'approved') {
-      toast.error("Customer must be approved for factoring to submit to OTR.");
+  const confirmSendToOtr = async () => {
+    const load = selectedLoadForOtr;
+    if (!load || !tenantId) {
+      toast.error("No load selected or tenant context missing");
       return;
     }
 
@@ -328,6 +324,7 @@ export default function InvoicesTab() {
       toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSendingOtrLoadId(null);
+      setSelectedLoadForOtr(null);
     }
   };
 
@@ -754,7 +751,7 @@ export default function InvoicesTab() {
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={(e) => sendToOtr(load, e)}
+                                onClick={(e) => openOtrVerification(load, e)}
                                 disabled={sendingOtrLoadId === load.id}
                                 className="bg-amber-500 hover:bg-amber-600 text-white"
                               >
@@ -851,6 +848,18 @@ export default function InvoicesTab() {
           )
         )}
       </div>
+
+      {/* OTR Verification Dialog */}
+      {selectedLoadForOtr && tenantId && (
+        <OtrVerificationDialog
+          open={verificationDialogOpen}
+          onOpenChange={setVerificationDialogOpen}
+          load={selectedLoadForOtr}
+          tenantId={tenantId}
+          factoringCompany={factoringCompany}
+          onConfirmSend={confirmSendToOtr}
+        />
+      )}
     </div>
   );
 }
