@@ -105,6 +105,14 @@ export default function InvoicesTab() {
     loadFactoringCompany();
   }, [filter, tenantId, shouldFilter]);
 
+  const setInvoiceFilter = (nextFilter: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("subtab", "invoices");
+    next.set("filter", nextFilter);
+    setSearchParams(next);
+    setSearchQuery("");
+  };
+
   const loadFactoringCompany = async () => {
     if (shouldFilter && !tenantId) return;
     
@@ -329,7 +337,8 @@ export default function InvoicesTab() {
         toast.warning(`Invoice created but OTR returned: ${otrResult?.error || 'Unknown error'}`);
       }
 
-      loadData();
+      // Switch to Sent so the newly created invoice is visible immediately
+      setInvoiceFilter("sent");
     } catch (error) {
       console.error("Error submitting to OTR:", error);
       toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -590,10 +599,7 @@ export default function InvoicesTab() {
           <Button
             size="sm"
             variant={filter === "pending" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
+            onClick={() => setInvoiceFilter("pending")}
             className={filter === "pending" ? "bg-amber-500 text-white hover:bg-amber-600" : ""}
           >
             <Clock className="h-3.5 w-3.5 mr-1" />
@@ -602,10 +608,7 @@ export default function InvoicesTab() {
           <Button
             size="sm"
             variant={filter === "draft" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "draft" });
-              setSearchQuery("");
-            }}
+            onClick={() => setInvoiceFilter("draft")}
             className={filter === "draft" ? "bg-gray-500 text-white hover:bg-gray-600" : ""}
           >
             Draft
@@ -613,10 +616,7 @@ export default function InvoicesTab() {
           <Button
             size="sm"
             variant={filter === "sent" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "sent" });
-              setSearchQuery("");
-            }}
+            onClick={() => setInvoiceFilter("sent")}
             className={filter === "sent" ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
           >
             Sent
@@ -624,10 +624,7 @@ export default function InvoicesTab() {
           <Button
             size="sm"
             variant={filter === "paid" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "paid" });
-              setSearchQuery("");
-            }}
+            onClick={() => setInvoiceFilter("paid")}
             className={filter === "paid" ? "bg-green-600 text-white hover:bg-green-700" : ""}
           >
             Paid
@@ -635,10 +632,7 @@ export default function InvoicesTab() {
           <Button
             size="sm"
             variant={filter === "overdue" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "overdue" });
-              setSearchQuery("");
-            }}
+            onClick={() => setInvoiceFilter("overdue")}
             className={filter === "overdue" ? "bg-red-500 text-white hover:bg-red-600" : ""}
           >
             Overdue
