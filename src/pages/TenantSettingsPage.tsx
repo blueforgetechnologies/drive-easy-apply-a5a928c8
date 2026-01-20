@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { 
   ArrowLeft,
@@ -22,7 +23,8 @@ import {
   CheckCircle2,
   Copy,
   Pause,
-  Play
+  Play,
+  Bell
 } from "lucide-react";
 import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
 import CustomInboundAddresses from "@/components/CustomInboundAddresses";
@@ -40,6 +42,8 @@ interface Tenant {
   gmail_alias: string | null;
   last_email_received_at: string | null;
   created_at: string;
+  match_notifications_enabled: boolean;
+  match_notification_emails: string[] | null;
 }
 
 interface FeatureFlag {
@@ -72,7 +76,9 @@ export default function TenantSettingsPage() {
   const [rateLimitMinute, setRateLimitMinute] = useState(60);
   const [rateLimitDay, setRateLimitDay] = useState(10000);
   const [isPaused, setIsPaused] = useState(false);
-  
+  const [matchNotificationsEnabled, setMatchNotificationsEnabled] = useState(false);
+  const [matchNotificationEmails, setMatchNotificationEmails] = useState("");
+
 
   useEffect(() => {
     if (tenantId) {
@@ -98,6 +104,8 @@ export default function TenantSettingsPage() {
       setRateLimitMinute(tenantData.rate_limit_per_minute || 60);
       setRateLimitDay(tenantData.rate_limit_per_day || 10000);
       setIsPaused(tenantData.is_paused || false);
+      setMatchNotificationsEnabled(tenantData.match_notifications_enabled || false);
+      setMatchNotificationEmails(tenantData.match_notification_emails?.join(", ") || "");
       
       if (flagsRes.data) {
         setFeatureFlags(flagsRes.data as FeatureFlag[]);
@@ -178,6 +186,12 @@ export default function TenantSettingsPage() {
     
     setSaving(true);
     try {
+      // Parse notification emails from comma-separated string
+      const emailsArray = matchNotificationEmails
+        .split(",")
+        .map(e => e.trim())
+        .filter(e => e.length > 0 && e.includes("@"));
+      
       // Update tenant settings
       const { error: tenantError } = await supabase
         .from("tenants")
@@ -185,7 +199,9 @@ export default function TenantSettingsPage() {
           gmail_alias: gmailAlias || null,
           rate_limit_per_minute: rateLimitMinute,
           rate_limit_per_day: rateLimitDay,
-          is_paused: isPaused
+          is_paused: isPaused,
+          match_notifications_enabled: matchNotificationsEnabled,
+          match_notification_emails: emailsArray.length > 0 ? emailsArray : []
         })
         .eq("id", tenant.id);
 
@@ -202,11 +218,20 @@ export default function TenantSettingsPage() {
 
   const hasUnsavedChanges = () => {
     if (!tenant) return false;
+    const currentEmails = matchNotificationEmails
+      .split(",")
+      .map(e => e.trim())
+      .filter(e => e.length > 0)
+      .join(", ");
+    const savedEmails = tenant.match_notification_emails?.join(", ") || "";
+    
     return (
       gmailAlias !== (tenant.gmail_alias || "") ||
       rateLimitMinute !== (tenant.rate_limit_per_minute || 60) ||
       rateLimitDay !== (tenant.rate_limit_per_day || 10000) ||
-      isPaused !== (tenant.is_paused || false)
+      isPaused !== (tenant.is_paused || false) ||
+      matchNotificationsEnabled !== (tenant.match_notifications_enabled || false) ||
+      currentEmails !== savedEmails
     );
   };
 
@@ -328,6 +353,50 @@ export default function TenantSettingsPage() {
             <Switch
               checked={!isPaused}
               onCheckedChange={(checked) => setIsPaused(!checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Match Notifications Card */}
+      <Card className={matchNotificationsEnabled ? "border-blue-500/30 bg-blue-50/30" : ""}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Bell className={`h-6 w-6 mt-0.5 ${matchNotificationsEnabled ? 'text-blue-600' : 'text-muted-foreground'}`} />
+              <div className="space-y-3 flex-1">
+                <div>
+                  <h3 className="font-semibold">
+                    Match Notifications: {matchNotificationsEnabled ? "ON" : "OFF"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {matchNotificationsEnabled 
+                      ? "Dispatchers will receive email notifications when new loads match hunt plans" 
+                      : "Enable to notify dispatchers when new load matches are found"}
+                  </p>
+                </div>
+                {matchNotificationsEnabled && (
+                  <div className="space-y-2">
+                    <Label htmlFor="notification-emails" className="text-sm">
+                      Notification Emails (optional)
+                    </Label>
+                    <Textarea
+                      id="notification-emails"
+                      value={matchNotificationEmails}
+                      onChange={(e) => setMatchNotificationEmails(e.target.value)}
+                      placeholder="email1@example.com, email2@example.com&#10;Leave empty to notify all dispatchers"
+                      className="text-sm h-20"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Comma-separated emails. If empty, notifications go to all users with dispatcher/admin/owner roles.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={matchNotificationsEnabled}
+              onCheckedChange={setMatchNotificationsEnabled}
             />
           </div>
         </CardContent>

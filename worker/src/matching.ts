@@ -1,6 +1,63 @@
 import { supabase } from './supabase.js';
 import type { ParsedEmailData } from './parsers/sylectus.js';
 
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+/**
+ * Send match notification email via edge function.
+ * This is fire-and-forget to not block the matching process.
+ */
+async function sendMatchNotification(
+  tenantId: string,
+  matchId: string,
+  loadEmailId: string,
+  vehicleId: string,
+  distanceMiles: number,
+  parsedData: ParsedEmailData
+): Promise<void> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-match-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        match_id: matchId,
+        load_email_id: loadEmailId,
+        vehicle_id: vehicleId,
+        distance_miles: distanceMiles,
+        parsed_data: {
+          origin_city: parsedData.origin_city,
+          origin_state: parsedData.origin_state,
+          destination_city: parsedData.destination_city,
+          destination_state: parsedData.destination_state,
+          rate: parsedData.rate,
+          weight: parsedData.weight,
+          vehicle_type: parsedData.vehicle_type,
+          pickup_date: parsedData.pickup_date,
+          delivery_date: parsedData.delivery_date,
+          broker_name: parsedData.broker_name,
+          order_number: parsedData.order_number,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[matching] Notification send failed (non-blocking): ${errorText}`);
+    } else {
+      const result = await response.json();
+      console.log(`[matching] Notification sent: ${result.success ? 'success' : result.skipped ? 'skipped' : 'unknown'}`);
+    }
+  } catch (error) {
+    // Log but don't throw - notifications are non-blocking
+    console.log(`[matching] Notification error (non-blocking):`, error instanceof Error ? error.message : 'unknown');
+  }
+}
+
 /**
  * Haversine distance calculation in miles.
  */
@@ -192,7 +249,7 @@ export async function matchLoadToHunts(
     }
 
     // Insert match with correct tenant_id from hunt (which equals load email tenant)
-    const { error } = await supabase.from('load_hunt_matches').insert({
+    const { data: insertedMatch, error } = await supabase.from('load_hunt_matches').insert({
       load_email_id: loadEmailId,
       hunt_plan_id: hunt.id,
       vehicle_id: hunt.vehicle_id,
@@ -201,10 +258,20 @@ export async function matchLoadToHunts(
       match_status: 'active',
       matched_at: new Date().toISOString(),
       tenant_id: tenantId, // Use the validated tenantId from load_email
-    });
+    }).select('id').single();
 
-    if (!error) {
+    if (!error && insertedMatch) {
       matchCount++;
+      
+      // Fire-and-forget notification (non-blocking)
+      sendMatchNotification(
+        tenantId,
+        insertedMatch.id,
+        loadEmailId,
+        hunt.vehicle_id,
+        Math.round(distance),
+        parsedData
+      ).catch(() => {}); // Swallow any uncaught errors
     }
   }
 
