@@ -54,28 +54,55 @@ serve(async (req) => {
       );
     }
 
-    // Check if the file is a PDF - AI vision doesn't support PDFs directly
+    // Determine file type and prepare the image for AI
     const isPdf = fileName?.toLowerCase().endsWith('.pdf') || documentUrl.toLowerCase().includes('.pdf');
-    
+    let imageData: { type: string; url: string };
+
     if (isPdf) {
-      // For PDFs, we need to convert to image first
-      // For now, return a helpful error message
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "PDF documents cannot be verified directly by AI vision. Please convert the PDF to an image (PNG/JPEG) first, or manually verify the document.",
-          errorCode: "PDF_NOT_SUPPORTED",
-          suggestion: "You can take a screenshot of the PDF and upload it as an image, or use the manual Match/Fail buttons."
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // For PDFs, fetch and convert to base64
+      console.log("Fetching PDF to convert to base64...");
+      try {
+        const pdfResponse = await fetch(documentUrl);
+        if (!pdfResponse.ok) {
+          throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
+        }
+        const pdfBuffer = await pdfResponse.arrayBuffer();
+        // Convert ArrayBuffer to base64 using btoa
+        const bytes = new Uint8Array(pdfBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        imageData = {
+          type: "image_url",
+          url: `data:application/pdf;base64,${base64}`
+        };
+        console.log("PDF converted to base64 successfully, size:", base64.length);
+      } catch (fetchError) {
+        console.error("Failed to fetch PDF:", fetchError);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Failed to download the document for processing.",
+            errorCode: "FETCH_ERROR"
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // For images, use the URL directly
+      imageData = {
+        type: "image_url",
+        url: documentUrl
+      };
     }
 
     const systemPrompt = `You are a document verification assistant for freight/trucking logistics. 
 Your task is to analyze Rate Confirmations and Bills of Lading to verify they match the expected load data.
 
 For each field, you will:
-1. Extract the value from the document image
+1. Extract the value from the document
 2. Compare it to the expected value
 3. Return "match" if they are similar (fuzzy match - ignore case, minor spelling differences, abbreviations)
 4. Return "fail" if they clearly don't match
@@ -142,7 +169,7 @@ Return a JSON object with this exact structure:
   "reasoning": "Brief explanation of your verification"
 }`;
 
-    console.log("Calling Lovable AI with document URL:", documentUrl);
+    console.log("Calling Lovable AI with document type:", isPdf ? "PDF (base64)" : "Image URL");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -158,7 +185,7 @@ Return a JSON object with this exact structure:
             role: "user", 
             content: [
               { type: "text", text: userPrompt },
-              { type: "image_url", image_url: { url: documentUrl } }
+              { type: "image_url", image_url: { url: imageData.url } }
             ]
           }
         ],
@@ -199,13 +226,14 @@ Return a JSON object with this exact structure:
       }
       
       // Check for unsupported format error
-      if (errorDetails?.error?.message?.includes("Unsupported image format")) {
+      const errorMessage = errorDetails?.error?.message || errorDetails?.message || 'Unknown error';
+      if (errorMessage.includes("Unsupported")) {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: "This file format is not supported by AI vision. Please use PNG, JPEG, WebP, or GIF images.",
+            error: "This document format could not be processed. Please try a different file format.",
             errorCode: "UNSUPPORTED_FORMAT",
-            suggestion: "Take a screenshot of the document and upload it as an image instead."
+            details: errorMessage
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -214,7 +242,7 @@ Return a JSON object with this exact structure:
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `AI verification failed: ${errorDetails?.error?.message || 'Unknown error'}`,
+          error: `AI verification failed: ${errorMessage}`,
           errorCode: "AI_ERROR"
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
