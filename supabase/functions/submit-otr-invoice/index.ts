@@ -198,28 +198,33 @@ serve(async (req) => {
       );
     }
 
-    // Get invoice line items (loads)
-    const { data: invoiceLoads } = await adminClient
+    // Get invoice line items (loads) - use separate queries for reliability
+    const { data: invoiceLoads, error: loadsError } = await adminClient
       .from('invoice_loads')
-      .select(`
-        *,
-        load:load_id (
-          id,
-          load_number,
-          reference_number,
-          pickup_date,
-          delivery_date,
-          pickup_location,
-          delivery_location,
-          pickup_city,
-          pickup_state,
-          delivery_city,
-          delivery_state,
-          weight,
-          rate
-        )
-      `)
+      .select('*')
       .eq('invoice_id', invoice_id);
+
+    console.log('[submit-otr-invoice] Invoice loads query result:', invoiceLoads, loadsError);
+
+    // Fetch load details separately for each invoice_load
+    const loadsWithDetails = [];
+    if (invoiceLoads && invoiceLoads.length > 0) {
+      for (const il of invoiceLoads) {
+        if (il.load_id) {
+          const { data: loadData } = await adminClient
+            .from('loads')
+            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, rate')
+            .eq('id', il.load_id)
+            .single();
+          
+          loadsWithDetails.push({
+            ...il,
+            load: loadData
+          });
+        }
+      }
+    }
+    console.log('[submit-otr-invoice] Loads with details:', loadsWithDetails);
 
     // Get company profile for carrier info
     const { data: companyProfile } = await adminClient
@@ -306,7 +311,7 @@ serve(async (req) => {
       invoiceDate: invoice.invoice_date,
       invoiceAmount: invoice.total_amount,
       quickPay: quick_pay,
-      loads: (invoiceLoads || []).map((il: any) => ({
+      loads: loadsWithDetails.map((il: any) => ({
         loadNumber: il.load?.load_number,
         referenceNumber: il.load?.reference_number,
         pickupDate: il.load?.pickup_date,
@@ -315,7 +320,6 @@ serve(async (req) => {
         pickupState: il.load?.pickup_state,
         deliveryCity: il.load?.delivery_city,
         deliveryState: il.load?.delivery_state,
-        weight: il.load?.weight,
         rate: il.amount || il.load?.rate || 0
       })),
       notes: invoice.notes || undefined
@@ -349,17 +353,15 @@ serve(async (req) => {
         quick_pay
       });
 
-    // Update invoice record with OTR submission status
-    if (result.success) {
-      await adminClient
-        .from('invoices')
-        .update({
-          otr_submitted_at: new Date().toISOString(),
-          otr_invoice_id: result.invoice_id,
-          otr_status: result.status || 'submitted'
-        })
-        .eq('id', invoice_id);
-    }
+    // Update invoice record with OTR submission status (success or failure)
+    await adminClient
+      .from('invoices')
+      .update({
+        otr_submitted_at: result.success ? new Date().toISOString() : null,
+        otr_invoice_id: result.invoice_id || null,
+        otr_status: result.success ? (result.status || 'submitted') : 'failed'
+      })
+      .eq('id', invoice_id);
 
     return new Response(
       JSON.stringify({
