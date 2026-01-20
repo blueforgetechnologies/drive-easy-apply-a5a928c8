@@ -91,6 +91,7 @@ export default function InvoicesTab() {
   const [sendingOtrLoadId, setSendingOtrLoadId] = useState<string | null>(null);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const [selectedLoadForOtr, setSelectedLoadForOtr] = useState<PendingLoad | null>(null);
+  const [verifiedLoadIds, setVerifiedLoadIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -216,12 +217,22 @@ export default function InvoicesTab() {
 
   const openOtrVerification = (load: PendingLoad, e: React.MouseEvent) => {
     e.stopPropagation();
+    // If already verified, go straight to send
+    if (verifiedLoadIds.has(load.id)) {
+      setSelectedLoadForOtr(load);
+      confirmSendToOtr(load);
+      return;
+    }
     setSelectedLoadForOtr(load);
     setVerificationDialogOpen(true);
   };
 
-  const confirmSendToOtr = async () => {
-    const load = selectedLoadForOtr;
+  const handleVerificationComplete = (loadId: string) => {
+    setVerifiedLoadIds(prev => new Set(prev).add(loadId));
+  };
+
+  const confirmSendToOtr = async (loadOverride?: PendingLoad) => {
+    const load = loadOverride || selectedLoadForOtr;
     if (!load || !tenantId) {
       toast.error("No load selected or tenant context missing");
       return;
@@ -749,18 +760,22 @@ export default function InvoicesTab() {
                           <div className="flex items-center gap-1">
                             {load.customers?.factoring_approval === 'approved' && (
                               <Button
-                                variant="outline"
+                                variant={verifiedLoadIds.has(load.id) ? "default" : "outline"}
                                 size="sm"
                                 onClick={(e) => openOtrVerification(load, e)}
                                 disabled={sendingOtrLoadId === load.id}
-                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                className={verifiedLoadIds.has(load.id) 
+                                  ? "bg-amber-500 hover:bg-amber-600 text-white" 
+                                  : "text-blue-600 border-blue-300 hover:bg-blue-50"}
                               >
                                 {sendingOtrLoadId === load.id ? (
                                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : verifiedLoadIds.has(load.id) ? (
+                                  <Send className="h-4 w-4 mr-1" />
                                 ) : (
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                 )}
-                                Verify Info
+                                {verifiedLoadIds.has(load.id) ? "Send Invoice" : "Verify Info"}
                               </Button>
                             )}
                             <Button
@@ -857,7 +872,8 @@ export default function InvoicesTab() {
           load={selectedLoadForOtr}
           tenantId={tenantId}
           factoringCompany={factoringCompany}
-          onConfirmSend={confirmSendToOtr}
+          onConfirmSend={() => confirmSendToOtr()}
+          onVerificationComplete={handleVerificationComplete}
         />
       )}
     </div>
