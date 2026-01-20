@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2 } from "lucide-react";
+import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2 } from "lucide-react";
 import InvoicePreview from "@/components/InvoicePreview";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
@@ -19,6 +19,7 @@ interface Invoice {
   id: string;
   invoice_number: string;
   customer_name: string;
+  customer_id: string | null;
   billing_party: string | null;
   invoice_date: string;
   due_date: string;
@@ -30,6 +31,9 @@ interface Invoice {
   status: string;
   notes: string | null;
   created_at: string;
+  otr_status: string | null;
+  otr_submitted_at: string | null;
+  otr_invoice_id: string | null;
 }
 
 interface Customer {
@@ -42,6 +46,8 @@ interface Customer {
   zip: string;
   phone: string;
   payment_terms: string;
+  factoring_approval: string | null;
+  mc_number: string | null;
 }
 
 interface PendingLoad {
@@ -59,8 +65,13 @@ interface PendingLoad {
   completed_at: string | null;
   notes: string | null;
   broker_name: string | null;
-  customers: { name: string; factoring_approval: string | null } | null;
+  customer_id: string | null;
+  customers: { name: string; factoring_approval: string | null; mc_number: string | null } | null;
   carriers: { name: string } | null;
+}
+
+interface FactoringCompany {
+  factoring_company_name: string | null;
 }
 
 export default function InvoicesTab() {
@@ -71,10 +82,12 @@ export default function InvoicesTab() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [factoringCompany, setFactoringCompany] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedLoadId, setExpandedLoadId] = useState<string | null>(null);
+  const [sendingOtrLoadId, setSendingOtrLoadId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -85,7 +98,30 @@ export default function InvoicesTab() {
   useEffect(() => {
     loadData();
     loadCustomers();
+    loadFactoringCompany();
   }, [filter, tenantId, shouldFilter]);
+
+  const loadFactoringCompany = async () => {
+    if (shouldFilter && !tenantId) return;
+    
+    try {
+      let query = supabase
+        .from("company_profile")
+        .select("factoring_company_name")
+        .limit(1);
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        setFactoringCompany((data[0] as any).factoring_company_name);
+      }
+    } catch (error) {
+      console.error("Error loading factoring company:", error);
+    }
+  };
 
   const loadData = async () => {
     if (shouldFilter && !tenantId) return;
@@ -111,7 +147,8 @@ export default function InvoicesTab() {
             completed_at,
             notes,
             broker_name,
-            customers(name, factoring_approval),
+            customer_id,
+            customers(name, factoring_approval, mc_number),
             carriers(name)
           `)
           .eq("financial_status", "pending_invoice")
@@ -171,6 +208,126 @@ export default function InvoicesTab() {
     } catch (error) {
       console.error("Error sending back to audit:", error);
       toast.error("Failed to send back to audit");
+    }
+  };
+
+  const sendToOtr = async (load: PendingLoad, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!tenantId) {
+      toast.error("Tenant context required");
+      return;
+    }
+
+    // Check if customer has MC number
+    if (!load.customers?.mc_number) {
+      toast.error("Customer MC number required. Please update the customer record.");
+      return;
+    }
+
+    // Check if approved for factoring
+    if (load.customers?.factoring_approval !== 'approved') {
+      toast.error("Customer must be approved for factoring to submit to OTR.");
+      return;
+    }
+
+    setSendingOtrLoadId(load.id);
+
+    try {
+      // First, create an invoice for this load
+      const { data: lastInvoice } = await supabase
+        .from("invoices" as any)
+        .select("invoice_number")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      let nextNumber = 1000001;
+      const invoiceRecord = lastInvoice as { invoice_number?: string } | null;
+      if (invoiceRecord?.invoice_number) {
+        const lastNum = parseInt(invoiceRecord.invoice_number, 10);
+        if (!isNaN(lastNum)) {
+          nextNumber = lastNum + 1;
+        }
+      }
+
+      // Create invoice
+      const invoiceData = {
+        tenant_id: tenantId,
+        invoice_number: String(nextNumber),
+        customer_name: load.customers?.name || load.broker_name,
+        customer_id: load.customer_id,
+        billing_party: factoringCompany || 'OTR Solutions',
+        invoice_date: format(new Date(), "yyyy-MM-dd"),
+        due_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+        payment_terms: "Net 30",
+        status: "sent",
+        subtotal: load.rate || 0,
+        tax: 0,
+        total_amount: load.rate || 0,
+        amount_paid: 0,
+        balance_due: load.rate || 0,
+        sent_at: new Date().toISOString(),
+      };
+
+      const { data: newInvoice, error: invoiceError } = await supabase
+        .from("invoices" as any)
+        .insert(invoiceData)
+        .select()
+        .single();
+
+      if (invoiceError || !newInvoice) {
+        throw new Error("Failed to create invoice");
+      }
+
+      // Link load to invoice
+      await supabase
+        .from("invoice_loads" as any)
+        .insert({
+          tenant_id: tenantId,
+          invoice_id: (newInvoice as any).id,
+          load_id: load.id,
+          description: `Load ${load.load_number}`,
+          amount: load.rate || 0,
+        });
+
+      // Update load financial status
+      await supabase
+        .from("loads")
+        .update({
+          financial_status: "invoiced",
+          invoice_number: String(nextNumber),
+        })
+        .eq("id", load.id);
+
+      // Call OTR submit edge function
+      const { data: otrResult, error: otrError } = await supabase.functions.invoke(
+        "submit-otr-invoice",
+        {
+          body: {
+            tenant_id: tenantId,
+            invoice_id: (newInvoice as any).id,
+            broker_mc: load.customers?.mc_number,
+            broker_name: load.customers?.name || load.broker_name,
+          },
+        }
+      );
+
+      if (otrError) {
+        console.error("OTR submission error:", otrError);
+        toast.error(`Invoice created but OTR submission failed: ${otrError.message}`);
+      } else if (otrResult?.success) {
+        toast.success(`Invoice ${nextNumber} submitted to OTR Solutions`);
+      } else {
+        toast.warning(`Invoice created but OTR returned: ${otrResult?.error || 'Unknown error'}`);
+      }
+
+      loadData();
+    } catch (error) {
+      console.error("Error submitting to OTR:", error);
+      toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingOtrLoadId(null);
     }
   };
 
@@ -564,7 +721,12 @@ export default function InvoicesTab() {
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
-                        <TableCell>{load.broker_name || "—"}</TableCell>
+                        <TableCell>
+                          {/* Show factoring company as billing party for approved customers */}
+                          {load.customers?.factoring_approval === 'approved' && factoringCompany
+                            ? factoringCompany
+                            : (load.customers?.name || load.broker_name || "—")}
+                        </TableCell>
                         <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
                         <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
                           {daysSinceBilling}
@@ -580,15 +742,33 @@ export default function InvoicesTab() {
                           {load.notes || "—"}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => sendBackToAudit(load.id, e)}
-                            className="text-muted-foreground hover:text-primary"
-                          >
-                            <Undo2 className="h-4 w-4 mr-1" />
-                            Back to Audit
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {load.customers?.factoring_approval === 'approved' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={(e) => sendToOtr(load, e)}
+                                disabled={sendingOtrLoadId === load.id}
+                                className="bg-amber-500 hover:bg-amber-600 text-white"
+                              >
+                                {sendingOtrLoadId === load.id ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4 mr-1" />
+                                )}
+                                Send Invoice
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => sendBackToAudit(load.id, e)}
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <Undo2 className="h-4 w-4 mr-1" />
+                              Back to Audit
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
