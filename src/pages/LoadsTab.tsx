@@ -191,6 +191,10 @@ export default function LoadsTab() {
     shipper_load_id: "",
     reference_number: "",
     broker_name: "",
+    broker_address: "",
+    broker_city: "",
+    broker_state: "",
+    broker_zip: "",
     broker_contact: "",
     broker_phone: "",
     broker_email: "",
@@ -202,6 +206,7 @@ export default function LoadsTab() {
     billing_party_contact: "",
     billing_party_phone: "",
     billing_party_email: "",
+    // Pickup/Origin (consolidated from shipper + pickup)
     shipper_name: "",
     shipper_address: "",
     shipper_city: "",
@@ -210,10 +215,8 @@ export default function LoadsTab() {
     shipper_contact: "",
     shipper_phone: "",
     shipper_email: "",
-    pickup_location: "",
-    pickup_city: "",
-    pickup_state: "",
     pickup_date: "",
+    // Delivery/Destination (consolidated from receiver + delivery)
     receiver_name: "",
     receiver_address: "",
     receiver_city: "",
@@ -222,10 +225,8 @@ export default function LoadsTab() {
     receiver_contact: "",
     receiver_phone: "",
     receiver_email: "",
-    delivery_location: "",
-    delivery_city: "",
-    delivery_state: "",
     delivery_date: "",
+    // Cargo & Equipment
     cargo_description: "",
     cargo_weight: "",
     cargo_pieces: "",
@@ -659,13 +660,13 @@ export default function LoadsTab() {
       
       const loadId = (insertedLoad as any)?.id as string | undefined;
 
-      // If no miles were provided, calculate distance from pickup/delivery cities
-      if (!estimatedMiles && loadId && formData.pickup_city && formData.pickup_state && formData.delivery_city && formData.delivery_state) {
+      // If no miles were provided, calculate distance from shipper/receiver cities
+      if (!estimatedMiles && loadId && formData.shipper_city && formData.shipper_state && formData.receiver_city && formData.receiver_state) {
         const calculatedMiles = await calculateDistance(
-          formData.pickup_city,
-          formData.pickup_state,
-          formData.delivery_city,
-          formData.delivery_state
+          formData.shipper_city,
+          formData.shipper_state,
+          formData.receiver_city,
+          formData.receiver_state
         );
 
         if (calculatedMiles && calculatedMiles > 0) {
@@ -726,6 +727,10 @@ export default function LoadsTab() {
         shipper_load_id: "",
         reference_number: "",
         broker_name: "",
+        broker_address: "",
+        broker_city: "",
+        broker_state: "",
+        broker_zip: "",
         broker_contact: "",
         broker_phone: "",
         broker_email: "",
@@ -745,9 +750,6 @@ export default function LoadsTab() {
         shipper_contact: "",
         shipper_phone: "",
         shipper_email: "",
-        pickup_location: "",
-        pickup_city: "",
-        pickup_state: "",
         pickup_date: "",
         receiver_name: "",
         receiver_address: "",
@@ -757,9 +759,6 @@ export default function LoadsTab() {
         receiver_contact: "",
         receiver_phone: "",
         receiver_email: "",
-        delivery_location: "",
-        delivery_city: "",
-        delivery_state: "",
         delivery_date: "",
         cargo_description: "",
         cargo_weight: "",
@@ -1099,9 +1098,6 @@ export default function LoadsTab() {
                       shipper_contact: data.shipper_contact || prev.shipper_contact,
                       shipper_phone: data.shipper_phone || data.stops?.[0]?.contact_phone || prev.shipper_phone,
                       shipper_email: data.shipper_email || prev.shipper_email,
-                      pickup_location: data.shipper_name || prev.pickup_location,
-                      pickup_city: data.shipper_city || prev.pickup_city,
-                      pickup_state: data.shipper_state || prev.pickup_state,
                       pickup_date: data.pickup_date && pickupTime 
                         ? `${data.pickup_date}T${pickupTime}` 
                         : data.pickup_date 
@@ -1115,9 +1111,6 @@ export default function LoadsTab() {
                       receiver_contact: data.receiver_contact || prev.receiver_contact,
                       receiver_phone: data.receiver_phone || data.stops?.[1]?.contact_phone || prev.receiver_phone,
                       receiver_email: data.receiver_email || prev.receiver_email,
-                      delivery_location: data.receiver_name || prev.delivery_location,
-                      delivery_city: data.receiver_city || prev.delivery_city,
-                      delivery_state: data.receiver_state || prev.delivery_state,
                       delivery_date: data.delivery_date && deliveryTime 
                         ? `${data.delivery_date}T${deliveryTime}` 
                         : data.delivery_date 
@@ -1232,7 +1225,7 @@ export default function LoadsTab() {
                     </div>
                     <h3 className="font-semibold text-sm text-amber-700 dark:text-amber-400">Customer/Broker Information</h3>
                   </div>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-2 space-y-1">
                       <Label htmlFor="broker_name" className="text-xs font-medium text-muted-foreground">Company Name</Label>
                       <SearchableEntitySelect
@@ -1248,41 +1241,44 @@ export default function LoadsTab() {
                             broker_contact: customer?.contact_name || prev.broker_contact,
                             broker_phone: customer?.phone || prev.broker_phone,
                             broker_email: customer?.email || prev.broker_email,
+                            broker_address: customer?.address || prev.broker_address,
+                            broker_city: customer?.city || prev.broker_city,
+                            broker_state: customer?.state || prev.broker_state,
+                            broker_zip: customer?.zip || prev.broker_zip,
                           }));
                         }}
                         onAddNew={handleAddNewCustomer}
                         entityType="customer"
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="broker_contact" className="text-xs font-medium text-muted-foreground">Contact</Label>
-                      <Input
-                        id="broker_contact"
-                        value={formData.broker_contact}
-                        onChange={(e) => setFormData({ ...formData, broker_contact: e.target.value })}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="broker_phone" className="text-xs font-medium text-muted-foreground">Phone</Label>
-                      <Input
-                        id="broker_phone"
-                        type="tel"
-                        value={formData.broker_phone}
-                        onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
-                        className="h-9"
+                        className="h-8"
                       />
                     </div>
                     <div className="col-span-2 space-y-1">
+                      <Label htmlFor="broker_address" className="text-xs font-medium text-muted-foreground">Address</Label>
+                      <Input id="broker_address" value={formData.broker_address} onChange={(e) => setFormData({ ...formData, broker_address: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_city" className="text-xs font-medium text-muted-foreground">City</Label>
+                      <Input id="broker_city" value={formData.broker_city} onChange={(e) => setFormData({ ...formData, broker_city: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_state" className="text-xs font-medium text-muted-foreground">State</Label>
+                      <Input id="broker_state" value={formData.broker_state} onChange={(e) => setFormData({ ...formData, broker_state: e.target.value })} placeholder="CA" className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_zip" className="text-xs font-medium text-muted-foreground">ZIP</Label>
+                      <Input id="broker_zip" value={formData.broker_zip} onChange={(e) => setFormData({ ...formData, broker_zip: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_contact" className="text-xs font-medium text-muted-foreground">Contact</Label>
+                      <Input id="broker_contact" value={formData.broker_contact} onChange={(e) => setFormData({ ...formData, broker_contact: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_phone" className="text-xs font-medium text-muted-foreground">Phone</Label>
+                      <Input id="broker_phone" type="tel" value={formData.broker_phone} onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
                       <Label htmlFor="broker_email" className="text-xs font-medium text-muted-foreground">Email</Label>
-                      <Input
-                        id="broker_email"
-                        type="email"
-                        value={formData.broker_email}
-                        onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })}
-                        className="h-9"
-                      />
+                      <Input id="broker_email" type="email" value={formData.broker_email} onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })} className="h-8" />
                     </div>
                   </div>
                 </div>
@@ -1337,13 +1333,13 @@ export default function LoadsTab() {
                   </div>
                 </div>
 
-                {/* Shipper Information */}
+                {/* Shipper/Pickup Information */}
                 <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-100/80 to-emerald-50/40 dark:from-emerald-950/40 dark:to-emerald-900/20 p-3 space-y-2">
                   <div className="flex items-center gap-2 pb-1.5 border-b border-emerald-300/60 dark:border-emerald-700/60">
                     <div className="p-1 rounded-md bg-emerald-500/20">
                       <MapPin className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <h3 className="font-semibold text-sm text-emerald-700 dark:text-emerald-400">Shipper Information</h3>
+                    <h3 className="font-semibold text-sm text-emerald-700 dark:text-emerald-400">Shipper/Pickup Information</h3>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-2 space-y-1">
@@ -1356,11 +1352,11 @@ export default function LoadsTab() {
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="shipper_city" className="text-xs font-medium text-muted-foreground">City</Label>
-                      <Input id="shipper_city" value={formData.shipper_city} onChange={(e) => setFormData({ ...formData, shipper_city: e.target.value })} className="h-8" />
+                      <Input id="shipper_city" value={formData.shipper_city} onChange={(e) => setFormData({ ...formData, shipper_city: e.target.value })} className="h-8" required />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="shipper_state" className="text-xs font-medium text-muted-foreground">State</Label>
-                      <Input id="shipper_state" value={formData.shipper_state} onChange={(e) => setFormData({ ...formData, shipper_state: e.target.value })} placeholder="CA" className="h-8" />
+                      <Input id="shipper_state" value={formData.shipper_state} onChange={(e) => setFormData({ ...formData, shipper_state: e.target.value })} placeholder="CA" className="h-8" required />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="shipper_zip" className="text-xs font-medium text-muted-foreground">ZIP</Label>
@@ -1378,30 +1374,6 @@ export default function LoadsTab() {
                       <Label htmlFor="shipper_email" className="text-xs font-medium text-muted-foreground">Email</Label>
                       <Input id="shipper_email" type="email" value={formData.shipper_email} onChange={(e) => setFormData({ ...formData, shipper_email: e.target.value })} className="h-8" />
                     </div>
-                  </div>
-                </div>
-
-                {/* Pickup Information */}
-                <div className="rounded-lg border border-sky-200 dark:border-sky-800/60 bg-gradient-to-br from-sky-100/80 to-sky-50/40 dark:from-sky-950/40 dark:to-sky-900/20 p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-sky-300/60 dark:border-sky-700/60">
-                    <div className="p-1 rounded-md bg-sky-500/20">
-                      <MapPin className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-sky-700 dark:text-sky-400">Pickup Information</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="col-span-2 space-y-1">
-                      <Label htmlFor="pickup_location" className="text-xs font-medium text-muted-foreground">Location</Label>
-                      <Input id="pickup_location" value={formData.pickup_location} onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })} placeholder="Company or location" className="h-8" required />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pickup_city" className="text-xs font-medium text-muted-foreground">City</Label>
-                      <Input id="pickup_city" value={formData.pickup_city} onChange={(e) => setFormData({ ...formData, pickup_city: e.target.value })} className="h-8" required />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pickup_state" className="text-xs font-medium text-muted-foreground">State</Label>
-                      <Input id="pickup_state" value={formData.pickup_state} onChange={(e) => setFormData({ ...formData, pickup_state: e.target.value })} placeholder="CA" className="h-8" required />
-                    </div>
                     <div className="col-span-2 space-y-1">
                       <Label htmlFor="pickup_date" className="text-xs font-medium text-muted-foreground">Pickup Date & Time</Label>
                       <Input id="pickup_date" type="datetime-local" value={formData.pickup_date} onChange={(e) => setFormData({ ...formData, pickup_date: e.target.value })} className="h-8" required />
@@ -1409,41 +1381,13 @@ export default function LoadsTab() {
                   </div>
                 </div>
 
-                {/* Delivery Information */}
-                <div className="rounded-lg border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-100/80 to-violet-50/40 dark:from-violet-950/40 dark:to-violet-900/20 p-3 space-y-2">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-violet-300/60 dark:border-violet-700/60">
-                    <div className="p-1 rounded-md bg-violet-500/20">
-                      <MapPin className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-violet-700 dark:text-violet-400">Delivery Information</h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="col-span-2 space-y-1">
-                      <Label htmlFor="delivery_location" className="text-xs font-medium text-muted-foreground">Location</Label>
-                      <Input id="delivery_location" value={formData.delivery_location} onChange={(e) => setFormData({ ...formData, delivery_location: e.target.value })} placeholder="Company or location" className="h-8" required />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="delivery_city" className="text-xs font-medium text-muted-foreground">City</Label>
-                      <Input id="delivery_city" value={formData.delivery_city} onChange={(e) => setFormData({ ...formData, delivery_city: e.target.value })} className="h-8" required />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="delivery_state" className="text-xs font-medium text-muted-foreground">State</Label>
-                      <Input id="delivery_state" value={formData.delivery_state} onChange={(e) => setFormData({ ...formData, delivery_state: e.target.value })} placeholder="NY" className="h-8" required />
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label htmlFor="delivery_date" className="text-xs font-medium text-muted-foreground">Delivery Date & Time</Label>
-                      <Input id="delivery_date" type="datetime-local" value={formData.delivery_date} onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })} className="h-8" required />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Receiver Information */}
+                {/* Receiver/Delivery Information */}
                 <div className="rounded-lg border border-rose-200 dark:border-rose-800/60 bg-gradient-to-br from-rose-100/80 to-rose-50/40 dark:from-rose-950/40 dark:to-rose-900/20 p-3 space-y-2">
                   <div className="flex items-center gap-2 pb-1.5 border-b border-rose-300/60 dark:border-rose-700/60">
                     <div className="p-1 rounded-md bg-rose-500/20">
                       <MapPin className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
                     </div>
-                    <h3 className="font-semibold text-sm text-rose-700 dark:text-rose-400">Receiver Information</h3>
+                    <h3 className="font-semibold text-sm text-rose-700 dark:text-rose-400">Receiver/Delivery Information</h3>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-2 space-y-1">
@@ -1456,11 +1400,11 @@ export default function LoadsTab() {
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="receiver_city" className="text-xs font-medium text-muted-foreground">City</Label>
-                      <Input id="receiver_city" value={formData.receiver_city} onChange={(e) => setFormData({ ...formData, receiver_city: e.target.value })} className="h-8" />
+                      <Input id="receiver_city" value={formData.receiver_city} onChange={(e) => setFormData({ ...formData, receiver_city: e.target.value })} className="h-8" required />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="receiver_state" className="text-xs font-medium text-muted-foreground">State</Label>
-                      <Input id="receiver_state" value={formData.receiver_state} onChange={(e) => setFormData({ ...formData, receiver_state: e.target.value })} placeholder="NY" className="h-8" />
+                      <Input id="receiver_state" value={formData.receiver_state} onChange={(e) => setFormData({ ...formData, receiver_state: e.target.value })} placeholder="NY" className="h-8" required />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="receiver_zip" className="text-xs font-medium text-muted-foreground">ZIP</Label>
@@ -1477,6 +1421,10 @@ export default function LoadsTab() {
                     <div className="space-y-1">
                       <Label htmlFor="receiver_email" className="text-xs font-medium text-muted-foreground">Email</Label>
                       <Input id="receiver_email" type="email" value={formData.receiver_email} onChange={(e) => setFormData({ ...formData, receiver_email: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label htmlFor="delivery_date" className="text-xs font-medium text-muted-foreground">Delivery Date & Time</Label>
+                      <Input id="delivery_date" type="datetime-local" value={formData.delivery_date} onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })} className="h-8" required />
                     </div>
                   </div>
                 </div>
