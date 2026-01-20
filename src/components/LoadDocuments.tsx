@@ -55,6 +55,21 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
     setUploading(docType);
     
     try {
+      // Get the load's tenant_id to ensure document is associated with correct tenant
+      const { data: loadData, error: loadError } = await supabase
+        .from('loads')
+        .select('tenant_id')
+        .eq('id', loadId)
+        .maybeSingle();
+      
+      if (loadError || !loadData?.tenant_id) {
+        toast.error("Could not verify load ownership");
+        setUploading(null);
+        return;
+      }
+      
+      const loadTenantId = loadData.tenant_id;
+      
       for (const file of Array.from(files)) {
         // Validate file type
         const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
@@ -85,7 +100,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
           .from('load-documents')
           .getPublicUrl(fileName);
 
-        // Save document record
+        // Save document record with explicit tenant_id from the load
         const { error: dbError } = await supabase
           .from('load_documents')
           .insert({
@@ -94,6 +109,7 @@ export function LoadDocuments({ loadId, documents, onDocumentsChange }: LoadDocu
             file_name: file.name,
             file_url: fileName,
             file_size: file.size,
+            tenant_id: loadTenantId,
           });
 
         if (dbError) throw dbError;
