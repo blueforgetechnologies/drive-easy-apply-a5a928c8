@@ -254,35 +254,33 @@ export default function LoadHunterMobile({
     <div className="flex flex-col h-full bg-background">
       {/* Mobile Header */}
       <div className="sticky top-0 z-40 bg-card border-b px-3 py-2 space-y-2">
-        {/* Top Row - Mode Toggle & Actions */}
+        {/* Top Row - Scope Toggle & Actions */}
         <div className="flex items-center justify-between gap-2">
-          {/* Mode Toggle - Also switches to trucks view */}
-          <div className="flex rounded-lg border overflow-hidden">
+          {/* Scope Toggle - Independent from status filters */}
+          <div className="flex rounded-full border bg-muted/50 p-0.5">
             <Button
               size="sm"
-              variant={activeMode === 'dispatch' && activeTab === 'trucks' ? 'default' : 'ghost'}
-              className="h-8 px-3 text-xs rounded-none gap-1.5"
-              onClick={() => {
-                onModeChange('dispatch');
-                setActiveTab('trucks');
-              }}
+              variant={activeMode === 'dispatch' ? 'default' : 'ghost'}
+              className={`h-7 px-3 text-xs rounded-full gap-1.5 ${
+                activeMode === 'dispatch' ? 'shadow-sm' : ''
+              }`}
+              onClick={() => onModeChange('dispatch')}
             >
               My Trucks
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+              <Badge variant={activeMode === 'dispatch' ? 'secondary' : 'outline'} className="h-5 px-1.5 text-[10px]">
                 {vehicles.filter(v => myVehicleIds.includes(v.id)).length}
               </Badge>
             </Button>
             <Button
               size="sm"
-              variant={activeMode === 'admin' && activeTab === 'trucks' ? 'default' : 'ghost'}
-              className="h-8 px-3 text-xs rounded-none gap-1.5"
-              onClick={() => {
-                onModeChange('admin');
-                setActiveTab('trucks');
-              }}
+              variant={activeMode === 'admin' ? 'default' : 'ghost'}
+              className={`h-7 px-3 text-xs rounded-full gap-1.5 ${
+                activeMode === 'admin' ? 'shadow-sm' : ''
+              }`}
+              onClick={() => onModeChange('admin')}
             >
               Admin
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+              <Badge variant={activeMode === 'admin' ? 'secondary' : 'outline'} className="h-5 px-1.5 text-[10px]">
                 {vehicles.length}
               </Badge>
             </Button>
