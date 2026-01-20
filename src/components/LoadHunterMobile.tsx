@@ -235,8 +235,9 @@ export default function LoadHunterMobile({
   const displayData = getDisplayData();
   const filteredVehicles = vehicles.filter(v => activeMode === 'admin' || myVehicleIds.includes(v.id));
 
-  // Primary filter tabs (most important)
+  // Primary filter tabs (most important) - Hunts is special (shows trucks view)
   const primaryFilterTabs = [
+    { id: 'hunts', label: 'Hunts', icon: Truck, color: 'bg-blue-500', isTrucksView: true },
     { id: 'unreviewed', label: 'Unreviewed', icon: Target, color: 'bg-primary' },
     { id: 'missed', label: 'Missed', icon: AlertTriangle, color: 'bg-destructive' },
   ];
@@ -249,6 +250,11 @@ export default function LoadHunterMobile({
     { id: 'skipped', label: 'Skip', icon: SkipForward },
     { id: 'all', label: 'All', icon: List },
   ];
+
+  // Count for Hunts tab (vehicles with enabled hunt plans)
+  const huntsCount = filteredVehicles.filter(v => 
+    huntPlans.some(p => p.vehicleId === v.id && p.enabled)
+  ).length;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -314,31 +320,47 @@ export default function LoadHunterMobile({
       <div className="border-b bg-card px-1 py-1 overflow-x-auto">
         <div className="flex items-center gap-1 min-w-max">
           {/* Primary Tabs */}
-          {primaryFilterTabs.map(tab => (
-            <Button
-              key={tab.id}
-              size="sm"
-              variant={activeTab === 'loads' && activeFilter === tab.id ? 'default' : 'ghost'}
-              className={`h-9 px-3 text-xs flex-shrink-0 ${
-                activeTab === 'loads' && activeFilter === tab.id 
-                  ? tab.id === 'missed' ? 'bg-destructive hover:bg-destructive/90' : ''
-                  : ''
-              }`}
-              onClick={() => {
-                setActiveTab('loads');
-                onFilterChange(tab.id);
-              }}
-            >
-              <tab.icon className="h-4 w-4 mr-1" />
-              {tab.label}
-              <Badge 
-                variant={getFilterCount(tab.id) > 0 ? 'destructive' : 'secondary'} 
-                className="ml-1 h-5 px-1.5 text-[10px]"
+          {primaryFilterTabs.map(tab => {
+            const isHuntsTab = tab.id === 'hunts';
+            const isActive = isHuntsTab 
+              ? activeTab === 'trucks' 
+              : activeTab === 'loads' && activeFilter === tab.id;
+            const count = isHuntsTab ? huntsCount : getFilterCount(tab.id);
+            
+            return (
+              <Button
+                key={tab.id}
+                size="sm"
+                variant={isActive ? 'default' : 'ghost'}
+                className={`h-9 px-3 text-xs flex-shrink-0 ${
+                  isActive 
+                    ? tab.id === 'missed' 
+                      ? 'bg-destructive hover:bg-destructive/90' 
+                      : tab.id === 'hunts'
+                        ? 'bg-blue-500 hover:bg-blue-600'
+                        : ''
+                    : ''
+                }`}
+                onClick={() => {
+                  if (isHuntsTab) {
+                    setActiveTab('trucks');
+                  } else {
+                    setActiveTab('loads');
+                    onFilterChange(tab.id);
+                  }
+                }}
               >
-                {getFilterCount(tab.id)}
-              </Badge>
-            </Button>
-          ))}
+                <tab.icon className="h-4 w-4 mr-1" />
+                {tab.label}
+                <Badge 
+                  variant={count > 0 ? (isHuntsTab ? 'secondary' : 'destructive') : 'secondary'} 
+                  className="ml-1 h-5 px-1.5 text-[10px]"
+                >
+                  {count}
+                </Badge>
+              </Button>
+            );
+          })}
         </div>
       </div>
 
