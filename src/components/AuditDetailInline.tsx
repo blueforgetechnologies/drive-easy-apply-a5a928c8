@@ -226,7 +226,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
 
 
   const renderNoDocument = (type: string) => (
-    <div className="flex flex-col items-center justify-center h-[2340px] text-muted-foreground">
+    <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
       <FileText className="h-8 w-8 mb-2 opacity-50" />
       <p className="text-sm font-medium">No {type} uploaded</p>
       <p className="text-xs">Upload documents from the load detail page</p>
@@ -441,8 +441,8 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         </div>
 
         {/* Right Content - Document Tabs */}
-        <div className="flex-1 border rounded-lg overflow-hidden shadow-lg">
-          <Tabs defaultValue="rate_confirmation" className="w-full h-full flex flex-col">
+        <div className="flex-1 border rounded-lg overflow-hidden shadow-lg flex flex-col min-h-[700px]">
+          <Tabs defaultValue="rate_confirmation" className="w-full h-full flex flex-col flex-1">
             <TabsList className="w-full justify-start rounded-none border-b bg-background h-auto p-0 flex-shrink-0">
               <TabsTrigger 
                 value="rate_confirmation" 
@@ -468,19 +468,19 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
                 </TabsTrigger>
               )}
             </TabsList>
-            <TabsContent value="rate_confirmation" className="p-4 flex-1 overflow-auto">
+            <TabsContent value="rate_confirmation" className="flex-1 overflow-auto m-0">
               {rateConfirmationDocs.length > 0 
                 ? <AuditDocumentViewer doc={rateConfirmationDocs[0]} />
                 : renderNoDocument("Rate Confirmation")
               }
             </TabsContent>
             {bolDocs.map((doc, index) => (
-              <TabsContent key={doc.id} value={`bol_${index}`} className="p-4 flex-1 overflow-auto">
+              <TabsContent key={doc.id} value={`bol_${index}`} className="flex-1 overflow-auto m-0">
                 <AuditDocumentViewer doc={doc} />
               </TabsContent>
             ))}
             {bolDocs.length === 0 && (
-              <TabsContent value="bol_empty" className="p-4 flex-1 overflow-auto">
+              <TabsContent value="bol_empty" className="flex-1 overflow-auto m-0">
                 {renderNoDocument('Bill of Lading')}
               </TabsContent>
             )}

@@ -77,7 +77,7 @@ export const AuditDocumentViewer = memo(function AuditDocumentViewer({
 
   if (loading) {
     return (
-      <div className="flex flex-col h-[2925px]">
+      <div className="flex flex-col h-full min-h-[600px]">
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -90,7 +90,7 @@ export const AuditDocumentViewer = memo(function AuditDocumentViewer({
 
   if (error || !signedUrl) {
     return (
-      <div className="flex flex-col h-[2925px]">
+      <div className="flex flex-col h-full min-h-[600px]">
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
           <FileText className="h-8 w-8 text-muted-foreground opacity-50" />
           <p className="text-xs text-destructive">{error || "Failed to load document"}</p>
@@ -100,7 +100,7 @@ export const AuditDocumentViewer = memo(function AuditDocumentViewer({
   }
 
   return (
-    <div className="flex flex-col h-[2925px]">
+    <div className="flex flex-col h-full min-h-[600px]">
       <div className="flex-1 border rounded bg-muted overflow-hidden">
         {isPdf ? (
           <PDFImageViewer url={signedUrl} fileName={doc.file_name || "Document.pdf"} />
