@@ -83,6 +83,11 @@ export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDial
       return;
     }
 
+    if (!formData.mc_number?.trim()) {
+      toast.error("MC Number is required to add a customer");
+      return;
+    }
+
     if (!tenantId) {
       toast.error("No tenant selected");
       return;
@@ -224,11 +229,12 @@ export function AddCustomerDialog({ onCustomerAdded, children }: AddCustomerDial
               />
             </div>
             <div>
-              <Label htmlFor="mc_number">MC Number</Label>
+              <Label htmlFor="mc_number">MC Number *</Label>
               <Input
                 id="mc_number"
                 value={formData.mc_number}
                 onChange={(e) => setFormData({ ...formData, mc_number: e.target.value })}
+                required
               />
             </div>
           </div>
