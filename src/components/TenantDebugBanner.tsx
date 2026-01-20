@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useTenantFilter, useInspectorAllTenantsMode } from '@/hooks/useTenantFilter';
 import { useTenantContext } from '@/contexts/TenantContext';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Database, Eye, EyeOff, AlertTriangle, ShieldCheck, ShieldAlert, Filter, FilterX } from 'lucide-react';
+import { Database, Eye, EyeOff, AlertTriangle, ShieldCheck, ShieldAlert, Filter, FilterX, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -14,10 +15,30 @@ export function TenantDebugBanner() {
   const { tenantId, tenantSlug, shouldFilter, isPlatformAdmin, isInternalChannel, tenantEpoch } = useTenantFilter();
   const { allTenantsEnabled, setAllTenantsEnabled, canUseAllTenantsMode } = useInspectorAllTenantsMode();
   const { isImpersonating, effectiveTenant, loading: tenantLoading } = useTenantContext();
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Only show in development
   if (import.meta.env.PROD) {
     return null;
+  }
+
+  // Collapsed state - just a thin black bar
+  if (isCollapsed) {
+    return (
+      <button
+        onClick={() => setIsCollapsed(false)}
+        className="fixed bottom-0 left-0 right-0 z-50 h-6 bg-slate-900/95 border-t border-slate-700 flex items-center justify-center gap-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+      >
+        <ChevronUp className="h-3 w-3" />
+        <span className="font-mono">tenant: {tenantSlug || 'none'}</span>
+        {allTenantsEnabled && (
+          <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
+            ALL TENANTS
+          </Badge>
+        )}
+        <ChevronUp className="h-3 w-3" />
+      </button>
+    );
   }
 
   return (
@@ -39,6 +60,15 @@ export function TenantDebugBanner() {
             ? "bg-amber-950/90 border-amber-500/50 text-amber-200" 
             : "bg-slate-900/90 border-slate-700 text-slate-300"
       )}>
+        {/* Collapse button */}
+        <button
+          onClick={() => setIsCollapsed(true)}
+          className="absolute -top-2 -right-2 bg-slate-700 hover:bg-slate-600 rounded-full p-1 transition-colors"
+          title="Collapse"
+        >
+          <ChevronDown className="h-3 w-3 text-white" />
+        </button>
+
         <Database className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         
         <div className="flex flex-col gap-1 min-w-0">
