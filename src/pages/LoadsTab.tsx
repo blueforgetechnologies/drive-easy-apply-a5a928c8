@@ -639,10 +639,13 @@ export default function LoadsTab() {
     try {
       const estimatedMiles = formData.estimated_miles ? parseFloat(formData.estimated_miles) : null;
       
+      // Exclude broker_mc_number from insert (it's UI-only, MC stored in customers table)
+      const { broker_mc_number, ...formDataForInsert } = formData;
+      
       const { data: insertedLoad, error } = await (supabase
         .from("loads") as any)
         .insert({
-          ...formData,
+          ...formDataForInsert,
           tenant_id: tenantId, // CRITICAL: Explicitly set tenant_id
           status: "available",
           // Copy shipper data to pickup fields for display consistency
