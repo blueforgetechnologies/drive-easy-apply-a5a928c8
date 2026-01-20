@@ -42,7 +42,8 @@ export async function getOtrToken(
         'Accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded',
         'ocp-apim-subscription-key': subscriptionKey,
-        'x-is-test': 'false'
+        // Staging expects test flag; production can ignore it.
+        'x-is-test': 'true'
       },
       body: formData.toString()
     });
