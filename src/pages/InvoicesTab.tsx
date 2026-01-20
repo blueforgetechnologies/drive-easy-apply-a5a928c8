@@ -709,7 +709,14 @@ export default function InvoicesTab() {
                         >
                           {load.invoice_number || load.load_number}
                         </TableCell>
-                        <TableCell>{load.customers?.name || "—"}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div>{load.customers?.name || "—"}</div>
+                            {load.customers?.mc_number && (
+                              <div className="text-xs text-muted-foreground">MC-{load.customers.mc_number}</div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {load.customers?.factoring_approval === 'approved' ? (
                             <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>
