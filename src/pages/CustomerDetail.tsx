@@ -377,8 +377,11 @@ export default function CustomerDetail() {
               <div>
                 <Label>USDOT Number</Label>
                 <Input
-                  value={usdotLookup}
-                  onChange={(e) => setUsdotLookup(e.target.value)}
+                  value={customer.dot_number || ""}
+                  onChange={(e) => {
+                    updateField("dot_number", e.target.value);
+                    setUsdotLookup(e.target.value);
+                  }}
                   placeholder="Enter USDOT"
                 />
               </div>
@@ -398,8 +401,11 @@ export default function CustomerDetail() {
               <div>
                 <Label>MC Number</Label>
                 <Input
-                  value={mcLookup}
-                  onChange={(e) => setMcLookup(e.target.value)}
+                  value={customer.mc_number || ""}
+                  onChange={(e) => {
+                    updateField("mc_number", e.target.value);
+                    setMcLookup(e.target.value);
+                  }}
                   placeholder="Enter MC Number"
                 />
               </div>
