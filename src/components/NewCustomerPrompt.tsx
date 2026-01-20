@@ -134,12 +134,22 @@ export function NewCustomerPrompt({ extractedData, onCustomerAdded, onDismiss }:
           <div className="flex gap-2">
             <Button
               size="sm"
+              onClick={handleAddCustomer}
+              disabled={loading}
+              className="gap-1"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {loading ? "Adding..." : "Add as New Customer"}
+            </Button>
+            <Button
+              size="sm"
               variant="ghost"
               onClick={onDismiss}
+              disabled={loading}
               className="gap-1"
             >
               <X className="h-3.5 w-3.5" />
-              Dismiss
+              Skip
             </Button>
           </div>
         </div>
