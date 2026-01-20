@@ -2069,7 +2069,7 @@ export default function LoadsTab() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               {(() => {
-                                const bolDoc = getDocumentByType(load.id, 'bol');
+                                const bolDoc = getDocumentByType(load.id, 'bill_of_lading');
                                 return bolDoc ? (
                                   <button
                                     onClick={() => handleOpenDocument(bolDoc, 'Bill of Lading')}
