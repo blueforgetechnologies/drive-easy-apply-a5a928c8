@@ -1108,7 +1108,20 @@ export default function LoadsTab() {
                       );
 
                       if (matchedCustomer) {
-                        setFormData(prev => ({ ...prev, customer_id: matchedCustomer.id }));
+                        // Populate form with EXISTING customer data (not just extracted RC data)
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          customer_id: matchedCustomer.id,
+                          // Use matched customer's data for broker/customer fields
+                          broker_name: matchedCustomer.name || prev.broker_name,
+                          broker_address: matchedCustomer.address || prev.broker_address,
+                          broker_city: matchedCustomer.city || prev.broker_city,
+                          broker_state: matchedCustomer.state || prev.broker_state,
+                          broker_zip: matchedCustomer.zip || prev.broker_zip,
+                          broker_phone: matchedCustomer.phone || prev.broker_phone,
+                          broker_email: matchedCustomer.email || prev.broker_email,
+                          broker_contact: matchedCustomer.contact_name || prev.broker_contact,
+                        }));
                         setMatchedCustomerId(matchedCustomer.id);
                         setPendingCustomerData(null);
                         toast.success(`Matched existing customer: ${matchedCustomer.name}`);
