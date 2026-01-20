@@ -281,9 +281,14 @@ serve(async (req) => {
         const bytes = new Uint8Array(await fileBlob.arrayBuffer());
         const fileBase64 = encodeBase64(bytes);
 
+        const { data: publicUrlData } = adminClient.storage
+          .from('load-documents')
+          .getPublicUrl(d.file_url);
+
         docs.push({
           type: mappedType,
           fileName: d.file_name || `${mappedType}.pdf`,
+          fileUrl: publicUrlData?.publicUrl,
           fileBase64,
         });
       }
@@ -414,7 +419,17 @@ serve(async (req) => {
       notes: invoice.notes || undefined
     };
 
-    console.log('[submit-otr-invoice] Payload:', JSON.stringify(otrPayload, null, 2));
+    const redactedPayload = {
+      ...otrPayload,
+      documents: (otrPayload.documents || []).map((d) => ({
+        type: d.type,
+        fileName: d.fileName,
+        hasFileUrl: Boolean(d.fileUrl),
+        base64Length: d.fileBase64 ? d.fileBase64.length : 0,
+      })),
+    };
+
+    console.log('[submit-otr-invoice] Payload (redacted):', JSON.stringify(redactedPayload, null, 2));
 
     // Submit to OTR
     const result = await submitInvoiceToOtr(
