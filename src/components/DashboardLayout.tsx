@@ -370,10 +370,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 TMS
               </h1>
               
-              {/* Tenant Switcher */}
-              <div className="hidden sm:block">
-                <TenantSwitcher />
-              </div>
+              {/* Tenant Switcher - visible on all screen sizes */}
+              <TenantSwitcher />
               
               {/* Desktop Navigation - Hidden on mobile */}
               <div className="hidden md:flex items-center gap-2 overflow-x-auto">
