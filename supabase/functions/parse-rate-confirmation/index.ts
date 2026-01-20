@@ -292,6 +292,32 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
 
     const extractedData = JSON.parse(toolCall.function.arguments);
     
+    // Log full extraction for debugging
+    console.log('Raw extraction result:', JSON.stringify({
+      customer_name: extractedData.customer_name,
+      customer_contact: extractedData.customer_contact,
+      customer_phone: extractedData.customer_phone,
+      customer_email: extractedData.customer_email,
+      billing_party_name: extractedData.billing_party_name,
+      billing_party_contact: extractedData.billing_party_contact,
+      billing_party_phone: extractedData.billing_party_phone,
+      billing_party_email: extractedData.billing_party_email,
+    }));
+    
+    // FALLBACK: If customer/broker fields are empty but billing party has data,
+    // use billing party as the customer (common pattern in rate confirmations)
+    if (!extractedData.customer_name && extractedData.billing_party_name) {
+      console.log('Using billing party as customer (no separate customer found)');
+      extractedData.customer_name = extractedData.billing_party_name;
+      extractedData.customer_contact = extractedData.customer_contact || extractedData.billing_party_contact;
+      extractedData.customer_phone = extractedData.customer_phone || extractedData.billing_party_phone;
+      extractedData.customer_email = extractedData.customer_email || extractedData.billing_party_email;
+      extractedData.customer_address = extractedData.customer_address || extractedData.billing_party_address;
+      extractedData.customer_city = extractedData.customer_city || extractedData.billing_party_city;
+      extractedData.customer_state = extractedData.customer_state || extractedData.billing_party_state;
+      extractedData.customer_zip = extractedData.customer_zip || extractedData.billing_party_zip;
+    }
+    
     // Ensure stops array exists and populate from legacy fields if needed
     if (!extractedData.stops || extractedData.stops.length === 0) {
       extractedData.stops = [];
