@@ -54,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Check if notifications are enabled for this tenant
     const { data: tenant, error: tenantError } = await supabase
       .from("tenants")
-      .select("id, name, match_notifications_enabled, match_notification_emails")
+      .select("id, name, match_notifications_enabled, match_notification_emails, match_notification_from_email")
       .eq("id", tenant_id)
       .single();
 
@@ -227,8 +227,15 @@ ${tenant.name} • Match Notifications
       throw new Error("RESEND_API_KEY is not configured");
     }
 
+    // Use custom from email if configured, otherwise fallback to default
+    // NOTE: The custom domain must be verified in Resend for this to work
+    const fromEmail = tenant.match_notification_from_email || 'dispatch@nexustechsolution.com';
+    const fromName = tenant.name + ' Load Hunter';
+    
+    console.log(`[send-match-notification] Sending from: ${fromName} <${fromEmail}>`);
+
     const emailPayload = {
-      from: `${tenant.name} Load Hunter <dispatch@nexustechsolution.com>`,
+      from: `${fromName} <${fromEmail}>`,
       to: recipientEmails,
       subject: subject,
       html: htmlBody,

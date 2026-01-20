@@ -44,6 +44,7 @@ interface Tenant {
   created_at: string;
   match_notifications_enabled: boolean;
   match_notification_emails: string[] | null;
+  match_notification_from_email: string | null;
 }
 
 interface FeatureFlag {
@@ -78,6 +79,7 @@ export default function TenantSettingsPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [matchNotificationsEnabled, setMatchNotificationsEnabled] = useState(false);
   const [matchNotificationEmails, setMatchNotificationEmails] = useState("");
+  const [matchNotificationFromEmail, setMatchNotificationFromEmail] = useState("");
 
 
   useEffect(() => {
@@ -106,6 +108,7 @@ export default function TenantSettingsPage() {
       setIsPaused(tenantData.is_paused || false);
       setMatchNotificationsEnabled(tenantData.match_notifications_enabled || false);
       setMatchNotificationEmails(tenantData.match_notification_emails?.join(", ") || "");
+      setMatchNotificationFromEmail(tenantData.match_notification_from_email || "");
       
       if (flagsRes.data) {
         setFeatureFlags(flagsRes.data as FeatureFlag[]);
@@ -201,7 +204,8 @@ export default function TenantSettingsPage() {
           rate_limit_per_day: rateLimitDay,
           is_paused: isPaused,
           match_notifications_enabled: matchNotificationsEnabled,
-          match_notification_emails: emailsArray.length > 0 ? emailsArray : []
+          match_notification_emails: emailsArray.length > 0 ? emailsArray : [],
+          match_notification_from_email: matchNotificationFromEmail.trim() || null
         })
         .eq("id", tenant.id);
 
@@ -231,7 +235,8 @@ export default function TenantSettingsPage() {
       rateLimitDay !== (tenant.rate_limit_per_day || 10000) ||
       isPaused !== (tenant.is_paused || false) ||
       matchNotificationsEnabled !== (tenant.match_notifications_enabled || false) ||
-      currentEmails !== savedEmails
+      currentEmails !== savedEmails ||
+      matchNotificationFromEmail !== (tenant.match_notification_from_email || "")
     );
   };
 
@@ -376,20 +381,38 @@ export default function TenantSettingsPage() {
                   </p>
                 </div>
                 {matchNotificationsEnabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="notification-emails" className="text-sm">
-                      Notification Emails (optional)
-                    </Label>
-                    <Textarea
-                      id="notification-emails"
-                      value={matchNotificationEmails}
-                      onChange={(e) => setMatchNotificationEmails(e.target.value)}
-                      placeholder="email1@example.com, email2@example.com&#10;Leave empty to notify all dispatchers"
-                      className="text-sm h-20"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Comma-separated emails. If empty, notifications go to all users with dispatcher/admin/owner roles.
-                    </p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="notification-from-email" className="text-sm font-medium">
+                        From Email Address
+                      </Label>
+                      <Input
+                        id="notification-from-email"
+                        value={matchNotificationFromEmail}
+                        onChange={(e) => setMatchNotificationFromEmail(e.target.value)}
+                        placeholder="no.reply-matches@talbilogistics.com"
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ The domain must be verified in Resend. Leave empty to use default sender.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="notification-emails" className="text-sm">
+                        Recipient Emails (optional)
+                      </Label>
+                      <Textarea
+                        id="notification-emails"
+                        value={matchNotificationEmails}
+                        onChange={(e) => setMatchNotificationEmails(e.target.value)}
+                        placeholder="dispatcher1@example.com, dispatcher2@example.com&#10;Leave empty to notify all dispatchers"
+                        className="text-sm h-20"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Comma-separated emails. If empty, notifications go to all users with dispatcher/admin/owner roles.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
