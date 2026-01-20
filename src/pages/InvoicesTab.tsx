@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2 } from "lucide-react";
+import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import InvoicePreview from "@/components/InvoicePreview";
 import { OtrVerificationDialog } from "@/components/OtrVerificationDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -92,6 +92,7 @@ export default function InvoicesTab() {
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const [selectedLoadForOtr, setSelectedLoadForOtr] = useState<PendingLoad | null>(null);
   const [verifiedLoadIds, setVerifiedLoadIds] = useState<Set<string>>(new Set());
+  const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -476,6 +477,44 @@ export default function InvoicesTab() {
     navigate(`/dashboard/invoice/${id}`);
   };
 
+  const retryOtrSubmission = async (invoice: Invoice, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!tenantId) {
+      toast.error("Tenant context missing");
+      return;
+    }
+
+    setRetryingInvoiceId(invoice.id);
+
+    try {
+      const { data: otrResult, error: otrError } = await supabase.functions.invoke(
+        "submit-otr-invoice",
+        {
+          body: {
+            tenant_id: tenantId,
+            invoice_id: invoice.id,
+            broker_name: invoice.customer_name,
+          },
+        }
+      );
+
+      if (otrError) {
+        console.error("OTR retry error:", otrError);
+        toast.error(`OTR retry failed: ${otrError.message}`);
+      } else if (otrResult?.success) {
+        toast.success(`Invoice ${invoice.invoice_number} resubmitted to OTR Solutions`);
+        loadData();
+      } else {
+        toast.error(`OTR returned: ${otrResult?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Error retrying OTR submission:", error);
+      toast.error(`Failed to retry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setRetryingInvoiceId(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
@@ -486,6 +525,58 @@ export default function InvoicesTab() {
     };
     const config = configs[status] || configs.draft;
     return <Badge className={`${config.className} text-white`}>{config.label}</Badge>;
+  };
+
+  const getOtrStatusBadge = (invoice: Invoice) => {
+    if (!invoice.otr_status) {
+      return <span className="text-muted-foreground text-xs">—</span>;
+    }
+    
+    switch (invoice.otr_status) {
+      case 'submitted':
+      case 'received':
+        return (
+          <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Submitted
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <div className="flex items-center gap-1">
+            <Badge variant="destructive" className="text-xs">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Failed
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={(e) => retryOtrSubmission(invoice, e)}
+              disabled={retryingInvoiceId === invoice.id}
+            >
+              {retryingInvoiceId === invoice.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
+        );
+      case 'pending':
+        return (
+          <Badge variant="secondary" className="text-xs">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-xs">
+            {invoice.otr_status}
+          </Badge>
+        );
+    }
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -820,6 +911,7 @@ export default function InvoicesTab() {
                   <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
                 </TableRow>
               </TableHeader>
@@ -846,6 +938,7 @@ export default function InvoicesTab() {
                       <TableCell>{formatCurrency(invoice.expected_deposit)}</TableCell>
                       <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                      <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
                       <TableCell className="max-w-[200px] truncate" title={invoice.notes || ""}>
                         {invoice.notes || "—"}
                       </TableCell>
