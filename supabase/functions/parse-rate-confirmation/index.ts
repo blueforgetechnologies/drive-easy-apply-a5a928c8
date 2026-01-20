@@ -81,6 +81,9 @@ CRITICAL - BROKER/CUSTOMER vs CARRIER DISTINCTION:
 - "Carrier" section = This is YOUR company (the trucking company), NOT the customer - do NOT use carrier info for customer fields
 - The customer/broker is the company HIRING you to haul freight - they appear at the top of the document usually
 - The carrier is the company DOING the hauling (your company)
+- NEVER extract MC# or DOT# from the "Carrier" section for customer_mc_number or customer_dot_number
+- The customer_mc_number should ONLY come from the broker/customer section at the top, NOT from "Carrier MC#" or similar
+- If you only see an MC# in the Carrier section, leave customer_mc_number as null
 
 MULTI-STOP HANDLING:
 - Look for multiple pickup locations (origins, shippers) - may be numbered stops like Stop 1, Stop 2
