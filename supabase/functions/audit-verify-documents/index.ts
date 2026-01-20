@@ -18,44 +18,57 @@ interface LoadData {
   rate?: number | null;
 }
 
-interface VerificationResult {
-  rateConfirmation: {
-    customer_load_id: "match" | "fail" | "unable";
-    carrier: "match" | "fail" | "unable";
-    broker: "match" | "fail" | "unable";
-    dates: "match" | "fail" | "unable";
-    origin: "match" | "fail" | "unable";
-    destination: "match" | "fail" | "unable";
-    rate: "match" | "fail" | "unable";
-  };
-  billOfLading: {
-    carrier: "match" | "fail" | "unable";
-    origin: "match" | "fail" | "unable";
-    destinations: "match" | "fail" | "unable";
-  };
-  extractedData: Record<string, string | null>;
-  reasoning: string;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { documentUrl, documentType, loadData } = await req.json() as {
+    const { documentUrl, documentType, loadData, fileName } = await req.json() as {
       documentUrl: string;
       documentType: "rate_confirmation" | "bill_of_lading";
       loadData: LoadData;
+      fileName?: string;
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "AI service not configured. Please contact support.",
+          errorCode: "CONFIG_ERROR"
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (!documentUrl) {
-      throw new Error("Document URL is required");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "No document URL provided.",
+          errorCode: "MISSING_URL"
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if the file is a PDF - AI vision doesn't support PDFs directly
+    const isPdf = fileName?.toLowerCase().endsWith('.pdf') || documentUrl.toLowerCase().includes('.pdf');
+    
+    if (isPdf) {
+      // For PDFs, we need to convert to image first
+      // For now, return a helpful error message
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "PDF documents cannot be verified directly by AI vision. Please convert the PDF to an image (PNG/JPEG) first, or manually verify the document.",
+          errorCode: "PDF_NOT_SUPPORTED",
+          suggestion: "You can take a screenshot of the PDF and upload it as an image, or use the manual Match/Fail buttons."
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const systemPrompt = `You are a document verification assistant for freight/trucking logistics. 
@@ -157,27 +170,69 @@ Return a JSON object with this exact structure:
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(errorText);
+      } catch {
+        errorDetails = { message: errorText };
+      }
+      
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          JSON.stringify({ 
+            success: false, 
+            error: "Rate limit exceeded. Please wait a moment and try again.",
+            errorCode: "RATE_LIMIT"
+          }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
+          JSON.stringify({ 
+            success: false, 
+            error: "AI credits exhausted. Please add credits to continue using AI features.",
+            errorCode: "CREDITS_EXHAUSTED"
+          }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      throw new Error(`AI gateway error: ${response.status}`);
+      // Check for unsupported format error
+      if (errorDetails?.error?.message?.includes("Unsupported image format")) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "This file format is not supported by AI vision. Please use PNG, JPEG, WebP, or GIF images.",
+            errorCode: "UNSUPPORTED_FORMAT",
+            suggestion: "Take a screenshot of the document and upload it as an image instead."
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `AI verification failed: ${errorDetails?.error?.message || 'Unknown error'}`,
+          errorCode: "AI_ERROR"
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error("No response from AI");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "AI did not return a response. Please try again.",
+          errorCode: "EMPTY_RESPONSE"
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     console.log("AI Response:", content);
@@ -191,26 +246,15 @@ Return a JSON object with this exact structure:
       parsedResult = JSON.parse(jsonStr.trim());
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
-      // Return a default "unable" response
-      parsedResult = documentType === "rate_confirmation" 
-        ? {
-            customer_load_id: "unable",
-            carrier: "unable",
-            broker: "unable",
-            dates: "unable",
-            origin: "unable",
-            destination: "unable",
-            rate: "unable",
-            extracted: {},
-            reasoning: "Failed to parse document"
-          }
-        : {
-            carrier: "unable",
-            origin: "unable",
-            destinations: "unable",
-            extracted: {},
-            reasoning: "Failed to parse document"
-          };
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Failed to parse AI response. The document may be unclear or in an unexpected format.",
+          errorCode: "PARSE_ERROR",
+          rawResponse: content
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
@@ -226,8 +270,9 @@ Return a JSON object with this exact structure:
     console.error("Verification error:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        success: false 
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        errorCode: "UNKNOWN_ERROR"
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

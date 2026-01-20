@@ -5,12 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Sparkles, Loader2, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuditDocumentViewer } from "@/components/audit/AuditDocumentViewer";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 interface ChecklistItem {
@@ -46,6 +47,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     { id: "bol_destinations", label: "Destinations", status: null },
   ]);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<{ title: string; message: string; suggestion?: string } | null>(null);
 
   const { data: load, isLoading } = useQuery({
     queryKey: ["audit-load", loadId],
@@ -176,13 +178,22 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     const bolDocs = documents.filter((doc: any) => doc.document_type === "bill_of_lading");
     
     if (rateConfirmationDocs.length === 0 && bolDocs.length === 0) {
-      toast.error("No documents to verify. Please upload Rate Confirmation or BOL first.");
+      setVerifyError({
+        title: "No Documents Found",
+        message: "There are no Rate Confirmation or Bill of Lading documents to verify.",
+        suggestion: "Please upload documents from the load detail page first."
+      });
       return;
     }
 
     setIsVerifying(true);
+    setVerifyError(null);
+    
     const carrier = load.carriers as any;
     const customer = load.customers as any;
+    const errors: string[] = [];
+    let rcSuccess = false;
+    let bolSuccess = false;
 
     const loadData = {
       reference_number: load.reference_number,
@@ -222,14 +233,21 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
               documentUrl: rcUrl,
               documentType: "rate_confirmation",
               loadData,
+              fileName: rcDoc.file_name,
             },
           }
         );
 
         if (rcError) {
           console.error("RC verification error:", rcError);
-          toast.error("Failed to verify Rate Confirmation");
-        } else if (rcResult?.success && rcResult?.result) {
+          errors.push(`Rate Confirmation: ${rcError.message || 'Unknown error'}`);
+        } else if (!rcResult?.success) {
+          // Handle specific error from edge function
+          errors.push(`Rate Confirmation: ${rcResult?.error || 'Verification failed'}`);
+          if (rcResult?.suggestion) {
+            errors.push(`Suggestion: ${rcResult.suggestion}`);
+          }
+        } else if (rcResult?.result) {
           const result = rcResult.result;
           setRateConfirmation(prev => prev.map(item => {
             const status = result[item.id];
@@ -238,7 +256,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             }
             return item;
           }));
-          toast.success("Rate Confirmation verified!");
+          rcSuccess = true;
           
           // Add reasoning to notes if available
           if (result.reasoning) {
@@ -259,14 +277,20 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
               documentUrl: bolUrl,
               documentType: "bill_of_lading",
               loadData,
+              fileName: bolDoc.file_name,
             },
           }
         );
 
         if (bolError) {
           console.error("BOL verification error:", bolError);
-          toast.error("Failed to verify Bill of Lading");
-        } else if (bolResult?.success && bolResult?.result) {
+          errors.push(`Bill of Lading: ${bolError.message || 'Unknown error'}`);
+        } else if (!bolResult?.success) {
+          errors.push(`Bill of Lading: ${bolResult?.error || 'Verification failed'}`);
+          if (bolResult?.suggestion) {
+            errors.push(`Suggestion: ${bolResult.suggestion}`);
+          }
+        } else if (bolResult?.result) {
           const result = bolResult.result;
           setBillOfLading(prev => prev.map(item => {
             // Map the item IDs to the API response keys
@@ -282,7 +306,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
             }
             return item;
           }));
-          toast.success("Bill of Lading verified!");
+          bolSuccess = true;
           
           // Add reasoning to notes if available
           if (result.reasoning) {
@@ -291,9 +315,24 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         }
       }
 
+      // Show results
+      if (errors.length > 0) {
+        setVerifyError({
+          title: "AI Verification Issue",
+          message: errors.join('\n\n'),
+          suggestion: "PDF documents cannot be analyzed directly. Please upload image versions (PNG, JPEG) or manually verify using the Match/Fail buttons."
+        });
+      } else if (rcSuccess || bolSuccess) {
+        toast.success(`AI verification complete! ${rcSuccess ? 'RC ✓' : ''} ${bolSuccess ? 'BOL ✓' : ''}`);
+      }
+
     } catch (error) {
       console.error("AI verification error:", error);
-      toast.error("AI verification failed. Please try again.");
+      setVerifyError({
+        title: "Verification Failed",
+        message: error instanceof Error ? error.message : "An unexpected error occurred",
+        suggestion: "Please try again or manually verify using the Match/Fail buttons."
+      });
     } finally {
       setIsVerifying(false);
     }
@@ -642,6 +681,32 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           </Tabs>
         </div>
       </div>
+
+      {/* AI Verification Error Dialog */}
+      <Dialog open={!!verifyError} onOpenChange={(open) => !open && setVerifyError(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {verifyError?.title}
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <p className="whitespace-pre-wrap text-sm">{verifyError?.message}</p>
+              {verifyError?.suggestion && (
+                <div className="bg-muted p-3 rounded-lg border">
+                  <p className="text-xs font-medium text-foreground">💡 Suggestion:</p>
+                  <p className="text-xs text-muted-foreground mt-1">{verifyError.suggestion}</p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setVerifyError(null)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
