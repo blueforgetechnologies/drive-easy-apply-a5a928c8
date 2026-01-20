@@ -198,6 +198,7 @@ export default function LoadsTab() {
     broker_contact: "",
     broker_phone: "",
     broker_email: "",
+    broker_mc_number: "",
     billing_party_name: "",
     billing_party_address: "",
     billing_party_city: "",
@@ -744,6 +745,7 @@ export default function LoadsTab() {
         broker_contact: "",
         broker_phone: "",
         broker_email: "",
+        broker_mc_number: "",
         billing_party_name: "",
         billing_party_address: "",
         billing_party_city: "",
@@ -1121,6 +1123,7 @@ export default function LoadsTab() {
                           broker_phone: matchedCustomer.phone || prev.broker_phone,
                           broker_email: matchedCustomer.email || prev.broker_email,
                           broker_contact: matchedCustomer.contact_name || prev.broker_contact,
+                          broker_mc_number: matchedCustomer.mc_number || prev.broker_mc_number,
                         }));
                         setMatchedCustomerId(matchedCustomer.id);
                         setPendingCustomerData(null);
@@ -1267,6 +1270,10 @@ export default function LoadsTab() {
                     <div className="space-y-1">
                       <Label htmlFor="broker_email" className="text-xs font-medium text-muted-foreground">Email</Label>
                       <Input id="broker_email" type="email" value={formData.broker_email} onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="broker_mc_number" className="text-xs font-medium text-muted-foreground">MC Number</Label>
+                      <Input id="broker_mc_number" value={formData.broker_mc_number || ""} onChange={(e) => setFormData({ ...formData, broker_mc_number: e.target.value })} className="h-8" placeholder="MC#" />
                     </div>
                   </div>
                 </div>
