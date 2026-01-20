@@ -207,24 +207,76 @@ serve(async (req) => {
     console.log('[submit-otr-invoice] Invoice loads query result:', invoiceLoads, loadsError);
 
     // Fetch load details separately for each invoice_load
-    const loadsWithDetails = [];
+    const loadsWithDetails: any[] = [];
     if (invoiceLoads && invoiceLoads.length > 0) {
       for (const il of invoiceLoads) {
         if (il.load_id) {
           const { data: loadData } = await adminClient
             .from('loads')
-            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, rate')
+            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, weight, rate')
             .eq('id', il.load_id)
             .single();
-          
+
           loadsWithDetails.push({
             ...il,
-            load: loadData
+            load: loadData,
           });
         }
       }
     }
     console.log('[submit-otr-invoice] Loads with details:', loadsWithDetails);
+
+    // Collect documents (rate confirmation / POD / BOL) for all loads
+    const loadIds = loadsWithDetails.map((x: any) => x.load_id).filter(Boolean);
+    let documents: OtrInvoicePayload["documents"] | undefined = undefined;
+
+    if (loadIds.length > 0) {
+      const { data: loadDocs, error: loadDocsError } = await adminClient
+        .from('load_documents')
+        .select('load_id, document_type, file_name, file_url')
+        .in('load_id', loadIds);
+
+      console.log('[submit-otr-invoice] Load documents query result:', loadDocs, loadDocsError);
+
+      const docs = (loadDocs || [])
+        .map((d: any) => {
+          if (!d?.file_url) return null;
+
+          const { data: publicUrlData } = adminClient.storage
+            .from('load-documents')
+            .getPublicUrl(d.file_url);
+
+          const publicUrl = publicUrlData?.publicUrl;
+          if (!publicUrl) return null;
+
+          const docType = String(d.document_type || 'other');
+          const mappedType: 'rate_confirmation' | 'pod' | 'bol' | 'other' =
+            docType === 'rate_confirmation'
+              ? 'rate_confirmation'
+              : docType === 'pod'
+                ? 'pod'
+                : docType === 'bill_of_lading' || docType === 'bol'
+                  ? 'bol'
+                  : 'other';
+
+          return {
+            type: mappedType,
+            fileName: d.file_name || `${mappedType}.pdf`,
+            fileUrl: publicUrl,
+          };
+        })
+        .filter(Boolean) as NonNullable<OtrInvoicePayload["documents"]>;
+
+      // If no explicit POD uploaded, fall back to using the newest BOL as POD as well.
+      // (Many users upload a signed BOL as proof-of-delivery.)
+      const hasPod = docs.some((d) => d.type === 'pod');
+      const firstBol = docs.find((d) => d.type === 'bol');
+      if (!hasPod && firstBol) {
+        docs.push({ ...firstBol, type: 'pod' });
+      }
+
+      documents = docs.length > 0 ? docs : undefined;
+    }
 
     // Get company profile for carrier info
     const { data: companyProfile } = await adminClient
@@ -253,21 +305,32 @@ serve(async (req) => {
       );
     }
 
-    // Get broker MC from customer if not provided
+    // Broker/customer info
     let brokerMc = broker_mc;
     let brokerName = broker_name || invoice.customer_name;
+    let brokerAddress: string | undefined;
+    let brokerCity: string | undefined;
+    let brokerState: string | undefined;
+    let brokerZip: string | undefined;
 
-    if (!brokerMc && invoice.customer_id) {
+    if (invoice.customer_id) {
       const { data: customer } = await adminClient
         .from('customers')
-        .select('mc_number, name')
+        .select('mc_number, name, address, city, state, zip')
         .eq('id', invoice.customer_id)
         .single();
-      
-      if (customer?.mc_number) {
+
+      if (!brokerMc && customer?.mc_number) {
         brokerMc = customer.mc_number;
-        brokerName = brokerName || customer.name;
       }
+      if (!brokerName && customer?.name) {
+        brokerName = customer.name;
+      }
+
+      brokerAddress = customer?.address || undefined;
+      brokerCity = customer?.city || undefined;
+      brokerState = customer?.state || undefined;
+      brokerZip = customer?.zip || undefined;
     }
 
     if (!brokerMc) {
@@ -304,6 +367,10 @@ serve(async (req) => {
     const otrPayload: OtrInvoicePayload = {
       brokerMc: cleanMc,
       brokerName: brokerName,
+      brokerAddress,
+      brokerCity,
+      brokerState,
+      brokerZip,
       carrierDot: companyProfile.dot_number,
       carrierMc: companyProfile.mc_number || undefined,
       carrierName: companyProfile.company_name,
@@ -320,8 +387,10 @@ serve(async (req) => {
         pickupState: il.load?.pickup_state,
         deliveryCity: il.load?.delivery_city,
         deliveryState: il.load?.delivery_state,
+        weight: il.load?.weight,
         rate: il.amount || il.load?.rate || 0
       })),
+      documents,
       notes: invoice.notes || undefined
     };
 
