@@ -777,48 +777,9 @@ export default function LoadsTab() {
   };
 
   const handleAddNewCustomer = async (name: string, additionalData: Record<string, string>) => {
-    if (!tenantId) {
-      toast.error("Cannot create customer: tenant context not available");
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from("customers")
-        .insert(withTenant({
-          name,
-          contact_name: additionalData.contact_name || null,
-          phone: additionalData.phone || null,
-          email: additionalData.email || null,
-          address: additionalData.address || null,
-          city: additionalData.city || null,
-          state: additionalData.state || null,
-          zip: additionalData.zip || null,
-          status: "active",
-        }))
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update local customers list
-      setCustomers(prev => [...prev, data]);
-      
-      // Set the newly created customer in the form
-      setFormData(prev => ({
-        ...prev,
-        broker_name: name,
-        customer_id: data.id,
-        broker_contact: additionalData.contact_name || prev.broker_contact,
-        broker_phone: additionalData.phone || prev.broker_phone,
-        broker_email: additionalData.email || prev.broker_email,
-      }));
-
-      toast.success(`Customer "${name}" created successfully`);
-    } catch (error: any) {
-      toast.error("Failed to create customer: " + error.message);
-      throw error;
-    }
+    // Automatic customer creation is disabled - users must add customers manually via the Customers tab
+    toast.error("Please add customers manually from the Customers tab (Business Manager → Customers → Add Customer)");
+    return;
   };
 
   const handleDeleteLoad = async (id: string) => {
