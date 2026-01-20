@@ -1,11 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient as _createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
-import { 
-  OTR_API_BASE_URL, 
-  getOtrToken, 
-  getOtrCredentialsFromEnv 
+import {
+  OTR_API_BASE_URL,
+  getOtrToken,
+  getOtrCredentialsFromEnv,
 } from "../_shared/otrClient.ts";
+
+function encodeBase64(bytes: Uint8Array): string {
+  // Avoid stack overflows on large files
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,7 +100,8 @@ async function submitInvoiceToOtr(
         'Content-Type': 'application/json',
         'ocp-apim-subscription-key': subscriptionKey,
         'Authorization': `Bearer ${accessToken}`,
-        'x-is-test': 'false'
+        // Staging expects test flag; production can ignore it.
+        'x-is-test': 'true'
       },
       body: JSON.stringify(invoice)
     });
@@ -211,11 +222,15 @@ serve(async (req) => {
     if (invoiceLoads && invoiceLoads.length > 0) {
       for (const il of invoiceLoads) {
         if (il.load_id) {
-          const { data: loadData } = await adminClient
+          const { data: loadData, error: loadError } = await adminClient
             .from('loads')
-            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, weight, rate')
+            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, rate')
             .eq('id', il.load_id)
             .single();
+
+          if (loadError) {
+            console.log('[submit-otr-invoice] Load fetch error:', il.load_id, loadError);
+          }
 
           loadsWithDetails.push({
             ...il,
@@ -238,34 +253,40 @@ serve(async (req) => {
 
       console.log('[submit-otr-invoice] Load documents query result:', loadDocs, loadDocsError);
 
-      const docs = (loadDocs || [])
-        .map((d: any) => {
-          if (!d?.file_url) return null;
+      const docs = [] as NonNullable<OtrInvoicePayload["documents"]>;
 
-          const { data: publicUrlData } = adminClient.storage
-            .from('load-documents')
-            .getPublicUrl(d.file_url);
+      for (const d of loadDocs || []) {
+        if (!d?.file_url) continue;
 
-          const publicUrl = publicUrlData?.publicUrl;
-          if (!publicUrl) return null;
+        const docType = String(d.document_type || 'other');
+        const mappedType: 'rate_confirmation' | 'pod' | 'bol' | 'other' =
+          docType === 'rate_confirmation'
+            ? 'rate_confirmation'
+            : docType === 'pod'
+              ? 'pod'
+              : docType === 'bill_of_lading' || docType === 'bol'
+                ? 'bol'
+                : 'other';
 
-          const docType = String(d.document_type || 'other');
-          const mappedType: 'rate_confirmation' | 'pod' | 'bol' | 'other' =
-            docType === 'rate_confirmation'
-              ? 'rate_confirmation'
-              : docType === 'pod'
-                ? 'pod'
-                : docType === 'bill_of_lading' || docType === 'bol'
-                  ? 'bol'
-                  : 'other';
+        // Download from storage and send as base64 (OTR often validates doc payloads)
+        const { data: fileBlob, error: dlError } = await adminClient.storage
+          .from('load-documents')
+          .download(d.file_url);
 
-          return {
-            type: mappedType,
-            fileName: d.file_name || `${mappedType}.pdf`,
-            fileUrl: publicUrl,
-          };
-        })
-        .filter(Boolean) as NonNullable<OtrInvoicePayload["documents"]>;
+        if (dlError || !fileBlob) {
+          console.log('[submit-otr-invoice] Document download failed:', d.file_url, dlError);
+          continue;
+        }
+
+        const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+        const fileBase64 = encodeBase64(bytes);
+
+        docs.push({
+          type: mappedType,
+          fileName: d.file_name || `${mappedType}.pdf`,
+          fileBase64,
+        });
+      }
 
       // If no explicit POD uploaded, fall back to using the newest BOL as POD as well.
       // (Many users upload a signed BOL as proof-of-delivery.)
@@ -381,13 +402,12 @@ serve(async (req) => {
       loads: loadsWithDetails.map((il: any) => ({
         loadNumber: il.load?.load_number,
         referenceNumber: il.load?.reference_number,
-        pickupDate: il.load?.pickup_date,
-        deliveryDate: il.load?.delivery_date,
+        pickupDate: il.load?.pickup_date ? String(il.load.pickup_date).slice(0, 10) : undefined,
+        deliveryDate: il.load?.delivery_date ? String(il.load.delivery_date).slice(0, 10) : undefined,
         pickupCity: il.load?.pickup_city,
         pickupState: il.load?.pickup_state,
         deliveryCity: il.load?.delivery_city,
         deliveryState: il.load?.delivery_state,
-        weight: il.load?.weight,
         rate: il.amount || il.load?.rate || 0
       })),
       documents,
