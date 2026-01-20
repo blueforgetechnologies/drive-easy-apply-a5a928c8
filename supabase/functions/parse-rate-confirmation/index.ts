@@ -52,7 +52,25 @@ Extract ALL available information from the document. Be thorough and extract eve
 IMPORTANT FIELD MAPPINGS:
 - "Shipper" = Origin/Pickup location  
 - "Receiver" or "Consignee" = Destination/Delivery location
-- Look for MC# or DOT# to identify the customer/broker
+
+CRITICAL - BROKER/CUSTOMER vs CARRIER DISTINCTION (READ THIS CAREFULLY):
+There are TWO separate entities in a rate confirmation:
+1. BROKER/CUSTOMER = The company hiring you to haul freight (e.g., "WORLDWIDE EXPRESS", "GlobalTranz")
+   - Usually at the TOP of the document
+   - Has fields like "Arranged by", "Broker Contact", or just a company header with contact info
+   - Their MC# and DOT# go in customer_mc_number and customer_dot_number
+   
+2. CARRIER = YOUR trucking company doing the hauling (e.g., "TALBI LOGISTICS LLC")
+   - Usually in a section labeled "CARRIER" or "CARRIER INFORMATION"
+   - Has fields like "Carrier MC#", "Carrier DOT#", "Carrier Name"
+   - DO NOT extract carrier MC# or DOT# for customer fields - they belong to a DIFFERENT company!
+
+CRITICAL RULE: If an MC# or DOT# appears next to the word "CARRIER" or in a "CARRIER" section, it belongs to the trucking company, NOT the broker/customer. Leave customer_mc_number and customer_dot_number as NULL if you only find MC/DOT in the carrier section.
+
+Example: If document shows "CARRIER: TALBI LOGISTICS LLC, MC# 827893" - this is the carrier's MC, NOT customer_mc_number. Set customer_mc_number = null.
+
+- "Arranged by" or "Broker Contact" = This is the CUSTOMER/BROKER contact person - extract as customer_contact
+- Look for email addresses near "Arranged by" or "E-Mail" labels - extract as customer_email
 
 CRITICAL - BILLING PARTY EXTRACTION:
 - Look for a separate "Bill To", "Billing Party", "Invoice To", "Remit To", or "Payment" section
@@ -74,16 +92,6 @@ CRITICAL - CUSTOMER LOAD ID EXTRACTION:
 - PROBILL # is often a secondary reference number - capture as reference_number if different from customer_load_id
 - Miles may appear as: loaded miles, estimated miles, trip miles, total miles
 - Pieces may appear as: pieces, pallets, skids, units, qty
-
-CRITICAL - BROKER/CUSTOMER vs CARRIER DISTINCTION:
-- "Arranged by" or "Broker Contact" = This is the CUSTOMER/BROKER contact person - extract as customer_contact
-- Look for email addresses near "Arranged by" or "E-Mail" labels - extract as customer_email
-- "Carrier" section = This is YOUR company (the trucking company), NOT the customer - do NOT use carrier info for customer fields
-- The customer/broker is the company HIRING you to haul freight - they appear at the top of the document usually
-- The carrier is the company DOING the hauling (your company)
-- NEVER extract MC# or DOT# from the "Carrier" section for customer_mc_number or customer_dot_number
-- The customer_mc_number should ONLY come from the broker/customer section at the top, NOT from "Carrier MC#" or similar
-- If you only see an MC# in the Carrier section, leave customer_mc_number as null
 
 MULTI-STOP HANDLING:
 - Look for multiple pickup locations (origins, shippers) - may be numbered stops like Stop 1, Stop 2
