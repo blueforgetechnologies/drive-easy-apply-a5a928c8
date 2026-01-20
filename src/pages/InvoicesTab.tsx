@@ -59,7 +59,7 @@ interface PendingLoad {
   completed_at: string | null;
   notes: string | null;
   broker_name: string | null;
-  customers: { name: string } | null;
+  customers: { name: string; factoring_approval: string | null } | null;
   carriers: { name: string } | null;
 }
 
@@ -111,7 +111,7 @@ export default function InvoicesTab() {
             completed_at,
             notes,
             broker_name,
-            customers(name),
+            customers(name, factoring_approval),
             carriers(name)
           `)
           .eq("financial_status", "pending_invoice")
@@ -511,6 +511,7 @@ export default function InvoicesTab() {
                 <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
                   <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                  <TableHead className="text-primary font-medium uppercase text-xs">Factoring</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
                   <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
@@ -552,6 +553,17 @@ export default function InvoicesTab() {
                           {load.invoice_number || load.load_number}
                         </TableCell>
                         <TableCell>{load.customers?.name || "—"}</TableCell>
+                        <TableCell>
+                          {load.customers?.factoring_approval === 'approved' ? (
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>
+                          ) : load.customers?.factoring_approval === 'pending' ? (
+                            <Badge variant="secondary" className="text-xs">Pending</Badge>
+                          ) : load.customers?.factoring_approval === 'denied' ? (
+                            <Badge variant="destructive" className="text-xs">Denied</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>{load.broker_name || "—"}</TableCell>
                         <TableCell>{billingDate ? format(new Date(billingDate), "M/d/yyyy") : "—"}</TableCell>
                         <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
@@ -581,7 +593,7 @@ export default function InvoicesTab() {
                       </TableRow>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={12} className="p-0">
+                          <td colSpan={13} className="p-0">
                             <InvoicePreview 
                               loadId={load.id} 
                               onClose={() => setExpandedLoadId(null)} 
