@@ -297,7 +297,7 @@ export function OtrVerificationDialog({
               onConfirmSend();
             }}
             disabled={isVerifying || !allPassed}
-            className="gap-2"
+            className="gap-2 bg-amber-500 hover:bg-amber-600"
           >
             {isVerifying ? (
               <>
@@ -307,7 +307,7 @@ export function OtrVerificationDialog({
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Send to OTR
+                Send Invoice
               </>
             )}
           </Button>

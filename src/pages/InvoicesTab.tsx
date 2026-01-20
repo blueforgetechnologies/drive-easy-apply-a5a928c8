@@ -749,18 +749,18 @@ export default function InvoicesTab() {
                           <div className="flex items-center gap-1">
                             {load.customers?.factoring_approval === 'approved' && (
                               <Button
-                                variant="default"
+                                variant="outline"
                                 size="sm"
                                 onClick={(e) => openOtrVerification(load, e)}
                                 disabled={sendingOtrLoadId === load.id}
-                                className="bg-amber-500 hover:bg-amber-600 text-white"
+                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
                               >
                                 {sendingOtrLoadId === load.id ? (
                                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                                 ) : (
-                                  <Send className="h-4 w-4 mr-1" />
+                                  <CheckCircle className="h-4 w-4 mr-1" />
                                 )}
-                                Send Invoice
+                                Verify Info
                               </Button>
                             )}
                             <Button
