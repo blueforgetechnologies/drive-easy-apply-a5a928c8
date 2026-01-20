@@ -339,6 +339,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ...primaryNavItems,
     { value: "tools", icon: Ruler, label: "Tools" },
     { value: "settings", icon: Settings, label: "Settings" },
+    // Admin items for mobile (only shown if user has admin role)
+    ...(userRoles.includes('admin') ? [
+      { value: "platform-admin", icon: ShieldCheck, label: "Platform Admin" },
+      { value: "inspector", icon: Shield, label: "Inspector" },
+      { value: "rollouts", icon: Rocket, label: "Rollouts" },
+    ] : []),
   ];
 
   return (
