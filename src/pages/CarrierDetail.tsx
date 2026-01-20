@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Save, MapPin, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, 
-  Upload, X, Image, Building2, Phone, Mail, Shield, Users, Truck, FileText, DollarSign
+  Upload, X, Image, Building2, Phone, Mail, Shield, Users, Truck, FileText, DollarSign, Landmark
 } from "lucide-react";
 // PDF.js removed to reduce bundle size
 
@@ -57,6 +57,18 @@ interface Payee {
   status: string | null;
 }
 
+interface FactoringData {
+  factoring_company_name: string | null;
+  factoring_company_address: string | null;
+  factoring_company_city: string | null;
+  factoring_company_state: string | null;
+  factoring_company_zip: string | null;
+  factoring_contact_name: string | null;
+  factoring_contact_email: string | null;
+  factoring_contact_phone: string | null;
+  factoring_percentage: number | null;
+}
+
 interface HighwayData {
   configured: boolean;
   found?: boolean;
@@ -90,10 +102,12 @@ export default function CarrierDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [payees, setPayees] = useState<Payee[]>([]);
   const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
+  const [factoringData, setFactoringData] = useState<FactoringData | null>(null);
 
   useEffect(() => {
     loadCarrier();
     loadPayees();
+    loadFactoringData();
   }, [id, tenantId, shouldFilter]);
 
   const loadPayees = async () => {
@@ -114,6 +128,34 @@ export default function CarrierDetail() {
       setPayees(data || []);
     } catch (error: any) {
       console.error("Failed to load payees:", error);
+    }
+  };
+
+  const loadFactoringData = async () => {
+    try {
+      let query = supabase
+        .from("company_profile")
+        .select(`
+          factoring_company_name,
+          factoring_company_address,
+          factoring_company_city,
+          factoring_company_state,
+          factoring_company_zip,
+          factoring_contact_name,
+          factoring_contact_email,
+          factoring_contact_phone,
+          factoring_percentage
+        `);
+
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query.limit(1).maybeSingle();
+      if (error) throw error;
+      setFactoringData(data);
+    } catch (error: any) {
+      console.error("Failed to load factoring data:", error);
     }
   };
 
@@ -414,6 +456,10 @@ export default function CarrierDetail() {
             <TabsTrigger value="payee" className="data-[state=active]:bg-violet-500 data-[state=active]:text-white">
               <DollarSign className="w-4 h-4 mr-2" />
               Payee
+            </TabsTrigger>
+            <TabsTrigger value="factoring" className="data-[state=active]:bg-teal-500 data-[state=active]:text-white">
+              <Landmark className="w-4 h-4 mr-2" />
+              Factoring
             </TabsTrigger>
           </TabsList>
 
@@ -860,6 +906,85 @@ export default function CarrierDetail() {
                   className="w-full"
                 >
                   Manage Payees
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Factoring Tab */}
+          <TabsContent value="factoring" className="space-y-6">
+            <Card className="border-l-4 border-l-teal-500 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-teal-600">
+                  <Landmark className="w-5 h-5" />
+                  Factoring Company Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {factoringData?.factoring_company_name ? (
+                  <>
+                    {/* Company Info */}
+                    <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-lg border border-teal-100 dark:border-teal-800">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-teal-600 dark:text-teal-400 font-medium text-lg">
+                          {factoringData.factoring_company_name}
+                        </span>
+                        {factoringData.factoring_percentage && (
+                          <Badge className="bg-teal-500">
+                            {factoringData.factoring_percentage}% Fee
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="space-y-1 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> Address
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {[
+                            factoringData.factoring_company_address,
+                            factoringData.factoring_company_city,
+                            factoringData.factoring_company_state,
+                            factoringData.factoring_company_zip
+                          ].filter(Boolean).join(', ') || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                        <p className="text-sm font-medium">{factoringData.factoring_contact_name || "—"}</p>
+                      </div>
+                      <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Phone className="w-3 h-3" /> Phone
+                        </Label>
+                        <p className="text-sm font-medium">{factoringData.factoring_contact_phone || "—"}</p>
+                      </div>
+                      <div className="space-y-1 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> Email
+                        </Label>
+                        <p className="text-sm font-medium">{factoringData.factoring_contact_email || "—"}</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <Landmark className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No factoring company configured</p>
+                    <p className="text-xs text-muted-foreground mt-1">Set up factoring information in Company Profile settings</p>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={() => navigate("/dashboard/settings?tab=company")}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Manage Company Profile
                 </Button>
               </CardContent>
             </Card>
