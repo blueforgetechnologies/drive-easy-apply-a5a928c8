@@ -29,6 +29,7 @@ interface OtrVerificationDialogProps {
   tenantId: string;
   factoringCompany: string | null;
   onConfirmSend: () => void;
+  onVerificationComplete?: (loadId: string) => void;
 }
 
 export function OtrVerificationDialog({
@@ -38,6 +39,7 @@ export function OtrVerificationDialog({
   tenantId,
   factoringCompany,
   onConfirmSend,
+  onVerificationComplete,
 }: OtrVerificationDialogProps) {
   const [verificationItems, setVerificationItems] = useState<VerificationItem[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -180,6 +182,14 @@ export function OtrVerificationDialog({
     setVerificationItems([...updatedItems]);
 
     setIsVerifying(false);
+    
+    // Notify parent that verification passed for this load
+    const didPass = updatedItems.every(
+      (item) => item.status === "pass" || (!item.required && item.status !== "fail")
+    );
+    if (didPass && onVerificationComplete) {
+      onVerificationComplete(load.id);
+    }
   };
 
   const allPassed = verificationItems.every(
