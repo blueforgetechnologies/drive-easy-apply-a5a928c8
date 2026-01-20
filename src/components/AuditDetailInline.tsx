@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -45,6 +45,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     { id: "bol_origin", label: "Origin", status: null },
     { id: "bol_destinations", label: "Destinations", status: null },
   ]);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { data: load, isLoading } = useQuery({
     queryKey: ["audit-load", loadId],
@@ -164,6 +165,138 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     setList(list.map((item) => 
       item.id === itemId ? { ...item, status } : item
     ));
+  };
+
+  // AI Verify function
+  const handleAIVerify = async () => {
+    if (!load) return;
+    
+    const documents = (load.load_documents as any[]) || [];
+    const rateConfirmationDocs = documents.filter((doc: any) => doc.document_type === "rate_confirmation");
+    const bolDocs = documents.filter((doc: any) => doc.document_type === "bill_of_lading");
+    
+    if (rateConfirmationDocs.length === 0 && bolDocs.length === 0) {
+      toast.error("No documents to verify. Please upload Rate Confirmation or BOL first.");
+      return;
+    }
+
+    setIsVerifying(true);
+    const carrier = load.carriers as any;
+    const customer = load.customers as any;
+
+    const loadData = {
+      reference_number: load.reference_number,
+      carrier_name: carrier?.name,
+      customer_name: customer?.name,
+      pickup_date: load.pickup_date,
+      delivery_date: load.delivery_date,
+      pickup_city: load.pickup_city,
+      pickup_state: load.pickup_state,
+      delivery_city: load.delivery_city,
+      delivery_state: load.delivery_state,
+      rate: load.rate,
+    };
+
+    try {
+      // Get signed URLs for documents
+      const getSignedUrl = async (fileUrl: string) => {
+        if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+          return fileUrl;
+        }
+        const { data, error } = await supabase.storage
+          .from("load-documents")
+          .createSignedUrl(fileUrl, 3600);
+        if (error) throw error;
+        return data.signedUrl;
+      };
+
+      // Verify Rate Confirmation
+      if (rateConfirmationDocs.length > 0) {
+        const rcDoc = rateConfirmationDocs[0];
+        const rcUrl = await getSignedUrl(rcDoc.file_url);
+        
+        const { data: rcResult, error: rcError } = await supabase.functions.invoke(
+          "audit-verify-documents",
+          {
+            body: {
+              documentUrl: rcUrl,
+              documentType: "rate_confirmation",
+              loadData,
+            },
+          }
+        );
+
+        if (rcError) {
+          console.error("RC verification error:", rcError);
+          toast.error("Failed to verify Rate Confirmation");
+        } else if (rcResult?.success && rcResult?.result) {
+          const result = rcResult.result;
+          setRateConfirmation(prev => prev.map(item => {
+            const status = result[item.id];
+            if (status === "match" || status === "fail") {
+              return { ...item, status };
+            }
+            return item;
+          }));
+          toast.success("Rate Confirmation verified!");
+          
+          // Add reasoning to notes if available
+          if (result.reasoning) {
+            setNotes(prev => prev ? `${prev}\n\nAI RC Verify: ${result.reasoning}` : `AI RC Verify: ${result.reasoning}`);
+          }
+        }
+      }
+
+      // Verify Bill of Lading
+      if (bolDocs.length > 0) {
+        const bolDoc = bolDocs[0];
+        const bolUrl = await getSignedUrl(bolDoc.file_url);
+        
+        const { data: bolResult, error: bolError } = await supabase.functions.invoke(
+          "audit-verify-documents",
+          {
+            body: {
+              documentUrl: bolUrl,
+              documentType: "bill_of_lading",
+              loadData,
+            },
+          }
+        );
+
+        if (bolError) {
+          console.error("BOL verification error:", bolError);
+          toast.error("Failed to verify Bill of Lading");
+        } else if (bolResult?.success && bolResult?.result) {
+          const result = bolResult.result;
+          setBillOfLading(prev => prev.map(item => {
+            // Map the item IDs to the API response keys
+            const keyMap: Record<string, string> = {
+              "bol_carrier": "carrier",
+              "bol_origin": "origin",
+              "bol_destinations": "destinations",
+            };
+            const apiKey = keyMap[item.id];
+            const status = result[apiKey];
+            if (status === "match" || status === "fail") {
+              return { ...item, status };
+            }
+            return item;
+          }));
+          toast.success("Bill of Lading verified!");
+          
+          // Add reasoning to notes if available
+          if (result.reasoning) {
+            setNotes(prev => prev ? `${prev}\n\nAI BOL Verify: ${result.reasoning}` : `AI BOL Verify: ${result.reasoning}`);
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error("AI verification error:", error);
+      toast.error("AI verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const ChecklistButton = ({ 
@@ -348,6 +481,28 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
                 className="hover:bg-primary/10 p-1 rounded disabled:opacity-30 transition-colors"
               >
                 <ChevronsRight className="h-3.5 w-3.5 text-primary" />
+              </button>
+            </div>
+
+            {/* AI Verify Button */}
+            <div className="py-2">
+              <button
+                type="button"
+                onClick={handleAIVerify}
+                disabled={isVerifying}
+                className="w-full h-9 text-xs font-semibold rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-md shadow-purple-500/25 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    AI Auto-Verify
+                  </>
+                )}
               </button>
             </div>
 
