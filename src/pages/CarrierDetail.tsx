@@ -1016,6 +1016,18 @@ export default function CarrierDetail() {
                   </div>
                 )}
 
+                {/* Letter of Assignment Document */}
+                <div className="mt-6 pt-6 border-t">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-3 block">Letter of Assignment</Label>
+                  <div className="rounded-lg border bg-slate-50 dark:bg-slate-800 overflow-hidden">
+                    <iframe
+                      src="/documents/Letter_of_assignment_Factoring.pdf"
+                      className="w-full h-[600px]"
+                      title="Letter of Assignment - Factoring"
+                    />
+                  </div>
+                </div>
+
                 <Button 
                   onClick={() => navigate("/dashboard/settings?tab=company")}
                   variant="outline"
