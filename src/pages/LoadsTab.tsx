@@ -644,6 +644,16 @@ export default function LoadsTab() {
           ...formData,
           tenant_id: tenantId, // CRITICAL: Explicitly set tenant_id
           status: "available",
+          // Copy shipper data to pickup fields for display consistency
+          pickup_city: formData.shipper_city || null,
+          pickup_state: formData.shipper_state || null,
+          pickup_location: formData.shipper_address || null,
+          pickup_zip: formData.shipper_zip || null,
+          // Copy receiver data to delivery fields for display consistency
+          delivery_city: formData.receiver_city || null,
+          delivery_state: formData.receiver_state || null,
+          delivery_location: formData.receiver_address || null,
+          delivery_zip: formData.receiver_zip || null,
           cargo_weight: formData.cargo_weight ? parseFloat(formData.cargo_weight) : null,
           cargo_pieces: formData.cargo_pieces ? parseInt(formData.cargo_pieces, 10) : null,
           estimated_miles: estimatedMiles,
