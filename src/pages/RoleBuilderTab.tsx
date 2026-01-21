@@ -184,6 +184,8 @@ export default function RoleBuilderTab() {
     setRoleName("");
     setRoleDescription("");
     setSelectedPermissions(new Set());
+    // Switch to roles tab to show the editor
+    setActiveTab("roles");
   };
 
   const startEditing = (role: CustomRole) => {
