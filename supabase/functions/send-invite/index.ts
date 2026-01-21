@@ -119,57 +119,84 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `;
     } else {
-      // New user - generate temp password and create account
-      tempPassword = generateTempPassword();
+      // Check if user actually exists in auth (frontend may have passed wrong flag)
+      const { data: existingUsers } = await supabaseService.auth.admin.listUsers();
+      const userAlreadyExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
       
-      // Create the user account with the temp password using admin API
-      const { data: newUser, error: createError } = await supabaseService.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true, // Auto-confirm the email
-        user_metadata: {
-          full_name: firstName && lastName ? `${firstName} ${lastName}` : undefined,
-        },
-      });
-
-      if (createError) {
-        console.error("Error creating user:", createError);
-        return new Response(
-          JSON.stringify({ error: `Failed to create user account: ${createError.message}` }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      console.log("Created new user:", newUser.user?.id);
-
-      emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been invited to join ${tenantName || 'the team'}!</h1>
-          <p style="font-size: 16px; color: #555;">
-            ${inviterName} has invited you to join <strong>${tenantName || 'their organization'}</strong> to help manage operations.
-          </p>
-          <div style="background: #e8f4fd; border-left: 4px solid #007bff; padding: 16px; margin: 20px 0;">
-            <p style="margin: 0; font-size: 14px; color: #333;"><strong>📧 Your username:</strong> <a href="mailto:${email}" style="color: #007bff;">${email}</a></p>
-            <p style="margin: 12px 0 0 0; font-size: 14px; color: #333;"><strong>🔐 Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px; font-weight: bold;">${tempPassword}</code></p>
+      if (userAlreadyExists) {
+        // User exists but was marked as new - treat as existing user
+        console.log(`User ${email} already exists in auth, sending existing user email`);
+        emailContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been added to ${tenantName || 'a new organization'}!</h1>
+            <p style="font-size: 16px; color: #555;">
+              ${inviterName} has granted you access to <strong>${tenantName || 'their organization'}</strong>.
+            </p>
+            <p style="font-size: 16px; color: #555;">
+              You already have an account. Simply log in to access the new organization.
+            </p>
+            <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #666;"><strong>Your username:</strong> ${email}</p>
+              <p style="margin: 8px 0 0 0; font-size: 14px; color: #666;">Use your existing password to log in.</p>
+            </div>
+            <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+              Log In Now
+            </a>
           </div>
-          <p style="font-size: 14px; color: #d9534f; margin: 10px 0;">
-            ⚠️ Please change your password after your first login for security.
-          </p>
-          <p style="font-size: 16px; color: #555;">
-            Click below to log in:
-          </p>
-          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
-            Log In Now
-          </a>
-          <p style="font-size: 14px; color: #777; margin-top: 20px;">
-            Or copy and paste this link into your browser:<br>
-            <a href="${loginUrl}" style="color: #007bff;">${loginUrl}</a>
-          </p>
-          <p style="font-size: 14px; color: #999; margin-top: 40px;">
-            If you didn't expect this invitation, you can safely ignore this email.
-          </p>
-        </div>
-      `;
+        `;
+      } else {
+        // Truly new user - generate temp password and create account
+        tempPassword = generateTempPassword();
+        
+        // Create the user account with the temp password using admin API
+        const { data: newUser, error: createError } = await supabaseService.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true, // Auto-confirm the email
+          user_metadata: {
+            full_name: firstName && lastName ? `${firstName} ${lastName}` : undefined,
+          },
+        });
+
+        if (createError) {
+          console.error("Error creating user:", createError);
+          return new Response(
+            JSON.stringify({ error: `Failed to create user account: ${createError.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        console.log("Created new user:", newUser.user?.id);
+
+        emailContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been invited to join ${tenantName || 'the team'}!</h1>
+            <p style="font-size: 16px; color: #555;">
+              ${inviterName} has invited you to join <strong>${tenantName || 'their organization'}</strong> to help manage operations.
+            </p>
+            <div style="background: #e8f4fd; border-left: 4px solid #007bff; padding: 16px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #333;"><strong>📧 Your username:</strong> <a href="mailto:${email}" style="color: #007bff;">${email}</a></p>
+              <p style="margin: 12px 0 0 0; font-size: 14px; color: #333;"><strong>🔐 Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px; font-weight: bold;">${tempPassword}</code></p>
+            </div>
+            <p style="font-size: 14px; color: #d9534f; margin: 10px 0;">
+              ⚠️ Please change your password after your first login for security.
+            </p>
+            <p style="font-size: 16px; color: #555;">
+              Click below to log in:
+            </p>
+            <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+              Log In Now
+            </a>
+            <p style="font-size: 14px; color: #777; margin-top: 20px;">
+              Or copy and paste this link into your browser:<br>
+              <a href="${loginUrl}" style="color: #007bff;">${loginUrl}</a>
+            </p>
+            <p style="font-size: 14px; color: #999; margin-top: 40px;">
+              If you didn't expect this invitation, you can safely ignore this email.
+            </p>
+          </div>
+        `;
+      }
     }
 
     const emailResponse = await resend.emails.send({
