@@ -59,28 +59,52 @@ async function submitInvoiceToOtr(
     console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
     console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
     
-    // Try the /loads endpoint first (Post Load from OTR API docs)
-    // OTR uses this to create a load/invoice in their system
-    const endpoint = `${OTR_API_BASE_URL}/loads`;
-    console.log(`[submit-otr-invoice] Using endpoint: ${endpoint}`);
+    // Try multiple endpoints - OTR docs mention various paths
+    // According to their API list: Post Load, Post Payable, etc.
+    const endpointsToTry = [
+      `${OTR_API_BASE_URL}/invoices`,        // Most common for invoice submission
+      `${OTR_API_BASE_URL}/load`,            // Singular form
+      `${OTR_API_BASE_URL}/payables`,        // Payables endpoint
+    ];
     
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'ocp-apim-subscription-key': subscriptionKey,
-        'Authorization': `Bearer ${accessToken}`,
-        // Staging environment flag
-        'x-is-test': 'true'
-      },
-      body: JSON.stringify(payload)
-    });
+    let lastError = '';
+    let lastResponse: Response | null = null;
+    let responseText = '';
+    
+    for (const endpoint of endpointsToTry) {
+      console.log(`[submit-otr-invoice] Trying endpoint: ${endpoint}`);
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'ocp-apim-subscription-key': subscriptionKey,
+          'Authorization': `Bearer ${accessToken}`,
+          'x-is-test': 'true'
+        },
+        body: JSON.stringify(payload)
+      });
 
-    console.log(`[submit-otr-invoice] OTR API response status: ${response.status}`);
+      console.log(`[submit-otr-invoice] Response from ${endpoint}: ${response.status}`);
+      responseText = await response.text();
+      console.log(`[submit-otr-invoice] Response body: ${responseText}`);
+      
+      // If we get anything other than 404, this is the right endpoint
+      if (response.status !== 404) {
+        lastResponse = response;
+        break;
+      }
+      
+      lastError = `${endpoint} returned 404`;
+      lastResponse = response;
+    }
     
-    const responseText = await response.text();
-    console.log(`[submit-otr-invoice] OTR API response body: ${responseText}`);
+    if (!lastResponse) {
+      return { success: false, error: 'All OTR endpoints returned 404. Contact OTR support for correct API path.' };
+    }
+    
+    const response = lastResponse;
 
     let data: OtrInvoiceResponse;
     try {
