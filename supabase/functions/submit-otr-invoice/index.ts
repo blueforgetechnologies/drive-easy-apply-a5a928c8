@@ -13,21 +13,22 @@ const corsHeaders = {
 };
 
 // OTR PostInvoices payload - matches exact field names from OTR API v2.1 docs
+// Based on their API Reference Body Params section
 interface OtrPostInvoicePayload {
-  // Required fields
-  CustomerMC: number;        // Broker MC number (numeric)
-  ClientDOT: string;         // Your carrier DOT number
-  FromCity: string;          // Pickup city
-  FromState: string;         // Pickup state (2-letter)
-  ToCity: string;            // Delivery city
-  ToState: string;           // Delivery state (2-letter)
-  PoNumber: string;          // PO/Reference number
-  InvoiceNo: string;         // Invoice number
-  InvoiceAmount: number;     // Total invoice amount
-  InvoiceDate: string;       // YYYY-MM-DD format
+  // Required fields (from OTR API docs)
+  CustomerMC: number;        // Broker MC number (numeric) - required
+  ClientDOT: string;         // Your carrier DOT number - required
+  FromCity: string;          // Pickup city - required
+  FromState: string;         // Pickup state (2-letter) - required
+  ToCity: string;            // Delivery city - required
+  ToState: string;           // Delivery state (2-letter) - required
+  PoNumber: string;          // PO/Reference number - required
+  InvoiceNo: string;         // Invoice number - required
+  InvoiceDate: string;       // date-time format
   
   // Optional fields
   TermPkey?: number;         // Payment terms key
+  InvoiceAmount?: number;    // May or may not be required
   Weight?: number;           // Total weight
   Miles?: number;            // Total miles
   Notes?: string;            // Additional notes
@@ -327,17 +328,12 @@ serve(async (req) => {
     // Format invoice date (YYYY-MM-DD)
     const invoiceDate = new Date().toISOString().split('T')[0];
 
-    // Get invoice amount (rate from load)
+    // Get invoice amount (rate from load) - may be optional per OTR docs
     const invoiceAmount = load.rate || 0;
-
+    
+    // Log if amount is 0 but don't block - OTR may not require it
     if (invoiceAmount <= 0) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invoice amount must be greater than 0' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('[submit-otr-invoice] Warning: Invoice amount is 0, proceeding anyway as it may be optional');
     }
 
     // Authenticate with OTR
@@ -368,6 +364,7 @@ serve(async (req) => {
     }
 
     // Build OTR payload with exact field names from API docs
+    // Start with only the confirmed required fields
     const otrPayload: OtrPostInvoicePayload = {
       CustomerMC: customerMc,
       ClientDOT: companyProfile.dot_number,
@@ -377,9 +374,13 @@ serve(async (req) => {
       ToState: load.delivery_state.toUpperCase().slice(0, 2),
       PoNumber: poNumber,
       InvoiceNo: invoiceNumber,
-      InvoiceAmount: invoiceAmount,
       InvoiceDate: invoiceDate,
     };
+
+    // Add InvoiceAmount - may be optional per OTR docs
+    if (invoiceAmount > 0) {
+      otrPayload.InvoiceAmount = invoiceAmount;
+    }
 
     // Add optional fields if available
     if (load.weight) {
