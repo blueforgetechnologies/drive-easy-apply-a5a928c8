@@ -107,22 +107,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isInspectorOrPlatformAdminRoute =
     location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector');
 
-  // HARD BLOCK: If the user has no custom roles, do not render *any* dashboard UI.
-  // This prevents header/nav flashes and makes behavior consistent across devices.
-  if (!isInspectorOrPlatformAdminRoute) {
-    if (permissionsLoading) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center px-6">
-          <div className="text-sm text-muted-foreground">Checking access…</div>
-        </div>
-      );
-    }
-
-    if (!isPlatformAdmin && !hasCustomRole) {
-      return <NoRoleAssignedBanner />;
-    }
-  }
-
   // Debug: log gate + permission resolution
   useEffect(() => {
     if (!analyticsGate.isLoading && !permissionsLoading) {
