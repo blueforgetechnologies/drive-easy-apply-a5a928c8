@@ -2160,25 +2160,34 @@ export type Database = {
         Row: {
           accepted_at: string | null
           email: string
+          first_name: string | null
           id: string
           invited_at: string | null
           invited_by: string
+          last_name: string | null
+          phone: string | null
           tenant_id: string | null
         }
         Insert: {
           accepted_at?: string | null
           email: string
+          first_name?: string | null
           id?: string
           invited_at?: string | null
           invited_by: string
+          last_name?: string | null
+          phone?: string | null
           tenant_id?: string | null
         }
         Update: {
           accepted_at?: string | null
           email?: string
+          first_name?: string | null
           id?: string
           invited_at?: string | null
           invited_by?: string
+          last_name?: string | null
+          phone?: string | null
           tenant_id?: string | null
         }
         Relationships: [

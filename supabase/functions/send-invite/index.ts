@@ -11,6 +11,9 @@ const corsHeaders = {
 
 interface InviteRequest {
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   inviterName: string;
   tenantName?: string;
   isExistingUser?: boolean;
@@ -59,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, inviterName, tenantName, isExistingUser }: InviteRequest = await req.json();
+    const { email, firstName, lastName, phone, inviterName, tenantName, isExistingUser }: InviteRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -68,7 +71,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Sending invite to ${email} from ${inviterName} (tenant: ${tenantName}, existing: ${isExistingUser})`);
+    const recipientName = firstName && lastName ? `${firstName} ${lastName}` : email;
+    console.log(`Sending invite to ${recipientName} (${email}) from ${inviterName} (tenant: ${tenantName}, existing: ${isExistingUser})`);
 
     const appUrl = "https://drive-easy-apply.lovable.app";
     const loginUrl = `${appUrl}/auth`;
@@ -77,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailContent = isExistingUser 
       ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333;">You've been added to ${tenantName || 'a new organization'}!</h1>
+          <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been added to ${tenantName || 'a new organization'}!</h1>
           <p style="font-size: 16px; color: #555;">
             ${inviterName} has granted you access to <strong>${tenantName || 'their organization'}</strong>.
           </p>
@@ -95,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
       `
       : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333;">You've been invited to join ${tenantName || 'the team'}!</h1>
+          <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been invited to join ${tenantName || 'the team'}!</h1>
           <p style="font-size: 16px; color: #555;">
             ${inviterName} has invited you to join <strong>${tenantName || 'their organization'}</strong> to help manage operations.
           </p>
