@@ -7,11 +7,15 @@ import { Button } from '@/components/ui/button';
 import { useMapLoadTracker } from '@/hooks/useMapLoadTracker';
 import { useVehicleHistory, LocationPoint } from '@/hooks/useVehicleHistory';
 import { VehicleHistoryControls } from '@/components/VehicleHistoryControls';
-import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle, Info, History } from 'lucide-react';
+import { RefreshCw, MapIcon, Satellite, Cloud, ChevronUp, ChevronDown, Truck, Navigation, AlertTriangle, Info, History, Users } from 'lucide-react';
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+
+type VehicleFilterMode = 'my-trucks' | 'all';
 
 const MapTab = () => {
   useMapLoadTracker('MapTab');
@@ -20,7 +24,7 @@ const MapTab = () => {
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [allVehicles, setAllVehicles] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [syncing, setSyncing] = useState(false);
   const [weatherCache, setWeatherCache] = useState<Record<string, any>>({});
@@ -33,6 +37,11 @@ const MapTab = () => {
   const [showLegend, setShowLegend] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
   
+  // Dispatcher filter state
+  const [filterMode, setFilterMode] = useState<VehicleFilterMode>('my-trucks');
+  const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
   // Track previous tenant for cleanup
   const prevTenantIdRef = useRef<string | null>(null);
   
@@ -41,6 +50,54 @@ const MapTab = () => {
   
   // Vehicle history hook
   const vehicleHistory = useVehicleHistory();
+  
+  // Fetch current user's dispatcher ID and admin status
+  useEffect(() => {
+    const fetchUserContext = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !tenantId) return;
+      
+      // Check if user is admin
+      // Check if user has admin-level role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      const userIsAdmin = roles?.some(r => r.role === 'admin') || isPlatformAdmin;
+      setIsAdmin(userIsAdmin);
+      
+      // Get dispatcher ID for this user in this tenant
+      const { data: dispatcher } = await supabase
+        .from('dispatchers')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      
+      setCurrentDispatcherId(dispatcher?.id || null);
+      
+      // If user is admin, default to showing all trucks
+      if (userIsAdmin) {
+        setFilterMode('all');
+      }
+    };
+    
+    fetchUserContext();
+  }, [tenantId, isPlatformAdmin]);
+  
+  // Filter vehicles based on mode and dispatcher assignment
+  const vehicles = useCallback(() => {
+    if (filterMode === 'all' || !currentDispatcherId) {
+      return allVehicles;
+    }
+    
+    // Filter to only show vehicles where user is primary or secondary dispatcher
+    return allVehicles.filter(v => 
+      v.primary_dispatcher_id === currentDispatcherId ||
+      (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
+    );
+  }, [allVehicles, filterMode, currentDispatcherId])();
 
   // SECURITY: Clear all markers and state when tenant changes
   const clearAllMarkers = useCallback(() => {
@@ -49,7 +106,7 @@ const MapTab = () => {
     markersRef.current.clear();
     historyMarkersRef.current.forEach(marker => marker.remove());
     historyMarkersRef.current = [];
-    setVehicles([]);
+    setAllVehicles([]);
     setSelectedVehicle(null);
     initialBoundsSet.current = false; // Reset bounds so new tenant data fits properly
     
@@ -105,7 +162,7 @@ const MapTab = () => {
 
     if (!error && data) {
       console.log(`[MapTab] Loaded ${data.length} vehicles for tenant: ${tenantId}`);
-      setVehicles(data);
+      setAllVehicles(data);
       setLastUpdate(new Date());
     } else if (error) {
       console.error('[MapTab] Error loading vehicles:', error);
@@ -875,10 +932,35 @@ const MapTab = () => {
                 <h3 className="font-bold text-lg">Fleet Tracker</h3>
                 <p className="text-xs text-muted-foreground">
                   {vehicles.length} active asset{vehicles.length !== 1 ? 's' : ''}
+                  {filterMode === 'my-trucks' && allVehicles.length !== vehicles.length && (
+                    <span className="text-muted-foreground/70"> of {allVehicles.length}</span>
+                  )}
                 </p>
               </div>
             </div>
           </div>
+          
+          {/* Filter Toggle - My Trucks / All */}
+          {(isAdmin || currentDispatcherId) && (
+            <div className="flex items-center justify-between mt-3 p-2 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="fleet-filter" className="text-xs font-medium cursor-pointer">
+                  {filterMode === 'all' ? 'All Trucks' : 'My Trucks'}
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">My</span>
+                <Switch
+                  id="fleet-filter"
+                  checked={filterMode === 'all'}
+                  onCheckedChange={(checked) => setFilterMode(checked ? 'all' : 'my-trucks')}
+                  disabled={!isAdmin && !currentDispatcherId}
+                />
+                <span className="text-[10px] text-muted-foreground">All</span>
+              </div>
+            </div>
+          )}
           
           {/* Quick stats */}
           <div className="flex gap-2 mt-3">
@@ -1172,14 +1254,31 @@ const MapTab = () => {
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
-              className="h-8 w-8"
-            >
-              {mobileSheetExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Mobile filter toggle */}
+              {(isAdmin || currentDispatcherId) && (
+                <button
+                  onClick={() => setFilterMode(filterMode === 'all' ? 'my-trucks' : 'all')}
+                  className={`
+                    px-2 py-1 rounded-md text-[10px] font-medium transition-colors
+                    ${filterMode === 'my-trucks' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted text-muted-foreground'
+                    }
+                  `}
+                >
+                  {filterMode === 'my-trucks' ? 'My' : 'All'}
+                </button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
+                className="h-8 w-8"
+              >
+                {mobileSheetExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
           
           {/* Expanded content */}
