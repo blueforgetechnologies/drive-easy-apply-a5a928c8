@@ -660,7 +660,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Platform Admin and Inspector are exempt from tenant requirement */}
         {location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector') ? (
           children
-        ) : !permissionsLoading && !hasCustomRole && !isPlatformAdmin ? (
+        ) : permissionsLoading ? (
+          // Prevent any tenant pages from rendering until permissions are resolved
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-sm text-muted-foreground">Checking access…</div>
+          </div>
+        ) : !hasCustomRole && !isPlatformAdmin ? (
           // User has no custom role assigned - show message (strict enforcement)
           <NoRoleAssignedBanner />
         ) : (
