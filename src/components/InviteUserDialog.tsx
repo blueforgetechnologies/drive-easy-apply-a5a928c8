@@ -103,6 +103,14 @@ export function InviteUserDialog() {
           role: "admin",
           is_active: true,
         }, { onConflict: "user_id,tenant_id" });
+        
+        // Ensure profile exists with name
+        await supabase.from("profiles").upsert({
+          id: existingUser.id,
+          email: email.toLowerCase(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`.trim() || null,
+          phone: phone.trim() || null,
+        }, { onConflict: "id" });
       }
 
       // Send invitation email
