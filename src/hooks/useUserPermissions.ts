@@ -145,6 +145,16 @@ export function useUserPermissions(): UserPermissionsResult {
     loadPermissions();
   }, [loadPermissions]);
 
+  // IMPORTANT: keep permissions in sync when the signed-in user changes.
+  // Without this, switching accounts can leave stale permission state in memory.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      loadPermissions();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadPermissions]);
+
   const hasPermission = useCallback((code: string): boolean => {
     if (isPlatformAdmin) return true;
     return permissions.has(code);
