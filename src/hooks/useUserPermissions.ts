@@ -94,11 +94,31 @@ export function useUserPermissions(): UserPermissionsResult {
       }
 
       // Load permissions from custom roles
-      // Get user's custom role assignments
-      const { data: userRoles } = await supabase
+      // Get user's custom role assignments for this tenant (or global roles with null tenant_id)
+      let userRolesQuery = supabase
         .from("user_custom_roles")
         .select("role_id")
         .eq("user_id", user.id);
+      
+      // Filter by current tenant or global (null) assignments
+      if (effectiveTenant?.id) {
+        userRolesQuery = userRolesQuery.or(`tenant_id.eq.${effectiveTenant.id},tenant_id.is.null`);
+      } else {
+        userRolesQuery = userRolesQuery.is("tenant_id", null);
+      }
+
+      const { data: userRoles, error: userRolesError } = await userRolesQuery;
+      
+      if (userRolesError) {
+        console.error("[useUserPermissions] Error loading user roles:", userRolesError);
+      }
+      
+      console.info("[useUserPermissions] User roles query result:", {
+        userId: user.id,
+        tenantId: effectiveTenant?.id,
+        rolesFound: userRoles?.length ?? 0,
+        error: userRolesError?.message,
+      });
 
       if (!userRoles || userRoles.length === 0) {
         // No custom roles = no permissions (STRICT)
@@ -111,13 +131,26 @@ export function useUserPermissions(): UserPermissionsResult {
       setHasCustomRole(true);
       const roleIds = userRoles.map(r => r.role_id);
 
-      // Get permissions for these roles
-      const { data: rolePerms } = await supabase
+      // Get permissions for these roles (filter by tenant or global)
+      let rolePermsQuery = supabase
         .from("role_permissions")
         .select("permission_id")
         .in("role_id", roleIds);
 
+      if (effectiveTenant?.id) {
+        rolePermsQuery = rolePermsQuery.or(`tenant_id.eq.${effectiveTenant.id},tenant_id.is.null`);
+      } else {
+        rolePermsQuery = rolePermsQuery.is("tenant_id", null);
+      }
+
+      const { data: rolePerms, error: rolePermsError } = await rolePermsQuery;
+      
+      if (rolePermsError) {
+        console.error("[useUserPermissions] Error loading role permissions:", rolePermsError);
+      }
+
       if (!rolePerms || rolePerms.length === 0) {
+        console.warn("[useUserPermissions] No role_permissions found for roles:", roleIds);
         setPermissions(new Set());
         setIsLoading(false);
         return;
@@ -132,6 +165,13 @@ export function useUserPermissions(): UserPermissionsResult {
         .in("id", permissionIds);
 
       const codes = new Set((permCodes || []).map(p => p.code));
+      
+      console.info("[useUserPermissions] Loaded permissions:", {
+        roleIds,
+        permissionCount: codes.size,
+        sampleCodes: Array.from(codes).slice(0, 5),
+      });
+      
       setPermissions(codes);
       setIsLoading(false);
     } catch (error) {
