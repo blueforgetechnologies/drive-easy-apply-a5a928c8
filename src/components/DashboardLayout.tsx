@@ -55,8 +55,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { 
     hasPermission, 
     isLoading: permissionsLoading, 
-    hasCustomRole,
-    isTenantAdmin 
+    hasCustomRole
   } = useUserPermissions();
   
   // Use unified feature gates for all gated modules
@@ -101,9 +100,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Loads tab - core feature, but still requires permission
   const showLoads = !permissionsLoading && (isPlatformAdmin || hasPermission(PERMISSION_CODES.TAB_LOADS));
   // Settings tab - check permission
-  const showSettings = !permissionsLoading && (isPlatformAdmin || hasPermission("tab_settings") || isTenantAdmin);
+  const showSettings = !permissionsLoading && (isPlatformAdmin || hasPermission("tab_settings"));
   // Tools tab - check permission
   const showTools = !permissionsLoading && (isPlatformAdmin || hasPermission("tab_tools"));
+
+  const isInspectorOrPlatformAdminRoute =
+    location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector');
+
+  // HARD BLOCK: If the user has no custom roles, do not render *any* dashboard UI.
+  // This prevents header/nav flashes and makes behavior consistent across devices.
+  if (!isInspectorOrPlatformAdminRoute) {
+    if (permissionsLoading) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center px-6">
+          <div className="text-sm text-muted-foreground">Checking access…</div>
+        </div>
+      );
+    }
+
+    if (!isPlatformAdmin && !hasCustomRole) {
+      return <NoRoleAssignedBanner />;
+    }
+  }
 
   // Debug: log gate + permission resolution
   useEffect(() => {
@@ -324,8 +342,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleLogout = async () => {
+    // Clear any persisted UI/tenant state so it can't affect the next login on this device
+    localStorage.removeItem('tms.currentTenantId');
+    localStorage.removeItem('showAllTab');
+    localStorage.removeItem('tms.adminImpersonationSession');
+
     await supabase.auth.signOut();
-    navigate("/auth");
+    // Hard redirect to fully reset in-memory state (react-query cache, old permissions, etc.)
+    window.location.replace('/auth');
   };
 
   const handleTabChange = (value: string) => {
