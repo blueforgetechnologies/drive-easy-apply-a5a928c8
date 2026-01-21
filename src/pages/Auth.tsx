@@ -38,6 +38,17 @@ export default function Auth() {
       return;
     }
 
+    // Check if this is an invite signup flow (new user clicked invite link)
+    const mode = searchParams.get("mode");
+    const inviteEmail = searchParams.get("email");
+    if (mode === "signup") {
+      setView("signup");
+      if (inviteEmail) {
+        setEmail(decodeURIComponent(inviteEmail));
+      }
+      return;
+    }
+
     // Check if user is already logged in
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -46,7 +57,7 @@ export default function Auth() {
       }
     };
     checkUser();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

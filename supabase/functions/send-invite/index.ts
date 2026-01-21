@@ -76,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const appUrl = "https://drive-easy-apply.lovable.app";
     const loginUrl = `${appUrl}/auth`;
+    const signupUrl = `${appUrl}/auth?mode=signup&email=${encodeURIComponent(email)}`;
 
     // Different email content for existing vs new users
     const emailContent = isExistingUser 
@@ -110,12 +111,12 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="font-size: 16px; color: #555;">
             Click below to create your account:
           </p>
-          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+          <a href="${signupUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
             Create Your Account
           </a>
           <p style="font-size: 14px; color: #777; margin-top: 20px;">
             Or copy and paste this link into your browser:<br>
-            <a href="${loginUrl}" style="color: #007bff;">${loginUrl}</a>
+            <a href="${signupUrl}" style="color: #007bff;">${signupUrl}</a>
           </p>
           <p style="font-size: 14px; color: #999; margin-top: 40px;">
             If you didn't expect this invitation, you can safely ignore this email.
