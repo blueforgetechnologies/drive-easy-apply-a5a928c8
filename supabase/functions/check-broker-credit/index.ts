@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
+import { OTR_API_BASE_URL } from "../_shared/otrClient.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// OTR Solutions API configuration - Production URL
-const OTR_API_BASE_URL = 'https://services.otrsolutions.com/carrier-tms/2';
 
 interface OtrBrokerCheckResponse {
   brokerMc?: string;

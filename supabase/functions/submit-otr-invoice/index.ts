@@ -7,70 +7,35 @@ import {
   getOtrCredentialsFromEnv,
 } from "../_shared/otrClient.ts";
 
-function encodeBase64(bytes: Uint8Array): string {
-  // Avoid stack overflows on large files
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OTR Invoice payload structure based on Carrier TMS API v2
-interface OtrInvoicePayload {
-  // Broker/Customer info
-  brokerMc: string;
-  brokerName: string;
-  brokerAddress?: string;
-  brokerCity?: string;
-  brokerState?: string;
-  brokerZip?: string;
-  
-  // Carrier info (your company)
-  carrierDot: string;
-  carrierMc?: string;
-  carrierName: string;
-  
-  // Invoice details
-  invoiceNumber: string;
-  invoiceDate: string; // ISO date string
-  invoiceAmount: number;
-  
-  // Load details
-  loads: Array<{
-    loadNumber?: string;
-    referenceNumber?: string;
-    pickupDate?: string;
-    deliveryDate?: string;
-    pickupCity?: string;
-    pickupState?: string;
-    deliveryCity?: string;
-    deliveryState?: string;
-    weight?: number;
-    rate: number;
-  }>;
-  
-  // Rate confirmation / POD documents (URLs or base64)
-  documents?: Array<{
-    type: 'rate_confirmation' | 'pod' | 'bol' | 'other';
-    fileName: string;
-    fileUrl?: string;
-    fileBase64?: string;
-  }>;
+// OTR PostInvoices payload - matches exact field names from OTR API v2.1 docs
+interface OtrPostInvoicePayload {
+  // Required fields
+  CustomerMC: number;        // Broker MC number (numeric)
+  ClientDOT: string;         // Your carrier DOT number
+  FromCity: string;          // Pickup city
+  FromState: string;         // Pickup state (2-letter)
+  ToCity: string;            // Delivery city
+  ToState: string;           // Delivery state (2-letter)
+  PoNumber: string;          // PO/Reference number
+  InvoiceNo: string;         // Invoice number
+  InvoiceAmount: number;     // Total invoice amount
+  InvoiceDate: string;       // YYYY-MM-DD format
   
   // Optional fields
-  notes?: string;
-  quickPay?: boolean; // Request quick pay advance
+  TermPkey?: number;         // Payment terms key
+  Weight?: number;           // Total weight
+  Miles?: number;            // Total miles
+  Notes?: string;            // Additional notes
 }
 
 interface OtrInvoiceResponse {
-  success: boolean;
+  success?: boolean;
+  invoicePkey?: number;
   invoiceId?: string;
   status?: string;
   message?: string;
@@ -78,9 +43,9 @@ interface OtrInvoiceResponse {
   [key: string]: unknown;
 }
 
-// Submit invoice to OTR Solutions
+// Submit invoice to OTR Solutions using their exact API format
 async function submitInvoiceToOtr(
-  invoice: OtrInvoicePayload,
+  payload: OtrPostInvoicePayload,
   subscriptionKey: string,
   accessToken: string
 ): Promise<{
@@ -91,7 +56,8 @@ async function submitInvoiceToOtr(
   error?: string;
 }> {
   try {
-    console.log(`[submit-otr-invoice] Submitting invoice ${invoice.invoiceNumber} to OTR...`);
+    console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
+    console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
     
     const response = await fetch(`${OTR_API_BASE_URL}/invoices`, {
       method: 'POST',
@@ -100,10 +66,10 @@ async function submitInvoiceToOtr(
         'Content-Type': 'application/json',
         'ocp-apim-subscription-key': subscriptionKey,
         'Authorization': `Bearer ${accessToken}`,
-        // Staging expects test flag; production can ignore it.
+        // Staging environment flag
         'x-is-test': 'true'
       },
-      body: JSON.stringify(invoice)
+      body: JSON.stringify(payload)
     });
 
     console.log(`[submit-otr-invoice] OTR API response status: ${response.status}`);
@@ -140,7 +106,7 @@ async function submitInvoiceToOtr(
 
     return {
       success: true,
-      invoice_id: data.invoiceId,
+      invoice_id: data.invoicePkey?.toString() || data.invoiceId,
       status: data.status || 'submitted',
       raw_response: data
     };
@@ -162,10 +128,8 @@ serve(async (req) => {
     const body = await req.json();
     const { 
       tenant_id,
-      invoice_id, // Our internal invoice ID
-      // Override fields if not pulling from invoice record
-      broker_mc,
-      broker_name,
+      load_id,        // Single load ID to submit
+      invoice_id,     // Optional: existing invoice ID (if already created)
       quick_pay = false
     } = body;
 
@@ -191,120 +155,7 @@ serve(async (req) => {
       );
     }
 
-    // Get invoice details
-    const { data: invoice, error: invoiceError } = await adminClient
-      .from('invoices')
-      .select('*')
-      .eq('id', invoice_id)
-      .eq('tenant_id', tenant_id)
-      .single();
-
-    if (invoiceError || !invoice) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invoice not found' 
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get invoice line items (loads) - use separate queries for reliability
-    const { data: invoiceLoads, error: loadsError } = await adminClient
-      .from('invoice_loads')
-      .select('*')
-      .eq('invoice_id', invoice_id);
-
-    console.log('[submit-otr-invoice] Invoice loads query result:', invoiceLoads, loadsError);
-
-    // Fetch load details separately for each invoice_load
-    const loadsWithDetails: any[] = [];
-    if (invoiceLoads && invoiceLoads.length > 0) {
-      for (const il of invoiceLoads) {
-        if (il.load_id) {
-          const { data: loadData, error: loadError } = await adminClient
-            .from('loads')
-            .select('id, load_number, reference_number, pickup_date, delivery_date, pickup_city, pickup_state, delivery_city, delivery_state, rate')
-            .eq('id', il.load_id)
-            .single();
-
-          if (loadError) {
-            console.log('[submit-otr-invoice] Load fetch error:', il.load_id, loadError);
-          }
-
-          loadsWithDetails.push({
-            ...il,
-            load: loadData,
-          });
-        }
-      }
-    }
-    console.log('[submit-otr-invoice] Loads with details:', loadsWithDetails);
-
-    // Collect documents (rate confirmation / POD / BOL) for all loads
-    const loadIds = loadsWithDetails.map((x: any) => x.load_id).filter(Boolean);
-    let documents: OtrInvoicePayload["documents"] | undefined = undefined;
-
-    if (loadIds.length > 0) {
-      const { data: loadDocs, error: loadDocsError } = await adminClient
-        .from('load_documents')
-        .select('load_id, document_type, file_name, file_url')
-        .in('load_id', loadIds);
-
-      console.log('[submit-otr-invoice] Load documents query result:', loadDocs, loadDocsError);
-
-      const docs = [] as NonNullable<OtrInvoicePayload["documents"]>;
-
-      for (const d of loadDocs || []) {
-        if (!d?.file_url) continue;
-
-        const docType = String(d.document_type || 'other');
-        const mappedType: 'rate_confirmation' | 'pod' | 'bol' | 'other' =
-          docType === 'rate_confirmation'
-            ? 'rate_confirmation'
-            : docType === 'pod'
-              ? 'pod'
-              : docType === 'bill_of_lading' || docType === 'bol'
-                ? 'bol'
-                : 'other';
-
-        // Download from storage and send as base64 (OTR often validates doc payloads)
-        const { data: fileBlob, error: dlError } = await adminClient.storage
-          .from('load-documents')
-          .download(d.file_url);
-
-        if (dlError || !fileBlob) {
-          console.log('[submit-otr-invoice] Document download failed:', d.file_url, dlError);
-          continue;
-        }
-
-        const bytes = new Uint8Array(await fileBlob.arrayBuffer());
-        const fileBase64 = encodeBase64(bytes);
-
-        const { data: publicUrlData } = adminClient.storage
-          .from('load-documents')
-          .getPublicUrl(d.file_url);
-
-        docs.push({
-          type: mappedType,
-          fileName: d.file_name || `${mappedType}.pdf`,
-          fileUrl: publicUrlData?.publicUrl,
-          fileBase64,
-        });
-      }
-
-      // If no explicit POD uploaded, fall back to using the newest BOL as POD as well.
-      // (Many users upload a signed BOL as proof-of-delivery.)
-      const hasPod = docs.some((d) => d.type === 'pod');
-      const firstBol = docs.find((d) => d.type === 'bol');
-      if (!hasPod && firstBol) {
-        docs.push({ ...firstBol, type: 'pod' });
-      }
-
-      documents = docs.length > 0 ? docs : undefined;
-    }
-
-    // Get company profile for carrier info
+    // Get company profile for carrier info (ClientDOT)
     const { data: companyProfile } = await adminClient
       .from('company_profile')
       .select('*')
@@ -331,46 +182,101 @@ serve(async (req) => {
       );
     }
 
-    // Broker/customer info
-    let brokerMc = broker_mc;
-    let brokerName = broker_name || invoice.customer_name;
-    let brokerAddress: string | undefined;
-    let brokerCity: string | undefined;
-    let brokerState: string | undefined;
-    let brokerZip: string | undefined;
+    // Get load details
+    const { data: load, error: loadError } = await adminClient
+      .from('loads')
+      .select('*')
+      .eq('id', load_id)
+      .eq('tenant_id', tenant_id)
+      .single();
 
-    if (invoice.customer_id) {
-      const { data: customer } = await adminClient
-        .from('customers')
-        .select('mc_number, name, address, city, state, zip')
-        .eq('id', invoice.customer_id)
-        .single();
-
-      if (!brokerMc && customer?.mc_number) {
-        brokerMc = customer.mc_number;
-      }
-      if (!brokerName && customer?.name) {
-        brokerName = customer.name;
-      }
-
-      brokerAddress = customer?.address || undefined;
-      brokerCity = customer?.city || undefined;
-      brokerState = customer?.state || undefined;
-      brokerZip = customer?.zip || undefined;
-    }
-
-    if (!brokerMc) {
+    if (loadError || !load) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Broker MC number required. Add MC to customer record or provide broker_mc.' 
+          error: 'Load not found' 
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get customer/broker info for MC number
+    let customerMc: number | null = null;
+    let brokerName = load.broker_name || load.customer_name;
+
+    if (load.customer_id) {
+      const { data: customer } = await adminClient
+        .from('customers')
+        .select('mc_number, name')
+        .eq('id', load.customer_id)
+        .single();
+
+      if (customer?.mc_number) {
+        // Clean MC number and convert to number
+        const cleanMc = customer.mc_number.replace(/^MC-?/i, '').replace(/\D/g, '').trim();
+        customerMc = parseInt(cleanMc, 10);
+        brokerName = customer.name || brokerName;
+      }
+    }
+
+    // Try to get MC from load's broker_mc field if not found on customer
+    if (!customerMc && load.broker_mc) {
+      const cleanMc = String(load.broker_mc).replace(/^MC-?/i, '').replace(/\D/g, '').trim();
+      customerMc = parseInt(cleanMc, 10);
+    }
+
+    if (!customerMc || isNaN(customerMc)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Broker MC number required. Add MC number to customer record first.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Clean MC number
-    const cleanMc = brokerMc.replace(/^MC-?/i, '').trim();
+    // Validate required location fields
+    if (!load.pickup_city || !load.pickup_state) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Pickup city and state are required' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!load.delivery_city || !load.delivery_state) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Delivery city and state are required' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate invoice number if not provided
+    const invoiceNumber = load.load_number || `INV-${Date.now()}`;
+    
+    // Get reference/PO number - use reference_number, po_number, or load_number
+    const poNumber = load.reference_number || load.po_number || load.load_number || invoiceNumber;
+
+    // Format invoice date (YYYY-MM-DD)
+    const invoiceDate = new Date().toISOString().split('T')[0];
+
+    // Get invoice amount (rate from load)
+    const invoiceAmount = load.rate || 0;
+
+    if (invoiceAmount <= 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invoice amount must be greater than 0' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Authenticate with OTR
     const tokenResult = await getOtrToken(
@@ -389,47 +295,29 @@ serve(async (req) => {
       );
     }
 
-    // Build OTR invoice payload
-    const otrPayload: OtrInvoicePayload = {
-      brokerMc: cleanMc,
-      brokerName: brokerName,
-      brokerAddress,
-      brokerCity,
-      brokerState,
-      brokerZip,
-      carrierDot: companyProfile.dot_number,
-      carrierMc: companyProfile.mc_number || undefined,
-      carrierName: companyProfile.company_name,
-      invoiceNumber: invoice.invoice_number,
-      invoiceDate: invoice.invoice_date,
-      invoiceAmount: invoice.total_amount,
-      quickPay: quick_pay,
-      loads: loadsWithDetails.map((il: any) => ({
-        loadNumber: il.load?.load_number,
-        referenceNumber: il.load?.reference_number,
-        pickupDate: il.load?.pickup_date ? String(il.load.pickup_date).slice(0, 10) : undefined,
-        deliveryDate: il.load?.delivery_date ? String(il.load.delivery_date).slice(0, 10) : undefined,
-        pickupCity: il.load?.pickup_city,
-        pickupState: il.load?.pickup_state,
-        deliveryCity: il.load?.delivery_city,
-        deliveryState: il.load?.delivery_state,
-        rate: il.amount || il.load?.rate || 0
-      })),
-      documents,
-      notes: invoice.notes || undefined
+    // Build OTR payload with exact field names from API docs
+    const otrPayload: OtrPostInvoicePayload = {
+      CustomerMC: customerMc,
+      ClientDOT: companyProfile.dot_number,
+      FromCity: load.pickup_city.toUpperCase(),
+      FromState: load.pickup_state.toUpperCase().slice(0, 2),
+      ToCity: load.delivery_city.toUpperCase(),
+      ToState: load.delivery_state.toUpperCase().slice(0, 2),
+      PoNumber: poNumber,
+      InvoiceNo: invoiceNumber,
+      InvoiceAmount: invoiceAmount,
+      InvoiceDate: invoiceDate,
     };
 
-    const redactedPayload = {
-      ...otrPayload,
-      documents: (otrPayload.documents || []).map((d) => ({
-        type: d.type,
-        fileName: d.fileName,
-        hasFileUrl: Boolean(d.fileUrl),
-        base64Length: d.fileBase64 ? d.fileBase64.length : 0,
-      })),
-    };
+    // Add optional fields if available
+    if (load.weight) {
+      otrPayload.Weight = load.weight;
+    }
+    if (load.miles) {
+      otrPayload.Miles = load.miles;
+    }
 
-    console.log('[submit-otr-invoice] Payload (redacted):', JSON.stringify(redactedPayload, null, 2));
+    console.log('[submit-otr-invoice] Final OTR payload:', JSON.stringify(otrPayload, null, 2));
 
     // Submit to OTR
     const result = await submitInvoiceToOtr(
@@ -443,11 +331,12 @@ serve(async (req) => {
       .from('otr_invoice_submissions')
       .insert({
         tenant_id,
-        invoice_id,
-        broker_mc: cleanMc,
+        invoice_id: invoice_id || null,
+        load_id,
+        broker_mc: customerMc.toString(),
         broker_name: brokerName,
-        invoice_number: invoice.invoice_number,
-        invoice_amount: invoice.total_amount,
+        invoice_number: invoiceNumber,
+        invoice_amount: invoiceAmount,
         otr_invoice_id: result.invoice_id,
         status: result.success ? (result.status || 'submitted') : 'failed',
         error_message: result.error,
@@ -457,15 +346,15 @@ serve(async (req) => {
         quick_pay
       });
 
-    // Update invoice record with OTR submission status (success or failure)
+    // Update load with OTR submission status
     await adminClient
-      .from('invoices')
+      .from('loads')
       .update({
         otr_submitted_at: result.success ? new Date().toISOString() : null,
         otr_invoice_id: result.invoice_id || null,
         otr_status: result.success ? (result.status || 'submitted') : 'failed'
       })
-      .eq('id', invoice_id);
+      .eq('id', load_id);
 
     return new Response(
       JSON.stringify({
@@ -474,7 +363,7 @@ serve(async (req) => {
         status: result.status,
         error: result.error,
         message: result.success 
-          ? `Invoice ${invoice.invoice_number} submitted to OTR successfully` 
+          ? `Invoice ${invoiceNumber} submitted to OTR successfully` 
           : `Failed to submit invoice: ${result.error}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
