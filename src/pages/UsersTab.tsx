@@ -566,14 +566,6 @@ export default function UsersTab() {
                                 onRoleChange={loadData}
                               />
                             </TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <UserRoleAssignment
-                                userId={user.user_id}
-                                tenantId={tenantId}
-                                compact
-                                onRoleChange={loadData}
-                              />
-                            </TableCell>
                             <TableCell>
                               {format(new Date(user.created_at), "MM/dd/yyyy")}
                             </TableCell>
