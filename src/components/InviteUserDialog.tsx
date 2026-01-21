@@ -45,6 +45,13 @@ export function InviteUserDialog() {
         .eq("id", user.id)
         .single();
 
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email.toLowerCase())
+        .maybeSingle();
+
       // Insert invite record
       const { error: insertError } = await supabase
         .from("invites")
@@ -52,6 +59,7 @@ export function InviteUserDialog() {
           email: email.toLowerCase(),
           invited_by: user.id,
           tenant_id: effectiveTenant?.id || null,
+          accepted_at: existingUser ? new Date().toISOString() : null, // Auto-accept if user exists
         });
 
       if (insertError) {
@@ -66,12 +74,24 @@ export function InviteUserDialog() {
         throw insertError;
       }
 
+      // If user already exists, add them to tenant_users immediately
+      if (existingUser && effectiveTenant?.id) {
+        await supabase.from("tenant_users").upsert({
+          user_id: existingUser.id,
+          tenant_id: effectiveTenant.id,
+          role: "admin",
+          is_active: true,
+        }, { onConflict: "user_id,tenant_id" });
+      }
+
       // Send invitation email
       const { data: { session } } = await supabase.auth.getSession();
       const { error: emailError } = await supabase.functions.invoke("send-invite", {
         body: {
           email: email.toLowerCase(),
           inviterName: profile?.full_name || user.email || "Admin",
+          tenantName: effectiveTenant?.name || undefined,
+          isExistingUser: !!existingUser,
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
