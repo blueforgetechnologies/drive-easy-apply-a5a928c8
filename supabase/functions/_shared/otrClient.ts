@@ -14,8 +14,9 @@ export interface OtrTokenResponse {
 
 export interface OtrCredentials {
   subscriptionKey: string;
-  username: string;
-  password: string;
+  // Some OTR environments require username/password for token auth, others rely on subscription key only.
+  username?: string;
+  password?: string;
 }
 
 // Get OAuth token from OTR Solutions
@@ -78,11 +79,14 @@ export function getOtrCredentialsFromEnv(): OtrCredentials | null {
   const username = Deno.env.get('OTR_USERNAME');
   const password = Deno.env.get('OTR_PASSWORD');
   
-  if (subscriptionKey && username && password) {
+  if (!subscriptionKey) return null;
+
+  // Username/password are optional: some OTR deployments may not require token auth.
+  if (username && password) {
     return { subscriptionKey, username, password };
   }
-  
-  return null;
+
+  return { subscriptionKey };
 }
 
 // Decrypt credentials helper
