@@ -12,73 +12,117 @@ import { GmailTenantMapping } from "@/components/GmailTenantMapping";
 import { WorkerControlPanel } from "@/components/WorkerControlPanel";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserPermissions, PERMISSION_CODES } from "@/hooks/useUserPermissions";
 
 export default function SettingsTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState<string>("users");
   const { isPlatformAdmin } = useTenantContext();
   const { tenantId, isInternalChannel } = useTenantFilter();
-  const [canManageAccess, setCanManageAccess] = useState(false);
+  
+  // Load user permissions
+  const { 
+    hasPermission, 
+    isTenantAdmin, 
+    isLoading: permissionsLoading 
+  } = useUserPermissions();
 
   // Gmail mapping visible only to platform admins in internal channel
   const canSeeGmailMapping = isPlatformAdmin && isInternalChannel;
-
-  // Check if user can see Feature Access tab
-  useEffect(() => {
-    const checkPermission = async () => {
-      if (isPlatformAdmin) {
-        setCanManageAccess(true);
-        return;
-      }
-
-      if (!tenantId) {
-        setCanManageAccess(false);
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setCanManageAccess(false);
-        return;
-      }
-
-      // Check if user is admin/owner in this tenant
-      const { data } = await supabase
-        .from("tenant_users")
-        .select("role")
-        .eq("tenant_id", tenantId)
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      setCanManageAccess(data?.role === "admin" || data?.role === "owner");
-    };
-
-    checkPermission();
-  }, [isPlatformAdmin, tenantId]);
+  
+  // Feature Access: platform admins or tenant admins/owners
+  const canManageAccess = isPlatformAdmin || isTenantAdmin;
+  
+  // Role Builder: platform admins or users with specific permission
+  const canSeeRoleBuilder = isPlatformAdmin || isTenantAdmin || hasPermission(PERMISSION_CODES.SETTINGS_ROLE_BUILDER);
+  
+  // Company: view or edit permissions
+  const canSeeCompany = isPlatformAdmin || hasPermission(PERMISSION_CODES.SETTINGS_COMPANY) || hasPermission(PERMISSION_CODES.SETTINGS_COMPANY_VIEW);
+  
+  // Locations: view or edit permissions
+  const canSeeLocations = isPlatformAdmin || hasPermission(PERMISSION_CODES.SETTINGS_LOCATIONS) || hasPermission(PERMISSION_CODES.SETTINGS_LOCATIONS_VIEW);
+  
+  // Integrations: view or edit permissions
+  const canSeeIntegrations = isPlatformAdmin || hasPermission(PERMISSION_CODES.SETTINGS_INTEGRATIONS) || hasPermission(PERMISSION_CODES.SETTINGS_INTEGRATIONS_VIEW);
+  
+  // Users: platform admins, tenant admins, or users with permission
+  const canSeeUsers = isPlatformAdmin || isTenantAdmin || hasPermission("settings_users");
+  
+  // Preferences: everyone can see their own preferences
+  const canSeePreferences = true;
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
     const validSubTabs = ["users", "company", "locations", "roles", "preferences", "integrations", "access", "gmail-mapping", "workers"];
+    
     if (subTab && validSubTabs.includes(subTab)) {
-      // Only allow access subtab if user can manage it
-      if (subTab === "access" && !canManageAccess) {
-        setActiveSubTab("users");
+      // Validate access to the requested subtab
+      if (subTab === "users" && !canSeeUsers) {
+        setActiveSubTab(getFirstAccessibleTab());
+      } else if (subTab === "company" && !canSeeCompany) {
+        setActiveSubTab(getFirstAccessibleTab());
+      } else if (subTab === "locations" && !canSeeLocations) {
+        setActiveSubTab(getFirstAccessibleTab());
+      } else if (subTab === "roles" && !canSeeRoleBuilder) {
+        setActiveSubTab(getFirstAccessibleTab());
+      } else if (subTab === "integrations" && !canSeeIntegrations) {
+        setActiveSubTab(getFirstAccessibleTab());
+      } else if (subTab === "access" && !canManageAccess) {
+        setActiveSubTab(getFirstAccessibleTab());
       } else if (subTab === "gmail-mapping" && !canSeeGmailMapping) {
-        setActiveSubTab("users");
+        setActiveSubTab(getFirstAccessibleTab());
       } else if (subTab === "workers" && !isPlatformAdmin) {
-        setActiveSubTab("users");
+        setActiveSubTab(getFirstAccessibleTab());
       } else {
         setActiveSubTab(subTab);
       }
+    } else {
+      setActiveSubTab(getFirstAccessibleTab());
     }
-  }, [searchParams, canManageAccess, canSeeGmailMapping, isPlatformAdmin]);
+  }, [searchParams, canSeeUsers, canSeeCompany, canSeeLocations, canSeeRoleBuilder, canSeeIntegrations, canManageAccess, canSeeGmailMapping, isPlatformAdmin]);
+
+  // Get the first tab the user can access
+  const getFirstAccessibleTab = (): string => {
+    if (canSeeUsers) return "users";
+    if (canSeeCompany) return "company";
+    if (canSeeLocations) return "locations";
+    if (canSeeRoleBuilder) return "roles";
+    if (canSeePreferences) return "preferences";
+    if (canSeeIntegrations) return "integrations";
+    if (canManageAccess) return "access";
+    return "preferences"; // Fallback
+  };
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
     setSearchParams({ subtab: value });
   };
+
+  // Don't render tabs while permissions are loading
+  if (permissionsLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="mobile-page-header">
+          <div>
+            <h2 className="mobile-page-title">Settings</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Build visible tabs based on permissions
+  const visibleTabs: { value: string; label: string }[] = [];
+  if (canSeeUsers) visibleTabs.push({ value: "users", label: "Users" });
+  if (canSeeCompany) visibleTabs.push({ value: "company", label: "Company" });
+  if (canSeeLocations) visibleTabs.push({ value: "locations", label: "Locations" });
+  if (canSeeRoleBuilder) visibleTabs.push({ value: "roles", label: "Role Builder" });
+  if (canSeePreferences) visibleTabs.push({ value: "preferences", label: "Preferences" });
+  if (canSeeIntegrations) visibleTabs.push({ value: "integrations", label: "Integrations" });
+  if (canManageAccess) visibleTabs.push({ value: "access", label: "Feature Access" });
+  if (canSeeGmailMapping) visibleTabs.push({ value: "gmail-mapping", label: "Gmail Mapping" });
+  if (isPlatformAdmin) visibleTabs.push({ value: "workers", label: "Workers" });
 
   return (
     <div className="space-y-4">
@@ -94,47 +138,49 @@ export default function SettingsTab() {
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <TabsList className="w-max sm:w-auto">
-            <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
-            <TabsTrigger value="company" className="text-xs sm:text-sm">Company</TabsTrigger>
-            <TabsTrigger value="locations" className="text-xs sm:text-sm">Locations</TabsTrigger>
-            <TabsTrigger value="roles" className="text-xs sm:text-sm">Role Builder</TabsTrigger>
-            <TabsTrigger value="preferences" className="text-xs sm:text-sm">Preferences</TabsTrigger>
-            <TabsTrigger value="integrations" className="text-xs sm:text-sm">Integrations</TabsTrigger>
-            {canManageAccess && (
-              <TabsTrigger value="access" className="text-xs sm:text-sm">Feature Access</TabsTrigger>
-            )}
-            {canSeeGmailMapping && (
-              <TabsTrigger value="gmail-mapping" className="text-xs sm:text-sm">Gmail Mapping</TabsTrigger>
-            )}
-            {isPlatformAdmin && (
-              <TabsTrigger value="workers" className="text-xs sm:text-sm">Workers</TabsTrigger>
-            )}
+            {visibleTabs.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value} className="text-xs sm:text-sm">
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
 
-        <TabsContent value="users" className="mt-4">
-          <UsersTab />
-        </TabsContent>
+        {canSeeUsers && (
+          <TabsContent value="users" className="mt-4">
+            <UsersTab />
+          </TabsContent>
+        )}
 
-        <TabsContent value="company" className="mt-4">
-          <CompanyProfileTab />
-        </TabsContent>
+        {canSeeCompany && (
+          <TabsContent value="company" className="mt-4">
+            <CompanyProfileTab />
+          </TabsContent>
+        )}
 
-        <TabsContent value="locations" className="mt-4">
-          <LocationsTab />
-        </TabsContent>
+        {canSeeLocations && (
+          <TabsContent value="locations" className="mt-4">
+            <LocationsTab />
+          </TabsContent>
+        )}
 
-        <TabsContent value="roles" className="mt-4">
-          <RoleBuilderTab />
-        </TabsContent>
+        {canSeeRoleBuilder && (
+          <TabsContent value="roles" className="mt-4">
+            <RoleBuilderTab />
+          </TabsContent>
+        )}
 
-        <TabsContent value="preferences" className="mt-4">
-          <PreferencesTab />
-        </TabsContent>
+        {canSeePreferences && (
+          <TabsContent value="preferences" className="mt-4">
+            <PreferencesTab />
+          </TabsContent>
+        )}
 
-        <TabsContent value="integrations" className="mt-4">
-          <IntegrationsTab />
-        </TabsContent>
+        {canSeeIntegrations && (
+          <TabsContent value="integrations" className="mt-4">
+            <IntegrationsTab />
+          </TabsContent>
+        )}
 
         {canManageAccess && (
           <TabsContent value="access" className="mt-4">

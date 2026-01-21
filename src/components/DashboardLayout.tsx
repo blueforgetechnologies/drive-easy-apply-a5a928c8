@@ -21,9 +21,9 @@ import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
+import { useUserPermissions, PERMISSION_CODES } from "@/hooks/useUserPermissions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -50,6 +50,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
   const { isPlatformAdmin, isImpersonating, effectiveTenant } = useTenantContext();
   
+  // Load user's permissions from custom roles - STRICT enforcement
+  const { 
+    hasPermission, 
+    isLoading: permissionsLoading, 
+    hasCustomRole,
+    isTenantAdmin 
+  } = useUserPermissions();
+  
   // Use unified feature gates for all gated modules
   const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
   const accountingGate = useFeatureGate({ featureKey: "accounting_module", requiresUserGrant: false });
@@ -61,21 +69,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const developmentGate = useFeatureGate({ featureKey: "development_tools", requiresUserGrant: false });
   const operationsGate = useFeatureGate({ featureKey: "operations_module", requiresUserGrant: false });
 
-  // Compute visibility for each gated feature
-  const showAnalytics = !analyticsGate.isLoading && analyticsGate.isEnabledForTenant && analyticsGate.canUserAccess;
-  const showAccounting = !accountingGate.isLoading && accountingGate.isEnabledForTenant;
-  const showFleetFinancials = !fleetFinancialsGate.isLoading && fleetFinancialsGate.isEnabledForTenant;
-  const showCarrierDashboard = !carrierDashboardGate.isLoading && carrierDashboardGate.isEnabledForTenant;
-  const showMaintenance = !maintenanceGate.isLoading && maintenanceGate.isEnabledForTenant;
-  const showMap = !mapGate.isLoading && mapGate.isEnabledForTenant;
-  const showLoadHunter = !loadHunterGate.isLoading && loadHunterGate.isEnabledForTenant;
-  const showDevelopment = !developmentGate.isLoading && developmentGate.isEnabledForTenant;
-  const showOperations = !operationsGate.isLoading && operationsGate.isEnabledForTenant;
+  // Compute visibility: BOTH tenant feature flag AND user permission required
+  // Platform admins bypass permission checks
+  // Users without custom roles see NOTHING
+  const canAccessFeature = (featureEnabled: boolean, permissionCode: string): boolean => {
+    if (isPlatformAdmin) return featureEnabled; // Platform admins only need feature enabled
+    if (!hasCustomRole) return false; // No custom role = no access
+    return featureEnabled && hasPermission(permissionCode);
+  };
 
-  // Debug: log analytics gate resolution for nav gating verification
+  const showAnalytics = !analyticsGate.isLoading && !permissionsLoading && 
+    analyticsGate.isEnabledForTenant && analyticsGate.canUserAccess && 
+    hasPermission(PERMISSION_CODES.TAB_ANALYTICS);
+  const showAccounting = !accountingGate.isLoading && !permissionsLoading && 
+    canAccessFeature(accountingGate.isEnabledForTenant, PERMISSION_CODES.TAB_ACCOUNTING);
+  const showFleetFinancials = !fleetFinancialsGate.isLoading && !permissionsLoading && 
+    canAccessFeature(fleetFinancialsGate.isEnabledForTenant, PERMISSION_CODES.TAB_FLEET_FINANCIALS);
+  const showCarrierDashboard = !carrierDashboardGate.isLoading && !permissionsLoading && 
+    canAccessFeature(carrierDashboardGate.isEnabledForTenant, PERMISSION_CODES.TAB_CARRIER_DASHBOARD);
+  const showMaintenance = !maintenanceGate.isLoading && !permissionsLoading && 
+    canAccessFeature(maintenanceGate.isEnabledForTenant, PERMISSION_CODES.TAB_MAINTENANCE);
+  const showMap = !mapGate.isLoading && !permissionsLoading && 
+    canAccessFeature(mapGate.isEnabledForTenant, PERMISSION_CODES.TAB_MAP);
+  const showLoadHunter = !loadHunterGate.isLoading && !permissionsLoading && 
+    canAccessFeature(loadHunterGate.isEnabledForTenant, PERMISSION_CODES.TAB_LOAD_HUNTER);
+  const showDevelopment = !developmentGate.isLoading && !permissionsLoading && 
+    canAccessFeature(developmentGate.isEnabledForTenant, PERMISSION_CODES.TAB_DEVELOPMENT);
+  const showOperations = !operationsGate.isLoading && !permissionsLoading && 
+    canAccessFeature(operationsGate.isEnabledForTenant, PERMISSION_CODES.TAB_BUSINESS);
+  // Loads tab - core feature, but still requires permission
+  const showLoads = !permissionsLoading && (isPlatformAdmin || hasPermission(PERMISSION_CODES.TAB_LOADS));
+  // Settings tab - check permission
+  const showSettings = !permissionsLoading && (isPlatformAdmin || hasPermission("tab_settings") || isTenantAdmin);
+  // Tools tab - check permission
+  const showTools = !permissionsLoading && (isPlatformAdmin || hasPermission("tab_tools"));
+
+  // Debug: log gate + permission resolution
   useEffect(() => {
-    if (!analyticsGate.isLoading) {
-      console.log("[DashboardLayout] Feature gates resolved:", {
+    if (!analyticsGate.isLoading && !permissionsLoading) {
+      console.log("[DashboardLayout] Access resolved:", {
+        hasCustomRole,
+        isPlatformAdmin,
         analytics: showAnalytics,
         accounting: showAccounting,
         fleetFinancials: showFleetFinancials,
@@ -85,17 +119,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         loadHunter: showLoadHunter,
         development: showDevelopment,
         operations: showOperations,
+        loads: showLoads,
         tenantName: effectiveTenant?.name,
-        releaseChannel: effectiveTenant?.release_channel,
       });
     }
   }, [
     analyticsGate.isLoading,
+    permissionsLoading,
+    hasCustomRole,
     showAnalytics,
     showAccounting,
     showFleetFinancials,
     effectiveTenant?.name,
-    effectiveTenant?.release_channel,
   ]);
 
   // Keep UI in sync with auth state (fixes "logged in but UI not updating")
@@ -307,15 +342,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  // Primary nav items - feature-gated based on tenant settings
-  // Items only show when their corresponding feature flag is enabled for the tenant
+  // Primary nav items - BOTH feature flag AND user permission required
+  // Users without custom roles see NOTHING (strict enforcement)
   const primaryNavItems = [
-    // Map - gated
+    // Map - gated by feature flag + permission
     ...(showMap ? [{ value: "map", icon: Map, label: "Map" }] : []),
     // Load Hunter - gated
     ...(showLoadHunter ? [{ value: "load-hunter", icon: Target, label: "Load Hunter" }] : []),
-    // Loads - always visible (core feature)
-    { value: "loads", icon: Package, label: "Loads" },
+    // Loads - gated by permission (core feature but still requires permission)
+    ...(showLoads ? [{ value: "loads", icon: Package, label: "Loads" }] : []),
     // Fleet Financials - gated
     ...(showFleetFinancials ? [{ value: "fleet-financials", icon: Wallet, label: "Fleet $" }] : []),
     // Carrier Dashboard - gated
@@ -337,10 +372,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Combined for mobile menu (includes items from user dropdown)
   const allNavItems = [
     ...primaryNavItems,
-    { value: "tools", icon: Ruler, label: "Tools" },
-    { value: "settings", icon: Settings, label: "Settings" },
-    // Admin items for mobile (only shown if user has admin role)
-    ...(userRoles.includes('admin') ? [
+    // Tools - gated by permission
+    ...(showTools ? [{ value: "tools", icon: Ruler, label: "Tools" }] : []),
+    // Settings - gated by permission or tenant admin
+    ...(showSettings ? [{ value: "settings", icon: Settings, label: "Settings" }] : []),
+    // Admin items for mobile (only shown if platform admin)
+    ...(isPlatformAdmin ? [
       { value: "platform-admin", icon: ShieldCheck, label: "Platform Admin" },
       { value: "inspector", icon: Shield, label: "Inspector" },
       { value: "rollouts", icon: Rocket, label: "Rollouts" },
@@ -522,7 +559,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         My Dashboard
                       </button>
                     )}
-                    {userRoles.includes('admin') && (
+                    {isPlatformAdmin && (
                       <>
                         <button 
                           onClick={() => navigate('/dashboard/platform-admin')} 
@@ -545,7 +582,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           <Rocket className="h-3.5 w-3.5 text-muted-foreground" />
                           Rollouts
                         </button>
-                        {isPlatformAdmin && !isImpersonating && (
+                        {!isImpersonating && (
                           <button 
                             onClick={() => setImpersonateDialogOpen(true)} 
                             className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-left text-amber-700 dark:text-amber-400"
@@ -556,20 +593,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         )}
                       </>
                     )}
-                    <button 
-                      onClick={() => navigate('/dashboard/settings')} 
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
-                    >
-                      <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-                      Settings
-                    </button>
-                    <button 
-                      onClick={() => navigate('/dashboard/tools')} 
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
-                    >
-                      <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
-                      Tools
-                    </button>
+                    {showSettings && (
+                      <button 
+                        onClick={() => navigate('/dashboard/settings')} 
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                      >
+                        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                        Settings
+                      </button>
+                    )}
+                    {showTools && (
+                      <button 
+                        onClick={() => navigate('/dashboard/tools')} 
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                      >
+                        <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                        Tools
+                      </button>
+                    )}
                     <button 
                       onClick={() => navigate('/dashboard/screenshare')} 
                       className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
