@@ -544,8 +544,7 @@ export default function UsersTab() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>App Role</TableHead>
-                          <TableHead>Custom Role (Permissions)</TableHead>
+                          <TableHead>Role (Permissions)</TableHead>
                           <TableHead>Joined</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -559,25 +558,13 @@ export default function UsersTab() {
                           >
                             <TableCell className="font-medium">{user.profile?.full_name || "N/A"}</TableCell>
                             <TableCell>{user.profile?.email || "N/A"}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {(user.allRoles || [user.role]).map((role) => (
-                                  <Badge 
-                                    key={role}
-                                    className={
-                                      role === "owner" 
-                                        ? "badge-glossy-primary" 
-                                        : role === "admin" 
-                                        ? "badge-glossy-success"
-                                        : role === "dispatcher"
-                                        ? "badge-glossy-warning"
-                                        : "badge-glossy-muted"
-                                    }
-                                  >
-                                    {role}
-                                  </Badge>
-                                ))}
-                              </div>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <UserRoleAssignment
+                                userId={user.user_id}
+                                tenantId={tenantId}
+                                compact
+                                onRoleChange={loadData}
+                              />
                             </TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <UserRoleAssignment
