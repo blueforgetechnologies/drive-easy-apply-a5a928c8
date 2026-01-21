@@ -19,6 +19,24 @@ interface InviteRequest {
   isExistingUser?: boolean;
 }
 
+// Generate a secure temporary password
+function generateTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const specialChars = '!@#$%';
+  let password = '';
+  
+  // Generate 8 random characters
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  // Add a special character and number for complexity
+  password += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+  password += Math.floor(Math.random() * 10);
+  
+  return password;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -76,11 +94,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     const appUrl = "https://drive-easy-apply.lovable.app";
     const loginUrl = `${appUrl}/auth`;
-    const signupUrl = `${appUrl}/auth?mode=signup&email=${encodeURIComponent(email)}`;
 
-    // Different email content for existing vs new users
-    const emailContent = isExistingUser 
-      ? `
+    let tempPassword = "";
+    let emailContent = "";
+
+    if (isExistingUser) {
+      // Existing user - just send login link
+      emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been added to ${tenantName || 'a new organization'}!</h1>
           <p style="font-size: 16px; color: #555;">
@@ -97,32 +117,60 @@ const handler = async (req: Request): Promise<Response> => {
             Log In Now
           </a>
         </div>
-      `
-      : `
+      `;
+    } else {
+      // New user - generate temp password and create account
+      tempPassword = generateTempPassword();
+      
+      // Create the user account with the temp password using admin API
+      const { data: newUser, error: createError } = await supabaseService.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm the email
+        user_metadata: {
+          full_name: firstName && lastName ? `${firstName} ${lastName}` : undefined,
+        },
+      });
+
+      if (createError) {
+        console.error("Error creating user:", createError);
+        return new Response(
+          JSON.stringify({ error: `Failed to create user account: ${createError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log("Created new user:", newUser.user?.id);
+
+      emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333;">Hi${firstName ? ` ${firstName}` : ''}, you've been invited to join ${tenantName || 'the team'}!</h1>
           <p style="font-size: 16px; color: #555;">
             ${inviterName} has invited you to join <strong>${tenantName || 'their organization'}</strong> to help manage operations.
           </p>
           <div style="background: #e8f4fd; border-left: 4px solid #007bff; padding: 16px; margin: 20px 0;">
-            <p style="margin: 0; font-size: 14px; color: #333;"><strong>📧 Your username:</strong> ${email}</p>
-            <p style="margin: 12px 0 0 0; font-size: 14px; color: #333;"><strong>🔐 Password:</strong> You'll create your own password during signup</p>
+            <p style="margin: 0; font-size: 14px; color: #333;"><strong>📧 Your username:</strong> <a href="mailto:${email}" style="color: #007bff;">${email}</a></p>
+            <p style="margin: 12px 0 0 0; font-size: 14px; color: #333;"><strong>🔐 Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px; font-weight: bold;">${tempPassword}</code></p>
           </div>
-          <p style="font-size: 16px; color: #555;">
-            Click below to create your account:
+          <p style="font-size: 14px; color: #d9534f; margin: 10px 0;">
+            ⚠️ Please change your password after your first login for security.
           </p>
-          <a href="${signupUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
-            Create Your Account
+          <p style="font-size: 16px; color: #555;">
+            Click below to log in:
+          </p>
+          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+            Log In Now
           </a>
           <p style="font-size: 14px; color: #777; margin-top: 20px;">
             Or copy and paste this link into your browser:<br>
-            <a href="${signupUrl}" style="color: #007bff;">${signupUrl}</a>
+            <a href="${loginUrl}" style="color: #007bff;">${loginUrl}</a>
           </p>
           <p style="font-size: 14px; color: #999; margin-top: 40px;">
             If you didn't expect this invitation, you can safely ignore this email.
           </p>
         </div>
       `;
+    }
 
     const emailResponse = await resend.emails.send({
       from: `${tenantName || 'Blueforge Technologies'} <noreply@nexustechsolution.com>`,
