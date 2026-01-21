@@ -18,12 +18,30 @@ import { useTenantContext } from "@/contexts/TenantContext";
 
 export function InviteUserDialog() {
   const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { effectiveTenant } = useTenantContext();
 
+  const resetForm = () => {
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+  };
+
   const handleInvite = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter first and last name.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!email || !email.includes("@")) {
       toast({
         title: "Invalid email",
@@ -57,9 +75,12 @@ export function InviteUserDialog() {
         .from("invites")
         .insert({
           email: email.toLowerCase(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim() || null,
           invited_by: user.id,
           tenant_id: effectiveTenant?.id || null,
-          accepted_at: existingUser ? new Date().toISOString() : null, // Auto-accept if user exists
+          accepted_at: existingUser ? new Date().toISOString() : null,
         });
 
       if (insertError) {
@@ -89,6 +110,9 @@ export function InviteUserDialog() {
       const { error: emailError } = await supabase.functions.invoke("send-invite", {
         body: {
           email: email.toLowerCase(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone.trim() || undefined,
           inviterName: profile?.full_name || user.email || "Admin",
           tenantName: effectiveTenant?.name || undefined,
           isExistingUser: !!existingUser,
@@ -102,10 +126,10 @@ export function InviteUserDialog() {
 
       toast({
         title: "Invitation sent!",
-        description: `An invitation has been sent to ${email}`,
+        description: `An invitation has been sent to ${firstName} ${lastName}`,
       });
 
-      setEmail("");
+      resetForm();
       setOpen(false);
     } catch (error: any) {
       console.error("Error inviting user:", error);
@@ -135,6 +159,26 @@ export function InviteUserDialog() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">First name</Label>
+              <Input
+                id="firstName"
+                placeholder="John"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Last name</Label>
+              <Input
+                id="lastName"
+                placeholder="Doe"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email address</Label>
             <Input
@@ -143,6 +187,16 @@ export function InviteUserDialog() {
               placeholder="user@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="phone">Phone number <span className="text-muted-foreground">(optional)</span></Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="(555) 123-4567"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !loading) {
                   handleInvite();
