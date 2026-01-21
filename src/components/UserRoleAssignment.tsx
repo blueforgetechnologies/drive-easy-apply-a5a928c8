@@ -134,39 +134,44 @@ export function UserRoleAssignment({
     return <div className="text-sm text-muted-foreground">Loading roles...</div>;
   }
 
+  // Color map matching the App Role badge colors
+  const getRoleBadgeClasses = (roleName: string) => {
+    const lowerName = roleName.toLowerCase();
+    if (lowerName.includes('admin')) {
+      return "bg-gradient-to-b from-orange-400 to-orange-500 text-white shadow-md border-0";
+    }
+    if (lowerName.includes('dispatch')) {
+      return "bg-gradient-to-b from-green-500 to-green-600 text-white shadow-md border-0";
+    }
+    // Default purple for other roles
+    return "bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-md border-0";
+  };
+
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        {assignedRoles.length === 0 ? (
-          <Badge variant="outline" className="text-muted-foreground border-dashed">
-            No role assigned
-          </Badge>
-        ) : (
-          assignedRoles.map(role => (
-            <Badge 
-              key={role.id} 
-              variant="secondary"
-              className="gap-1 pr-1"
+        {assignedRoles.map(role => (
+          <Badge 
+            key={role.id} 
+            className={`gap-1 pr-1.5 !px-3 !py-1 text-xs font-medium ${getRoleBadgeClasses(role.name)}`}
+          >
+            {role.name}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeRole(role.id);
+              }}
+              className="ml-1 hover:bg-white/20 rounded p-0.5 transition-colors"
+              disabled={saving}
             >
-              <Shield className="h-3 w-3" />
-              {role.name}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeRole(role.id);
-                }}
-                className="ml-1 hover:bg-destructive/20 rounded p-0.5"
-                disabled={saving}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))
-        )}
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
         
         {unassignedRoles.length > 0 && (
           <Select value={selectedRole} onValueChange={setSelectedRole}>
-            <SelectTrigger className="h-7 w-[140px] text-xs">
+            <SelectTrigger className="h-7 w-[120px] text-xs">
               <SelectValue placeholder="Add role..." />
             </SelectTrigger>
             <SelectContent>
