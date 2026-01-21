@@ -24,7 +24,7 @@ interface OtrPostInvoicePayload {
   ToState: string;           // Delivery state (2-letter) - required
   PoNumber: string;          // PO/Reference number - required
   InvoiceNo: string;         // Invoice number - required
-  InvoiceDate: string;       // date-time format (YYYY-MM-DD)
+  InvoiceDate: string;       // date-time format (ISO 8601 recommended)
   InvoiceAmount: number;     // float - required
   
   // Optional fields
@@ -319,17 +319,50 @@ serve(async (req) => {
       );
     }
 
-    // Generate invoice number if not provided
-    const invoiceNumber = load.load_number || `INV-${Date.now()}`;
-    
+    // If invoice_id is provided, prefer invoice fields (invoice_number / total_amount / invoice_date)
+    // because OTR's PostInvoices examples typically use the invoice number (often numeric).
+    let invoiceNumber: string | null = null;
+    let invoiceAmount: number = Number(load.rate || 0);
+    let invoiceDate: string = new Date().toISOString();
+
+    if (invoice_id) {
+      const { data: invoice, error: invoiceError } = await adminClient
+        .from('invoices')
+        .select('invoice_number, invoice_date, total_amount')
+        .eq('id', invoice_id)
+        .single();
+
+      if (invoiceError) {
+        console.warn('[submit-otr-invoice] Failed to fetch invoice details, falling back to load fields:', invoiceError);
+      }
+
+      if (invoice) {
+        invoiceNumber = invoice.invoice_number ? String(invoice.invoice_number) : null;
+
+        // total_amount is NUMERIC in DB; it may come back as string.
+        const rawAmount: unknown = (invoice as any).total_amount;
+        const parsedAmount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount || '0'));
+        if (!Number.isNaN(parsedAmount)) {
+          invoiceAmount = parsedAmount;
+        }
+
+        // invoice_date is DATE in DB (YYYY-MM-DD). Convert to ISO date-time.
+        const rawInvoiceDate: unknown = (invoice as any).invoice_date;
+        if (rawInvoiceDate) {
+          const yyyyMmDd = String(rawInvoiceDate);
+          // Use midnight UTC to satisfy date-time validators.
+          invoiceDate = new Date(`${yyyyMmDd}T00:00:00Z`).toISOString();
+        }
+      }
+    }
+
+    // Fallback invoice number: use load_number or generated value
+    if (!invoiceNumber) {
+      invoiceNumber = String(load.load_number || `INV-${Date.now()}`);
+    }
+
     // Get reference/PO number - use reference_number, po_number, or load_number
-    const poNumber = load.reference_number || load.po_number || load.load_number || invoiceNumber;
-
-    // Format invoice date (YYYY-MM-DD)
-    const invoiceDate = new Date().toISOString().split('T')[0];
-
-    // Get invoice amount (rate from load) - required by OTR as float
-    const invoiceAmount = load.rate || 0;
+    const poNumber = String(load.reference_number || load.po_number || load.load_number || invoiceNumber);
     
     if (invoiceAmount <= 0) {
       return new Response(
@@ -372,7 +405,7 @@ serve(async (req) => {
     // Ensure InvoiceAmount is a float (parseFloat ensures decimal representation)
     const otrPayload: OtrPostInvoicePayload = {
       CustomerMC: customerMc,
-      ClientDOT: companyProfile.dot_number,
+      ClientDOT: String(companyProfile.dot_number),
       FromCity: load.pickup_city.toUpperCase(),
       FromState: load.pickup_state.toUpperCase().slice(0, 2),
       ToCity: load.delivery_city.toUpperCase(),
