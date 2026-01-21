@@ -231,8 +231,34 @@ export default function UsersTab() {
 
   const handleResendInvite = async (invite: Invite) => {
     try {
+      // Get current user's profile for inviter name
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user?.id)
+        .single();
+
+      // Get invite details for first/last name
+      const { data: inviteDetails } = await supabase
+        .from("invites")
+        .select("first_name, last_name")
+        .eq("id", invite.id)
+        .single();
+
+      const { data: { session } } = await supabase.auth.getSession();
       const { error } = await supabase.functions.invoke("send-invite", {
-        body: { email: invite.email, tenantId },
+        body: { 
+          email: invite.email, 
+          tenantId,
+          tenantName: effectiveTenant?.name,
+          inviterName: profile?.full_name || user?.email || "Admin",
+          firstName: inviteDetails?.first_name,
+          lastName: inviteDetails?.last_name,
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
       });
 
       if (error) throw error;
