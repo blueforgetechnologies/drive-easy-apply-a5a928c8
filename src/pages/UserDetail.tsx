@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ArrowLeft, KeyRound, Mail, Shield, User, Calendar, Clock, Save, X, Pencil, Link2, Unlink } from "lucide-react";
+import { useTenantContext } from "@/contexts/TenantContext";
 
 interface Dispatcher {
   id: string;
@@ -63,6 +64,7 @@ const US_STATES = [
 export default function UserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { effectiveTenant } = useTenantContext();
   const [user, setUser] = useState<Profile | null>(null);
   const [editedUser, setEditedUser] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
@@ -231,7 +233,7 @@ export default function UserDetail() {
   };
 
   const handleRoleChange = async (role: string, checked: boolean) => {
-    if (!id) return;
+    if (!id || !user) return;
     
     setSavingRoles(true);
     try {
@@ -243,6 +245,42 @@ export default function UserDetail() {
         if (error) throw error;
         setUserRoles((prev) => [...prev, role]);
         toast.success(`Added ${role} role`);
+        
+        // Auto-create dispatcher record when dispatcher role is added
+        if (role === "dispatcher" && effectiveTenant?.id) {
+          // Check if dispatcher already exists for this user
+          const { data: existingDispatcher } = await supabase
+            .from("dispatchers")
+            .select("id")
+            .eq("user_id", id)
+            .maybeSingle();
+          
+          if (!existingDispatcher) {
+            // Parse name into first/last
+            const nameParts = (user.full_name || "").trim().split(" ");
+            const firstName = nameParts[0] || user.email?.split("@")[0] || "Unknown";
+            const lastName = nameParts.slice(1).join(" ") || "";
+            
+            const { error: dispatcherError } = await supabase
+              .from("dispatchers")
+              .insert({
+                first_name: firstName,
+                last_name: lastName || firstName, // Use first name if no last name
+                email: user.email,
+                user_id: id,
+                tenant_id: effectiveTenant.id,
+                status: "active",
+                phone: user.phone || null,
+              });
+            
+            if (dispatcherError) {
+              console.error("Error creating dispatcher:", dispatcherError);
+            } else {
+              toast.success("Dispatcher profile created automatically");
+              loadDispatchers();
+            }
+          }
+        }
       } else {
         const { error } = await supabase
           .from("user_roles")
