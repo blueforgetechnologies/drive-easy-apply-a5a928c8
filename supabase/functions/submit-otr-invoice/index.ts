@@ -128,8 +128,8 @@ serve(async (req) => {
     const body = await req.json();
     const { 
       tenant_id,
-      load_id,        // Single load ID to submit
-      invoice_id,     // Optional: existing invoice ID (if already created)
+      load_id: providedLoadId,  // Single load ID to submit (optional if invoice_id provided)
+      invoice_id,               // Invoice ID - will look up loads from invoice_loads table
       quick_pay = false
     } = body;
 
@@ -182,6 +182,38 @@ serve(async (req) => {
       );
     }
 
+    // Determine load_id - either provided directly or look up from invoice_loads table
+    let load_id = providedLoadId;
+    
+    if (!load_id && invoice_id) {
+      // Look up load(s) from invoice_loads join table
+      const { data: invoiceLoads, error: invoiceLoadsError } = await adminClient
+        .from('invoice_loads')
+        .select('load_id')
+        .eq('invoice_id', invoice_id)
+        .eq('tenant_id', tenant_id);
+      
+      if (invoiceLoadsError) {
+        console.error('[submit-otr-invoice] Error looking up invoice loads:', invoiceLoadsError);
+      }
+      
+      if (invoiceLoads && invoiceLoads.length > 0) {
+        // Use the first load associated with this invoice
+        load_id = invoiceLoads[0].load_id;
+        console.log(`[submit-otr-invoice] Found load_id ${load_id} from invoice ${invoice_id}`);
+      }
+    }
+
+    if (!load_id) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No load associated with this invoice. Please ensure the invoice has loads attached.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get load details
     const { data: load, error: loadError } = await adminClient
       .from('loads')
@@ -191,10 +223,11 @@ serve(async (req) => {
       .single();
 
     if (loadError || !load) {
+      console.error('[submit-otr-invoice] Load not found:', { load_id, tenant_id, error: loadError });
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Load not found' 
+          error: `Load not found (ID: ${load_id})` 
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
