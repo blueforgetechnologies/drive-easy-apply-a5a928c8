@@ -59,7 +59,12 @@ async function submitInvoiceToOtr(
     console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
     console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
     
-    const response = await fetch(`${OTR_API_BASE_URL}/invoices`, {
+    // Try the /loads endpoint first (Post Load from OTR API docs)
+    // OTR uses this to create a load/invoice in their system
+    const endpoint = `${OTR_API_BASE_URL}/loads`;
+    console.log(`[submit-otr-invoice] Using endpoint: ${endpoint}`);
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
