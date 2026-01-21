@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import MobileNav from "./MobileNav";
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
+import { NoRoleAssignedBanner } from "./NoRoleAssignedBanner";
 
 import { TenantRequired } from "./TenantRequired";
 import { prefetchMapboxToken } from "./LoadRouteMap";
@@ -659,6 +660,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Platform Admin and Inspector are exempt from tenant requirement */}
         {location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector') ? (
           children
+        ) : !permissionsLoading && !hasCustomRole && !isPlatformAdmin && !isTenantAdmin ? (
+          // User has no custom role assigned - show message
+          <NoRoleAssignedBanner />
         ) : (
           <TenantRequired>
             {children}

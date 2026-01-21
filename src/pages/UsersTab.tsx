@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
-import { ChevronLeft, ChevronRight, KeyRound, Mail, RotateCw, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, KeyRound, Mail, RotateCw, Search, Trash2, Shield } from "lucide-react";
+import { UserRoleAssignment } from "@/components/UserRoleAssignment";
 
 const ROWS_PER_PAGE = 10;
 
@@ -543,7 +544,8 @@ export default function UsersTab() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Role</TableHead>
+                          <TableHead>App Role</TableHead>
+                          <TableHead>Custom Role (Permissions)</TableHead>
                           <TableHead>Joined</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -576,6 +578,14 @@ export default function UsersTab() {
                                   </Badge>
                                 ))}
                               </div>
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <UserRoleAssignment
+                                userId={user.user_id}
+                                tenantId={tenantId}
+                                compact
+                                onRoleChange={loadData}
+                              />
                             </TableCell>
                             <TableCell>
                               {format(new Date(user.created_at), "MM/dd/yyyy")}
