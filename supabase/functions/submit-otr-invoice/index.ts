@@ -24,11 +24,11 @@ interface OtrPostInvoicePayload {
   ToState: string;           // Delivery state (2-letter) - required
   PoNumber: string;          // PO/Reference number - required
   InvoiceNo: string;         // Invoice number - required
-  InvoiceDate: string;       // date-time format
+  InvoiceDate: string;       // date-time format (YYYY-MM-DD)
+  InvoiceAmount: number;     // float - required
   
   // Optional fields
   TermPkey?: number;         // Payment terms key
-  InvoiceAmount?: number;    // May or may not be required
   Weight?: number;           // Total weight
   Miles?: number;            // Total miles
   Notes?: string;            // Additional notes
@@ -328,12 +328,17 @@ serve(async (req) => {
     // Format invoice date (YYYY-MM-DD)
     const invoiceDate = new Date().toISOString().split('T')[0];
 
-    // Get invoice amount (rate from load) - may be optional per OTR docs
+    // Get invoice amount (rate from load) - required by OTR as float
     const invoiceAmount = load.rate || 0;
     
-    // Log if amount is 0 but don't block - OTR may not require it
     if (invoiceAmount <= 0) {
-      console.log('[submit-otr-invoice] Warning: Invoice amount is 0, proceeding anyway as it may be optional');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invoice amount must be greater than 0' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Authenticate with OTR
@@ -364,7 +369,7 @@ serve(async (req) => {
     }
 
     // Build OTR payload with exact field names from API docs
-    // Start with only the confirmed required fields
+    // Ensure InvoiceAmount is a float (parseFloat ensures decimal representation)
     const otrPayload: OtrPostInvoicePayload = {
       CustomerMC: customerMc,
       ClientDOT: companyProfile.dot_number,
@@ -375,12 +380,8 @@ serve(async (req) => {
       PoNumber: poNumber,
       InvoiceNo: invoiceNumber,
       InvoiceDate: invoiceDate,
+      InvoiceAmount: parseFloat(invoiceAmount.toFixed(2)), // Ensure float format
     };
-
-    // Add InvoiceAmount - may be optional per OTR docs
-    if (invoiceAmount > 0) {
-      otrPayload.InvoiceAmount = invoiceAmount;
-    }
 
     // Add optional fields if available
     if (load.weight) {
