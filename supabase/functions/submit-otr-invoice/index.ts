@@ -312,6 +312,16 @@ serve(async (req) => {
     }
 
     // Authenticate with OTR
+    if (!credentials.username || !credentials.password) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'OTR username/password not configured'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const tokenResult = await getOtrToken(
       credentials.subscriptionKey,
       credentials.username,
