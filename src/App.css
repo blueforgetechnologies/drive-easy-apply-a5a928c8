@@ -40,3 +40,20 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Remove default Mapbox popup styling */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.mapboxgl-popup-tip {
+  display: none !important;
+}
+
+.mapboxgl-popup {
+  max-width: none !important;
+}
