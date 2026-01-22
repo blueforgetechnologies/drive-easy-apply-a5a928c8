@@ -1448,7 +1448,7 @@ const MapTab = () => {
         <div 
           className={`
             fixed left-0 right-0 z-20
-            bg-background/95 backdrop-blur-xl border-t rounded-t-3xl shadow-2xl
+            bg-background border-t rounded-t-3xl shadow-2xl
             transition-all duration-300 ease-out
             ${mobileSheetExpanded ? 'h-[70vh]' : 'h-auto'}
           `}
@@ -1457,34 +1457,36 @@ const MapTab = () => {
           {/* Handle bar */}
           <button
             onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
-            className="w-full flex flex-col items-center pt-3 pb-2 touch-manipulation"
+            className="w-full flex flex-col items-center pt-2 pb-1 touch-manipulation"
           >
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
           </button>
           
-          {/* Header */}
-          <div className="px-4 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Truck className="h-4 w-4 text-primary" />
+          {/* Header - Puffy modern design */}
+          <div className="px-3 pb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shadow-sm">
+                <Truck className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <h3 className="font-bold text-sm">Fleet Tracker</h3>
-                <p className="text-xs text-muted-foreground">
-                  {vehicles.length} active • Updated {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+              <div className="flex flex-col">
+                <h3 className="font-bold text-sm leading-tight">Fleet Tracker</h3>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/80">{vehicles.length} active</span>
+                  <span>•</span>
+                  <span>Updated {lastUpdate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Mobile filter toggle */}
+            <div className="flex items-center gap-1.5">
+              {/* Mobile filter toggle - puffy pill style */}
               {(isAdmin || currentDispatcherId) && (
                 <button
                   onClick={() => setFilterMode(filterMode === 'all' ? 'my-trucks' : 'all')}
                   className={`
-                    px-2 py-1 rounded-md text-[10px] font-medium transition-colors
+                    px-3 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm
                     ${filterMode === 'my-trucks' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground'
+                      ? 'bg-gradient-to-b from-primary to-primary/90 text-primary-foreground shadow-primary/25' 
+                      : 'bg-muted/80 text-muted-foreground hover:bg-muted'
                     }
                   `}
                 >
@@ -1495,7 +1497,7 @@ const MapTab = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileSheetExpanded(!mobileSheetExpanded)}
-                className="h-8 w-8"
+                className="h-8 w-8 rounded-xl hover:bg-muted/50"
               >
                 {mobileSheetExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
               </Button>
@@ -1504,7 +1506,7 @@ const MapTab = () => {
           
           {/* Expanded content */}
           {mobileSheetExpanded && (
-            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2" style={{ maxHeight: 'calc(70vh - 80px)' }}>
+            <div className="flex-1 overflow-y-auto px-3 pb-6 space-y-2" style={{ maxHeight: 'calc(70vh - 80px)' }}>
               {vehicles.map(renderVehicleCard)}
               {vehicles.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -1518,10 +1520,10 @@ const MapTab = () => {
             </div>
           )}
           
-          {/* Collapsed: Quick vehicle preview */}
+          {/* Collapsed: Quick vehicle preview - Puffy pill cards */}
           {!mobileSheetExpanded && vehicles.length > 0 && (
-            <div className="px-4 pb-6">
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="px-3 pb-4">
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
                 {vehicles.slice(0, 5).map((vehicle) => {
                   const speed = vehicle.speed || 0;
                   const status = getVehicleStatus(vehicle);
@@ -1529,27 +1531,27 @@ const MapTab = () => {
                     (vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0);
                   
                   // Determine status color
-                  let statusColor = 'bg-blue-500'; // Parked
-                  if (status === 'driving') statusColor = 'bg-emerald-500'; // Driving
-                  else if (status === 'idling') statusColor = 'bg-amber-500'; // Idling
+                  let statusDot = 'bg-gray-400'; // Parked
+                  if (status === 'driving') statusDot = 'bg-emerald-500';
+                  else if (status === 'idling') statusDot = 'bg-amber-500';
                   
                   return (
                     <button
                       key={vehicle.id}
                       onClick={() => handleVehicleClick(vehicle.id)}
                       className={`
-                        flex-shrink-0 px-4 py-2.5 rounded-xl border transition-all
+                        flex-shrink-0 px-3 py-2 rounded-2xl transition-all shadow-sm
                         ${selectedVehicle === vehicle.id 
-                          ? 'bg-primary/10 border-primary/30' 
-                          : 'bg-card/50 border-border/50 active:scale-95'
+                          ? 'bg-gradient-to-b from-primary/15 to-primary/5 ring-1 ring-primary/30' 
+                          : 'bg-muted/60 hover:bg-muted active:scale-95'
                         }
-                        ${hasAlert ? 'border-l-2 border-l-destructive' : ''}
+                        ${hasAlert ? 'ring-1 ring-destructive/50' : ''}
                       `}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${statusColor}`} />
-                        <span className="font-medium text-sm">{vehicle.vehicle_number || 'N/A'}</span>
-                        <span className="text-xs text-muted-foreground">{speed} mph</span>
+                        <div className={`w-2 h-2 rounded-full ${statusDot} shadow-sm`} />
+                        <span className="font-semibold text-sm">{vehicle.vehicle_number || 'N/A'}</span>
+                        <span className="text-xs text-muted-foreground font-medium">{speed} mph</span>
                       </div>
                     </button>
                   );
@@ -1557,7 +1559,7 @@ const MapTab = () => {
                 {vehicles.length > 5 && (
                   <button
                     onClick={() => setMobileSheetExpanded(true)}
-                    className="flex-shrink-0 px-4 py-2.5 rounded-xl border border-dashed border-border/50 text-muted-foreground text-sm"
+                    className="flex-shrink-0 px-3 py-2 rounded-2xl border border-dashed border-muted-foreground/30 text-muted-foreground text-xs font-medium"
                   >
                     +{vehicles.length - 5} more
                   </button>
