@@ -42,6 +42,10 @@ const MapTab = () => {
   const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
+  // Status filter state
+  type StatusFilter = 'all' | 'driving' | 'idling' | 'parked';
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  
   // Track previous tenant for cleanup
   const prevTenantIdRef = useRef<string | null>(null);
   
@@ -86,24 +90,35 @@ const MapTab = () => {
     fetchUserContext();
   }, [tenantId, isPlatformAdmin]);
   
-  // Filter vehicles based on mode and dispatcher assignment
+  // Filter vehicles based on mode, dispatcher assignment, and status
   const vehicles = useCallback(() => {
-    // "All" mode shows all vehicles for everyone
-    if (filterMode === 'all') {
-      return allVehicles;
-    }
+    let filtered = allVehicles;
     
     // "My Trucks" mode - filter to only assigned trucks
-    if (currentDispatcherId) {
-      return allVehicles.filter(v => 
+    if (filterMode !== 'all' && currentDispatcherId) {
+      filtered = filtered.filter(v => 
         v.primary_dispatcher_id === currentDispatcherId ||
         (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
       );
+    } else if (filterMode !== 'all' && !currentDispatcherId) {
+      // No dispatcher ID means they have no assigned trucks in "My" mode
+      return [];
     }
     
-    // No dispatcher ID means they have no assigned trucks in "My" mode
-    return [];
-  }, [allVehicles, filterMode, currentDispatcherId])();
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(v => {
+        const speed = v.speed || 0;
+        const stoppedStatus = v.stopped_status;
+        if (statusFilter === 'driving') return speed > 0;
+        if (statusFilter === 'idling') return speed === 0 && stoppedStatus === 'idling';
+        if (statusFilter === 'parked') return speed === 0 && stoppedStatus !== 'idling';
+        return true;
+      });
+    }
+    
+    return filtered;
+  }, [allVehicles, filterMode, currentDispatcherId, statusFilter])();
 
   // SECURITY: Clear all markers and state when tenant changes
   const clearAllMarkers = useCallback(() => {
@@ -777,13 +792,17 @@ const MapTab = () => {
     `;
 
     updateMarkers();
-  }, [vehicles, filterMode]);
+  }, [vehicles, filterMode, statusFilter]);
 
 
-  // Count vehicles by status
-  const movingCount = vehicles.filter(v => (v.speed || 0) > 0).length;
-  const idlingCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
-  const parkedCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
+  // Count vehicles by status (from allVehicles for consistent counts, but filtered by dispatcher mode)
+  const baseVehicles = filterMode === 'all' ? allVehicles : (currentDispatcherId ? allVehicles.filter(v => 
+    v.primary_dispatcher_id === currentDispatcherId ||
+    (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
+  ) : []);
+  const movingCount = baseVehicles.filter(v => (v.speed || 0) > 0).length;
+  const idlingCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
+  const parkedCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
 
   // Render vehicle card - Classic compact style
   const renderVehicleCard = (vehicle: any, index: number) => {
@@ -952,76 +971,85 @@ const MapTab = () => {
           </div>
         </div>
         
-        {/* Filter + Stats section */}
-        <div className="px-2 py-2 space-y-2">
+        {/* Filter + Stats section - compact */}
+        <div className="px-2 py-1.5 space-y-1.5">
           {/* Filter Toggle */}
           {(isAdmin || currentDispatcherId) && (
             <div 
-              className="flex items-center justify-between p-2 rounded-lg"
+              className="flex items-center justify-between px-2 py-1 rounded-md"
               style={{
                 background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(37,99,235,0.08)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 2px rgba(37,99,235,0.06)',
                 border: '1px solid hsl(220 13% 88%)',
               }}
             >
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-blue-600" />
-                <Label htmlFor="fleet-filter" className="text-[11px] font-semibold text-gray-700 cursor-pointer">
+              <div className="flex items-center gap-1">
+                <Users className="h-3 w-3 text-blue-600" />
+                <Label htmlFor="fleet-filter" className="text-[10px] font-semibold text-gray-700 cursor-pointer">
                   {filterMode === 'all' ? 'All Trucks' : 'My Trucks'}
                 </Label>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-medium text-gray-400">My</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[8px] font-medium text-gray-400">My</span>
                 <Switch
                   id="fleet-filter"
                   checked={filterMode === 'all'}
                   onCheckedChange={(checked) => setFilterMode(checked ? 'all' : 'my-trucks')}
                   disabled={!isAdmin && !currentDispatcherId}
-                  className="scale-75"
+                  className="scale-[0.65]"
                 />
-                <span className="text-[9px] font-medium text-gray-400">All</span>
+                <span className="text-[8px] font-medium text-gray-400">All</span>
               </div>
             </div>
           )}
           
-          {/* Quick stats - Classic compact */}
-          <div className="flex gap-1.5">
-            <div 
-              className="flex-1 px-2 py-1.5 rounded-lg text-center"
+          {/* Quick stats - Clickable filters */}
+          <div className="flex gap-1">
+            <button 
+              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'driving' ? 'ring-2 ring-emerald-500 ring-offset-1' : ''}`}
               style={{
                 background: 'linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(16,185,129,0.15)',
+                boxShadow: statusFilter === 'driving' 
+                  ? '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(16,185,129,0.12)',
                 border: '1px solid rgba(16,185,129,0.2)',
                 borderBottom: '2px solid rgba(16,185,129,0.25)',
               }}
+              onClick={() => setStatusFilter(statusFilter === 'driving' ? 'all' : 'driving')}
             >
-              <div className="text-lg font-black text-emerald-700">{movingCount}</div>
-              <div className="text-[8px] font-bold text-emerald-600 uppercase tracking-wide">Driving</div>
-            </div>
-            <div 
-              className="flex-1 px-2 py-1.5 rounded-lg text-center"
+              <div className="text-base font-black text-emerald-700">{movingCount}</div>
+              <div className="text-[7px] font-bold text-emerald-600 uppercase tracking-wide">Driving</div>
+            </button>
+            <button 
+              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'idling' ? 'ring-2 ring-amber-500 ring-offset-1' : ''}`}
               style={{
                 background: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(245,158,11,0.15)',
+                boxShadow: statusFilter === 'idling'
+                  ? '0 2px 8px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(245,158,11,0.12)',
                 border: '1px solid rgba(245,158,11,0.2)',
                 borderBottom: '2px solid rgba(245,158,11,0.25)',
               }}
+              onClick={() => setStatusFilter(statusFilter === 'idling' ? 'all' : 'idling')}
             >
-              <div className="text-lg font-black text-amber-700">{idlingCount}</div>
-              <div className="text-[8px] font-bold text-amber-600 uppercase tracking-wide">Idling</div>
-            </div>
-            <div 
-              className="flex-1 px-2 py-1.5 rounded-lg text-center"
+              <div className="text-base font-black text-amber-700">{idlingCount}</div>
+              <div className="text-[7px] font-bold text-amber-600 uppercase tracking-wide">Idling</div>
+            </button>
+            <button 
+              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'parked' ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
               style={{
                 background: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(59,130,246,0.15)',
+                boxShadow: statusFilter === 'parked'
+                  ? '0 2px 8px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(59,130,246,0.12)',
                 border: '1px solid rgba(59,130,246,0.2)',
                 borderBottom: '2px solid rgba(59,130,246,0.25)',
               }}
+              onClick={() => setStatusFilter(statusFilter === 'parked' ? 'all' : 'parked')}
             >
-              <div className="text-lg font-black text-blue-700">{parkedCount}</div>
-              <div className="text-[8px] font-bold text-blue-600 uppercase tracking-wide">Parked</div>
-            </div>
+              <div className="text-base font-black text-blue-700">{parkedCount}</div>
+              <div className="text-[7px] font-bold text-blue-600 uppercase tracking-wide">Parked</div>
+            </button>
           </div>
         </div>
         
