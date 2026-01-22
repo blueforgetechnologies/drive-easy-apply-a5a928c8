@@ -167,8 +167,8 @@ export default function LoadAnalyticsTab() {
   const navigate = useNavigate();
   const { isPlatformAdmin, loading: tenantLoading } = useTenantContext();
   
-  // Use unified feature gate - combines tenant enablement + user access
-  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  // Use unified feature gate - tenant enablement + role permission (no per-user grants)
+  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: false });
   const canAccessAnalytics = analyticsGate.isAccessible;
   const accessLoading = analyticsGate.isLoading;
   
