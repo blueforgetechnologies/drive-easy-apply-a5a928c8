@@ -821,64 +821,83 @@ const MapTab = () => {
     };
 
     // Helper function to create popup HTML
-    const createPopupHTML = (vehicle: any, weather: any, oilChangeDue: boolean, hasFaultCodes: boolean) => `
-      <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 240px; border-radius: 12px; overflow: hidden;">
-        <!-- Header -->
-        <div style="padding: 10px 12px; background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    const createPopupHTML = (vehicle: any, weather: any, oilChangeDue: boolean, hasFaultCodes: boolean) => {
+      // Format the location timestamp
+      const locationTime = vehicle.last_updated 
+        ? new Date(vehicle.last_updated).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+        : null;
+      
+      return `
+      <div style="padding: 0; font-family: system-ui, -apple-system, sans-serif; min-width: 220px; max-width: 260px; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+        <!-- Header - Puffy gradient -->
+        <div style="padding: 10px 12px; background: linear-gradient(180deg, hsl(221, 83%, 58%) 0%, hsl(221, 83%, 48%) 100%); color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
               <circle cx="6.5" cy="16.5" r="2.5"/>
               <circle cx="16.5" cy="16.5" r="2.5"/>
             </svg>
-            <span style="font-size: 15px; font-weight: 600;">${vehicle.vehicle_number || 'Unknown'}</span>
+            <span style="font-size: 14px; font-weight: 700;">${vehicle.vehicle_number || 'Unknown'}</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 16px; height: 16px;" />` : ''}
-            ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 16px; height: 16px;" />` : ''}
-            <div style="background: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${oilChangeDue ? `<img src="${oilChangeIcon}" alt="Oil Change Due" style="width: 14px; height: 14px;" />` : ''}
+            ${hasFaultCodes ? `<img src="${checkEngineIcon}" alt="Check Engine" style="width: 14px; height: 14px;" />` : ''}
+            <div style="background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.25);">
               ${vehicle.speed || 0} MPH
             </div>
           </div>
         </div>
         
         ${weather ? `
-        <!-- Weather Info Compact -->
-        <div style="padding: 8px 12px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 28px; height: 28px;" />
+        <!-- Weather - Compact puffy -->
+        <div style="padding: 6px 10px; background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <img src="https:${weather.icon}" alt="${weather.condition}" style="width: 24px; height: 24px;" />
             <div>
-              <div style="font-size: 16px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
-              <div style="font-size: 10px; opacity: 0.9;">${weather.condition}</div>
+              <div style="font-size: 14px; font-weight: 700;">${Math.round(weather.temperature)}°F</div>
+              <div style="font-size: 9px; opacity: 0.85;">${weather.condition}</div>
             </div>
           </div>
-          <div style="text-align: right; font-size: 10px; opacity: 0.9;">
+          <div style="text-align: right; font-size: 9px; opacity: 0.85;">
             <div>${weather.humidity}% humidity</div>
             <div>${Math.round(weather.wind_mph)} mph wind</div>
           </div>
         </div>
         ` : ''}
         
-        <!-- Location Info -->
-        <div style="padding: 8px 12px; background: white; border-bottom: 1px solid #e5e7eb;">
-          <p style="margin: 0; color: #6b7280; font-size: 11px; line-height: 1.4;">
+        <!-- Location + Time - Puffy card -->
+        <div style="padding: 8px 10px; background: linear-gradient(180deg, #fafafa 0%, #f3f4f6 100%); border-bottom: 1px solid #e5e7eb;">
+          <p style="margin: 0 0 4px 0; color: #374151; font-size: 11px; line-height: 1.3; font-weight: 500;">
             ${vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
           </p>
+          ${locationTime ? `
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span style="color: #6b7280; font-size: 10px;">Updated ${locationTime}</span>
+          </div>
+          ` : ''}
         </div>
         
         ${vehicle.odometer ? `
-        <div style="padding: 6px 12px; background: white; display: flex; align-items: center; gap: 6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-          <span style="color: #374151; font-size: 11px;">
-            <strong>${vehicle.odometer.toLocaleString()}</strong> miles
-          </span>
+        <!-- Odometer - Puffy pill -->
+        <div style="padding: 6px 10px; background: white; display: flex; align-items: center; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 4px; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); padding: 3px 8px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span style="color: #374151; font-size: 10px; font-weight: 600;">
+              ${vehicle.odometer.toLocaleString()} mi
+            </span>
+          </div>
         </div>
         ` : ''}
       </div>
     `;
+    };
 
     updateMarkers();
   }, [vehicles, filterMode, statusFilter]);
