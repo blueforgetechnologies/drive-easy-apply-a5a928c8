@@ -365,8 +365,8 @@ export const FEATURE_METADATA: Record<string, {
   [FEATURE_KEYS.ANALYTICS]: {
     label: 'Analytics',
     description: 'Access to load analytics dashboard with charts and insights',
-    requiresUserGrant: true,
-    category: 'premium',
+    requiresUserGrant: false, // Gated by tenant feature flag + role permission, no per-user grant needed
+    category: 'navigation',
   },
   [FEATURE_KEYS.LOAD_HUNTER]: {
     label: 'Load Hunter',

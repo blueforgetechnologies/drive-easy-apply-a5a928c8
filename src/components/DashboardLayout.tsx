@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   } = useUserPermissions();
   
   // Use unified feature gates for all gated modules
-  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: true });
+  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: false });
   const accountingGate = useFeatureGate({ featureKey: "accounting_module", requiresUserGrant: false });
   const fleetFinancialsGate = useFeatureGate({ featureKey: "fleet_financials", requiresUserGrant: false });
   const carrierDashboardGate = useFeatureGate({ featureKey: "carrier_dashboard", requiresUserGrant: false });
@@ -78,8 +78,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return featureEnabled && hasPermission(permissionCode);
   };
 
+  // Analytics: tenant feature enabled + user has tab_analytics permission (no user-level grant needed)
   const showAnalytics = !analyticsGate.isLoading && !permissionsLoading && 
-    analyticsGate.isEnabledForTenant && analyticsGate.canUserAccess && 
+    analyticsGate.isEnabledForTenant && 
     hasPermission(PERMISSION_CODES.TAB_ANALYTICS);
   const showAccounting = !accountingGate.isLoading && !permissionsLoading && 
     canAccessFeature(accountingGate.isEnabledForTenant, PERMISSION_CODES.TAB_ACCOUNTING);
