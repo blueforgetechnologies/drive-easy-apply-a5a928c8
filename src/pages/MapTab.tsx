@@ -111,8 +111,8 @@ const MapTab = () => {
         const speed = v.speed || 0;
         const stoppedStatus = v.stopped_status;
         if (statusFilter === 'driving') return speed > 0;
-        if (statusFilter === 'idling') return speed === 0 && stoppedStatus === 'idling';
-        if (statusFilter === 'parked') return speed === 0 && stoppedStatus !== 'idling';
+        if (statusFilter === 'idling') return speed === 0 && stoppedStatus === 'Stopped';
+        if (statusFilter === 'parked') return speed === 0 && stoppedStatus !== 'Stopped';
         return true;
       });
     }
@@ -653,7 +653,7 @@ const MapTab = () => {
           
           // Determine engine/ignition status
           const isMoving = speed > 0;
-          const isIdling = speed === 0 && stoppedStatus === 'idling';
+          const isIdling = speed === 0 && stoppedStatus === 'Stopped';
           
           // Get heading for rotation (0 = North, 90 = East, etc.)
           const heading = vehicle.heading || 0;
@@ -860,8 +860,8 @@ const MapTab = () => {
     (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
   ) : []);
   const movingCount = baseVehicles.filter(v => (v.speed || 0) > 0).length;
-  const idlingCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
-  const parkedCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
+  const idlingCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'Stopped').length;
+  const parkedCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'Stopped').length;
 
   // Render vehicle card - Classic compact style
   const renderVehicleCard = (vehicle: any, index: number) => {
@@ -880,7 +880,7 @@ const MapTab = () => {
       statusGradient = 'linear-gradient(180deg, #34d399 0%, #10b981 100%)';
       statusBorderColor = '#059669';
       statusText = 'DRIVING';
-    } else if (stoppedStatus === 'idling') {
+    } else if (stoppedStatus === 'Stopped') {
       statusGradient = 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)';
       statusBorderColor = '#d97706';
       statusText = 'IDLING';
@@ -937,7 +937,7 @@ const MapTab = () => {
         >
           {speed > 0 ? (
             <Navigation className="h-4 w-4 text-white" />
-          ) : stoppedStatus === 'idling' ? (
+          ) : stoppedStatus === 'Stopped' ? (
             <div className="flex gap-0.5">
               <div className="w-0.5 h-2.5 bg-white rounded-full" />
               <div className="w-0.5 h-2.5 bg-white rounded-full" />
@@ -1501,7 +1501,7 @@ const MapTab = () => {
                   // Determine status color
                   let statusColor = 'bg-blue-500'; // Parked
                   if (speed > 0) statusColor = 'bg-emerald-500'; // Driving
-                  else if (stoppedStatus === 'idling') statusColor = 'bg-amber-500'; // Idling
+                  else if (stoppedStatus === 'Stopped') statusColor = 'bg-amber-500'; // Idling
                   
                   return (
                     <button
