@@ -5866,6 +5866,7 @@ export type Database = {
       vehicle_location_history: {
         Row: {
           created_at: string
+          formatted_location: string | null
           heading: number | null
           id: string
           latitude: number
@@ -5877,6 +5878,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          formatted_location?: string | null
           heading?: number | null
           id?: string
           latitude: number
@@ -5888,6 +5890,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          formatted_location?: string | null
           heading?: number | null
           id?: string
           latitude?: number

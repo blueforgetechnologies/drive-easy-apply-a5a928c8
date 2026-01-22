@@ -341,55 +341,94 @@ const MapTab = () => {
       },
     });
 
-    // Add markers for start/end points
-    if (points.length > 0) {
-      // Start marker (green)
-      const startPoint = points[0];
-      const startEl = document.createElement('div');
-      startEl.innerHTML = `
-        <div class="flex items-center justify-center w-6 h-6 bg-emerald-500 rounded-full border-2 border-white shadow-lg">
-          <span class="text-white text-xs font-bold">S</span>
-        </div>
-      `;
-      const startMarker = new mapboxgl.Marker({ element: startEl, anchor: 'center' })
-        .setLngLat([startPoint.longitude, startPoint.latitude])
-        .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`
-          <div class="p-2 text-xs">
-            <div class="font-semibold">Start</div>
-            <div class="text-muted-foreground">${new Date(startPoint.recorded_at).toLocaleTimeString()}</div>
-            ${startPoint.speed ? `<div>${startPoint.speed} mph</div>` : ''}
+    // Add markers for ALL points with hover popups
+    points.forEach((point, index) => {
+      const isStart = index === 0;
+      const isEnd = index === points.length - 1;
+      
+      // Format odometer
+      const odometerText = point.odometer 
+        ? `${Math.round(point.odometer).toLocaleString()} mi` 
+        : 'N/A';
+      
+      // Format speed
+      const speedText = point.speed !== null ? `${Math.round(point.speed)} mph` : 'N/A';
+      
+      // Format location (city, state from Samsara)
+      const locationText = point.formatted_location || 'Location unavailable';
+      
+      // Format time
+      const timeText = new Date(point.recorded_at).toLocaleTimeString();
+      
+      // Create marker element
+      const el = document.createElement('div');
+      
+      if (isStart) {
+        // Start marker (green, larger)
+        el.innerHTML = `
+          <div class="flex items-center justify-center w-6 h-6 bg-emerald-500 rounded-full border-2 border-white shadow-lg cursor-pointer">
+            <span class="text-white text-xs font-bold">S</span>
           </div>
-        `))
-        .addTo(map.current!);
-      historyMarkersRef.current.push(startMarker);
-
-      // End marker (red) - if different from start
-      if (points.length > 1) {
-        const endPoint = points[points.length - 1];
-        const endEl = document.createElement('div');
-        endEl.innerHTML = `
-          <div class="flex items-center justify-center w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg">
+        `;
+      } else if (isEnd) {
+        // End marker (red, larger)
+        el.innerHTML = `
+          <div class="flex items-center justify-center w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg cursor-pointer">
             <span class="text-white text-xs font-bold">E</span>
           </div>
         `;
-        const endMarker = new mapboxgl.Marker({ element: endEl, anchor: 'center' })
-          .setLngLat([endPoint.longitude, endPoint.latitude])
-          .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`
-            <div class="p-2 text-xs">
-              <div class="font-semibold">End</div>
-              <div class="text-muted-foreground">${new Date(endPoint.recorded_at).toLocaleTimeString()}</div>
-              ${endPoint.speed ? `<div>${endPoint.speed} mph</div>` : ''}
-            </div>
-          `))
-          .addTo(map.current!);
-        historyMarkersRef.current.push(endMarker);
+      } else {
+        // Intermediate point marker (small blue dot)
+        el.innerHTML = `
+          <div class="w-3 h-3 bg-blue-500 rounded-full border border-white shadow-md cursor-pointer hover:scale-150 transition-transform"></div>
+        `;
       }
+      
+      // Create popup with all the info
+      const popupHtml = `
+        <div style="padding: 8px 10px; min-width: 160px; font-family: system-ui, sans-serif;">
+          <div style="font-weight: 600; font-size: 11px; color: #374151; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">
+            ${isStart ? '🟢 Start' : isEnd ? '🔴 End' : '📍 Point ' + (index + 1)}
+            <span style="float: right; font-weight: 400; color: #6b7280;">${timeText}</span>
+          </div>
+          <div style="display: grid; gap: 4px; font-size: 11px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Speed:</span>
+              <span style="font-weight: 600; color: ${point.speed && point.speed > 0 ? '#10b981' : '#6b7280'};">${speedText}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Odometer:</span>
+              <span style="font-weight: 600; color: #374151;">${odometerText}</span>
+            </div>
+            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 10px;">📍 ${locationText}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const popup = new mapboxgl.Popup({ 
+        offset: isStart || isEnd ? 12 : 8,
+        closeButton: false,
+        closeOnClick: false,
+      }).setHTML(popupHtml);
+      
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([point.longitude, point.latitude])
+        .setPopup(popup)
+        .addTo(map.current!);
+      
+      // Show popup on hover
+      el.addEventListener('mouseenter', () => popup.addTo(map.current!));
+      el.addEventListener('mouseleave', () => popup.remove());
+      
+      historyMarkersRef.current.push(marker);
+    });
 
-      // Fit bounds to show all points
-      const bounds = new mapboxgl.LngLatBounds();
-      points.forEach(p => bounds.extend([p.longitude, p.latitude]));
-      map.current.fitBounds(bounds, { padding: 60, maxZoom: 14 });
-    }
+    // Fit bounds to show all points
+    const bounds = new mapboxgl.LngLatBounds();
+    points.forEach(p => bounds.extend([p.longitude, p.latitude]));
+    map.current.fitBounds(bounds, { padding: 60, maxZoom: 14 });
   }, []);
 
   // Effect to draw history when points change
