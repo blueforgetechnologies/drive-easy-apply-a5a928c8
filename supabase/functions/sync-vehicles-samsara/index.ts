@@ -317,10 +317,15 @@ async function syncTenantVehicles(
         }
       }
 
-      // Extract speed and location
+      // Extract speed, heading, and location
       if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
         updateData.speed = Math.round(samsaraVehicle.gps[0].speedMilesPerHour);
         updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
+      }
+
+      // Extract heading (0-360 degrees, 0 = North)
+      if (samsaraVehicle.gps?.[0]?.headingDegrees !== undefined) {
+        updateData.heading = Math.round(samsaraVehicle.gps[0].headingDegrees);
       }
 
       if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
@@ -329,7 +334,7 @@ async function syncTenantVehicles(
         updateData.last_location = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         
         if (samsaraVehicle.gps[0].reverseGeo?.formattedLocation) {
-          updateData.formatted_address = samsaraVehicle.gps[0].reverseGeo.formattedLocation;
+          updateData.formatted_address = samsaraVehicle.gps[0].formattedLocation;
         }
       }
 
