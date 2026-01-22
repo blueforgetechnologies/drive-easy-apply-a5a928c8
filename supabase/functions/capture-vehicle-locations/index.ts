@@ -140,6 +140,7 @@ serve(async (req) => {
       let speed = vehicle.speed || 0;
       let odometer = vehicle.odometer;
       let formattedLocation: string | null = null;
+      let heading: number | null = null;
 
       // Parse current location
       if (vehicle.last_location) {
@@ -158,6 +159,8 @@ serve(async (req) => {
           speed = gps.speedMilesPerHour || speed;
           // Get reverse-geocoded location from Samsara (free with GPS data)
           formattedLocation = gps.reverseGeo?.formattedLocation || null;
+          // Get heading/bearing from Samsara (0-360 degrees)
+          heading = gps.headingDegrees ?? gps.heading ?? null;
         }
         if (samsaraVehicle.obdOdometerMeters?.value) {
           odometer = samsaraVehicle.obdOdometerMeters.value * 0.000621371;
@@ -200,7 +203,7 @@ serve(async (req) => {
           longitude,
           speed,
           odometer,
-          heading: null,
+          heading,
           recorded_at: nowISO,
           formatted_location: formattedLocation,
         });
