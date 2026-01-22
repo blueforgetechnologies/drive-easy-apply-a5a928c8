@@ -686,9 +686,9 @@ const MapTab = () => {
               </g>
             `;
           } else {
-            // PARKED (Engine Off) - Blue with P icon
-            bgColor = '#3b82f6';
-            borderColor = '#2563eb';
+            // PARKED (Engine Off) - Black with P icon
+            bgColor = '#1f2937';
+            borderColor = '#111827';
             // Bold P icon
             statusIcon = `
               <text x="18" y="21" font-size="14" font-weight="900" fill="${bgColor}" text-anchor="middle" font-family="system-ui, sans-serif">P</text>
