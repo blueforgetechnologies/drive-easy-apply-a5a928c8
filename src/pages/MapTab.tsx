@@ -868,7 +868,9 @@ const MapTab = () => {
     const speed = vehicle.speed || 0;
     const stoppedStatus = vehicle.stopped_status;
     const isSelected = selectedVehicle === vehicle.id;
-    const isViewingHistory = vehicleHistory.selectedVehicleId === vehicle.id && vehicleHistory.hasStarted;
+    const isHistorySelected = vehicleHistory.selectedVehicleId === vehicle.id;
+    const isHistoryStarted = isHistorySelected && vehicleHistory.hasStarted;
+    const isViewingHistory = isHistoryStarted;
     
     let statusGradient = '';
     let statusBorderColor = '';
@@ -979,14 +981,21 @@ const MapTab = () => {
           </span>
         </div>
         
-        {/* History button - glows bright green when viewing this vehicle's history */}
+        {/* History button - highlighted border on click, glows bright after START */}
         <button
-          className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110 ${isViewingHistory ? 'animate-pulse' : ''}`}
-          style={isViewingHistory ? {
+          className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110 ${isHistoryStarted ? 'animate-pulse' : ''}`}
+          style={isHistoryStarted ? {
+            // Stage 2: After START - bright glow
             background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
             boxShadow: '0 0 12px rgba(16,185,129,0.6), 0 0 20px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
             border: '2px solid #059669',
+          } : isHistorySelected ? {
+            // Stage 1: Clock clicked but not started - highlighted border
+            background: 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)',
+            boxShadow: '0 0 0 2px #10b981, inset 0 1px 0 rgba(255,255,255,0.8)',
+            border: '2px solid #10b981',
           } : {
+            // Default state
             background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(37,99,235,0.1)',
             border: '1px solid hsl(220 13% 85%)',
@@ -995,9 +1004,9 @@ const MapTab = () => {
             e.stopPropagation();
             enterHistoryMode(vehicle.id);
           }}
-          title={isViewingHistory ? "Viewing history" : "View history"}
+          title={isHistoryStarted ? "Viewing history" : isHistorySelected ? "Click Start to view" : "View history"}
         >
-          <History className={`h-3.5 w-3.5 ${isViewingHistory ? 'text-white' : 'text-blue-600'}`} />
+          <History className={`h-3.5 w-3.5 ${isHistoryStarted ? 'text-white' : isHistorySelected ? 'text-emerald-700' : 'text-blue-600'}`} />
         </button>
       </div>
     );
