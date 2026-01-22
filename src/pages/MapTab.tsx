@@ -345,6 +345,8 @@ const MapTab = () => {
     points.forEach((point, index) => {
       const isStart = index === 0;
       const isEnd = index === points.length - 1;
+      const isMoving = point.speed !== null && point.speed > 0;
+      const hasHeading = point.heading !== null;
       
       // Format odometer
       const odometerText = point.odometer 
@@ -377,10 +379,25 @@ const MapTab = () => {
             <span class="text-white text-xs font-bold">E</span>
           </div>
         `;
-      } else {
-        // Intermediate point marker (small blue dot)
+      } else if (isMoving && hasHeading) {
+        // Moving point with heading - green arrow rotated to direction
+        const rotation = point.heading || 0;
         el.innerHTML = `
-          <div class="w-3 h-3 bg-blue-500 rounded-full border border-white shadow-md cursor-pointer hover:scale-150 transition-transform"></div>
+          <div style="transform: rotate(${rotation}deg); transition: transform 0.2s;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#10b981" class="cursor-pointer hover:scale-125 transition-transform drop-shadow-md">
+              <path d="M12 2L4 20h16L12 2z" stroke="white" stroke-width="1.5"/>
+            </svg>
+          </div>
+        `;
+      } else if (isMoving) {
+        // Moving but no heading - green dot
+        el.innerHTML = `
+          <div class="w-3.5 h-3.5 bg-emerald-500 rounded-full border border-white shadow-md cursor-pointer hover:scale-150 transition-transform"></div>
+        `;
+      } else {
+        // Stationary point - small blue dot
+        el.innerHTML = `
+          <div class="w-2.5 h-2.5 bg-blue-400 rounded-full border border-white shadow-sm cursor-pointer hover:scale-150 transition-transform opacity-70"></div>
         `;
       }
       
