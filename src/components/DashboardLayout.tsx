@@ -394,6 +394,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ] : []),
   ];
 
+  // Prevent child routes from firing queries / function calls before auth state is known.
+  // This avoids transient 401s where the client still uses the anon key as the Bearer token.
+  if (!authReady) {
+    return (
+      <div className="min-h-screen w-full bg-background flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
+
+  // If signed out, the effect above will navigate to /auth; return nothing to avoid flashes.
+  if (!authUserId) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
