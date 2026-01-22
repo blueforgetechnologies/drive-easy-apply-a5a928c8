@@ -41,19 +41,9 @@
   color: #888;
 }
 
-/* Remove default Mapbox popup styling */
+/* Mapbox popup - rounded corners on container */
 .mapboxgl-popup-content {
   padding: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
   border-radius: 16px !important;
-  overflow: hidden;
-}
-
-.mapboxgl-popup-tip {
-  display: none !important;
-}
-
-.mapboxgl-popup {
-  max-width: none !important;
+  overflow: hidden !important;
 }
