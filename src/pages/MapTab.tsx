@@ -88,35 +88,22 @@ const MapTab = () => {
   
   // Filter vehicles based on mode and dispatcher assignment
   const vehicles = useCallback(() => {
-    // If user explicitly chose "all" and is admin, show all
-    if (filterMode === 'all' && isAdmin) {
+    // "All" mode shows all vehicles for everyone
+    if (filterMode === 'all') {
       return allVehicles;
     }
     
-    // If in "my-trucks" mode but no dispatcher ID, show empty (they have no assigned trucks)
-    if (filterMode === 'my-trucks' && !currentDispatcherId) {
-      return [];
-    }
-    
-    // If in "my-trucks" mode with dispatcher ID, filter to assigned trucks only
-    if (filterMode === 'my-trucks' && currentDispatcherId) {
+    // "My Trucks" mode - filter to only assigned trucks
+    if (currentDispatcherId) {
       return allVehicles.filter(v => 
         v.primary_dispatcher_id === currentDispatcherId ||
         (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
       );
     }
     
-    // Fallback for non-admins in "all" mode - still filter to their trucks
-    if (!isAdmin && currentDispatcherId) {
-      return allVehicles.filter(v => 
-        v.primary_dispatcher_id === currentDispatcherId ||
-        (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
-      );
-    }
-    
-    // If not admin and no dispatcher ID, show nothing
+    // No dispatcher ID means they have no assigned trucks in "My" mode
     return [];
-  }, [allVehicles, filterMode, currentDispatcherId, isAdmin])();
+  }, [allVehicles, filterMode, currentDispatcherId])();
 
   // SECURITY: Clear all markers and state when tenant changes
   const clearAllMarkers = useCallback(() => {
