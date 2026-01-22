@@ -17,6 +17,10 @@ import { Label } from '@/components/ui/label';
 
 type VehicleFilterMode = 'my-trucks' | 'all';
 
+// Samsara can report small non-zero speeds while a vehicle is effectively stopped.
+// Use a threshold to avoid misclassifying idle/parked as driving.
+const MOVING_SPEED_THRESHOLD_MPH = 2;
+
 const MapTab = () => {
   useMapLoadTracker('MapTab');
   const isMobile = useIsMobile();
@@ -45,6 +49,17 @@ const MapTab = () => {
   // Status filter state
   type StatusFilter = 'all' | 'driving' | 'idling' | 'parked';
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  const getVehicleStatus = useCallback((v: any): Exclude<StatusFilter, 'all'> => {
+    const speed = v?.speed ?? 0;
+    const engineState = (v?.provider_status ?? '').toString().trim().toLowerCase();
+    const hasEngineState = engineState.length > 0;
+    const engineOff = engineState === 'off';
+
+    if (speed > MOVING_SPEED_THRESHOLD_MPH) return 'driving';
+    if (hasEngineState && !engineOff) return 'idling';
+    return 'parked';
+  }, []);
   
   // Track previous tenant for cleanup
   const prevTenantIdRef = useRef<string | null>(null);
@@ -108,17 +123,16 @@ const MapTab = () => {
     // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(v => {
-        const speed = v.speed || 0;
-        const stoppedStatus = v.stopped_status;
-        if (statusFilter === 'driving') return speed > 0;
-        if (statusFilter === 'idling') return speed === 0 && stoppedStatus === 'Stopped';
-        if (statusFilter === 'parked') return speed === 0 && stoppedStatus !== 'Stopped';
+        const status = getVehicleStatus(v);
+        if (statusFilter === 'driving') return status === 'driving';
+        if (statusFilter === 'idling') return status === 'idling';
+        if (statusFilter === 'parked') return status === 'parked';
         return true;
       });
     }
     
     return filtered;
-  }, [allVehicles, filterMode, currentDispatcherId, statusFilter])();
+  }, [allVehicles, filterMode, currentDispatcherId, statusFilter, getVehicleStatus])();
 
   // SECURITY: Clear all markers and state when tenant changes
   const clearAllMarkers = useCallback(() => {
@@ -634,8 +648,7 @@ const MapTab = () => {
             continue; // Skip creating new marker
           }
           
-          const speed = vehicle.speed || 0;
-          const stoppedStatus = vehicle.stopped_status;
+           const speed = vehicle.speed || 0;
           // Show oil change indicator only when due (0 or negative miles remaining)
           const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
           // Show check engine indicator if vehicle has fault codes
@@ -651,9 +664,9 @@ const MapTab = () => {
           let statusIcon = '';
           let pulseRing = '';
           
-          // Determine engine/ignition status
-          const isMoving = speed > 0;
-          const isIdling = speed === 0 && stoppedStatus === 'Stopped';
+           const status = getVehicleStatus(vehicle);
+           const isMoving = status === 'driving';
+           const isIdling = status === 'idling';
           
           // Get heading for rotation (0 = North, 90 = East, etc.)
           const heading = vehicle.heading || 0;
@@ -859,14 +872,14 @@ const MapTab = () => {
     v.primary_dispatcher_id === currentDispatcherId ||
     (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
   ) : []);
-  const movingCount = baseVehicles.filter(v => (v.speed || 0) > 0).length;
-  const idlingCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'Stopped').length;
-  const parkedCount = baseVehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'Stopped').length;
+   const movingCount = baseVehicles.filter(v => getVehicleStatus(v) === 'driving').length;
+   const idlingCount = baseVehicles.filter(v => getVehicleStatus(v) === 'idling').length;
+   const parkedCount = baseVehicles.filter(v => getVehicleStatus(v) === 'parked').length;
 
   // Render vehicle card - Classic compact style
   const renderVehicleCard = (vehicle: any, index: number) => {
     const speed = vehicle.speed || 0;
-    const stoppedStatus = vehicle.stopped_status;
+    const status = getVehicleStatus(vehicle);
     const isSelected = selectedVehicle === vehicle.id;
     const isHistorySelected = vehicleHistory.selectedVehicleId === vehicle.id;
     const isHistoryStarted = isHistorySelected && vehicleHistory.hasStarted;
@@ -876,11 +889,11 @@ const MapTab = () => {
     let statusBorderColor = '';
     let statusText = '';
     
-    if (speed > 0) {
+    if (status === 'driving') {
       statusGradient = 'linear-gradient(180deg, #34d399 0%, #10b981 100%)';
       statusBorderColor = '#059669';
       statusText = 'DRIVING';
-    } else if (stoppedStatus === 'Stopped') {
+    } else if (status === 'idling') {
       statusGradient = 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)';
       statusBorderColor = '#d97706';
       statusText = 'IDLING';
@@ -935,9 +948,9 @@ const MapTab = () => {
             boxShadow: `0 2px 6px ${statusBorderColor}30, inset 0 1px 0 rgba(255,255,255,0.3)`,
           }}
         >
-          {speed > 0 ? (
+          {status === 'driving' ? (
             <Navigation className="h-4 w-4 text-white" />
-          ) : stoppedStatus === 'Stopped' ? (
+          ) : status === 'idling' ? (
             <div className="flex gap-0.5">
               <div className="w-0.5 h-2.5 bg-white rounded-full" />
               <div className="w-0.5 h-2.5 bg-white rounded-full" />
@@ -1494,14 +1507,14 @@ const MapTab = () => {
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
                 {vehicles.slice(0, 5).map((vehicle) => {
                   const speed = vehicle.speed || 0;
-                  const stoppedStatus = vehicle.stopped_status;
+                  const status = getVehicleStatus(vehicle);
                   const hasAlert = (vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0) || 
                     (vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0);
                   
                   // Determine status color
                   let statusColor = 'bg-blue-500'; // Parked
-                  if (speed > 0) statusColor = 'bg-emerald-500'; // Driving
-                  else if (stoppedStatus === 'Stopped') statusColor = 'bg-amber-500'; // Idling
+                  if (status === 'driving') statusColor = 'bg-emerald-500'; // Driving
+                  else if (status === 'idling') statusColor = 'bg-amber-500'; // Idling
                   
                   return (
                     <button

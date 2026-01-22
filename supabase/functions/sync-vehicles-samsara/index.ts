@@ -211,7 +211,7 @@ async function syncTenantVehicles(
 
     // Fetch vehicle stats from Samsara
     const samsaraStatsResponse = await fetch(
-      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents',
+      'https://api.samsara.com/fleet/vehicles/stats/feed?types=gps,obdOdometerMeters,fuelPercents,engineStates',
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -318,9 +318,19 @@ async function syncTenantVehicles(
       }
 
       // Extract speed, heading, and location
+      // NOTE: Use a small threshold to avoid misclassifying GPS drift as movement.
+      // This aligns better with Samsara's idling vs parked classification.
       if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
-        updateData.speed = Math.round(samsaraVehicle.gps[0].speedMilesPerHour);
-        updateData.stopped_status = samsaraVehicle.gps[0].speedMilesPerHour === 0 ? 'Stopped' : 'Moving';
+        const rawSpeed = samsaraVehicle.gps[0].speedMilesPerHour;
+        updateData.speed = Math.round(rawSpeed);
+        updateData.stopped_status = rawSpeed <= 2 ? 'Stopped' : 'Moving';
+      }
+
+      // Engine state (used to distinguish IDLING vs PARKED when stopped)
+      // Samsara returns engineStates as an array of readings, newest first.
+      const engineState = samsaraVehicle.engineStates?.[0]?.value;
+      if (engineState) {
+        updateData.provider_status = engineState;
       }
 
       // Extract heading (0-360 degrees, 0 = North)
