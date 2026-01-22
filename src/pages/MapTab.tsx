@@ -1035,29 +1035,50 @@ const MapTab = () => {
           {/* Filter Toggle */}
           {(isAdmin || currentDispatcherId) && (
             <div 
-              className="flex items-center justify-between px-2 py-1 rounded-md"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
               style={{
-                background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 2px rgba(37,99,235,0.06)',
+                background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.06)',
                 border: '1px solid hsl(220 13% 88%)',
               }}
             >
-              <div className="flex items-center gap-1">
-                <Users className="h-3 w-3 text-blue-600" />
-                <Label htmlFor="fleet-filter" className="text-[10px] font-semibold text-gray-700 cursor-pointer">
-                  {filterMode === 'all' ? 'All Trucks' : 'My Trucks'}
-                </Label>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-medium text-gray-400">My</span>
-                <Switch
-                  id="fleet-filter"
-                  checked={filterMode === 'all'}
-                  onCheckedChange={(checked) => setFilterMode(checked ? 'all' : 'my-trucks')}
+              <Users className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              
+              <div 
+                className="flex rounded-md overflow-hidden flex-1"
+                style={{
+                  background: 'hsl(220 14% 92%)',
+                  padding: '2px',
+                }}
+              >
+                <button
+                  onClick={() => setFilterMode('my-trucks')}
+                  disabled={!currentDispatcherId}
+                  className={`
+                    flex-1 px-2.5 py-1 text-[10px] font-semibold rounded-[4px] transition-all
+                    ${filterMode === 'my-trucks' 
+                      ? 'bg-white text-blue-700 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                    }
+                    ${!currentDispatcherId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  My Trucks
+                </button>
+                <button
+                  onClick={() => setFilterMode('all')}
                   disabled={!isAdmin && !currentDispatcherId}
-                  className="scale-[0.65]"
-                />
-                <span className="text-[8px] font-medium text-gray-400">All</span>
+                  className={`
+                    flex-1 px-2.5 py-1 text-[10px] font-semibold rounded-[4px] transition-all
+                    ${filterMode === 'all' 
+                      ? 'bg-white text-blue-700 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                    }
+                    ${!isAdmin && !currentDispatcherId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  All Fleet
+                </button>
               </div>
             </div>
           )}
