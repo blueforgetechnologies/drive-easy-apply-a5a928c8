@@ -230,11 +230,28 @@ const MapTab = () => {
   };
 
   const handleSync = async () => {
-    setSyncing(true);
     try {
+      if (!tenantId) {
+        toast.error('No tenant selected');
+        return;
+      }
+
+      // Ensure we have a real user session; otherwise Supabase will send the anon key
+      // as the Bearer token, which will be rejected by tenant access checks.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Please sign in to sync vehicles');
+        return;
+      }
+
+      setSyncing(true);
+
       // Pass tenantId to sync only this tenant's vehicles
       const { data, error } = await supabase.functions.invoke('sync-vehicles-samsara', {
-        body: { tenant_id: tenantId }
+        body: { tenant_id: tenantId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {
