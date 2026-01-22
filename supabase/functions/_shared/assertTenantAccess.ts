@@ -74,14 +74,16 @@ export async function assertTenantAccess(
       };
     }
 
-    // Step 1: Verify user identity using their JWT (NOT service role)
+    // Step 1: Verify user identity using getClaims (preferred for signing-keys)
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      console.log('[assertTenantAccess] User auth failed:', userError?.message);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.log('[assertTenantAccess] User auth failed:', claimsError?.message || 'missing sub claim');
       return {
         allowed: false,
         reason: 'auth_failed',
@@ -91,6 +93,8 @@ export async function assertTenantAccess(
         ),
       };
     }
+    
+    const userId = claimsData.claims.sub as string;
 
     // Step 2: Use service role ONLY for privileged lookups (membership check)
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -99,7 +103,7 @@ export async function assertTenantAccess(
     const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('is_platform_admin')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle();
 
     if (profileError) {
@@ -110,11 +114,11 @@ export async function assertTenantAccess(
 
     // Platform admins can access any tenant
     if (isPlatformAdmin) {
-      console.log(`[assertTenantAccess] Platform admin ${user.id} granted access to tenant ${targetTenantId}`);
+      console.log(`[assertTenantAccess] Platform admin ${userId} granted access to tenant ${targetTenantId}`);
       return {
         allowed: true,
         tenant_id: targetTenantId,
-        user_id: user.id,
+        user_id: userId,
         is_platform_admin: true,
       };
     }
@@ -123,7 +127,7 @@ export async function assertTenantAccess(
     const { data: membership, error: membershipError } = await serviceClient
       .from('tenant_users')
       .select('id, role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('tenant_id', targetTenantId)
       .eq('is_active', true)
       .maybeSingle();
@@ -133,11 +137,11 @@ export async function assertTenantAccess(
     }
 
     if (!membership) {
-      console.log(`[assertTenantAccess] User ${user.id} has no membership in tenant ${targetTenantId}`);
+      console.log(`[assertTenantAccess] User ${userId} has no membership in tenant ${targetTenantId}`);
       return {
         allowed: false,
         reason: 'no_tenant_access',
-        user_id: user.id,
+        user_id: userId,
         response: new Response(
           JSON.stringify({ error: 'Forbidden', reason: 'no_tenant_access', tenant_id: targetTenantId }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -145,11 +149,11 @@ export async function assertTenantAccess(
       };
     }
 
-    console.log(`[assertTenantAccess] User ${user.id} granted access to tenant ${targetTenantId} (role: ${membership.role})`);
+    console.log(`[assertTenantAccess] User ${userId} granted access to tenant ${targetTenantId} (role: ${membership.role})`);
     return {
       allowed: true,
       tenant_id: targetTenantId,
-      user_id: user.id,
+      user_id: userId,
       is_platform_admin: false,
     };
 
@@ -211,13 +215,15 @@ export async function deriveTenantFromJWT(
     };
   }
 
-  // Verify user identity using their JWT
+  // Verify user identity using getClaims
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } }
   });
 
-  const { data: { user }, error: authError } = await userClient.auth.getUser();
-  if (authError || !user) {
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+  
+  if (claimsError || !claimsData?.claims?.sub) {
     return {
       tenant_id: null,
       user_id: null,
@@ -227,19 +233,21 @@ export async function deriveTenantFromJWT(
       ),
     };
   }
+  
+  const userId = claimsData.claims.sub as string;
 
   // Use service role to find user's first active tenant
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
   const { data: membership } = await serviceClient
     .from('tenant_users')
     .select('tenant_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('is_active', true)
     .limit(1)
     .maybeSingle();
 
   return {
     tenant_id: membership?.tenant_id || null,
-    user_id: user.id,
+    user_id: userId,
   };
 }
