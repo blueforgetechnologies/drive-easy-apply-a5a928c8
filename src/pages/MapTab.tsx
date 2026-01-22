@@ -868,6 +868,7 @@ const MapTab = () => {
     const speed = vehicle.speed || 0;
     const stoppedStatus = vehicle.stopped_status;
     const isSelected = selectedVehicle === vehicle.id;
+    const isViewingHistory = vehicleHistory.selectedVehicleId === vehicle.id && vehicleHistory.hasStarted;
     
     let statusGradient = '';
     let statusBorderColor = '';
@@ -890,24 +891,45 @@ const MapTab = () => {
     const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
     const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
     
+    // Determine card styling based on state
+    const getCardStyle = () => {
+      if (isViewingHistory) {
+        return {
+          background: 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)',
+          boxShadow: '0 0 0 2px #10b981, 0 4px 12px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.9)',
+          border: '1px solid #10b981',
+          borderBottom: '2px solid #059669',
+        };
+      }
+      if (isSelected) {
+        return {
+          background: index % 2 === 0 
+            ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
+            : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
+          boxShadow: '0 4px 12px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
+          border: '1px solid hsl(220 13% 88%)',
+          borderBottom: '2px solid hsl(220 13% 82%)',
+        };
+      }
+      return {
+        background: index % 2 === 0 
+          ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
+          : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(37,99,235,0.08), 0 1px 3px rgba(37,99,235,0.06)',
+        border: '1px solid hsl(220 13% 88%)',
+        borderBottom: '2px solid hsl(220 13% 82%)',
+      };
+    };
+    
     return (
       <div
         key={vehicle.id}
         className={`
           group flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all duration-150
           hover:scale-[1.01]
-          ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : ''}
+          ${isSelected && !isViewingHistory ? 'ring-2 ring-blue-500 shadow-md' : ''}
         `}
-        style={{
-          background: index % 2 === 0 
-            ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
-            : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
-          boxShadow: isSelected 
-            ? '0 4px 12px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.9)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(37,99,235,0.08), 0 1px 3px rgba(37,99,235,0.06)',
-          border: '1px solid hsl(220 13% 88%)',
-          borderBottom: '2px solid hsl(220 13% 82%)',
-        }}
+        style={getCardStyle()}
         onClick={() => handleVehicleClick(vehicle.id)}
       >
         {/* Status badge - compact */}
