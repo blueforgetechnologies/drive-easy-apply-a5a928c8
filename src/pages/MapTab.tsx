@@ -902,13 +902,12 @@ const MapTab = () => {
         };
       }
       if (isSelected) {
+        // Strong blue highlight for selected vehicle
         return {
-          background: index % 2 === 0 
-            ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
-            : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
-          boxShadow: '0 4px 12px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
-          border: '1px solid hsl(220 13% 88%)',
-          borderBottom: '2px solid hsl(220 13% 82%)',
+          background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
+          boxShadow: '0 0 0 2px #3b82f6, 0 4px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.9)',
+          border: '1px solid #3b82f6',
+          borderBottom: '2px solid #2563eb',
         };
       }
       return {
