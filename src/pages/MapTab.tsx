@@ -610,15 +610,6 @@ const MapTab = () => {
             `;
           }
           
-          // Override for alerts - Red for fault codes
-          if (hasFaultCodes) {
-            bgColor = '#ef4444';
-            borderColor = '#dc2626';
-          } else if (oilChangeDue) {
-            // Orange for service due (only if no fault codes)
-            bgColor = '#f97316';
-            borderColor = '#ea580c';
-          }
           
           const markerHTML = `
             <svg width="36" height="46" viewBox="0 0 36 46" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
@@ -634,18 +625,6 @@ const MapTab = () => {
               
               <!-- Status icon -->
               ${statusIcon}
-              
-              <!-- Alert badge for fault codes -->
-              ${hasFaultCodes ? `
-                <circle cx="28" cy="6" r="6" fill="#ef4444" stroke="white" stroke-width="1.5"/>
-                <text x="28" y="9" font-size="9" font-weight="900" fill="white" text-anchor="middle" font-family="system-ui">!</text>
-              ` : ''}
-              
-              <!-- Service due badge -->
-              ${oilChangeDue && !hasFaultCodes ? `
-                <circle cx="28" cy="6" r="6" fill="#f97316" stroke="white" stroke-width="1.5"/>
-                <text x="28" y="9" font-size="8" font-weight="700" fill="white" text-anchor="middle">⚠</text>
-              ` : ''}
               
               <!-- Unit number pill -->
               <rect x="4" y="32" width="28" height="12" rx="6" fill="rgba(0,0,0,0.85)"/>
@@ -794,10 +773,6 @@ const MapTab = () => {
   const movingCount = vehicles.filter(v => (v.speed || 0) > 0).length;
   const idlingCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
   const parkedCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
-  const alertCount = vehicles.filter(v => 
-    (v.oil_change_remaining !== null && v.oil_change_remaining <= 0) || 
-    (v.fault_codes && Array.isArray(v.fault_codes) && v.fault_codes.length > 0)
-  ).length;
 
   // Render vehicle card for both mobile and desktop
   const renderVehicleCard = (vehicle: any) => {
@@ -982,12 +957,6 @@ const MapTab = () => {
               <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{parkedCount}</div>
               <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Parked</div>
             </div>
-            {alertCount > 0 && (
-              <div className="flex-1 px-3 py-2 rounded-lg bg-destructive/10 text-center">
-                <div className="text-lg font-bold text-destructive">{alertCount}</div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Alerts</div>
-              </div>
-            )}
           </div>
         </div>
         
@@ -1064,15 +1033,6 @@ const MapTab = () => {
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
                 <span className="text-xs font-medium">{parkedCount}</span>
               </div>
-              {alertCount > 0 && (
-                <>
-                  <div className="w-px h-4 bg-border" />
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="h-3 w-3 text-destructive" />
-                    <span className="text-xs font-medium text-destructive">{alertCount}</span>
-                  </div>
-                </>
-              )}
               <div className="w-px h-4 bg-border" />
               <button
                 onClick={toggleMapStyle}
@@ -1178,35 +1138,6 @@ const MapTab = () => {
                   <div>
                     <div className="text-sm font-medium">Parked</div>
                     <div className="text-xs text-muted-foreground">Engine off</div>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-2.5 mt-2.5">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Alerts</div>
-                  
-                  {/* Fault */}
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-sm relative">
-                      <span className="text-white font-bold text-sm">!</span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">Fault Code</div>
-                      <div className="text-xs text-muted-foreground">Check engine light</div>
-                    </div>
-                  </div>
-                  
-                  {/* Service */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shadow-sm">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-                        <path d="M6,2 L6,6 M4,5 L8,5"/>
-                        <circle cx="6" cy="9" r="1" fill="white"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">Service Due</div>
-                      <div className="text-xs text-muted-foreground">Oil change needed</div>
-                    </div>
                   </div>
                 </div>
               </div>
