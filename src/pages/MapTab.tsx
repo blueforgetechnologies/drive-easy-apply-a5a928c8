@@ -882,8 +882,8 @@ const MapTab = () => {
       statusBorderColor = '#d97706';
       statusText = 'IDLING';
     } else {
-      statusGradient = 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%)';
-      statusBorderColor = '#2563eb';
+      statusGradient = 'linear-gradient(180deg, #374151 0%, #1f2937 100%)';
+      statusBorderColor = '#111827';
       statusText = 'PARKED';
     }
     
@@ -1324,7 +1324,7 @@ const MapTab = () => {
                 
                 {/* Parked */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center shadow-sm">
                     <span className="text-white font-bold text-sm">P</span>
                   </div>
                   <div>
