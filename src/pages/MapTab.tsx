@@ -785,7 +785,7 @@ const MapTab = () => {
   const idlingCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status === 'idling').length;
   const parkedCount = vehicles.filter(v => (v.speed || 0) === 0 && v.stopped_status !== 'idling').length;
 
-  // Render vehicle card for both mobile and desktop - Aurora puffed style
+  // Render vehicle card - Classic compact style
   const renderVehicleCard = (vehicle: any, index: number) => {
     const speed = vehicle.speed || 0;
     const stoppedStatus = vehicle.stopped_status;
@@ -794,162 +794,115 @@ const MapTab = () => {
     let statusGradient = '';
     let statusBorderColor = '';
     let statusText = '';
-    let statusTextColor = '';
     
     if (speed > 0) {
-      // Driving - Green puffed
       statusGradient = 'linear-gradient(180deg, #34d399 0%, #10b981 100%)';
       statusBorderColor = '#059669';
       statusText = 'DRIVING';
-      statusTextColor = 'text-emerald-600';
     } else if (stoppedStatus === 'idling') {
-      // Idling - Amber puffed  
       statusGradient = 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)';
       statusBorderColor = '#d97706';
       statusText = 'IDLING';
-      statusTextColor = 'text-amber-600';
     } else {
-      // Parked - Blue puffed
       statusGradient = 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%)';
       statusBorderColor = '#2563eb';
       statusText = 'PARKED';
-      statusTextColor = 'text-blue-600';
     }
     
     const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
     const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
-    const hasAlert = oilChangeDue || hasFaultCodes;
     
     return (
       <div
         key={vehicle.id}
         className={`
-          group relative rounded-xl transition-all duration-200 overflow-hidden cursor-pointer
-          hover:scale-[1.01] hover:shadow-lg
-          ${isSelected ? 'ring-2 ring-primary shadow-lg scale-[1.01]' : ''}
-          ${hasAlert ? 'ring-1 ring-destructive/50' : ''}
+          group flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all duration-150
+          hover:scale-[1.01]
+          ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : ''}
         `}
         style={{
           background: index % 2 === 0 
-            ? 'linear-gradient(180deg, #f5f0ff 0%, #ede5ff 100%)'
-            : 'linear-gradient(180deg, #ffffff 0%, #f8f5ff 100%)',
+            ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
+            : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
           boxShadow: isSelected 
-            ? '0 8px 25px rgba(139,92,246,0.25), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(139,92,246,0.15)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(139,92,246,0.1), 0 2px 8px rgba(139,92,246,0.08)',
-          border: '1px solid rgba(139,92,246,0.15)',
-          borderBottom: '2px solid rgba(139,92,246,0.2)',
+            ? '0 4px 12px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.9)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(37,99,235,0.08), 0 1px 3px rgba(37,99,235,0.06)',
+          border: '1px solid hsl(220 13% 88%)',
+          borderBottom: '2px solid hsl(220 13% 82%)',
         }}
         onClick={() => handleVehicleClick(vehicle.id)}
       >
-        {/* Main content */}
-        <div className="p-3">
-          <div className="flex items-center gap-3">
-            {/* Status badge - puffed 3D style */}
-            <div 
-              className="relative flex items-center justify-center w-11 h-11 rounded-xl shadow-md transition-transform group-hover:scale-105"
-              style={{
-                background: statusGradient,
-                borderBottom: `2px solid ${statusBorderColor}`,
-                boxShadow: `0 4px 12px ${statusBorderColor}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
-              }}
-            >
-              {speed > 0 ? (
-                <Navigation className="h-5 w-5 text-white drop-shadow-sm" />
-              ) : stoppedStatus === 'idling' ? (
-                <div className="flex gap-0.5">
-                  <div className="w-1 h-3 bg-white rounded-full" />
-                  <div className="w-1 h-3 bg-white rounded-full" />
-                </div>
-              ) : (
-                <span className="text-white font-black text-lg drop-shadow-sm">P</span>
-              )}
-            </div>
-            
-            {/* Vehicle info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base text-gray-800 truncate">
-                  {vehicle.vehicle_number || 'Unknown'}
-                </span>
-                {hasAlert && (
-                  <div 
-                    className="flex items-center justify-center w-5 h-5 rounded-full"
-                    style={{
-                      background: 'linear-gradient(180deg, #f87171 0%, #ef4444 100%)',
-                      boxShadow: '0 2px 6px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-                    }}
-                  >
-                    <AlertTriangle className="h-3 w-3 text-white" />
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 truncate mt-0.5">
-                {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
-              </p>
-            </div>
-            
-            {/* Speed badge - puffed pill */}
-            <div className="flex flex-col items-end gap-1">
-              <div 
-                className="px-3 py-1.5 rounded-full text-sm font-black text-white"
-                style={{
-                  background: statusGradient,
-                  borderBottom: `2px solid ${statusBorderColor}`,
-                  boxShadow: `0 3px 10px ${statusBorderColor}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                }}
-              >
-                {speed} mph
-              </div>
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${statusTextColor}`}>
-                {statusText}
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Footer with alerts and history */}
+        {/* Status badge - compact */}
         <div 
-          className="flex items-center justify-between px-3 py-2"
+          className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 transition-transform group-hover:scale-105"
           style={{
-            background: 'linear-gradient(180deg, rgba(139,92,246,0.05) 0%, rgba(139,92,246,0.1) 100%)',
-            borderTop: '1px solid rgba(139,92,246,0.1)',
+            background: statusGradient,
+            borderBottom: `2px solid ${statusBorderColor}`,
+            boxShadow: `0 2px 6px ${statusBorderColor}30, inset 0 1px 0 rgba(255,255,255,0.3)`,
           }}
         >
-          <div className="flex items-center gap-3">
+          {speed > 0 ? (
+            <Navigation className="h-4 w-4 text-white" />
+          ) : stoppedStatus === 'idling' ? (
+            <div className="flex gap-0.5">
+              <div className="w-0.5 h-2.5 bg-white rounded-full" />
+              <div className="w-0.5 h-2.5 bg-white rounded-full" />
+            </div>
+          ) : (
+            <span className="text-white font-black text-sm">P</span>
+          )}
+        </div>
+        
+        {/* Vehicle info - compact */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-sm text-gray-800 truncate">
+              {vehicle.vehicle_number || 'Unknown'}
+            </span>
             {oilChangeDue && (
-              <div className="flex items-center gap-1.5">
-                <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4" />
-                <span className="text-[11px] font-medium text-orange-600">Service due</span>
-              </div>
+              <img src={oilChangeIcon} alt="Oil change" className="h-3.5 w-3.5 flex-shrink-0" />
             )}
             {hasFaultCodes && (
-              <div className="flex items-center gap-1.5">
-                <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4" />
-                <span className="text-[11px] font-medium text-red-600">{vehicle.fault_codes.length} fault{vehicle.fault_codes.length > 1 ? 's' : ''}</span>
-              </div>
-            )}
-            {!hasAlert && (
-              <span className="text-[11px] text-gray-400">No alerts</span>
+              <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5 flex-shrink-0" />
             )}
           </div>
-          
-          {/* History button - puffed style */}
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-violet-700 transition-all hover:scale-105"
+          <p className="text-[11px] text-gray-500 truncate">
+            {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
+          </p>
+        </div>
+        
+        {/* Speed + status - compact column */}
+        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+          <div 
+            className="px-2 py-0.5 rounded text-xs font-bold text-white"
             style={{
-              background: 'linear-gradient(180deg, #f5f0ff 0%, #ede5ff 100%)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(139,92,246,0.15)',
-              border: '1px solid rgba(139,92,246,0.2)',
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              enterHistoryMode(vehicle.id);
+              background: statusGradient,
+              boxShadow: `0 1px 3px ${statusBorderColor}30`,
             }}
           >
-            <History className="h-3.5 w-3.5" />
-            History
-          </button>
+            {speed} mph
+          </div>
+          <span className="text-[9px] font-semibold text-gray-500 uppercase">
+            {statusText}
+          </span>
         </div>
+        
+        {/* History button - compact icon */}
+        <button
+          className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110"
+          style={{
+            background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(37,99,235,0.1)',
+            border: '1px solid hsl(220 13% 85%)',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            enterHistoryMode(vehicle.id);
+          }}
+          title="View history"
+        >
+          <History className="h-3.5 w-3.5 text-blue-600" />
+        </button>
       </div>
     );
   };
@@ -959,40 +912,40 @@ const MapTab = () => {
 
   return (
     <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-120px)] relative flex flex-col md:flex-row md:gap-4">
-      {/* Desktop Sidebar - Aurora Style */}
+      {/* Desktop Sidebar - Classic Blue Style */}
       <aside 
-        className="hidden md:flex w-80 max-w-sm overflow-hidden flex-col rounded-2xl"
+        className="hidden md:flex w-72 max-w-sm overflow-hidden flex-col rounded-2xl"
         style={{
-          background: 'linear-gradient(180deg, #f8f5ff 0%, #f0ebff 50%, #e8e0ff 100%)',
-          boxShadow: '0 10px 40px rgba(139,92,246,0.15), 0 4px 15px rgba(139,92,246,0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
-          border: '1px solid rgba(139,92,246,0.15)',
+          background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 50%, hsl(220 14% 96%) 100%)',
+          boxShadow: '0 8px 30px rgba(37,99,235,0.12), 0 2px 10px rgba(37,99,235,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
+          border: '1px solid hsl(220 13% 85%)',
         }}
       >
-        {/* Header - Fancy gradient */}
+        {/* Header - Classic Blue gradient */}
         <div 
-          className="px-4 py-4"
+          className="px-3 py-3"
           style={{
-            background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 15px rgba(124,58,237,0.3)',
+            background: 'linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(221 83% 60%) 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(37,99,235,0.25)',
           }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
               style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 8px rgba(0,0,0,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)',
+                border: '1px solid rgba(255,255,255,0.15)',
               }}
             >
-              <Truck className="h-6 w-6 text-white drop-shadow-sm" />
+              <Truck className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-white drop-shadow-sm">Fleet Tracker</h3>
-              <p className="text-xs text-white/80">
-                {vehicles.length} active asset{vehicles.length !== 1 ? 's' : ''}
+              <h3 className="font-bold text-base text-white">Fleet Tracker</h3>
+              <p className="text-[11px] text-white/75">
+                {vehicles.length} asset{vehicles.length !== 1 ? 's' : ''}
                 {filterMode === 'my-trucks' && allVehicles.length !== vehicles.length && (
-                  <span className="text-white/60"> of {allVehicles.length}</span>
+                  <span className="text-white/50"> of {allVehicles.length}</span>
                 )}
               </p>
             </div>
@@ -1000,132 +953,133 @@ const MapTab = () => {
         </div>
         
         {/* Filter + Stats section */}
-        <div className="px-3 py-3 space-y-3">
-          {/* Filter Toggle - My Trucks / All */}
+        <div className="px-2 py-2 space-y-2">
+          {/* Filter Toggle */}
           {(isAdmin || currentDispatcherId) && (
             <div 
-              className="flex items-center justify-between p-2.5 rounded-xl"
+              className="flex items-center justify-between p-2 rounded-lg"
               style={{
-                background: 'linear-gradient(180deg, #ffffff 0%, #f5f0ff 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(139,92,246,0.1)',
-                border: '1px solid rgba(139,92,246,0.15)',
+                background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(37,99,235,0.08)',
+                border: '1px solid hsl(220 13% 88%)',
               }}
             >
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-violet-600" />
-                <Label htmlFor="fleet-filter" className="text-xs font-semibold text-gray-700 cursor-pointer">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-blue-600" />
+                <Label htmlFor="fleet-filter" className="text-[11px] font-semibold text-gray-700 cursor-pointer">
                   {filterMode === 'all' ? 'All Trucks' : 'My Trucks'}
                 </Label>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-gray-500">My</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-medium text-gray-400">My</span>
                 <Switch
                   id="fleet-filter"
                   checked={filterMode === 'all'}
                   onCheckedChange={(checked) => setFilterMode(checked ? 'all' : 'my-trucks')}
                   disabled={!isAdmin && !currentDispatcherId}
+                  className="scale-75"
                 />
-                <span className="text-[10px] font-medium text-gray-500">All</span>
+                <span className="text-[9px] font-medium text-gray-400">All</span>
               </div>
             </div>
           )}
           
-          {/* Quick stats - puffed 3D style */}
-          <div className="flex gap-2">
+          {/* Quick stats - Classic compact */}
+          <div className="flex gap-1.5">
             <div 
-              className="flex-1 px-3 py-2.5 rounded-xl text-center"
+              className="flex-1 px-2 py-1.5 rounded-lg text-center"
               style={{
                 background: 'linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 6px rgba(16,185,129,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(16,185,129,0.15)',
                 border: '1px solid rgba(16,185,129,0.2)',
-                borderBottom: '2px solid rgba(16,185,129,0.3)',
+                borderBottom: '2px solid rgba(16,185,129,0.25)',
               }}
             >
-              <div className="text-xl font-black text-emerald-700">{movingCount}</div>
-              <div className="text-[9px] font-semibold text-emerald-600 uppercase tracking-wider">Driving</div>
+              <div className="text-lg font-black text-emerald-700">{movingCount}</div>
+              <div className="text-[8px] font-bold text-emerald-600 uppercase tracking-wide">Driving</div>
             </div>
             <div 
-              className="flex-1 px-3 py-2.5 rounded-xl text-center"
+              className="flex-1 px-2 py-1.5 rounded-lg text-center"
               style={{
                 background: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 6px rgba(245,158,11,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(245,158,11,0.15)',
                 border: '1px solid rgba(245,158,11,0.2)',
-                borderBottom: '2px solid rgba(245,158,11,0.3)',
+                borderBottom: '2px solid rgba(245,158,11,0.25)',
               }}
             >
-              <div className="text-xl font-black text-amber-700">{idlingCount}</div>
-              <div className="text-[9px] font-semibold text-amber-600 uppercase tracking-wider">Idling</div>
+              <div className="text-lg font-black text-amber-700">{idlingCount}</div>
+              <div className="text-[8px] font-bold text-amber-600 uppercase tracking-wide">Idling</div>
             </div>
             <div 
-              className="flex-1 px-3 py-2.5 rounded-xl text-center"
+              className="flex-1 px-2 py-1.5 rounded-lg text-center"
               style={{
                 background: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 6px rgba(59,130,246,0.2)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(59,130,246,0.15)',
                 border: '1px solid rgba(59,130,246,0.2)',
-                borderBottom: '2px solid rgba(59,130,246,0.3)',
+                borderBottom: '2px solid rgba(59,130,246,0.25)',
               }}
             >
-              <div className="text-xl font-black text-blue-700">{parkedCount}</div>
-              <div className="text-[9px] font-semibold text-blue-600 uppercase tracking-wider">Parked</div>
+              <div className="text-lg font-black text-blue-700">{parkedCount}</div>
+              <div className="text-[8px] font-bold text-blue-600 uppercase tracking-wide">Parked</div>
             </div>
           </div>
         </div>
         
-        {/* Vehicle list */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
+        {/* Vehicle list - compact spacing */}
+        <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
           {vehicles.map((vehicle, index) => renderVehicleCard(vehicle, index))}
           {vehicles.length === 0 && (
             <div 
-              className="flex flex-col items-center justify-center py-12 text-center rounded-xl"
+              className="flex flex-col items-center justify-center py-8 text-center rounded-lg"
               style={{
-                background: 'linear-gradient(180deg, #ffffff 0%, #f5f0ff 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(139,92,246,0.1)',
-                border: '1px solid rgba(139,92,246,0.15)',
+                background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(37,99,235,0.06)',
+                border: '1px solid hsl(220 13% 88%)',
               }}
             >
               <div 
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
                 style={{
-                  background: 'linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 6px rgba(139,92,246,0.2)',
-                  border: '1px solid rgba(139,92,246,0.2)',
+                  background: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(59,130,246,0.15)',
+                  border: '1px solid rgba(59,130,246,0.2)',
                 }}
               >
-                <Truck className="h-8 w-8 text-violet-500" />
+                <Truck className="h-6 w-6 text-blue-600" />
               </div>
-              <p className="text-sm font-semibold text-gray-600">No assets with GPS</p>
-              <p className="text-xs text-gray-400 mt-1">Sync with Samsara to get started</p>
+              <p className="text-xs font-semibold text-gray-600">No assets with GPS</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Sync with Samsara to get started</p>
             </div>
           )}
         </div>
         
-        {/* Footer - Fancy gradient */}
+        {/* Footer - Classic blue */}
         <div 
-          className="px-4 py-3"
+          className="px-2 py-2"
           style={{
-            background: 'linear-gradient(180deg, #f0ebff 0%, #e8e0ff 100%)',
-            borderTop: '1px solid rgba(139,92,246,0.15)',
+            background: 'linear-gradient(180deg, hsl(220 14% 97%) 0%, hsl(220 14% 94%) 100%)',
+            borderTop: '1px solid hsl(220 13% 88%)',
           }}
         >
-          <div className="flex items-center justify-between text-xs mb-3">
+          <div className="flex items-center justify-between text-[10px] mb-2">
             <span className="text-gray-500 font-medium">Updated {lastUpdate.toLocaleTimeString()}</span>
-            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+            <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
           </div>
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
             style={{
-              background: 'linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%)',
-              boxShadow: '0 4px 15px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
-              border: '1px solid rgba(109,40,217,0.3)',
-              borderBottom: '2px solid rgba(109,40,217,0.5)',
+              background: 'linear-gradient(180deg, hsl(221 83% 53%) 0%, hsl(221 83% 45%) 100%)',
+              boxShadow: '0 3px 10px rgba(37,99,235,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+              border: '1px solid hsl(221 83% 40%)',
+              borderBottom: '2px solid hsl(221 83% 35%)',
             }}
           >
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
             {syncing ? 'Syncing...' : 'Sync with Samsara'}
           </button>
         </div>
