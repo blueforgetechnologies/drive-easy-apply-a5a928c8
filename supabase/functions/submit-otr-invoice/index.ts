@@ -323,7 +323,8 @@ serve(async (req) => {
     // because OTR's PostInvoices examples typically use the invoice number (often numeric).
     let invoiceNumber: string | null = null;
     let invoiceAmount: number = Number(load.rate || 0);
-    let invoiceDate: string = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    // OTR schema marks this as date-time. Use RFC3339 (no milliseconds) to satisfy strict validators.
+    let invoiceDate: string = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
     if (invoice_id) {
       const { data: invoice, error: invoiceError } = await adminClient
@@ -346,11 +347,11 @@ serve(async (req) => {
           invoiceAmount = parsedAmount;
         }
 
-        // invoice_date is DATE in DB (YYYY-MM-DD). Keep as-is per OTR docs.
+        // invoice_date is DATE in DB (YYYY-MM-DD). Convert to RFC3339 date-time.
         const rawInvoiceDate: unknown = (invoice as any).invoice_date;
         if (rawInvoiceDate) {
-          // OTR expects YYYY-MM-DD format, NOT ISO 8601 datetime
-          invoiceDate = String(rawInvoiceDate);
+          const yyyyMmDd = String(rawInvoiceDate);
+          invoiceDate = `${yyyyMmDd}T00:00:00Z`;
         }
       }
     }

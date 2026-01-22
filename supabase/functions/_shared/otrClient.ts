@@ -2,7 +2,8 @@
 // Used by check-broker-credit and submit-otr-invoice
 
 // Staging URL - switch to production after OTR approves test invoices
-export const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
+// OTR docs / portal currently reference the carrier staging host (servicescstg)
+export const OTR_API_BASE_URL = 'https://servicescstg.otrsolutions.com/carrier-tms/2';
 // Production URL (use after approval): 'https://services.otrsolutions.com/carrier-tms/2'
 
 export interface OtrTokenResponse {
