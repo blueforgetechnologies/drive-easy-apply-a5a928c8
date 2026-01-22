@@ -21,6 +21,7 @@ import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { PDFImageViewer } from "@/components/PDFImageViewer";
 import { CarrierRateHistoryDialog } from "@/components/CarrierRateHistoryDialog";
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +95,7 @@ export default function LoadsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { query, withTenant, tenantId, shouldFilter, isReady } = useTenantQuery();
+  const { hasPermission } = useUserPermissions();
   const filter = searchParams.get("filter") || "all";
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +118,10 @@ export default function LoadsTab() {
   const [rateHistoryDialogOpen, setRateHistoryDialogOpen] = useState(false);
   const [selectedLoadForHistory, setSelectedLoadForHistory] = useState<{ id: string; loadNumber: string } | null>(null);
   const ROWS_PER_PAGE = 14;
+  
+  // Permission checks for Load Approval features
+  const canUseApprovalMode = hasPermission("feature_load_approval_mode");
+  const canAccessApprovalPage = hasPermission("feature_load_approval_page");
   
   // Status priority order matching the tab order - action_needed first!
   const STATUS_ORDER = [
@@ -988,25 +994,29 @@ export default function LoadsTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl sm:text-2xl font-bold">Booked Loads</h2>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button 
-            variant={loadApprovalMode ? "default" : "outline"}
-            className={cn(
-              "gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl",
-              loadApprovalMode && "bg-green-600 hover:bg-green-700"
-            )}
-            onClick={() => setLoadApprovalMode(!loadApprovalMode)}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {loadApprovalMode ? "Exit Approval Mode" : "Load Approval MODE"}
-          </Button>
-          <Button 
-            variant="outline"
-            className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
-            onClick={() => navigate("/dashboard/load-approval")}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Load Approval
-          </Button>
+          {canUseApprovalMode && (
+            <Button 
+              variant={loadApprovalMode ? "default" : "outline"}
+              className={cn(
+                "gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl",
+                loadApprovalMode && "bg-green-600 hover:bg-green-700"
+              )}
+              onClick={() => setLoadApprovalMode(!loadApprovalMode)}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {loadApprovalMode ? "Exit Approval Mode" : "Load Approval MODE"}
+            </Button>
+          )}
+          {canAccessApprovalPage && (
+            <Button 
+              variant="outline"
+              className="gap-2 flex-1 sm:flex-none h-11 sm:h-10 rounded-xl"
+              onClick={() => navigate("/dashboard/load-approval")}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Load Approval
+            </Button>
+          )}
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) {

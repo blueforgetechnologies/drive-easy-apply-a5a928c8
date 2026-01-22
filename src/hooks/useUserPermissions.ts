@@ -252,6 +252,10 @@ export const PERMISSION_CODES = {
   SETTINGS_INTEGRATIONS: "integrations_edit",
   SETTINGS_INTEGRATIONS_VIEW: "integrations_view",
   
+  // Load Approval features
+  FEATURE_LOAD_APPROVAL_MODE: "feature_load_approval_mode",
+  FEATURE_LOAD_APPROVAL_PAGE: "feature_load_approval_page",
+  
   // Inspector/Admin (platform admin only)
   TAB_INSPECTOR: "tab_inspector",
   TAB_PLATFORM_ADMIN: "tab_platform_admin",
