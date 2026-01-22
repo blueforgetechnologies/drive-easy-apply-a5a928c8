@@ -518,7 +518,18 @@ const MapTab = () => {
 
 
   useEffect(() => {
-    if (!map.current || vehicles.length === 0) return;
+    if (!map.current) return;
+
+    // Clear markers not in the current filtered vehicle list
+    const currentVehicleIds = new Set(vehicles.map(v => v.id));
+    markersRef.current.forEach(({ marker }, vehicleId) => {
+      if (!currentVehicleIds.has(vehicleId)) {
+        marker.remove();
+        markersRef.current.delete(vehicleId);
+      }
+    });
+
+    if (vehicles.length === 0) return;
 
     const updateMarkers = () => {
       // Track which vehicles we've already added markers for
@@ -766,7 +777,7 @@ const MapTab = () => {
     `;
 
     updateMarkers();
-  }, [vehicles]);
+  }, [vehicles, filterMode]);
 
 
   // Count vehicles by status
