@@ -1035,7 +1035,7 @@ const MapTab = () => {
           {/* Filter Toggle */}
           {(isAdmin || currentDispatcherId) && (
             <div 
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
               style={{
                 background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.06)',
@@ -1045,39 +1045,53 @@ const MapTab = () => {
               <Users className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               
               <div 
-                className="flex rounded-md overflow-hidden flex-1"
+                className="flex gap-1 flex-1"
                 style={{
-                  background: 'hsl(220 14% 92%)',
-                  padding: '2px',
+                  background: 'hsl(220 14% 90%)',
+                  padding: '3px',
+                  borderRadius: '8px',
                 }}
               >
-                <button
-                  onClick={() => setFilterMode('my-trucks')}
-                  disabled={!currentDispatcherId}
-                  className={`
-                    flex-1 px-2.5 py-1 text-[10px] font-semibold rounded-[4px] transition-all
-                    ${filterMode === 'my-trucks' 
-                      ? 'bg-white text-blue-700 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700'
-                    }
-                    ${!currentDispatcherId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                  `}
-                >
-                  My Trucks
-                </button>
+                {/* All Fleet - Left */}
                 <button
                   onClick={() => setFilterMode('all')}
                   disabled={!isAdmin && !currentDispatcherId}
                   className={`
-                    flex-1 px-2.5 py-1 text-[10px] font-semibold rounded-[4px] transition-all
-                    ${filterMode === 'all' 
-                      ? 'bg-white text-blue-700 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700'
-                    }
+                    flex-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all
                     ${!isAdmin && !currentDispatcherId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                   `}
+                  style={filterMode === 'all' ? {
+                    background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 6px rgba(37,99,235,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    border: '1px solid rgba(30,64,175,0.3)',
+                  } : {
+                    background: 'transparent',
+                    color: '#6b7280',
+                  }}
                 >
                   All Fleet
+                </button>
+                
+                {/* My Trucks - Right */}
+                <button
+                  onClick={() => setFilterMode('my-trucks')}
+                  disabled={!currentDispatcherId}
+                  className={`
+                    flex-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all
+                    ${!currentDispatcherId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                  style={filterMode === 'my-trucks' ? {
+                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 6px rgba(5,150,105,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    border: '1px solid rgba(4,120,87,0.3)',
+                  } : {
+                    background: 'transparent',
+                    color: '#6b7280',
+                  }}
+                >
+                  My Trucks
                 </button>
               </div>
             </div>
