@@ -11,6 +11,7 @@ export interface LocationPoint {
   heading: number | null;
   odometer: number | null;
   recorded_at: string;
+  formatted_location: string | null;
 }
 
 export interface VehicleHistoryState {
@@ -60,6 +61,7 @@ export function useVehicleHistory() {
         heading: p.heading ? Number(p.heading) : null,
         odometer: p.odometer ? Number(p.odometer) : null,
         recorded_at: p.recorded_at,
+        formatted_location: (p as any).formatted_location || null,
       }));
 
       setState(prev => ({ ...prev, loading: false, points }));
