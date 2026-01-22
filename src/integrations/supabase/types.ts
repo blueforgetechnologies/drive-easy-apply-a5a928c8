@@ -5948,6 +5948,7 @@ export type Database = {
           fuel_tank_capacity: number | null
           fuel_type: string | null
           has_side_door: boolean | null
+          heading: number | null
           horizontal_etracks: number | null
           id: string
           insurance_cost_per_month: number | null
@@ -6052,6 +6053,7 @@ export type Database = {
           fuel_tank_capacity?: number | null
           fuel_type?: string | null
           has_side_door?: boolean | null
+          heading?: number | null
           horizontal_etracks?: number | null
           id?: string
           insurance_cost_per_month?: number | null
@@ -6156,6 +6158,7 @@ export type Database = {
           fuel_tank_capacity?: number | null
           fuel_type?: string | null
           has_side_door?: boolean | null
+          heading?: number | null
           horizontal_etracks?: number | null
           id?: string
           insurance_cost_per_month?: number | null
