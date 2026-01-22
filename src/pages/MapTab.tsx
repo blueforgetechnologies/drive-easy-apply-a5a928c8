@@ -655,8 +655,11 @@ const MapTab = () => {
           const isMoving = speed > 0;
           const isIdling = speed === 0 && stoppedStatus === 'idling';
           
+          // Get heading for rotation (0 = North, 90 = East, etc.)
+          const heading = vehicle.heading || 0;
+          
           if (isMoving) {
-            // DRIVING - Green with animated arrow
+            // DRIVING - Green with directional arrow rotated to heading
             bgColor = '#10b981';
             borderColor = '#059669';
             pulseRing = `
@@ -665,10 +668,10 @@ const MapTab = () => {
                 <animate attributeName="opacity" values="0.4;0;0.4" dur="1.5s" repeatCount="indefinite"/>
               </circle>
             `;
-            // Arrow pointing up (motion)
+            // Arrow rotated to heading direction
             statusIcon = `
-              <g transform="translate(12, 10)">
-                <polygon points="6,0 12,10 8,10 8,14 4,14 4,10 0,10" fill="${bgColor}"/>
+              <g transform="rotate(${heading}, 18, 16)">
+                <polygon points="18,6 24,20 18,17 12,20" fill="${bgColor}" stroke="${borderColor}" stroke-width="0.5"/>
               </g>
             `;
           } else if (isIdling) {
