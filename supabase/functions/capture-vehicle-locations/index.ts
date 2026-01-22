@@ -152,7 +152,8 @@ serve(async (req) => {
       // Check for fresh Samsara data
       const samsaraVehicle = samsaraData[vehicle.vin] || samsaraData[vehicle.provider_id];
       if (samsaraVehicle) {
-        const gps = samsaraVehicle.gps;
+        // Samsara returns gps as an array, use gps[0] for latest reading
+        const gps = samsaraVehicle.gps?.[0];
         if (gps?.latitude && gps?.longitude) {
           latitude = gps.latitude;
           longitude = gps.longitude;
@@ -160,7 +161,7 @@ serve(async (req) => {
           // Get reverse-geocoded location from Samsara (free with GPS data)
           formattedLocation = gps.reverseGeo?.formattedLocation || null;
           // Get heading/bearing from Samsara (0-360 degrees)
-          heading = gps.headingDegrees ?? gps.heading ?? null;
+          heading = gps.headingDegrees !== undefined ? Math.round(gps.headingDegrees) : null;
         }
         if (samsaraVehicle.obdOdometerMeters?.value) {
           odometer = samsaraVehicle.obdOdometerMeters.value * 0.000621371;
