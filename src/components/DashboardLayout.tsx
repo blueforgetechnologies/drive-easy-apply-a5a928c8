@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Package, Briefcase, Wrench, Settings, Map, Calculator, Target, Menu, FileCode, LogOut, MonitorUp, Ruler, TrendingUp, User, ChevronDown, CircleUser, Eye, LayoutDashboard, DollarSign, Wallet, ShieldCheck, Shield, Building2, Rocket } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import MobileNav from "./MobileNav";
+
 import { MapboxUsageAlert } from "./MapboxUsageAlert";
 import { TenantSwitcher } from "./TenantSwitcher";
 import { NoRoleAssignedBanner } from "./NoRoleAssignedBanner";
@@ -684,10 +684,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       </main>
 
-      {/* Mobile Bottom Navigation - Hidden on Load Hunter for more screen space */}
-      {!location.pathname.includes('/load-hunter') && (
-        <MobileNav alertCount={alertCount} integrationAlertCount={integrationAlertCount} />
-      )}
 
       {/* Mapbox Usage Alert - checks on login */}
       <MapboxUsageAlert />
