@@ -893,7 +893,7 @@ const MapTab = () => {
    const idlingCount = baseVehicles.filter(v => getVehicleStatus(v) === 'idling').length;
    const parkedCount = baseVehicles.filter(v => getVehicleStatus(v) === 'parked').length;
 
-  // Render vehicle card - Classic compact style
+  // Render vehicle card - Modern puffy style
   const renderVehicleCard = (vehicle: any, index: number) => {
     const speed = vehicle.speed || 0;
     const status = getVehicleStatus(vehicle);
@@ -923,25 +923,21 @@ const MapTab = () => {
     const oilChangeDue = vehicle.oil_change_remaining !== null && vehicle.oil_change_remaining <= 0;
     const hasFaultCodes = vehicle.fault_codes && Array.isArray(vehicle.fault_codes) && vehicle.fault_codes.length > 0;
     
-    // Determine card styling based on state
+    // Determine card styling based on state - Modern puffy design
     const getCardStyle = () => {
-      // History viewing no longer changes card style - the clock icon glows instead
       if (isSelected) {
-        // Strong blue highlight for selected vehicle
         return {
           background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
-          boxShadow: '0 0 0 2px #3b82f6, 0 4px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.9)',
-          border: '1px solid #3b82f6',
-          borderBottom: '2px solid #2563eb',
+          boxShadow: '0 0 0 2px #3b82f6, 0 6px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,1)',
+          border: 'none',
+          borderRadius: '16px',
         };
       }
       return {
-        background: index % 2 === 0 
-          ? 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%)'
-          : 'linear-gradient(180deg, hsl(220 14% 99%) 0%, hsl(220 14% 96%) 100%)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(37,99,235,0.08), 0 1px 3px rgba(37,99,235,0.06)',
-        border: '1px solid hsl(220 13% 88%)',
-        borderBottom: '2px solid hsl(220 13% 82%)',
+        background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%)',
+        boxShadow: '0 2px 8px rgba(37,99,235,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(37,99,235,0.05)',
+        border: '1px solid hsl(220 13% 90%)',
+        borderRadius: '16px',
       };
     };
     
@@ -949,86 +945,79 @@ const MapTab = () => {
       <div
         key={vehicle.id}
         className={`
-          group flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all duration-150
-          hover:scale-[1.01]
-          ${isSelected && !isViewingHistory ? 'ring-2 ring-blue-500 shadow-md' : ''}
+          group flex items-center gap-3 p-2.5 cursor-pointer transition-all duration-200
+          hover:scale-[1.02] hover:shadow-md
         `}
         style={getCardStyle()}
         onClick={() => handleVehicleClick(vehicle.id)}
       >
-        {/* Status badge - compact */}
+        {/* Status badge - puffy rounded */}
         <div 
-          className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 transition-transform group-hover:scale-105"
+          className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0 transition-transform group-hover:scale-105"
           style={{
             background: statusGradient,
-            borderBottom: `2px solid ${statusBorderColor}`,
-            boxShadow: `0 2px 6px ${statusBorderColor}30, inset 0 1px 0 rgba(255,255,255,0.3)`,
+            boxShadow: `0 4px 12px ${statusBorderColor}40, inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 ${statusBorderColor}`,
           }}
         >
           {status === 'driving' ? (
-            <Navigation className="h-4 w-4 text-white" />
+            <Navigation className="h-4.5 w-4.5 text-white" />
           ) : status === 'idling' ? (
             <div className="flex gap-0.5">
-              <div className="w-0.5 h-2.5 bg-white rounded-full" />
-              <div className="w-0.5 h-2.5 bg-white rounded-full" />
+              <div className="w-0.5 h-3 bg-white rounded-full" />
+              <div className="w-0.5 h-3 bg-white rounded-full" />
             </div>
           ) : (
             <span className="text-white font-black text-sm">P</span>
           )}
         </div>
         
-        {/* Vehicle info - compact */}
+        {/* Vehicle info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-sm text-gray-800 truncate">
+            <span className="font-bold text-sm text-foreground truncate">
               {vehicle.vehicle_number || 'Unknown'}
             </span>
             {oilChangeDue && (
-              <img src={oilChangeIcon} alt="Oil change" className="h-3.5 w-3.5 flex-shrink-0" />
+              <img src={oilChangeIcon} alt="Oil change" className="h-4 w-4 flex-shrink-0" />
             )}
             {hasFaultCodes && (
-              <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5 flex-shrink-0" />
+              <img src={checkEngineIcon} alt="Check engine" className="h-4 w-4 flex-shrink-0" />
             )}
           </div>
-          <p className="text-[11px] text-gray-500 truncate">
+          <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
             {vehicle.formatted_address || vehicle.last_location || 'Location unavailable'}
           </p>
         </div>
         
-        {/* Speed + status - compact column */}
-        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+        {/* Speed badge - puffy pill */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <div 
-            className="px-2 py-0.5 rounded text-xs font-bold text-white"
+            className="px-2.5 py-1 rounded-full text-xs font-bold text-white"
             style={{
               background: statusGradient,
-              boxShadow: `0 1px 3px ${statusBorderColor}30`,
+              boxShadow: `0 2px 6px ${statusBorderColor}35, inset 0 1px 0 rgba(255,255,255,0.2)`,
             }}
           >
             {speed} mph
           </div>
-          <span className="text-[9px] font-semibold text-gray-500 uppercase">
+          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">
             {statusText}
           </span>
         </div>
         
-        {/* History button - highlighted border on click, glows bright after START */}
+        {/* History button - puffy style */}
         <button
-          className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110 ${isHistoryStarted ? 'animate-pulse' : ''}`}
+          className={`flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 transition-all hover:scale-110 ${isHistoryStarted ? 'animate-pulse' : ''}`}
           style={isHistoryStarted ? {
-            // Stage 2: After START - bright glow
             background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
-            boxShadow: '0 0 12px rgba(16,185,129,0.6), 0 0 20px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-            border: '2px solid #059669',
+            boxShadow: '0 0 16px rgba(16,185,129,0.5), 0 4px 12px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.3)',
           } : isHistorySelected ? {
-            // Stage 1: Clock clicked but not started - highlighted border
             background: 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)',
-            boxShadow: '0 0 0 2px #10b981, inset 0 1px 0 rgba(255,255,255,0.8)',
-            border: '2px solid #10b981',
+            boxShadow: '0 0 0 2px #10b981, 0 2px 8px rgba(16,185,129,0.2)',
           } : {
-            // Default state
             background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(37,99,235,0.1)',
-            border: '1px solid hsl(220 13% 85%)',
+            boxShadow: '0 2px 6px rgba(37,99,235,0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
+            border: '1px solid hsl(220 13% 88%)',
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -1036,7 +1025,7 @@ const MapTab = () => {
           }}
           title={isHistoryStarted ? "Viewing history" : isHistorySelected ? "Click Start to view" : "View history"}
         >
-          <History className={`h-3.5 w-3.5 ${isHistoryStarted ? 'text-white' : isHistorySelected ? 'text-emerald-700' : 'text-blue-600'}`} />
+          <History className={`h-4 w-4 ${isHistoryStarted ? 'text-white' : isHistorySelected ? 'text-emerald-700' : 'text-primary'}`} />
         </button>
       </div>
     );
@@ -1056,7 +1045,7 @@ const MapTab = () => {
           border: '1px solid hsl(220 13% 85%)',
         }}
       >
-        {/* Header - Classic Blue gradient */}
+        {/* Header - Modern Puffy Blue gradient with timestamp */}
         <div 
           className="px-3 py-3"
           style={{
@@ -1064,25 +1053,34 @@ const MapTab = () => {
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(37,99,235,0.25)',
           }}
         >
-          <div className="flex items-center gap-2.5">
-            <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)',
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <Truck className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.15)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                <Truck className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Fleet Tracker</h3>
+                <p className="text-[11px] text-white/75">
+                  {vehicles.length} asset{vehicles.length !== 1 ? 's' : ''}
+                  {filterMode === 'my-trucks' && allVehicles.length !== vehicles.length && (
+                    <span className="text-white/50"> of {allVehicles.length}</span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-base text-white">Fleet Tracker</h3>
-              <p className="text-[11px] text-white/75">
-                {vehicles.length} asset{vehicles.length !== 1 ? 's' : ''}
-                {filterMode === 'my-trucks' && allVehicles.length !== vehicles.length && (
-                  <span className="text-white/50"> of {allVehicles.length}</span>
-                )}
-              </p>
+            {/* Last Updated timestamp */}
+            <div className="text-right">
+              <div className="text-[10px] text-white/60 font-medium">Updated</div>
+              <div className="text-xs text-white font-semibold">
+                {lastUpdate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </div>
             </div>
           </div>
         </div>
