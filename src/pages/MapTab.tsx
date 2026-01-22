@@ -88,16 +88,35 @@ const MapTab = () => {
   
   // Filter vehicles based on mode and dispatcher assignment
   const vehicles = useCallback(() => {
-    if (filterMode === 'all' || !currentDispatcherId) {
+    // If user explicitly chose "all" and is admin, show all
+    if (filterMode === 'all' && isAdmin) {
       return allVehicles;
     }
     
-    // Filter to only show vehicles where user is primary or secondary dispatcher
-    return allVehicles.filter(v => 
-      v.primary_dispatcher_id === currentDispatcherId ||
-      (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
-    );
-  }, [allVehicles, filterMode, currentDispatcherId])();
+    // If in "my-trucks" mode but no dispatcher ID, show empty (they have no assigned trucks)
+    if (filterMode === 'my-trucks' && !currentDispatcherId) {
+      return [];
+    }
+    
+    // If in "my-trucks" mode with dispatcher ID, filter to assigned trucks only
+    if (filterMode === 'my-trucks' && currentDispatcherId) {
+      return allVehicles.filter(v => 
+        v.primary_dispatcher_id === currentDispatcherId ||
+        (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
+      );
+    }
+    
+    // Fallback for non-admins in "all" mode - still filter to their trucks
+    if (!isAdmin && currentDispatcherId) {
+      return allVehicles.filter(v => 
+        v.primary_dispatcher_id === currentDispatcherId ||
+        (Array.isArray(v.secondary_dispatcher_ids) && v.secondary_dispatcher_ids.includes(currentDispatcherId))
+      );
+    }
+    
+    // If not admin and no dispatcher ID, show nothing
+    return [];
+  }, [allVehicles, filterMode, currentDispatcherId, isAdmin])();
 
   // SECURITY: Clear all markers and state when tenant changes
   const clearAllMarkers = useCallback(() => {
