@@ -1065,6 +1065,21 @@ const MapTab = () => {
           {/* Quick stats - Clickable filters */}
           <div className="flex gap-1">
             <button 
+              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'all' ? 'ring-2 ring-slate-500 ring-offset-1' : ''}`}
+              style={{
+                background: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)',
+                boxShadow: statusFilter === 'all' 
+                  ? '0 2px 8px rgba(100,116,139,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(100,116,139,0.12)',
+                border: '1px solid rgba(100,116,139,0.2)',
+                borderBottom: '2px solid rgba(100,116,139,0.25)',
+              }}
+              onClick={() => setStatusFilter('all')}
+            >
+              <div className="text-base font-black text-slate-700">{allVehicles.length}</div>
+              <div className="text-[7px] font-bold text-slate-600 uppercase tracking-wide">All</div>
+            </button>
+            <button 
               className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'driving' ? 'ring-2 ring-emerald-500 ring-offset-1' : ''}`}
               style={{
                 background: 'linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%)',
@@ -1095,19 +1110,19 @@ const MapTab = () => {
               <div className="text-[7px] font-bold text-amber-600 uppercase tracking-wide">Idling</div>
             </button>
             <button 
-              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'parked' ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+              className={`flex-1 px-1.5 py-1 rounded-md text-center transition-all cursor-pointer hover:scale-[1.02] ${statusFilter === 'parked' ? 'ring-2 ring-gray-500 ring-offset-1' : ''}`}
               style={{
-                background: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)',
+                background: 'linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%)',
                 boxShadow: statusFilter === 'parked'
-                  ? '0 2px 8px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
-                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.2)',
-                borderBottom: '2px solid rgba(59,130,246,0.25)',
+                  ? '0 2px 8px rgba(75,85,99,0.3), inset 0 1px 0 rgba(255,255,255,0.6)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(75,85,99,0.12)',
+                border: '1px solid rgba(75,85,99,0.2)',
+                borderBottom: '2px solid rgba(75,85,99,0.25)',
               }}
               onClick={() => setStatusFilter(statusFilter === 'parked' ? 'all' : 'parked')}
             >
-              <div className="text-base font-black text-blue-700">{parkedCount}</div>
-              <div className="text-[7px] font-bold text-blue-600 uppercase tracking-wide">Parked</div>
+              <div className="text-base font-black text-gray-700">{parkedCount}</div>
+              <div className="text-[7px] font-bold text-gray-600 uppercase tracking-wide">Parked</div>
             </button>
           </div>
         </div>
