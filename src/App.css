@@ -41,9 +41,30 @@
   color: #888;
 }
 
-/* Mapbox popup - rounded corners on container */
-.mapboxgl-popup-content {
+/* Mapbox popup (vehicle markers) - remove default square chrome behind our custom card */
+.vehicle-popup .mapboxgl-popup-content {
   padding: 0 !important;
-  border-radius: 16px !important;
-  overflow: hidden !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* The default pointer triangle becomes visually odd once the popup has no background */
+.vehicle-popup .mapboxgl-popup-tip {
+  display: none !important;
+}
+
+/* Optional: keep the close button, but make it match the rounded “puffy” card */
+.vehicle-popup .mapboxgl-popup-close-button {
+  width: 28px;
+  height: 28px;
+  margin: 8px;
+  border-radius: 9999px;
+  background: hsl(var(--primary-foreground) / 0.14);
+  color: hsl(var(--primary-foreground) / 0.92);
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.vehicle-popup .mapboxgl-popup-close-button:hover {
+  background: hsl(var(--primary-foreground) / 0.2);
 }
