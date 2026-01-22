@@ -893,14 +893,7 @@ const MapTab = () => {
     
     // Determine card styling based on state
     const getCardStyle = () => {
-      if (isViewingHistory) {
-        return {
-          background: 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)',
-          boxShadow: '0 0 0 2px #10b981, 0 4px 12px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.9)',
-          border: '1px solid #10b981',
-          borderBottom: '2px solid #059669',
-        };
-      }
+      // History viewing no longer changes card style - the clock icon glows instead
       if (isSelected) {
         // Strong blue highlight for selected vehicle
         return {
@@ -986,10 +979,14 @@ const MapTab = () => {
           </span>
         </div>
         
-        {/* History button - compact icon */}
+        {/* History button - glows bright green when viewing this vehicle's history */}
         <button
-          className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110"
-          style={{
+          className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 transition-all hover:scale-110 ${isViewingHistory ? 'animate-pulse' : ''}`}
+          style={isViewingHistory ? {
+            background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
+            boxShadow: '0 0 12px rgba(16,185,129,0.6), 0 0 20px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+            border: '2px solid #059669',
+          } : {
             background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 96%) 100%)',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(37,99,235,0.1)',
             border: '1px solid hsl(220 13% 85%)',
@@ -998,9 +995,9 @@ const MapTab = () => {
             e.stopPropagation();
             enterHistoryMode(vehicle.id);
           }}
-          title="View history"
+          title={isViewingHistory ? "Viewing history" : "View history"}
         >
-          <History className="h-3.5 w-3.5 text-blue-600" />
+          <History className={`h-3.5 w-3.5 ${isViewingHistory ? 'text-white' : 'text-blue-600'}`} />
         </button>
       </div>
     );
