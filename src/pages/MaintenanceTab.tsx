@@ -551,7 +551,7 @@ export default function MaintenanceTab() {
                 <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Fleet Vehicles</h3>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-1.5 space-y-1">
+                <div className="p-2 space-y-1.5">
                   {allVehicles.map((vehicle) => {
                     const vehicleFaults = getFaultCodes(vehicle);
                     const hasFaults = vehicleFaults.length > 0;
@@ -561,17 +561,17 @@ export default function MaintenanceTab() {
                       <div
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
-                        className={`px-2.5 py-2 rounded-lg cursor-pointer transition-all group ${
+                        className={`px-3 py-2.5 rounded-full cursor-pointer transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ${
                           isSelected 
-                            ? 'bg-gradient-to-r from-violet-500 to-violet-600 shadow-md' 
-                            : 'hover:bg-gray-50 hover:shadow-sm'
+                            ? 'bg-gradient-to-b from-violet-500 to-violet-600 shadow-md border border-violet-400' 
+                            : 'bg-gradient-to-b from-white to-gray-100 hover:from-gray-50 hover:to-gray-150 border border-gray-200 hover:shadow-md'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Truck className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-white' : 'text-gray-400'}`} />
+                            <Truck className={`h-4 w-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
                             <div className="min-w-0">
-                              <span className={`font-bold text-sm block truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+                              <span className={`font-semibold text-sm block truncate ${isSelected ? 'text-white' : 'text-gray-700'}`}>
                                 {vehicle.vehicle_number}
                               </span>
                               <span className={`text-[10px] block truncate ${isSelected ? 'text-violet-200' : 'text-gray-400'}`}>
@@ -580,10 +580,10 @@ export default function MaintenanceTab() {
                             </div>
                           </div>
                           {hasFaults && (
-                            <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0 ${
+                            <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm ${
                               isSelected 
-                                ? 'bg-white/20 text-white' 
-                                : 'bg-gradient-to-b from-red-500 to-red-600 text-white shadow-sm'
+                                ? 'bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]' 
+                                : 'bg-gradient-to-b from-red-500 to-red-600 text-white'
                             }`}>
                               {vehicleFaults.length}
                             </span>
