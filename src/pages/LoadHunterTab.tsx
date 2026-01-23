@@ -40,6 +40,7 @@ import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
 import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
 import { useLoadHunterData } from "@/hooks/useLoadHunterData";
+import { useLoadHunterCounts } from "@/hooks/useLoadHunterCounts";
 import { groupMatchesByLoadEmail } from "@/utils/loadHunterHelpers";
 import { LoadHunterFilters, LoadHunterTableHeader, LoadHunterTableRowEnhanced, LoadHunterVehicleDetail } from "@/components/load-hunter";
 import type { SoundSettings } from "@/hooks/useUserPreferences";
@@ -59,6 +60,9 @@ export default function LoadHunterTab() {
     showAllTabEnabled,
     refreshMyVehicleIds,
   } = useLoadHunterDispatcher({ tenantId, shouldFilter });
+  
+  // ===== COUNTS HOOK - provides persistent badge counts from DB =====
+  const { unreviewedCount: badgeUnreviewedCount } = useLoadHunterCounts();
   
   // Session start for time window filter
   const [sessionStart] = useState(() => new Date().toISOString());
@@ -2462,7 +2466,7 @@ export default function LoadHunterTab() {
         setActiveMode={setActiveMode}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
-        unreviewedCount={unreviewedCount}
+        unreviewedCount={badgeUnreviewedCount}
         skippedCount={skippedMatches.length}
         bidCount={bidMatches.length}
         bookedCount={bookedMatches.length}
