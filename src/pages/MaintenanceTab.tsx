@@ -1018,10 +1018,11 @@ export default function MaintenanceTab() {
               <ScrollArea className="flex-1">
                 <div className="bg-gradient-to-b from-slate-100 to-slate-200/80 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-300/60 overflow-hidden">
                   {/* Table header */}
-                  <div className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px_80px] gap-2 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-700 text-white text-xs font-bold uppercase tracking-wider">
+                  <div className="grid grid-cols-[1fr_2fr_1.5fr_100px_120px_100px_80px] gap-2 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-700 text-white text-xs font-bold uppercase tracking-wider">
                     <div>Repair</div>
                     <div>Notes</div>
                     <div>Marked Completed By</div>
+                    <div>Odometer</div>
                     <div>Date</div>
                     <div>Time</div>
                     <div></div>
@@ -1045,7 +1046,7 @@ export default function MaintenanceTab() {
                         return (
                           <div 
                             key={record.id} 
-                            className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px_80px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
+                            className="grid grid-cols-[1fr_2fr_1.5fr_100px_120px_100px_80px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
                           >
                             <div>
                               <div className="font-semibold text-sm text-slate-800">
@@ -1060,6 +1061,9 @@ export default function MaintenanceTab() {
                             </div>
                             <div className="text-sm text-slate-700 font-medium">
                               {completedBy}
+                            </div>
+                            <div className="text-sm text-slate-600">
+                              {record.odometer ? record.odometer.toLocaleString() : <span className="text-slate-400">-</span>}
                             </div>
                             <div className="text-sm text-slate-600">
                               {completionDate}
