@@ -545,8 +545,8 @@ export default function MaintenanceTab() {
           </div>
 
           <div className="flex gap-3 h-[calc(100vh-240px)] min-h-[500px]">
-            {/* Vehicle Sidebar - Load Hunter Style Identical */}
-            <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto pr-2 border-r border-purple-500/30">
+            {/* Vehicle Sidebar - Classic Theme Style */}
+            <div className="w-64 flex-shrink-0 space-y-1.5 overflow-y-auto pr-2 border-r">
               {allVehicles.map((vehicle) => {
                 const vehicleFaults = getFaultCodes(vehicle);
                 const hasFaults = vehicleFaults.length > 0;
@@ -556,29 +556,27 @@ export default function MaintenanceTab() {
                   <div 
                     key={vehicle.id} 
                     className={`p-3 cursor-pointer rounded-lg relative transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-gradient-to-b from-purple-900/80 to-violet-900/60 border border-purple-400/60 shadow-lg shadow-purple-500/30'
-                        : 'bg-gradient-to-b from-purple-900/40 to-violet-900/30 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-md hover:shadow-purple-500/20'
+                      isSelected ? 'card-glossy-selected' : 'card-glossy'
                     }`}
                     style={{ 
-                      borderLeft: hasFaults ? '4px solid #ef4444' : '4px solid rgba(168,85,247,0.3)'
+                      borderLeft: hasFaults ? '5px solid #ef4444' : '5px solid #d1d5db'
                     }}
                     onClick={() => setSelectedVehicle(vehicle)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <Truck className="h-5 w-5 flex-shrink-0 text-purple-300 mt-0.5" />
+                        <Truck className={`h-5 w-5 flex-shrink-0 mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
                         <div className="min-w-0 flex-1">
-                          <div className="font-bold text-base leading-tight truncate text-purple-100">
+                          <div className={`font-bold text-base leading-tight truncate ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
                             {vehicle.vehicle_number}
                           </div>
-                          <div className="text-sm leading-tight truncate text-purple-300/80 mt-0.5">
+                          <div className="text-sm leading-tight truncate text-gray-500 mt-0.5">
                             {vehicle.make} {vehicle.model}
                           </div>
                           {hasFaults && (
                             <div className="flex items-center gap-1.5 mt-1.5">
                               <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
-                              <span className="text-sm font-semibold text-red-400">
+                              <span className="text-sm font-semibold text-red-500">
                                 {vehicleFaults.length} fault{vehicleFaults.length !== 1 ? 's' : ''}
                               </span>
                             </div>
@@ -586,11 +584,11 @@ export default function MaintenanceTab() {
                         </div>
                       </div>
                       
-                      {/* Fault count badge - top right corner like Load Hunter */}
+                      {/* Fault count badge - top right corner */}
                       {hasFaults && (
-                        <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg shadow-[0_2px_8px_-2px_rgba(239,68,68,0.3)]">
+                        <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg">
                           <div 
-                            className="h-7 px-3 !rounded-none !border-0 text-sm font-bold cursor-pointer transition-all flex items-center justify-center bg-gradient-to-b from-red-400 to-red-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-red-300 hover:to-red-500"
+                            className="h-7 px-3 !rounded-none !border-0 text-sm font-bold cursor-pointer transition-all flex items-center justify-center bg-gradient-to-b from-red-400 to-red-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_4px_rgba(239,68,68,0.3)] hover:from-red-300 hover:to-red-500"
                           >
                             {vehicleFaults.length}
                           </div>
