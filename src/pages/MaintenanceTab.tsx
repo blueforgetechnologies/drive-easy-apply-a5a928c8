@@ -546,7 +546,7 @@ export default function MaintenanceTab() {
 
           <div className="flex gap-3 h-[calc(100vh-240px)] min-h-[500px]">
             {/* Vehicle Sidebar - Classic Theme Style */}
-            <div className="w-64 flex-shrink-0 space-y-1.5 overflow-y-auto pr-2 border-r">
+            <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto pr-2 border-r">
               {allVehicles.map((vehicle) => {
                 const vehicleFaults = getFaultCodes(vehicle);
                 const hasFaults = vehicleFaults.length > 0;
@@ -555,43 +555,34 @@ export default function MaintenanceTab() {
                 return (
                   <div 
                     key={vehicle.id} 
-                    className={`p-3 cursor-pointer rounded-lg relative transition-all duration-200 ${
+                    className={`px-2 py-1.5 cursor-pointer rounded-md relative transition-all duration-200 ${
                       isSelected ? 'card-glossy-selected' : 'card-glossy'
                     }`}
                     style={{ 
-                      borderLeft: hasFaults ? '5px solid #ef4444' : '5px solid #d1d5db'
+                      borderLeft: hasFaults ? '4px solid #ef4444' : '4px solid #d1d5db'
                     }}
                     onClick={() => setSelectedVehicle(vehicle)}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <Truck className={`h-5 w-5 flex-shrink-0 mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Truck className={`h-4 w-4 flex-shrink-0 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
                         <div className="min-w-0 flex-1">
-                          <div className={`font-bold text-base leading-tight truncate ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                          <div className={`font-bold text-base leading-none truncate ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
                             {vehicle.vehicle_number}
                           </div>
-                          <div className="text-sm leading-tight truncate text-gray-500 mt-0.5">
+                          <div className="text-sm leading-none truncate text-gray-500 mt-0.5">
                             {vehicle.make} {vehicle.model}
                           </div>
-                          {hasFaults && (
-                            <div className="flex items-center gap-1.5 mt-1.5">
-                              <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
-                              <span className="text-sm font-semibold text-red-500">
-                                {vehicleFaults.length} fault{vehicleFaults.length !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          )}
                         </div>
                       </div>
                       
-                      {/* Fault count badge - top right corner */}
+                      {/* Fault count badge */}
                       {hasFaults && (
-                        <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg">
-                          <div 
-                            className="h-7 px-3 !rounded-none !border-0 text-sm font-bold cursor-pointer transition-all flex items-center justify-center bg-gradient-to-b from-red-400 to-red-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_4px_rgba(239,68,68,0.3)] hover:from-red-300 hover:to-red-500"
-                          >
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <img src={checkEngineIcon} alt="Faults" className="h-3.5 w-3.5" />
+                          <span className="text-sm font-bold text-white bg-gradient-to-b from-red-400 to-red-600 px-1.5 py-0.5 rounded shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]">
                             {vehicleFaults.length}
-                          </div>
+                          </span>
                         </div>
                       )}
                     </div>
