@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical } from "lucide-react";
+import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { getDTCInfo, getDTCLookupUrl, getSeverityColor, parseDTCCode } from "@/lib/dtc-lookup";
@@ -212,6 +212,33 @@ export default function MaintenanceTab() {
       loadRepairs();
     } catch (error: any) {
       toast.error("Failed to update repair");
+      console.error(error);
+    }
+  };
+
+  const handleMoveRepair = async (vehicleId: string, repairId: string, direction: 'up' | 'down') => {
+    const vehicleRepairs = repairs
+      .filter(r => r.vehicle_id === vehicleId)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    
+    const currentIndex = vehicleRepairs.findIndex(r => r.id === repairId);
+    if (currentIndex === -1) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= vehicleRepairs.length) return;
+    
+    const currentRepair = vehicleRepairs[currentIndex];
+    const targetRepair = vehicleRepairs[targetIndex];
+    
+    try {
+      // Swap sort_order values
+      await Promise.all([
+        query("repairs_needed").update({ sort_order: targetRepair.sort_order }).eq("id", currentRepair.id),
+        query("repairs_needed").update({ sort_order: currentRepair.sort_order }).eq("id", targetRepair.id)
+      ]);
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to reorder");
       console.error(error);
     }
   };
@@ -1042,58 +1069,87 @@ export default function MaintenanceTab() {
             </Dialog>
           </div>
 
-          {/* Repairs grid by vehicle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {/* Group repairs by vehicle */}
-            {Array.from(new Set(repairs.map(r => r.vehicle_id))).map(vehicleId => {
-              const vehicleRepairs = repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.urgency - b.urgency);
-              const vehicle = vehicleRepairs[0]?.vehicles;
-              return (
-                <Card key={vehicleId} className="overflow-hidden">
-                  <CardHeader className="py-2 px-3 bg-gradient-to-b from-gray-800 to-gray-900">
-                    <CardTitle className="text-white text-sm font-bold flex items-center gap-2">
-                      <Truck className="h-4 w-4" />
-                      Truck: {vehicle?.vehicle_number || 'Unknown'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="divide-y divide-gray-100">
-                      {vehicleRepairs.map((repair) => (
+          {/* Repairs grid by vehicle - compact layout */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+            {/* Group repairs by vehicle, sort by most repairs first */}
+            {Array.from(new Set(repairs.map(r => r.vehicle_id)))
+              .map(vehicleId => ({
+                vehicleId,
+                repairs: repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.sort_order - b.sort_order)
+              }))
+              .sort((a, b) => b.repairs.length - a.repairs.length)
+              .map(({ vehicleId, repairs: vehicleRepairs }) => {
+                const vehicle = vehicleRepairs[0]?.vehicles;
+                return (
+                  <div key={vehicleId} className="bg-gray-900 rounded overflow-hidden">
+                    <div className="py-1 px-2 bg-gradient-to-b from-gray-700 to-gray-900 border-b border-gray-600">
+                      <span className="text-white text-xs font-bold">
+                        Truck: {vehicle?.vehicle_number || '?'}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-gray-800">
+                      {vehicleRepairs.map((repair, index) => (
                         <div
                           key={repair.id}
-                          className="px-2 py-1.5 flex items-start gap-2 group hover:bg-gray-50 transition-colors"
-                          style={{ borderLeft: `4px solid ${repair.color || '#fbbf24'}` }}
+                          className="px-1 py-0.5 flex items-center gap-1 group hover:bg-gray-800 transition-colors"
+                          style={{ 
+                            backgroundColor: repair.color && repair.color !== '#ffffff' ? repair.color : undefined,
+                            borderLeft: `3px solid ${repair.color || '#fbbf24'}` 
+                          }}
                         >
+                          {/* Move buttons - compact */}
+                          <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleMoveRepair(vehicleId, repair.id, 'up')}
+                              disabled={index === 0}
+                              className="p-0.5 text-gray-300 hover:text-white disabled:opacity-30"
+                              title="Move up"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveRepair(vehicleId, repair.id, 'down')}
+                              disabled={index === vehicleRepairs.length - 1}
+                              className="p-0.5 text-gray-300 hover:text-white disabled:opacity-30"
+                              title="Move down"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate" style={{ color: repair.color || undefined }}>
+                            <p 
+                              className="text-xs font-medium truncate"
+                              style={{ 
+                                color: repair.color && repair.color !== '#ffffff' ? '#000' : (repair.color === '#ffffff' ? '#fff' : '#fff')
+                              }}
+                            >
                               {repair.description}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleCompleteRepair(repair.id)}
-                              className="p-1 rounded hover:bg-green-100 text-green-600"
-                              title="Mark complete"
+                              className="p-0.5 rounded hover:bg-green-500/30 text-green-400"
+                              title="Complete"
                             >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                             </button>
                             <button
                               onClick={() => handleDeleteRepair(repair.id)}
-                              className="p-1 rounded hover:bg-red-100 text-red-600"
+                              className="p-0.5 rounded hover:bg-red-500/30 text-red-400"
                               title="Delete"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                );
+              })}
           </div>
 
           {repairs.length === 0 && (
