@@ -38,6 +38,7 @@ export const TENANT_OWNED_TABLES = [
   "hunt_plans",
   "contacts",
   "maintenance_records",
+  "repairs_needed",
   // Settings module tables (now tenant-scoped)
   "company_profile",
   "invites",
