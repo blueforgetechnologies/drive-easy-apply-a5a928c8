@@ -13,8 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { toast } from "sonner";
-import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical, ArrowUp, ArrowDown, Palette, CheckCircle, Pencil, ChevronsUp } from "lucide-react";
 import { format } from "date-fns";
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { getDTCInfo, getDTCLookupUrl, getSeverityColor, parseDTCCode } from "@/lib/dtc-lookup";
@@ -66,6 +67,10 @@ export default function MaintenanceTab() {
   const [repairs, setRepairs] = useState<RepairItem[]>([]);
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [newRepair, setNewRepair] = useState({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
+  
+  // Edit repair state
+  const [editRepairDialogOpen, setEditRepairDialogOpen] = useState(false);
+  const [editingRepair, setEditingRepair] = useState<RepairItem | null>(null);
   
   // Drag and drop state
   const [draggedRepair, setDraggedRepair] = useState<RepairItem | null>(null);
@@ -215,6 +220,68 @@ export default function MaintenanceTab() {
         .eq("id", id);
       if (error) throw error;
       toast.success("Repair marked complete");
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to update repair");
+      console.error(error);
+    }
+  };
+
+  const handleMoveToTop = async (vehicleId: string, repairId: string) => {
+    const vehicleRepairs = repairs
+      .filter(r => r.vehicle_id === vehicleId)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    
+    const currentIndex = vehicleRepairs.findIndex(r => r.id === repairId);
+    if (currentIndex <= 0) return; // Already at top or not found
+    
+    try {
+      // Move to position 0, shift others down
+      const updates = vehicleRepairs.map((repair, idx) => {
+        if (repair.id === repairId) {
+          return query("repairs_needed").update({ sort_order: 0 }).eq("id", repair.id);
+        } else if (idx < currentIndex) {
+          return query("repairs_needed").update({ sort_order: idx + 1 }).eq("id", repair.id);
+        }
+        return null;
+      }).filter(Boolean);
+      
+      await Promise.all(updates);
+      toast.success("Moved to top");
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to move");
+      console.error(error);
+    }
+  };
+
+  const handleChangeColor = async (repairId: string, color: string) => {
+    try {
+      const { error } = await query("repairs_needed")
+        .update({ color })
+        .eq("id", repairId);
+      if (error) throw error;
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to change color");
+      console.error(error);
+    }
+  };
+
+  const handleEditRepair = async () => {
+    if (!editingRepair) return;
+    try {
+      const { error } = await query("repairs_needed")
+        .update({ 
+          description: editingRepair.description,
+          urgency: editingRepair.urgency,
+          color: editingRepair.color
+        })
+        .eq("id", editingRepair.id);
+      if (error) throw error;
+      toast.success("Repair updated");
+      setEditRepairDialogOpen(false);
+      setEditingRepair(null);
       loadRepairs();
     } catch (error: any) {
       toast.error("Failed to update repair");
@@ -1207,88 +1274,113 @@ export default function MaintenanceTab() {
                         const isDropTarget = draggedVehicleId === vehicleId && dropTargetIndex === index;
                         
                         return (
-                          <div key={repair.id} className="relative">
-                            {/* Drop indicator - shows above the item */}
-                            {isDropTarget && !isDragging && (
-                              <div className="absolute -top-0.5 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.8)] z-30" />
-                            )}
-                            
-                            {/* Engraved separator between items */}
-                            {index > 0 && (
-                              <div className="h-[3px] bg-gradient-to-b from-slate-500/40 via-slate-600/30 to-white/60" />
-                            )}
-                            
-                            <div
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, repair, vehicleId)}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => handleDragOver(e, vehicleId, index)}
-                              onDrop={(e) => handleDrop(e, vehicleId, index)}
-                              className={`
-                                relative px-2 py-2 flex items-center gap-1.5 group
-                                transition-all duration-150 ease-out
-                                cursor-grab active:cursor-grabbing
-                                shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.1)]
-                                border-x border-white/30
-                                ${isDragging 
-                                  ? 'opacity-30 scale-95 shadow-none' 
-                                  : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
-                                }
-                                ${!isDragging && 'hover:-translate-y-0.5'}
-                              `}
-                              style={{ 
-                                background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
-                              }}
-                            >
-                              {/* Drag handle with grip lines */}
-                              <div className={`
-                                flex-shrink-0 transition-all duration-200
-                                ${isDragging ? 'opacity-20' : 'opacity-50 group-hover:opacity-100'}
-                              `}>
-                                <GripVertical className="h-4 w-4 text-gray-800" />
-                              </div>
-                              
-                              {/* Quick move buttons */}
-                              <div className={`
-                                flex flex-col gap-0 -ml-1.5 mr-0.5
-                                transition-all duration-200
-                                ${isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}
-                              `}>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'up'); }}
-                                  disabled={index === 0}
-                                  className={`p-0.5 rounded transition-all disabled:opacity-20 
-                                    text-gray-800 hover:bg-black/10
-                                    active:scale-75
+                          <ContextMenu key={repair.id}>
+                            <ContextMenuTrigger asChild>
+                              <div className="relative">
+                                {/* Drop indicator - shows above the item */}
+                                {isDropTarget && !isDragging && (
+                                  <div className="absolute -top-0.5 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.8)] z-30" />
+                                )}
+                                
+                                {/* Engraved separator between items */}
+                                {index > 0 && (
+                                  <div className="h-[3px] bg-gradient-to-b from-slate-500/40 via-slate-600/30 to-white/60" />
+                                )}
+                                
+                                <div
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, repair, vehicleId)}
+                                  onDragEnd={handleDragEnd}
+                                  onDragOver={(e) => handleDragOver(e, vehicleId, index)}
+                                  onDrop={(e) => handleDrop(e, vehicleId, index)}
+                                  className={`
+                                    relative px-2 py-2 flex items-center gap-1.5 group
+                                    transition-all duration-150 ease-out
+                                    cursor-grab active:cursor-grabbing
+                                    shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.1)]
+                                    border-x border-white/30
+                                    ${isDragging 
+                                      ? 'opacity-30 scale-95 shadow-none' 
+                                      : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
+                                    }
+                                    ${!isDragging && 'hover:-translate-y-0.5'}
                                   `}
-                                  title="Move up"
+                                  style={{ 
+                                    background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
+                                  }}
                                 >
-                                  <ArrowUp className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'down'); }}
-                                  disabled={index === vehicleRepairs.length - 1}
-                                  className={`p-0.5 rounded transition-all disabled:opacity-20 
-                                    text-gray-800 hover:bg-black/10
-                                    active:scale-75
-                                  `}
-                                  title="Move down"
-                                >
-                                  <ArrowDown className="h-3 w-3" />
-                                </button>
+                                  {/* Drag handle */}
+                                  <div className={`flex-shrink-0 transition-all duration-200 ${isDragging ? 'opacity-20' : 'opacity-50 group-hover:opacity-100'}`}>
+                                    <GripVertical className="h-4 w-4 text-gray-800" />
+                                  </div>
+                                  
+                                  {/* Description */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-medium leading-tight text-gray-900" style={{ wordBreak: 'break-word' }}>
+                                      {repair.description}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
+                            </ContextMenuTrigger>
+                            
+                            <ContextMenuContent className="w-48 bg-white border shadow-xl">
+                              {/* Change Color submenu */}
+                              <ContextMenuSub>
+                                <ContextMenuSubTrigger className="flex items-center gap-2">
+                                  <Palette className="h-4 w-4" />
+                                  Change Color
+                                </ContextMenuSubTrigger>
+                                <ContextMenuSubContent className="bg-white border shadow-lg p-2">
+                                  <div className="flex gap-1.5 flex-wrap w-32">
+                                    {['#ef4444', '#f97316', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'].map((c) => (
+                                      <button
+                                        key={c}
+                                        onClick={() => handleChangeColor(repair.id, c)}
+                                        className={`w-6 h-6 rounded border-2 transition-transform hover:scale-110 ${repair.color === c ? 'border-gray-800 ring-2 ring-offset-1 ring-gray-400' : 'border-gray-300'}`}
+                                        style={{ backgroundColor: c }}
+                                      />
+                                    ))}
+                                  </div>
+                                </ContextMenuSubContent>
+                              </ContextMenuSub>
                               
-                              {/* Description - wrap text */}
-                              <div className="flex-1 min-w-0">
-                                <p 
-                                  className="text-[11px] font-medium leading-tight text-gray-900"
-                                  style={{ wordBreak: 'break-word' }}
-                                >
-                                  {repair.description}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+                              <ContextMenuItem 
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => handleMoveToTop(vehicleId, repair.id)}
+                                disabled={index === 0}
+                              >
+                                <ChevronsUp className="h-4 w-4" />
+                                Move to Top
+                              </ContextMenuItem>
+                              
+                              <ContextMenuItem 
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => handleCompleteRepair(repair.id)}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                Mark as Completed
+                              </ContextMenuItem>
+                              
+                              <ContextMenuSeparator />
+                              
+                              <ContextMenuItem 
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => { setEditingRepair(repair); setEditRepairDialogOpen(true); }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit
+                              </ContextMenuItem>
+                              
+                              <ContextMenuItem 
+                                className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                                onClick={() => handleDeleteRepair(repair.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
                         );
                       })}
                       
@@ -1316,6 +1408,62 @@ export default function MaintenanceTab() {
               <p className="text-sm text-muted-foreground mt-1">Click "Add Repair" to track repairs for your vehicles</p>
             </div>
           )}
+          
+          {/* Edit Repair Dialog */}
+          <Dialog open={editRepairDialogOpen} onOpenChange={setEditRepairDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit Repair</DialogTitle>
+              </DialogHeader>
+              {editingRepair && (
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea
+                      value={editingRepair.description}
+                      onChange={(e) => setEditingRepair({ ...editingRepair, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Urgency</Label>
+                      <Select 
+                        value={String(editingRepair.urgency)} 
+                        onValueChange={(v) => setEditingRepair({ ...editingRepair, urgency: Number(v) })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">🔴 Critical</SelectItem>
+                          <SelectItem value="2">🟠 High</SelectItem>
+                          <SelectItem value="3">🟡 Medium</SelectItem>
+                          <SelectItem value="4">🟢 Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Color</Label>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        {['#ef4444', '#f97316', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setEditingRepair({ ...editingRepair, color: c })}
+                            className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${editingRepair.color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleEditRepair} className="w-full">
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
