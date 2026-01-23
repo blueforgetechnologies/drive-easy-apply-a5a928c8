@@ -69,6 +69,7 @@ export default function MaintenanceTab() {
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [newRepair, setNewRepair] = useState({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
   const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState<string | null>(null);
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   
   // Edit repair state
   const [editRepairDialogOpen, setEditRepairDialogOpen] = useState(false);
@@ -1043,46 +1044,62 @@ export default function MaintenanceTab() {
                         const originalNotesMatch = record.notes?.match(/Original Notes: (.+)/s);
                         const displayNotes = originalNotesMatch ? originalNotesMatch[1] : (notesMatch ? "" : record.notes || "");
                         
+                        const isExpanded = expandedRecordId === record.id;
+                        
                         return (
-                          <div 
-                            key={record.id} 
-                            className="grid grid-cols-[1fr_2fr_1.5fr_100px_120px_100px_80px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
-                          >
-                            <div>
-                              <div className="font-semibold text-sm text-slate-800">
-                                {record.description}
+                          <div key={record.id} className="group">
+                            <div 
+                              className="grid grid-cols-[1fr_2fr_1.5fr_100px_120px_100px_80px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start cursor-pointer"
+                              onClick={() => setExpandedRecordId(isExpanded ? null : record.id)}
+                            >
+                              <div className="flex items-start gap-2">
+                                <ChevronRight className={`h-4 w-4 mt-0.5 text-slate-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                                <div>
+                                  <div className="font-semibold text-sm text-slate-800">
+                                    {record.description}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    #{record.vehicles?.vehicle_number} • {record.maintenance_type}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-xs text-slate-500">
-                                #{record.vehicles?.vehicle_number} • {record.maintenance_type}
+                              <div className="text-sm text-slate-600 line-clamp-2">
+                                {displayNotes || <span className="text-slate-400 italic">No notes</span>}
+                              </div>
+                              <div className="text-sm text-slate-700 font-medium">
+                                {completedBy}
+                              </div>
+                              <div className="text-sm text-slate-600">
+                                {record.odometer ? record.odometer.toLocaleString() : <span className="text-slate-400">-</span>}
+                              </div>
+                              <div className="text-sm text-slate-600">
+                                {completionDate}
+                              </div>
+                              <div className="text-sm text-slate-600">
+                                {completionTime}
+                              </div>
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleSendBackToRepairs(record); }}
+                                  className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1 h-auto"
+                                  title="Send back to Repairs Needed"
+                                >
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  Undo
+                                </Button>
                               </div>
                             </div>
-                            <div className="text-sm text-slate-600 line-clamp-2">
-                              {displayNotes || <span className="text-slate-400 italic">No notes</span>}
-                            </div>
-                            <div className="text-sm text-slate-700 font-medium">
-                              {completedBy}
-                            </div>
-                            <div className="text-sm text-slate-600">
-                              {record.odometer ? record.odometer.toLocaleString() : <span className="text-slate-400">-</span>}
-                            </div>
-                            <div className="text-sm text-slate-600">
-                              {completionDate}
-                            </div>
-                            <div className="text-sm text-slate-600">
-                              {completionTime}
-                            </div>
-                            <div className="flex justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSendBackToRepairs(record)}
-                                className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1 h-auto"
-                                title="Send back to Repairs Needed"
-                              >
-                                <RefreshCw className="h-3 w-3 mr-1" />
-                                Undo
-                              </Button>
-                            </div>
+                            
+                            {/* Expanded notes section */}
+                            {isExpanded && displayNotes && (
+                              <div className="px-4 pb-4 pt-1 bg-slate-100/80 border-t border-slate-200">
+                                <div className="pl-6 text-sm text-slate-700 whitespace-pre-wrap">
+                                  {displayNotes}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
