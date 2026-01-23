@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { TenantDebugBadge } from "@/components/TenantDebugBadge";
 import LoadEmailDetail from "@/components/LoadEmailDetail";
 import { prefetchMapboxToken } from "@/components/LoadRouteMap";
 import { MultipleMatchesDialog } from "@/components/MultipleMatchesDialog";
@@ -14,7 +13,7 @@ import LoadHunterMobile from "@/components/LoadHunterMobile";
 import { BookLoadDialog } from "@/components/BookLoadDialog";
 import { SoundSettingsDialog } from "@/components/SoundSettingsDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,11 +23,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { RefreshCw, Settings, X, CheckCircle, MapPin, Wrench, ArrowLeft, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Target, Plus, Minus, Menu } from "lucide-react";
+import { RefreshCw, Settings, X, MapPin, Wrench, Gauge, Truck, MapPinned, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreVertical, Plus, Minus, Menu } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
@@ -36,23 +35,13 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Extracted types and hooks for code splitting
-import type { Vehicle, Driver, HuntPlan, Load, ActiveMode, ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
+import type { Vehicle, HuntPlan, Load, ActiveMode, ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
 import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
 import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
 import { useLoadHunterData } from "@/hooks/useLoadHunterData";
-import { 
-  normalizeDate, 
-  normalizeTime, 
-  formatTimeAgo, 
-  formatExpiresIn,
-  buildPickupDisplay,
-  buildDeliveryDisplay,
-  stripHtmlTags,
-  truncateText,
-  groupMatchesByLoadEmail
-} from "@/utils/loadHunterHelpers";
-import { LoadHunterFilters, LoadHunterTableHeader, LoadHunterTableRowEnhanced, LoadHunterPagination } from "@/components/load-hunter";
+import { groupMatchesByLoadEmail } from "@/utils/loadHunterHelpers";
+import { LoadHunterFilters, LoadHunterTableHeader, LoadHunterTableRowEnhanced } from "@/components/load-hunter";
 import type { SoundSettings } from "@/hooks/useUserPreferences";
 
 export default function LoadHunterTab() {
