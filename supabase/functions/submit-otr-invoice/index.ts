@@ -290,11 +290,6 @@ async function uploadDocumentToOtr(
   // Determine mime type: use provided, or infer from filename
   const resolvedMimeType = mimeType || inferMimeType(fileName);
   
-  // Determine DocumentType form field: use param or default
-  const formDocumentType = documentType && documentType.trim() !== '' 
-    ? documentType 
-    : 'invoice-file-upload';
-  
   try {
     console.log('\n' + '='.repeat(70));
     console.log(`[OTR DOCUMENT UPLOAD - ATTEMPT ${attempt_id}]`);
@@ -304,8 +299,8 @@ async function uploadDocumentToOtr(
     console.log(`[REQUEST] URL: ${requestUrl}`);
     console.log(`[REQUEST] File: ${fileName} (${fileBuffer.length} bytes)`);
     console.log(`[REQUEST] MimeType: ${resolvedMimeType}`);
-    console.log(`[REQUEST] DocumentType (form): ${formDocumentType}`);
-    console.log(`[REQUEST] InvoiceDocTypes: ${invoiceDocType}`);
+    console.log(`[REQUEST] DocumentType (form): invoice-file-upload`);
+    console.log(`[REQUEST] InvoiceDocTypes: ${invoiceDocType} (from: ${documentType})`);
     console.log(`[REQUEST] ItemPkey: ${invoicePkey}`);
     console.log(`[REQUEST] SendEmail: ${sendEmail}`);
     console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
@@ -313,9 +308,12 @@ async function uploadDocumentToOtr(
     
     // Build multipart form data
     const formData = new FormData();
-    const blob = new Blob([fileBuffer.buffer as ArrayBuffer], { type: resolvedMimeType });
+    // Slice the Uint8Array to get a proper ArrayBuffer copy (avoids offset issues)
+    const arrayBufferCopy = fileBuffer.slice().buffer;
+    const blob = new Blob([arrayBufferCopy], { type: resolvedMimeType });
     formData.append('file', blob, fileName);
-    formData.append('DocumentType', formDocumentType);
+    // DocumentType must be constant 'invoice-file-upload' per OTR Swagger
+    formData.append('DocumentType', 'invoice-file-upload');
     formData.append('ItemPkey', invoicePkey.toString());
     formData.append('SendEmail', sendEmail.toString());
     formData.append('InvoiceDocTypes', invoiceDocType.toString());
@@ -350,7 +348,7 @@ async function uploadDocumentToOtr(
         request_url: requestUrl,
         http_status: response.status,
         file_name: fileName,
-        document_type: formDocumentType,
+        document_type: documentType,
         invoice_doc_types: invoiceDocType,
         item_pkey: invoicePkey,
         mime_type: resolvedMimeType,
@@ -362,7 +360,7 @@ async function uploadDocumentToOtr(
       
       return {
         success: false,
-        document_type: formDocumentType,
+        document_type: documentType,
         file_name: fileName,
         invoice_doc_types: invoiceDocType,
         attempt_id,
@@ -377,7 +375,7 @@ async function uploadDocumentToOtr(
     
     return {
       success: true,
-      document_type: formDocumentType,
+      document_type: documentType,
       file_name: fileName,
       invoice_doc_types: invoiceDocType,
       attempt_id,
