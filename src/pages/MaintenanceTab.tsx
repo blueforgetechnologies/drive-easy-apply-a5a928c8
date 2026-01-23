@@ -1285,34 +1285,6 @@ export default function MaintenanceTab() {
                                   {repair.description}
                                 </p>
                               </div>
-                              
-                              {/* Action buttons */}
-                              <div className={`
-                                flex items-center gap-0.5 
-                                transition-all duration-200
-                                ${isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}
-                              `}>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleCompleteRepair(repair.id); }}
-                                  className={`p-1 rounded-md transition-all active:scale-90
-                                    ${isLight ? 'hover:bg-green-600/20 text-green-700' : 'hover:bg-green-500/30 text-green-300'}
-                                  `}
-                                  title="Complete"
-                                >
-                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteRepair(repair.id); }}
-                                  className={`p-1 rounded-md transition-all active:scale-90
-                                    ${isLight ? 'hover:bg-red-600/20 text-red-700' : 'hover:bg-red-500/30 text-red-300'}
-                                  `}
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
                             </div>
                           </div>
                         );
