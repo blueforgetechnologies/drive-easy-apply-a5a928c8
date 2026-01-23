@@ -1595,17 +1595,19 @@ All colors MUST be HSL.
 
 /* Inset Badge Styles - Indented appearance */
 .badge-inset {
-  @apply inline-flex items-center justify-center px-1.5 py-0 rounded-md text-[9px] font-semibold;
+  @apply inline-flex items-center justify-center px-1.5 py-0 rounded-md text-[9px] font-bold;
   background: linear-gradient(180deg, 
-    hsl(220 14% 90%) 0%, 
-    hsl(220 14% 95%) 100%);
-  border: 1px solid hsl(220 13% 80%);
-  border-top: 2px solid hsl(220 13% 72%);
+    hsl(220 20% 92%) 0%, 
+    hsl(220 20% 97%) 100%);
+  border: 1px solid hsl(220 13% 75%);
+  border-top: 2px solid hsl(220 13% 68%);
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.12),
-    inset 0 1px 2px rgba(0, 0, 0, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.6);
-  color: hsl(220 9% 40%);
+    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(0, 0, 0, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 6px rgba(100, 116, 139, 0.25);
+  color: hsl(220 15% 30%);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .badge-inset-success {
