@@ -4669,6 +4669,69 @@ export type Database = {
           },
         ]
       }
+      repairs_needed: {
+        Row: {
+          color: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          notes: string | null
+          sort_order: number | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          urgency: number
+          vehicle_id: string
+        }
+        Insert: {
+          color?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          notes?: string | null
+          sort_order?: number | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          urgency?: number
+          vehicle_id: string
+        }
+        Update: {
+          color?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          notes?: string | null
+          sort_order?: number | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          urgency?: number
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repairs_needed_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repairs_needed_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string | null
