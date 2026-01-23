@@ -46,6 +46,8 @@
   padding: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 /* The default pointer triangle becomes visually odd once the popup has no background */
