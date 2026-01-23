@@ -61,8 +61,7 @@ export default function LoadHunterTab() {
     refreshMyVehicleIds,
   } = useLoadHunterDispatcher({ tenantId, shouldFilter });
   
-  // ===== COUNTS HOOK - provides persistent badge counts from DB =====
-  const { unreviewedCount: badgeUnreviewedCount } = useLoadHunterCounts();
+  // ===== COUNTS HOOK - moved to after activeMode declaration for mode-aware counting =====
   
   // Session start for time window filter
   const [sessionStart] = useState(() => new Date().toISOString());
@@ -155,6 +154,15 @@ export default function LoadHunterTab() {
   const [activeMode, setActiveMode] = useState<ActiveMode>('dispatch');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('unreviewed');
   const [filterVehicleId, setFilterVehicleId] = useState<string | null>(null);
+  
+  // ===== COUNTS HOOK - provides persistent badge counts from DB, filtered by mode =====
+  const { 
+    unreviewedCount: badgeUnreviewedCount,
+    skippedCount: badgeSkippedCount,
+    bidCount: badgeBidCount,
+    bookedCount: badgeBookedCount,
+    missedCount: badgeMissedCount,
+  } = useLoadHunterCounts({ activeMode, myVehicleIds });
   const [showIdColumns, setShowIdColumns] = useState(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
@@ -2467,13 +2475,13 @@ export default function LoadHunterTab() {
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
         unreviewedCount={badgeUnreviewedCount}
-        skippedCount={skippedMatches.length}
-        bidCount={bidMatches.length}
-        bookedCount={bookedMatches.length}
-        missedCount={missedHistory.length}
-        expiredCount={expiredMatches.length}
-        waitlistCount={waitlistMatches.length}
-        undecidedCount={undecidedMatches.length}
+        skippedCount={badgeSkippedCount}
+        bidCount={badgeBidCount}
+        bookedCount={badgeBookedCount}
+        missedCount={badgeMissedCount}
+        expiredCount={expiredCount}
+        waitlistCount={waitlistCount}
+        undecidedCount={undecidedCount}
         allEmailsCount={loadEmails.length + failedQueueItems.length}
         matchSearchQuery={matchSearchQuery}
         setMatchSearchQuery={setMatchSearchQuery}
