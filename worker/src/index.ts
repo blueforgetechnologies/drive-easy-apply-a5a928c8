@@ -385,10 +385,60 @@ function formatUptime(ms: number): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// STALE WORKER CLEANUP (runs on startup to remove dead container records)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function cleanupStaleWorkerRecords(): Promise<void> {
+  try {
+    const cutoffHours = 24;
+    const cutoff = new Date(Date.now() - cutoffHours * 60 * 60 * 1000).toISOString();
+    
+    // First count how many we'll delete
+    const { data: staleWorkers, error: selectError } = await supabase
+      .from('worker_heartbeats')
+      .select('id')
+      .lt('last_heartbeat', cutoff);
+    
+    if (selectError) {
+      log('warn', 'Failed to query stale workers', { error: selectError.message });
+      return;
+    }
+    
+    if (!staleWorkers || staleWorkers.length === 0) {
+      log('info', 'No stale worker records to cleanup');
+      return;
+    }
+    
+    // Delete stale records (offline > 24 hours)
+    const { error: deleteError } = await supabase
+      .from('worker_heartbeats')
+      .delete()
+      .lt('last_heartbeat', cutoff);
+    
+    if (deleteError) {
+      log('warn', 'Failed to cleanup stale workers', { error: deleteError.message });
+      return;
+    }
+    
+    log('info', 'Cleaned up stale worker records on startup', { 
+      count: staleWorkers.length,
+      cutoff_hours: cutoffHours 
+    });
+  } catch (error) {
+    log('warn', 'Exception during stale worker cleanup', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN WORKER LOOP
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function workerLoop(): Promise<void> {
+  // Cleanup stale worker records on startup (offline > 24 hours)
+  await cleanupStaleWorkerRecords();
+  
   // Initial config load
   const initialResult = await refreshConfig();
   if (initialResult.shouldRestart) {
