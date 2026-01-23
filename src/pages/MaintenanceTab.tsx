@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantQuery } from "@/hooks/useTenantQuery";
@@ -66,6 +66,12 @@ export default function MaintenanceTab() {
   const [repairs, setRepairs] = useState<RepairItem[]>([]);
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [newRepair, setNewRepair] = useState({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
+  
+  // Drag and drop state
+  const [draggedRepair, setDraggedRepair] = useState<RepairItem | null>(null);
+  const [draggedVehicleId, setDraggedVehicleId] = useState<string | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
+  const dragNodeRef = useRef<HTMLDivElement | null>(null);
   const [newRecord, setNewRecord] = useState({
     asset_id: "",
     maintenance_type: "PM",
@@ -242,6 +248,100 @@ export default function MaintenanceTab() {
       console.error(error);
     }
   };
+
+  // Drag and drop handlers for smooth reordering
+  const handleDragStart = useCallback((e: React.DragEvent, repair: RepairItem, vehicleId: string) => {
+    setDraggedRepair(repair);
+    setDraggedVehicleId(vehicleId);
+    
+    // Create custom drag image with shadow effect
+    const target = e.currentTarget as HTMLDivElement;
+    dragNodeRef.current = target;
+    
+    // Clone for drag image
+    const clone = target.cloneNode(true) as HTMLDivElement;
+    clone.style.transform = 'rotate(2deg) scale(1.05)';
+    clone.style.boxShadow = '0 20px 40px rgba(0,0,0,0.3)';
+    clone.style.opacity = '0.95';
+    clone.style.position = 'absolute';
+    clone.style.top = '-1000px';
+    document.body.appendChild(clone);
+    e.dataTransfer.setDragImage(clone, target.offsetWidth / 2, target.offsetHeight / 2);
+    setTimeout(() => document.body.removeChild(clone), 0);
+    
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Add dragging class with delay for smooth animation
+    requestAnimationFrame(() => {
+      target.classList.add('opacity-40', 'scale-95');
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragNodeRef.current) {
+      dragNodeRef.current.classList.remove('opacity-40', 'scale-95');
+    }
+    setDraggedRepair(null);
+    setDraggedVehicleId(null);
+    setDropTargetIndex(null);
+    dragNodeRef.current = null;
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, vehicleId: string, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Only allow drop in same vehicle group
+    if (draggedVehicleId === vehicleId) {
+      setDropTargetIndex(index);
+    }
+  }, [draggedVehicleId]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the container entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setDropTargetIndex(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, vehicleId: string, targetIndex: number) => {
+    e.preventDefault();
+    
+    if (!draggedRepair || draggedVehicleId !== vehicleId) {
+      handleDragEnd();
+      return;
+    }
+    
+    const vehicleRepairs = repairs
+      .filter(r => r.vehicle_id === vehicleId)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    
+    const currentIndex = vehicleRepairs.findIndex(r => r.id === draggedRepair.id);
+    if (currentIndex === -1 || currentIndex === targetIndex) {
+      handleDragEnd();
+      return;
+    }
+    
+    // Build new order array
+    const newOrder = [...vehicleRepairs];
+    const [removed] = newOrder.splice(currentIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+    
+    // Update sort_order for all affected items
+    try {
+      const updates = newOrder.map((repair, idx) => 
+        query("repairs_needed").update({ sort_order: idx }).eq("id", repair.id)
+      );
+      await Promise.all(updates);
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to reorder");
+      console.error(error);
+    }
+    
+    handleDragEnd();
+  }, [draggedRepair, draggedVehicleId, repairs, query, loadRepairs, handleDragEnd]);
 
   const handleSyncSamsara = async () => {
     if (!tenantId) {
@@ -1092,95 +1192,135 @@ export default function MaintenanceTab() {
                       </span>
                     </div>
                     
-                    {/* Repairs list with carved separators */}
-                    <div className="p-1">
+                    {/* Repairs list with drag-and-drop */}
+                    <div 
+                      className="p-1.5 min-h-[40px]"
+                      onDragLeave={handleDragLeave}
+                    >
                       {vehicleRepairs.map((repair, index) => {
                         const bgColor = repair.color || '#fbbf24';
                         const isLight = ['#fbbf24', '#22c55e', '#ffffff', '#f97316'].some(c => bgColor.toLowerCase().includes(c.slice(1)));
+                        const isDragging = draggedRepair?.id === repair.id;
+                        const isDropTarget = draggedVehicleId === vehicleId && dropTargetIndex === index;
                         
                         return (
-                          <div
-                            key={repair.id}
-                            className={`
-                              relative px-2 py-1.5 flex items-center gap-1.5 group cursor-grab active:cursor-grabbing
-                              rounded-lg mb-1 last:mb-0
-                              transition-all duration-200 ease-out
-                              hover:scale-[1.02] hover:shadow-lg hover:z-10
-                              active:scale-[1.05] active:shadow-xl active:z-20
-                              shadow-[0_1px_3px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.4)]
-                              hover:shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.5)]
-                              border border-white/30
-                            `}
-                            style={{ 
-                              background: `linear-gradient(to bottom, ${bgColor}ee, ${bgColor}dd)`,
-                            }}
-                          >
-                            {/* Drag handle - always visible */}
-                            <div className="flex-shrink-0 opacity-40 group-hover:opacity-80 transition-opacity cursor-grab active:cursor-grabbing">
-                              <GripVertical className={`h-4 w-4 ${isLight ? 'text-gray-700' : 'text-white/80'}`} />
-                            </div>
+                          <div key={repair.id} className="relative">
+                            {/* Drop indicator - shows above the item */}
+                            {isDropTarget && !isDragging && (
+                              <div className="absolute -top-0.5 left-1 right-1 h-1 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse z-30" />
+                            )}
                             
-                            {/* Move buttons - appear on hover */}
-                            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 -ml-1">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleMoveRepair(vehicleId, repair.id, 'up'); }}
-                                disabled={index === 0}
-                                className={`p-0.5 rounded-md transition-all disabled:opacity-20 
-                                  ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
-                                  active:scale-90
-                                `}
-                                title="Move up"
-                              >
-                                <ArrowUp className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleMoveRepair(vehicleId, repair.id, 'down'); }}
-                                disabled={index === vehicleRepairs.length - 1}
-                                className={`p-0.5 rounded-md transition-all disabled:opacity-20 
-                                  ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
-                                  active:scale-90
-                                `}
-                                title="Move down"
-                              >
-                                <ArrowDown className="h-3 w-3" />
-                              </button>
-                            </div>
-                            
-                            {/* Description */}
-                            <div className="flex-1 min-w-0">
-                              <p 
-                                className={`text-xs font-semibold truncate drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
-                              >
-                                {repair.description}
-                              </p>
-                            </div>
-                            
-                            {/* Action buttons */}
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleCompleteRepair(repair.id); }}
-                                className={`p-1 rounded-md transition-all active:scale-90
-                                  ${isLight ? 'hover:bg-green-600/20 text-green-700' : 'hover:bg-green-500/30 text-green-300'}
-                                `}
-                                title="Complete"
-                              >
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteRepair(repair.id); }}
-                                className={`p-1 rounded-md transition-all active:scale-90
-                                  ${isLight ? 'hover:bg-red-600/20 text-red-700' : 'hover:bg-red-500/30 text-red-300'}
-                                `}
-                                title="Delete"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, repair, vehicleId)}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => handleDragOver(e, vehicleId, index)}
+                              onDrop={(e) => handleDrop(e, vehicleId, index)}
+                              className={`
+                                relative px-2 py-1.5 flex items-center gap-1.5 group
+                                rounded-lg mb-1 last:mb-0
+                                transition-all duration-150 ease-out
+                                cursor-grab active:cursor-grabbing
+                                shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.5)]
+                                border border-white/40
+                                ${isDragging 
+                                  ? 'opacity-40 scale-95 shadow-none' 
+                                  : 'hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.6)] hover:z-20'
+                                }
+                                ${!isDragging && 'hover:-translate-y-0.5'}
+                              `}
+                              style={{ 
+                                background: `linear-gradient(to bottom, ${bgColor}f5, ${bgColor}e0)`,
+                              }}
+                            >
+                              {/* Drag handle with grip lines */}
+                              <div className={`
+                                flex-shrink-0 transition-all duration-200
+                                ${isDragging ? 'opacity-20' : 'opacity-50 group-hover:opacity-100'}
+                              `}>
+                                <GripVertical className={`h-4 w-4 ${isLight ? 'text-gray-700' : 'text-white/80'}`} />
+                              </div>
+                              
+                              {/* Quick move buttons */}
+                              <div className={`
+                                flex flex-col gap-0 -ml-1.5 mr-0.5
+                                transition-all duration-200
+                                ${isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}
+                              `}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'up'); }}
+                                  disabled={index === 0}
+                                  className={`p-0.5 rounded transition-all disabled:opacity-20 
+                                    ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                    active:scale-75
+                                  `}
+                                  title="Move up"
+                                >
+                                  <ArrowUp className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'down'); }}
+                                  disabled={index === vehicleRepairs.length - 1}
+                                  className={`p-0.5 rounded transition-all disabled:opacity-20 
+                                    ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                    active:scale-75
+                                  `}
+                                  title="Move down"
+                                >
+                                  <ArrowDown className="h-3 w-3" />
+                                </button>
+                              </div>
+                              
+                              {/* Description */}
+                              <div className="flex-1 min-w-0">
+                                <p 
+                                  className={`text-xs font-semibold truncate drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
+                                >
+                                  {repair.description}
+                                </p>
+                              </div>
+                              
+                              {/* Action buttons */}
+                              <div className={`
+                                flex items-center gap-0.5 
+                                transition-all duration-200
+                                ${isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}
+                              `}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleCompleteRepair(repair.id); }}
+                                  className={`p-1 rounded-md transition-all active:scale-90
+                                    ${isLight ? 'hover:bg-green-600/20 text-green-700' : 'hover:bg-green-500/30 text-green-300'}
+                                  `}
+                                  title="Complete"
+                                >
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteRepair(repair.id); }}
+                                  className={`p-1 rounded-md transition-all active:scale-90
+                                    ${isLight ? 'hover:bg-red-600/20 text-red-700' : 'hover:bg-red-500/30 text-red-300'}
+                                  `}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
                       })}
+                      
+                      {/* Drop zone at end of list */}
+                      {draggedVehicleId === vehicleId && dropTargetIndex === vehicleRepairs.length && (
+                        <div className="h-1 mx-1 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
+                      )}
+                      <div 
+                        className="h-4 -mb-1"
+                        onDragOver={(e) => handleDragOver(e, vehicleId, vehicleRepairs.length)}
+                        onDrop={(e) => handleDrop(e, vehicleId, vehicleRepairs.length)}
+                      />
                     </div>
                   </div>
                 );
