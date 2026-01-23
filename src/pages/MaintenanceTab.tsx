@@ -1452,30 +1452,75 @@ export default function MaintenanceTab() {
                               </div>
                             )}
                             
-                            {/* Check engine light - color based on severity */}
+                            {/* Check engine light - authentic engine block design */}
                             {faultCodes.length > 0 && (
                               <div 
-                                className={`relative p-0.5 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${
-                                  severity === 3 
-                                    ? 'bg-gradient-to-b from-red-100 to-red-200' 
-                                    : 'bg-gradient-to-b from-orange-100 to-orange-200'
-                                }`}
+                                className="relative"
                                 title={`${faultCodes.length} fault code${faultCodes.length > 1 ? 's' : ''}`}
                               >
-                                <img 
-                                  src={checkEngineIcon} 
-                                  alt="Engine" 
-                                  className={`h-3.5 w-3.5 ${
-                                    severity === 3 
-                                      ? 'drop-shadow-[0_0_6px_rgba(239,68,68,0.9)] animate-pulse' 
-                                      : 'drop-shadow-[0_0_4px_rgba(251,146,60,0.8)]'
-                                  }`}
+                                <svg 
+                                  viewBox="0 0 40 32" 
+                                  className={`h-5 w-6 ${severity === 3 ? 'animate-pulse' : ''}`}
                                   style={{
                                     filter: severity === 3 
-                                      ? 'brightness(1.1) saturate(1.5) hue-rotate(-10deg)' 
-                                      : 'brightness(1.2) saturate(1.3) hue-rotate(10deg)'
+                                      ? 'drop-shadow(0 0 4px rgba(239, 68, 68, 1)) drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.5))'
+                                      : 'drop-shadow(0 0 3px rgba(251, 146, 60, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.7))'
                                   }}
-                                />
+                                >
+                                  {/* Engine block body */}
+                                  <path 
+                                    d="M8 10 L32 10 L32 26 L8 26 Z" 
+                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1.5"
+                                  />
+                                  {/* Cylinder head / valve cover */}
+                                  <path 
+                                    d="M10 6 L30 6 L32 10 L8 10 Z" 
+                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1.5"
+                                  />
+                                  {/* Air intake manifold on top */}
+                                  <rect 
+                                    x="14" y="2" width="12" height="4" rx="1"
+                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1"
+                                  />
+                                  {/* Cooling fins / ribs on block */}
+                                  <line x1="12" y1="13" x2="28" y2="13" stroke="#1f2937" strokeWidth="1" />
+                                  <line x1="12" y1="17" x2="28" y2="17" stroke="#1f2937" strokeWidth="1" />
+                                  <line x1="12" y1="21" x2="28" y2="21" stroke="#1f2937" strokeWidth="1" />
+                                  {/* Oil pan at bottom */}
+                                  <path 
+                                    d="M10 26 L10 29 L30 29 L30 26" 
+                                    fill={severity === 3 ? '#b91c1c' : '#ea580c'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1.5"
+                                  />
+                                  {/* Left exhaust port */}
+                                  <rect 
+                                    x="4" y="12" width="4" height="6" rx="1"
+                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1"
+                                  />
+                                  {/* Right side mount / accessory */}
+                                  <rect 
+                                    x="32" y="14" width="4" height="8" rx="1"
+                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    stroke="#1f2937"
+                                    strokeWidth="1"
+                                  />
+                                  {/* Lightning bolt / warning indicator in center */}
+                                  <path 
+                                    d="M22 12 L18 18 L21 18 L19 24 L25 17 L22 17 L24 12 Z" 
+                                    fill="#fbbf24"
+                                    stroke="#1f2937"
+                                    strokeWidth="0.5"
+                                  />
+                                </svg>
                               </div>
                             )}
                           </div>
