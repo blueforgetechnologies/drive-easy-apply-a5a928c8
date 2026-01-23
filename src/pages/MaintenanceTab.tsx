@@ -515,23 +515,23 @@ export default function MaintenanceTab() {
     newOrder.splice(targetIndex, 0, removed);
     
     // Update sort_order for all affected items
+    const droppedId = draggedRepair.id;
+    handleDragEnd();
+    
     try {
       const updates = newOrder.map((repair, idx) => 
         query("repairs_needed").update({ sort_order: idx }).eq("id", repair.id)
       );
       await Promise.all(updates);
+      await loadRepairs();
       
-      // Set the dropped repair to glow
-      setJustDroppedRepairId(draggedRepair.id);
+      // Set the dropped repair to glow AFTER data is loaded
+      setJustDroppedRepairId(droppedId);
       setTimeout(() => setJustDroppedRepairId(null), 1000);
-      
-      loadRepairs();
     } catch (error: any) {
       toast.error("Failed to reorder");
       console.error(error);
     }
-    
-    handleDragEnd();
   }, [draggedRepair, draggedVehicleId, repairs, query, loadRepairs, handleDragEnd]);
 
   // Truck group drag handlers
