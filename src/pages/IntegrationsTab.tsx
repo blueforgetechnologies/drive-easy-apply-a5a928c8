@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 
 // Platform integrations in scope
 const PLATFORM_INTEGRATIONS = [
+  { key: 'samsara', name: 'Samsara', description: 'Vehicle telematics and fleet tracking', icon: 'truck', fieldKey: 'api_key', fieldLabel: 'API Key' },
   { key: 'mapbox', name: 'Mapbox', description: 'Maps and geocoding services', icon: 'map', fieldKey: 'token', fieldLabel: 'Access Token' },
   { key: 'resend', name: 'Resend', description: 'Transactional email service', icon: 'mail', fieldKey: 'api_key', fieldLabel: 'API Key' },
   { key: 'weather', name: 'Weather API', description: 'Real-time weather data for locations', icon: 'cloud', fieldKey: 'api_key', fieldLabel: 'API Key' },
