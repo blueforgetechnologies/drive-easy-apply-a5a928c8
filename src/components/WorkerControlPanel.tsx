@@ -29,7 +29,8 @@ import {
   Heart,
   Wifi,
   WifiOff,
-  Server
+  Server,
+  Trash2
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from "recharts";
 
@@ -94,6 +95,42 @@ export function WorkerControlPanel() {
   const [workerHealth, setWorkerHealth] = useState<WorkerHealth[]>([]);
   const [previousHealth, setPreviousHealth] = useState<WorkerHealth[]>([]);
   const [healthOpen, setHealthOpen] = useState(true);
+  const [cleaningUp, setCleaningUp] = useState(false);
+
+  // Cleanup dead workers (offline > 24 hours)
+  const cleanupDeadWorkers = async () => {
+    setCleaningUp(true);
+    try {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data: deadWorkers, error: selectError } = await supabase
+        .from("worker_heartbeats")
+        .select("id")
+        .lt("last_heartbeat", cutoff);
+      
+      if (selectError) throw selectError;
+      
+      if (!deadWorkers || deadWorkers.length === 0) {
+        toast.info("No dead workers to clean up");
+        return;
+      }
+      
+      const { error: deleteError } = await supabase
+        .from("worker_heartbeats")
+        .delete()
+        .lt("last_heartbeat", cutoff);
+      
+      if (deleteError) throw deleteError;
+      
+      toast.success(`Removed ${deadWorkers.length} dead worker(s)`);
+      loadWorkerHealth();
+    } catch (error: any) {
+      console.error("Error cleaning up dead workers:", error);
+      toast.error("Failed to clean up dead workers", { description: error.message });
+    } finally {
+      setCleaningUp(false);
+    }
+  };
   const loadConfig = async () => {
     try {
       const { data, error } = await supabase
@@ -482,9 +519,23 @@ export function WorkerControlPanel() {
                     </CardDescription>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  {healthOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {workerHealth.some(w => w.connection_status === 'offline') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); cleanupDeadWorkers(); }}
+                      disabled={cleaningUp}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      {cleaningUp ? <RefreshCw className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                      Clean Dead
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    {healthOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
           </CollapsibleTrigger>
