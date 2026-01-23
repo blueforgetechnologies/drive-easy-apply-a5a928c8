@@ -40,6 +40,7 @@ import type { Vehicle, Driver, HuntPlan, Load } from "@/types/loadHunter";
 import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
 import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
+import { useLoadHunterData } from "@/hooks/useLoadHunterData";
 import { 
   normalizeDate, 
   normalizeTime, 
@@ -69,38 +70,76 @@ export default function LoadHunterTab() {
     refreshMyVehicleIds,
   } = useLoadHunterDispatcher({ tenantId, shouldFilter });
   
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  // Session start for time window filter
+  const [sessionStart] = useState(() => new Date().toISOString());
+  const [emailTimeWindow, setEmailTimeWindow] = useState<'30m' | '6h' | '24h' | 'session'>('30m');
+  
+  // ===== DATA HOOK - replaces inline state + data loading functions =====
+  const {
+    vehicles,
+    setVehicles,
+    drivers,
+    loadEmails,
+    setLoadEmails,
+    failedQueueItems,
+    huntPlans,
+    setHuntPlans,
+    allDispatchers,
+    carriersMap,
+    payeesMap,
+    canonicalVehicleTypes,
+    vehicleTypeMappings,
+    loadMatches,
+    setLoadMatches,
+    skippedMatches,
+    setSkippedMatches,
+    bidMatches,
+    setBidMatches,
+    bookedMatches,
+    setBookedMatches,
+    undecidedMatches,
+    setUndecidedMatches,
+    waitlistMatches,
+    setWaitlistMatches,
+    expiredMatches,
+    setExpiredMatches,
+    unreviewedViewData,
+    setUnreviewedViewData,
+    missedHistory,
+    setMissedHistory,
+    mapboxToken,
+    loading,
+    refreshing,
+    setRefreshing,
+    // Loaders
+    loadVehicles,
+    loadDrivers,
+    loadLoadEmails,
+    loadHuntPlans,
+    loadHuntMatches,
+    loadUnreviewedMatches,
+    loadMissedHistory,
+    loadCarriersAndPayees,
+    loadCanonicalVehicleTypes,
+    loadAllDispatchers,
+    fetchMapboxToken,
+    clearAllState,
+    loadAllData,
+  } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
+
+  // UI state that stays in the component
   const [loads, setLoads] = useState<Load[]>([]);
-  const [loadEmails, setLoadEmails] = useState<any[]>([]);
-  const [failedQueueItems, setFailedQueueItems] = useState<any[]>([]); // Failed emails from queue that never processed
-  const [loadMatches, setLoadMatches] = useState<any[]>([]); // Active matches (match_status = 'active')
-  const [skippedMatches, setSkippedMatches] = useState<any[]>([]); // Manually skipped matches (match_status = 'skipped')
-  const [bidMatches, setBidMatches] = useState<any[]>([]); // Matches with bids placed (match_status = 'bid')
-  const [bookedMatches, setBookedMatches] = useState<any[]>([]); // Matches that were booked (match_status = 'booked')
-  const [undecidedMatches, setUndecidedMatches] = useState<any[]>([]); // Matches viewed but no action (match_status = 'undecided')
-  const [waitlistMatches, setWaitlistMatches] = useState<any[]>([]); // Matches moved to waitlist (match_status = 'waitlist')
-  const [expiredMatches, setExpiredMatches] = useState<any[]>([]); // Expired matches (match_status = 'expired')
-  const [unreviewedViewData, setUnreviewedViewData] = useState<any[]>([]); // Efficient server-side filtered data
-  const [missedHistory, setMissedHistory] = useState<any[]>([]); // Missed loads history with full email data
-  const [allDispatchers, setAllDispatchers] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
-  const [bookingMatch, setBookingMatch] = useState<any | null>(null); // Match being booked
-  const [bookingEmail, setBookingEmail] = useState<any | null>(null); // Email for booking dialog
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [bookingMatch, setBookingMatch] = useState<any | null>(null);
+  const [bookingEmail, setBookingEmail] = useState<any | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedEmailForDetail, setSelectedEmailForDetail] = useState<any | null>(null);
   const [selectedEmailDistance, setSelectedEmailDistance] = useState<number | undefined>(undefined);
   const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<any | null>(null);
-  const [matchActionTaken, setMatchActionTaken] = useState(false); // Track if user took action on current match
-  const matchActionTakenRef = useRef(false); // Sync ref for immediate checks in onClose
-  const [mapboxToken, setMapboxToken] = useState<string>("");
+  const [matchActionTaken, setMatchActionTaken] = useState(false);
+  const matchActionTakenRef = useRef(false);
   const [createHuntOpen, setCreateHuntOpen] = useState(false);
-  const [huntPlans, setHuntPlans] = useState<HuntPlan[]>([]);
   const [editingHunt, setEditingHunt] = useState<HuntPlan | null>(null);
   const [editHuntOpen, setEditHuntOpen] = useState(false);
-  const [carriersMap, setCarriersMap] = useState<Record<string, string>>({});
-  const [payeesMap, setPayeesMap] = useState<Record<string, string>>({});
   const [huntFormData, setHuntFormData] = useState({
     planName: "",
     vehicleSizes: ["large-straight"] as string[],
@@ -123,7 +162,7 @@ export default function LoadHunterTab() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
   const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
-  const [filterVehicleId, setFilterVehicleId] = useState<string | null>(null); // Vehicle-specific filter
+  const [filterVehicleId, setFilterVehicleId] = useState<string | null>(null);
   const [showIdColumns, setShowIdColumns] = useState(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
   const [multipleMatches, setMultipleMatches] = useState<any[]>([]);
@@ -131,22 +170,14 @@ export default function LoadHunterTab() {
   const [matchSearchQuery, setMatchSearchQuery] = useState('');
   const [archivedSearchResults, setArchivedSearchResults] = useState<any[]>([]);
   const [isSearchingArchive, setIsSearchingArchive] = useState(false);
-  const [canonicalVehicleTypes, setCanonicalVehicleTypes] = useState<{ value: string; label: string }[]>([]);
-  const [vehicleTypeMappings, setVehicleTypeMappings] = useState<Map<string, string>>(new Map());
   const [showArchiveResults, setShowArchiveResults] = useState(false);
-  const [emailTimeWindow, setEmailTimeWindow] = useState<'30m' | '6h' | '24h' | 'session'>('30m'); // DEBUG: Time window selector
-  const [sessionStart] = useState(() => new Date().toISOString()); // Capture page open time for "Since open" filter
   const itemsPerPage = 14;
   
-  // REQUEST ID GUARDS: Prevent stale async writes during tenant switch or rapid refreshes
-  const loadEmailsReqIdRef = useRef(0);
-  const loadMatchesReqIdRef = useRef(0);
-  const loadUnreviewedReqIdRef = useRef(0);
-  const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']); // Default all sources selected
-  const [loadHunterTheme, setLoadHunterTheme] = useState<'classic' | 'aurora'>('classic'); // Theme selector: classic = current look, aurora = new glassmorphic
+  const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']);
+  const [loadHunterTheme, setLoadHunterTheme] = useState<'classic' | 'aurora'>('classic');
   const [groupMatchesEnabled, setGroupMatchesEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('loadHunterGroupMatches');
-    return saved !== null ? saved === 'true' : true; // Default: enabled
+    return saved !== null ? saved === 'true' : true;
   });
   
   const mapContainer = React.useRef<HTMLDivElement>(null);
@@ -1186,18 +1217,8 @@ export default function LoadHunterTab() {
     console.log('🔄 Tenant effect triggered:', { tenantId, tenantReady, shouldFilter });
     
     // Always clear state first on any tenant change (including null)
-    setVehicles([]);
-    setDrivers([]);
-    setLoadEmails([]);
-    setHuntPlans([]);
-    setLoadMatches([]);
-    setSkippedMatches([]);
-    setBidMatches([]);
-    setBookedMatches([]);
-    setUndecidedMatches([]);
-    setWaitlistMatches([]);
-    setUnreviewedViewData([]);
-    setMissedHistory([]);
+    // Hook's clearAllState handles data state; clear UI state here
+    clearAllState();
     setMatchedLoadIds(new Set());
     setLoadHuntMap(new Map());
     setLoadDistances(new Map());
@@ -1213,19 +1234,9 @@ export default function LoadHunterTab() {
     
     console.log(`[LoadHunter] ✅ tenantReady=true (${tenantId}), running loaders...`);
     
-    // Only run loaders when tenant is ready
-    loadVehicles();
-    loadDrivers();
-    loadLoadEmails();
-    loadHuntPlans();
-    loadHuntMatches();
-    loadUnreviewedMatches();
-    loadMissedHistory();
-    loadCarriersAndPayees();
-    loadCanonicalVehicleTypes();
-    loadAllDispatchers();
-    fetchMapboxToken();
-  }, [tenantId, shouldFilter]);
+    // Only run loaders when tenant is ready - use hook's combined loader
+    loadAllData();
+  }, [tenantId, shouldFilter, clearAllState, loadAllData]);
 
   // DISABLED: Sound notifications - not supposed to notify
   // Sound and system notifications have been disabled per user request
@@ -1247,18 +1258,7 @@ export default function LoadHunterTab() {
     return () => clearInterval(missedCheckInterval);
   }, []);
 
-  const fetchMapboxToken = async () => {
-    try {
-      // Use the cached prefetch function for faster loading
-      const token = await prefetchMapboxToken();
-      if (token) {
-        setMapboxToken(token);
-      }
-    } catch (error) {
-      console.error('Failed to fetch Mapbox token:', error);
-      toast.error('Failed to load map token');
-    }
-  };
+  // fetchMapboxToken is now provided by useLoadHunterData hook
 
   // Initialize map when vehicle is selected
   useEffect(() => {
@@ -1316,687 +1316,9 @@ export default function LoadHunterTab() {
     };
   }, [selectedVehicle, mapboxToken]);
 
-  const loadVehicles = async () => {
-    try {
-      let query = supabase
-        .from("vehicles")
-        .select("*")
-        .in("status", ["active", "available"])
-        .order("vehicle_number", { ascending: true });
-
-      // Apply tenant filter
-      if (shouldFilter && tenantId) {
-        query = query.eq("tenant_id", tenantId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setVehicles(data || []);
-    } catch (error: any) {
-      console.error("Failed to load vehicles", error);
-      toast.error("Failed to load vehicles");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Keep ref updated for real-time subscription callbacks
+  // All data loading functions are now provided by useLoadHunterData hook
+  // Keep refs updated for real-time subscription callbacks
   loadVehiclesRef.current = loadVehicles;
-
-  const loadDrivers = async () => {
-    try {
-      let query = supabase
-        .from("applications")
-        .select("id, personal_info, vehicle_note")
-        .eq("driver_status", "active");
-
-      // Apply tenant filter
-      if (shouldFilter && tenantId) {
-        query = query.eq("tenant_id", tenantId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setDrivers(data || []);
-    } catch (error: any) {
-      console.error("Failed to load drivers", error);
-    }
-  };
-
-  const loadAllDispatchers = async () => {
-    try {
-      let query = supabase
-        .from("dispatchers")
-        .select("id, first_name, last_name")
-        .in("status", ["active", "Active", "ACTIVE"]);
-
-      // Apply tenant filter
-      if (shouldFilter && tenantId) {
-        query = query.eq("tenant_id", tenantId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setAllDispatchers(data || []);
-    } catch (error: any) {
-      console.error("Failed to load dispatchers", error);
-    }
-  };
-
-  const loadCarriersAndPayees = async () => {
-    try {
-      // Load carriers
-      let carriersQuery = supabase
-        .from("carriers")
-        .select("id, name")
-        .in("status", ["active", "Active", "ACTIVE"]);
-
-      if (shouldFilter && tenantId) {
-        carriersQuery = carriersQuery.eq("tenant_id", tenantId);
-      }
-
-      const { data: carriersData, error: carriersError } = await carriersQuery;
-
-      if (!carriersError && carriersData) {
-        const cMap: Record<string, string> = {};
-        carriersData.forEach((carrier: any) => {
-          cMap[carrier.id] = carrier.name;
-        });
-        setCarriersMap(cMap);
-      }
-
-      // Load payees
-      let payeesQuery = supabase
-        .from("payees")
-        .select("id, name")
-        .in("status", ["active", "Active", "ACTIVE"]);
-
-      if (shouldFilter && tenantId) {
-        payeesQuery = payeesQuery.eq("tenant_id", tenantId);
-      }
-
-      const { data: payeesData, error: payeesError } = await payeesQuery;
-
-      if (!payeesError && payeesData) {
-        const pMap: Record<string, string> = {};
-        payeesData.forEach((payee: any) => {
-          pMap[payee.id] = payee.name;
-        });
-        setPayeesMap(pMap);
-      }
-    } catch (error: any) {
-      console.error("Failed to load carriers/payees", error);
-    }
-  };
-
-  // Load canonical vehicle types from sylectus_type_config
-  const loadCanonicalVehicleTypes = async () => {
-    try {
-      // Fetch from BOTH vehicle and load categories since they share canonical names
-      const { data, error } = await supabase
-        .from("sylectus_type_config")
-        .select("type_category, original_value, mapped_to");
-
-      if (error) throw error;
-
-      // Build mappings: original_value -> mapped_to (or null if hidden)
-      const mappings = new Map<string, string>();
-      const canonicalSet = new Set<string>();
-
-      data?.forEach((config: any) => {
-        if (config.mapped_to) {
-          // This type maps to a canonical type - store lowercase for matching
-          mappings.set(config.original_value.toLowerCase(), config.mapped_to.toUpperCase());
-          canonicalSet.add(config.mapped_to.toUpperCase());
-        }
-        // If mapped_to is null, it's hidden - don't add to canonical
-      });
-
-      setVehicleTypeMappings(mappings);
-
-      // If we have canonical types, use them; otherwise fall back to defaults
-      if (canonicalSet.size > 0) {
-        const types = Array.from(canonicalSet).sort().map(t => ({
-          value: t, // Keep the canonical name as-is (e.g., "SPRINTER")
-          label: t  // Display same value
-        }));
-        setCanonicalVehicleTypes(types);
-      } else {
-        // Default fallback types
-        setCanonicalVehicleTypes([
-          { value: 'LARGE STRAIGHT', label: 'LARGE STRAIGHT' },
-          { value: 'SMALL STRAIGHT', label: 'SMALL STRAIGHT' },
-          { value: 'CARGO VAN', label: 'CARGO VAN' },
-          { value: 'SPRINTER', label: 'SPRINTER' },
-          { value: 'STRAIGHT', label: 'STRAIGHT' },
-          { value: 'FLATBED', label: 'FLATBED' },
-        ]);
-      }
-    } catch (error) {
-      console.error("Failed to load canonical vehicle types:", error);
-    }
-  };
-
-  const loadLoadEmails = useCallback(async (retries = 3) => {
-    // REQUEST ID GUARD: Increment and capture current request ID
-    const myReqId = ++loadEmailsReqIdRef.current;
-    console.log('📧 Loading emails...', { tenantId, shouldFilter, reqId: myReqId });
-    
-    // SECURITY: Don't load if tenant filter required but no tenant selected
-    if (shouldFilter && !tenantId) {
-      console.log('📧 No tenant context, clearing emails');
-      if (myReqId === loadEmailsReqIdRef.current) {
-        setLoadEmails([]);
-      }
-      return;
-    }
-    
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        // DEBUG: Calculate time cutoff based on selected window
-        let cutoffTime: string;
-        if (emailTimeWindow === 'session') {
-          // "Since open" - use sessionStart timestamp
-          cutoffTime = sessionStart;
-        } else {
-          const timeWindowMs = emailTimeWindow === '30m' ? 30 * 60 * 1000 
-                             : emailTimeWindow === '6h' ? 6 * 60 * 60 * 1000 
-                             : 24 * 60 * 60 * 1000;
-          cutoffTime = new Date(Date.now() - timeWindowMs).toISOString();
-        }
-        
-        // Sort by received_at (when email was originally received) - most recent first
-        let query = supabase
-          .from("load_emails")
-          .select("*")
-          .gte("created_at", cutoffTime)
-          .order("received_at", { ascending: false })
-          .limit(5000);
-
-        // Apply tenant filter - CRITICAL for isolation
-        if (shouldFilter && tenantId) {
-          query = query.eq("tenant_id", tenantId);
-        }
-
-        // Also fetch failed queue items (emails that couldn't be processed)
-        let failedQuery = supabase
-          .from("email_queue")
-          .select("*")
-          .eq("status", "failed")
-          .order("queued_at", { ascending: false })
-          .limit(200);
-
-        if (shouldFilter && tenantId) {
-          failedQuery = failedQuery.eq("tenant_id", tenantId);
-        }
-
-        const [emailsResult, failedResult] = await Promise.all([query, failedQuery]);
-
-        // REQUEST ID GUARD: Only update state if this is still the latest request
-        if (myReqId !== loadEmailsReqIdRef.current) {
-          console.log(`📧 Request ${myReqId} stale (current: ${loadEmailsReqIdRef.current}), discarding`);
-          return;
-        }
-
-        if (emailsResult.error) {
-          console.error(`📧 Attempt ${attempt} failed:`, emailsResult.error);
-          if (attempt === retries) {
-            toast.error('Failed to load emails - please refresh');
-            return;
-          }
-          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-          continue;
-        }
-        console.log(`✅ Loaded ${emailsResult.data?.length || 0} emails, ${failedResult.data?.length || 0} failed (tenant: ${tenantId}, reqId: ${myReqId})`);
-        setLoadEmails(emailsResult.data || []);
-        setFailedQueueItems(failedResult.data || []);
-        return;
-      } catch (err) {
-        console.error(`📧 Attempt ${attempt} error:`, err);
-        if (attempt === retries) {
-          toast.error('Failed to load emails - please refresh');
-        }
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-      }
-    }
-  }, [tenantId, shouldFilter, emailTimeWindow, sessionStart]);
-
-  const loadHuntPlans = async (retries = 3) => {
-    console.log('🎯 Loading hunt plans...');
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        let query = supabase
-          .from("hunt_plans")
-          .select("*")
-          .not('plan_name', 'ilike', '[DELETED]%')
-          .order("created_at", { ascending: false });
-
-        // Apply tenant filter
-        if (shouldFilter && tenantId) {
-          query = query.eq("tenant_id", tenantId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error(`🎯 Attempt ${attempt} failed:`, error);
-          if (attempt === retries) {
-            toast.error('Failed to load hunt plans - please refresh');
-            return;
-          }
-          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-          continue;
-        }
-        
-        console.log(`✅ Loaded ${data?.length || 0} hunt plans`);
-        const transformedPlans: HuntPlan[] = (data || []).map((plan: any) => {
-          // Parse vehicle_size - could be JSON array or legacy string
-          let vehicleSizes: string[] = [];
-          if (plan.vehicle_size) {
-            try {
-              const parsed = JSON.parse(plan.vehicle_size);
-              vehicleSizes = Array.isArray(parsed) ? parsed : [plan.vehicle_size];
-            } catch {
-              vehicleSizes = [plan.vehicle_size];
-            }
-          }
-          return {
-            id: plan.id,
-            vehicleId: plan.vehicle_id,
-            planName: plan.plan_name,
-            vehicleSizes,
-            zipCode: plan.zip_code || "",
-            availableFeet: plan.available_feet || "",
-            partial: plan.partial || false,
-            pickupRadius: plan.pickup_radius || "",
-            mileLimit: plan.mile_limit || "",
-            loadCapacity: plan.load_capacity || "",
-            availableDate: plan.available_date || "",
-            availableTime: plan.available_time || "",
-            destinationZip: plan.destination_zip || "",
-            destinationRadius: plan.destination_radius || "",
-            notes: plan.notes || "",
-            createdBy: plan.created_by || "",
-            createdAt: new Date(plan.created_at),
-            lastModified: new Date(plan.last_modified),
-            huntCoordinates: plan.hunt_coordinates as { lat: number; lng: number } | null,
-            enabled: plan.enabled !== false,
-            floorLoadId: plan.floor_load_id || null,
-            initialMatchDone: plan.initial_match_done || false,
-          };
-        });
-        
-        setHuntPlans(transformedPlans);
-        return;
-      } catch (err) {
-        console.error(`🎯 Attempt ${attempt} error:`, err);
-        if (attempt === retries) {
-          toast.error('Failed to load hunt plans - please refresh');
-        }
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-      }
-    }
-  };
-
-  const loadHuntMatches = useCallback(async (retries = 3) => {
-    // REQUEST ID GUARD: Increment and capture current request ID
-    const myReqId = ++loadMatchesReqIdRef.current;
-    console.log('🔗 Loading hunt matches...', { tenantId, shouldFilter, reqId: myReqId });
-    
-    // SECURITY: Don't load if tenant filter required but no tenant selected
-    if (shouldFilter && !tenantId) {
-      console.log('🔗 No tenant context, clearing matches');
-      if (myReqId === loadMatchesReqIdRef.current) {
-        setLoadMatches([]);
-        setSkippedMatches([]);
-        setBidMatches([]);
-        setUndecidedMatches([]);
-        setWaitlistMatches([]);
-        setBookedMatches([]);
-      }
-      return;
-    }
-    
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        // Get midnight ET for today (skipped/bids only show today's matches)
-        // Use proper America/New_York timezone handling (auto-handles EST/EDT)
-        const now = new Date();
-        
-        // Get the current date in Eastern timezone
-        const easternFormatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: 'America/New_York',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        });
-        const parts = easternFormatter.formatToParts(now);
-        const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
-        
-        // Construct midnight in Eastern timezone as a UTC date
-        // Format: YYYY-MM-DDT00:00:00 in ET, converted to UTC
-        const easternDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}T00:00:00`;
-        
-        // Create a date at midnight Eastern by parsing in the Eastern timezone
-        // JavaScript doesn't have native timezone support, so we calculate the offset
-        const tempDate = new Date(easternDateStr + 'Z'); // Pretend it's UTC first
-        const easternOffset = getEasternTimezoneOffset(now); // Get current ET offset in hours (-5 or -4)
-        const midnightET = new Date(tempDate.getTime() - easternOffset * 60 * 60 * 1000);
-        const midnightETIso = midnightET.toISOString();
-
-        // CRITICAL: Now uses direct tenant_id column (added via migration) - no join needed
-        const baseSelect = "*";
-
-        // Fetch active matches (match_status = 'active') with tenant filter
-        let activeQuery = supabase
-          .from("load_hunt_matches")
-          .select(baseSelect)
-          .eq('match_status', 'active');
-        if (shouldFilter && tenantId) {
-          activeQuery = activeQuery.eq('tenant_id', tenantId);
-        }
-        const { data: activeData, error: activeError } = await activeQuery;
-
-        // Fetch manually skipped matches (match_status = 'skipped', today only) - include email data
-        let skippedQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
-            )
-          `)
-          .eq('match_status', 'skipped')
-          .gte('updated_at', midnightETIso);
-        if (shouldFilter && tenantId) {
-          skippedQuery = skippedQuery.eq('tenant_id', tenantId);
-        }
-        const { data: skippedData, error: skippedError } = await skippedQuery;
-
-        // Fetch bid matches (match_status = 'bid', today only - clears at midnight) - include email data and bid status
-        let bidQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
-            ),
-            load_bids!load_bids_match_id_fkey (
-              id, status, bid_amount, created_at
-            )
-          `)
-          .eq('match_status', 'bid')
-          .gte('updated_at', midnightETIso);
-        if (shouldFilter && tenantId) {
-          bidQuery = bidQuery.eq('tenant_id', tenantId);
-        }
-        const { data: bidData, error: bidError } = await bidQuery;
-
-        // Fetch undecided matches (match_status = 'undecided') - include email data
-        // These are matches that were viewed but no action taken
-        let undecidedQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
-            )
-          `)
-          .eq('match_status', 'undecided');
-        if (shouldFilter && tenantId) {
-          undecidedQuery = undecidedQuery.eq('tenant_id', tenantId);
-        }
-        const { data: undecidedData, error: undecidedError } = await undecidedQuery;
-
-        // Fetch waitlist matches (match_status = 'waitlist', today only) - include email data
-        let waitlistQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
-            )
-          `)
-          .eq('match_status', 'waitlist')
-          .gte('updated_at', midnightETIso);
-        if (shouldFilter && tenantId) {
-          waitlistQuery = waitlistQuery.eq('tenant_id', tenantId);
-        }
-        const { data: waitlistData, error: waitlistError } = await waitlistQuery;
-
-        // Fetch booked matches (has booked_load_id, today only) - include email data
-        let bookedQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues, assigned_load_id
-            )
-          `)
-          .not('booked_load_id', 'is', null)
-          .gte('updated_at', midnightETIso);
-        if (shouldFilter && tenantId) {
-          bookedQuery = bookedQuery.eq('tenant_id', tenantId);
-        }
-        const { data: bookedData, error: bookedError } = await bookedQuery;
-
-        // Fetch expired matches (match_status = 'expired', last 24h) - include email data
-        let expiredQuery = supabase
-          .from("load_hunt_matches")
-          .select(`
-            *,
-            load_emails (
-              id, email_id, load_id, from_email, from_name, subject, body_text, body_html,
-              received_at, expires_at, parsed_data, status, created_at, updated_at, has_issues
-            )
-          `)
-          .eq('match_status', 'expired')
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-        if (shouldFilter && tenantId) {
-          expiredQuery = expiredQuery.eq('tenant_id', tenantId);
-        }
-        const { data: expiredData, error: expiredError } = await expiredQuery;
-
-        if (activeError || skippedError || bidError || undecidedError || waitlistError || bookedError || expiredError) {
-          console.error(`🔗 Attempt ${attempt} failed:`, activeError || skippedError || bidError || undecidedError || waitlistError || bookedError || expiredError);
-          if (attempt === retries) {
-            toast.error('Failed to load hunt matches - please refresh');
-            return;
-          }
-          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-          continue;
-        }
-        
-        // REQUEST ID GUARD: Only update state if this is still the latest request
-        if (myReqId !== loadMatchesReqIdRef.current) {
-          console.log(`🔗 Request ${myReqId} stale (current: ${loadMatchesReqIdRef.current}), discarding`);
-          return;
-        }
-        
-        const active = activeData || [];
-        const skipped = skippedData || [];
-        const bids = bidData || [];
-        const undecided = undecidedData || [];
-        const waitlist = waitlistData || [];
-        const booked = bookedData || [];
-        const expired = expiredData || [];
-
-        console.log(`✅ Loaded ${active.length} active, ${skipped.length} skipped, ${bids.length} bids, ${undecided.length} undecided, ${waitlist.length} waitlist, ${booked.length} booked, ${expired.length} expired (tenant: ${tenantId}, reqId: ${myReqId})`);
-        
-        setLoadMatches(active);
-        setSkippedMatches(skipped);
-        setBidMatches(bids);
-        setUndecidedMatches(undecided);
-        setWaitlistMatches(waitlist);
-        setBookedMatches(booked);
-        setExpiredMatches(expired);
-        
-        const huntMap = new Map<string, string>();
-        const distances = new Map<string, number>();
-        const matchedIds = new Set<string>();
-        
-        active.forEach((match: any) => {
-          huntMap.set(match.load_email_id, match.hunt_plan_id);
-          if (match.distance_miles) {
-            distances.set(match.load_email_id, match.distance_miles);
-          }
-          matchedIds.add(match.load_email_id);
-        });
-        
-        setLoadHuntMap(huntMap);
-        setLoadDistances(distances);
-        setMatchedLoadIds(matchedIds);
-        return;
-      } catch (err) {
-        console.error(`🔗 Attempt ${attempt} error:`, err);
-        if (attempt === retries) {
-          toast.error('Failed to load hunt matches - please refresh');
-        }
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-      }
-    }
-  }, [tenantId, shouldFilter]);
-
-  // Load unreviewed matches efficiently from database view (server-side filtering)
-  // CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
-  const loadUnreviewedMatches = useCallback(async (retries = 3) => {
-    // REQUEST ID GUARD: Increment and capture current request ID
-    const myReqId = ++loadUnreviewedReqIdRef.current;
-    console.log('🚀 Loading unreviewed matches from view...', { tenantId, shouldFilter, reqId: myReqId });
-    
-    // Reset to empty if no tenant context yet
-    if (shouldFilter && !tenantId) {
-      console.log('⏳ No tenant context yet, showing empty matches');
-      if (myReqId === loadUnreviewedReqIdRef.current) {
-        setUnreviewedViewData([]);
-      }
-      return;
-    }
-    
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        let query = supabase
-          .from("unreviewed_matches")
-          .select("*");
-        
-        // Apply tenant filter - the view now exposes tenant_id from hunt_plans
-        if (shouldFilter && tenantId) {
-          query = query.eq("tenant_id", tenantId);
-        }
-        
-        const { data, error } = await query.limit(500);
-
-        if (error) {
-          console.error(`🚀 Attempt ${attempt} failed:`, error);
-          if (attempt === retries) {
-            toast.error('Failed to load unreviewed matches - please refresh');
-            return;
-          }
-          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-          continue;
-        }
-        
-        // REQUEST ID GUARD: Only update state if this is still the latest request
-        if (myReqId !== loadUnreviewedReqIdRef.current) {
-          console.log(`🚀 Request ${myReqId} stale (current: ${loadUnreviewedReqIdRef.current}), discarding`);
-          return;
-        }
-        
-        console.log(`✅ Loaded ${data?.length || 0} unreviewed matches from view (tenant: ${tenantId}, reqId: ${myReqId})`);
-        console.log('📊 Sample match:', data?.[0]);
-        console.log('📊 Current myVehicleIds:', myVehicleIds);
-        console.log('📊 Current activeMode:', activeMode);
-        setUnreviewedViewData(data || []);
-        return;
-      } catch (err) {
-        console.error(`🚀 Attempt ${attempt} error:`, err);
-        if (attempt === retries) {
-          toast.error('Failed to load unreviewed matches - please refresh');
-        }
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
-      }
-    }
-  }, [tenantId, shouldFilter, myVehicleIds, activeMode]);
-
-  // Load missed history from database - shows all loads that went 15+ min without action
-  const loadMissedHistory = async () => {
-    const MAX_RECORDS = 9999;
-    const PAGE_SIZE = 1000;
-    const EMAIL_CHUNK_SIZE = 500;
-
-    try {
-      const allMissed: any[] = [];
-      const emailMap = new Map<string, any>();
-
-      for (let offset = 0; offset < MAX_RECORDS; offset += PAGE_SIZE) {
-        const { data: page, error } = await supabase
-          .from('missed_loads_history')
-          .select(`
-            id,
-            load_email_id,
-            hunt_plan_id,
-            vehicle_id,
-            match_id,
-            missed_at,
-            received_at,
-            from_email,
-            subject,
-            dispatcher_id
-          `)
-          .order('missed_at', { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
-
-        if (error) {
-          console.error('Error loading missed history:', error);
-          break;
-        }
-
-        const pageRows = page || [];
-        allMissed.push(...pageRows);
-
-        const pageEmailIds = [...new Set(pageRows.map((m) => m.load_email_id).filter(Boolean))].filter(
-          (id) => !emailMap.has(id)
-        );
-
-        for (let i = 0; i < pageEmailIds.length; i += EMAIL_CHUNK_SIZE) {
-          const chunk = pageEmailIds.slice(i, i + EMAIL_CHUNK_SIZE);
-          const { data: emails, error: emailsError } = await supabase
-            .from('load_emails')
-            .select('*')
-            .in('id', chunk);
-
-          if (emailsError) {
-            console.error('Error loading missed email details:', emailsError);
-            continue;
-          }
-
-          (emails || []).forEach((e) => emailMap.set(e.id, e));
-        }
-
-        if (pageRows.length < PAGE_SIZE || allMissed.length >= MAX_RECORDS) {
-          break;
-        }
-      }
-
-      const enrichedData = allMissed.map((m) => ({
-        ...m,
-        email: m.load_email_id ? emailMap.get(m.load_email_id) || null : null,
-      }));
-
-      console.log(`📊 Loaded ${enrichedData.length} missed history records`);
-      setMissedHistory(enrichedData);
-    } catch (err) {
-      console.error('Error in loadMissedHistory:', err);
-    }
-  };
 
   // Reload emails when time window changes
   useEffect(() => {
