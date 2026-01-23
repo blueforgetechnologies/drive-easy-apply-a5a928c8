@@ -376,11 +376,10 @@ export function useLoadHunterData({
     
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        // Use rpc or raw query for view that may not be in generated types
-        let query = (supabase as any)
-          .from('load_hunter_unreviewed_view')
-          .select('*')
-          .order('received_at', { ascending: false });
+        // Use the unreviewed_matches view
+        let query = supabase
+          .from('unreviewed_matches')
+          .select('*');
 
         if (shouldFilter && tenantId) {
           query = query.eq('tenant_id', tenantId);
