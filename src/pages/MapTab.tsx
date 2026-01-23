@@ -511,6 +511,29 @@ const MapTab = () => {
     vehicleHistory.setSelectedVehicle(vehicleId);
   }, [vehicleHistory]);
 
+  // Global click handler for popup history buttons (since popups use raw HTML)
+  useEffect(() => {
+    const handlePopupHistoryClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const historyBtn = target.closest('.popup-history-btn') as HTMLElement | null;
+      if (historyBtn) {
+        const vehicleId = historyBtn.dataset.vehicleId;
+        if (vehicleId) {
+          enterHistoryMode(vehicleId);
+          // Close the popup after clicking
+          const popup = target.closest('.mapboxgl-popup');
+          if (popup) {
+            const closeBtn = popup.querySelector('.mapboxgl-popup-close-button') as HTMLButtonElement;
+            closeBtn?.click();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handlePopupHistoryClick);
+    return () => document.removeEventListener('click', handlePopupHistoryClick);
+  }, [enterHistoryMode]);
+
   useEffect(() => {
     if (!map.current) return;
     
@@ -894,7 +917,14 @@ const MapTab = () => {
             </span>
           </div>
           <!-- History icon - puffy button -->
-          <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); cursor: pointer;">
+          <div 
+            class="popup-history-btn" 
+            data-vehicle-id="${vehicle.id}"
+            title="View route history"
+            style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); cursor: pointer; transition: all 0.15s ease;"
+            onmouseover="this.style.background='linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%)'; this.style.boxShadow='0 2px 6px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.9)';"
+            onmouseout="this.style.background='linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)';"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
               <path d="M3 3v5h5"/>
