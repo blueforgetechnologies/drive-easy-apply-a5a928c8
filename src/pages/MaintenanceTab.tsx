@@ -220,16 +220,68 @@ export default function MaintenanceTab() {
     }
   };
 
-  const handleCompleteRepair = async (id: string) => {
+  const handleCompleteRepair = async (repairId: string) => {
     try {
-      const { error } = await query("repairs_needed")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-      toast.success("Repair marked complete");
+      // Find the repair to get its details
+      const repair = repairs.find(r => r.id === repairId);
+      if (!repair) {
+        toast.error("Repair not found");
+        return;
+      }
+
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      let performedByName = "Unknown";
+      
+      if (user) {
+        // Try to get user's name from users table
+        const { data: userData } = await query("users")
+          .select("first_name, last_name, email")
+          .eq("id", user.id)
+          .single();
+        
+        const userInfo = userData as { first_name?: string; last_name?: string; email?: string } | null;
+        if (userInfo) {
+          if (userInfo.first_name || userInfo.last_name) {
+            performedByName = `${userInfo.first_name || ''} ${userInfo.last_name || ''}`.trim();
+          } else {
+            performedByName = userInfo.email || user.email || "Unknown";
+          }
+        } else {
+          performedByName = user.email || "Unknown";
+        }
+      }
+
+      const now = new Date();
+      const completionNote = `Completed from Repairs Needed on ${format(now, 'MMM d, yyyy')} at ${format(now, 'h:mm a')} by ${performedByName}${repair.notes ? `\n\nOriginal Notes: ${repair.notes}` : ''}`;
+
+      // Create a maintenance record
+      const { error: insertError } = await query("maintenance_records").insert({
+        asset_id: repair.vehicle_id,
+        maintenance_type: "Repair",
+        service_date: format(now, 'yyyy-MM-dd'),
+        description: repair.description,
+        status: "completed",
+        performed_by: performedByName,
+        notes: completionNote,
+        tenant_id: tenantId,
+      });
+
+      if (insertError) throw insertError;
+
+      // Delete the repair from repairs_needed
+      const { error: deleteError } = await query("repairs_needed")
+        .delete()
+        .eq("id", repairId);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Repair completed and moved to Records");
       loadRepairs();
+      loadMaintenanceRecords();
+      setActiveTab('records'); // Switch to Records tab
     } catch (error: any) {
-      toast.error("Failed to update repair");
+      toast.error("Failed to complete repair");
       console.error(error);
     }
   };
