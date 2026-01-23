@@ -1392,8 +1392,8 @@ export default function MaintenanceTab() {
                         
                         {/* Header content - taller padding */}
                         <div className="flex items-center justify-between px-2.5 py-2.5">
-                          {/* Truck number with elegant dark text */}
-                          <span className="text-slate-700 text-xs font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,1)]">
+                          {/* Truck number with elegant dark text - fixed width for consistency */}
+                          <span className="text-slate-700 text-base font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,1)] min-w-[48px]">
                             #{vehicle?.vehicle_number || '?'}
                           </span>
                           
