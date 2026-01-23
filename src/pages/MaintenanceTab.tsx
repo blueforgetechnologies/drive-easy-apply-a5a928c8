@@ -545,10 +545,24 @@ export default function MaintenanceTab() {
           </div>
 
           <div className="flex gap-3 h-[calc(100vh-240px)] min-h-[500px]">
-            {/* Vehicle Sidebar - Compact */}
-            <div className="w-56 flex-shrink-0 bg-gradient-to-b from-white to-gray-50/80 rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
-              <div className="py-2.5 px-3 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white flex-shrink-0">
-                <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Fleet Vehicles</h3>
+            {/* Vehicle Sidebar - Load Hunter Style */}
+            <div 
+              className="w-60 flex-shrink-0 rounded-lg overflow-hidden flex flex-col"
+              style={{
+                background: 'linear-gradient(180deg, hsl(220 15% 96%) 0%, hsl(220 10% 92%) 50%, hsl(220 10% 88%) 100%)',
+                border: '1px solid hsl(220 10% 78%)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 hsl(0 0% 100%), inset 0 -1px 0 hsl(220 10% 85%)'
+              }}
+            >
+              <div 
+                className="py-2.5 px-3 flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 97%) 100%)',
+                  borderBottom: '1px solid hsl(220 15% 85%)',
+                  boxShadow: 'inset 0 1px 0 hsl(0 0% 100%)'
+                }}
+              >
+                <h3 className="text-xs font-bold text-violet-600 uppercase tracking-wider">Fleet Vehicles</h3>
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1.5">
@@ -561,30 +575,58 @@ export default function MaintenanceTab() {
                       <div
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
-                        className={`px-3 py-2.5 rounded-full cursor-pointer transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ${
-                          isSelected 
-                            ? 'bg-gradient-to-b from-violet-500 to-violet-600 shadow-md border border-violet-400' 
-                            : 'bg-gradient-to-b from-white to-gray-100 hover:from-gray-50 hover:to-gray-150 border border-gray-200 hover:shadow-md'
-                        }`}
+                        className="cursor-pointer transition-all"
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '9999px',
+                          background: isSelected 
+                            ? 'linear-gradient(180deg, hsl(262 83% 58%) 0%, hsl(262 83% 48%) 100%)'
+                            : 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 96%) 100%)',
+                          border: isSelected 
+                            ? '1px solid hsl(262 70% 55%)'
+                            : '1px solid hsl(220 15% 85%)',
+                          boxShadow: isSelected
+                            ? '0 3px 10px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
+                            : '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 hsl(0 0% 100%)'
+                        }}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Truck className={`h-4 w-4 flex-shrink-0 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Truck 
+                              className="h-4 w-4 flex-shrink-0" 
+                              style={{ color: isSelected ? 'white' : 'hsl(220 10% 50%)' }}
+                            />
                             <div className="min-w-0">
-                              <span className={`font-semibold text-sm block truncate ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                              <span 
+                                className="font-bold text-sm block truncate"
+                                style={{ 
+                                  color: isSelected ? 'white' : 'hsl(220 15% 25%)',
+                                  textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                                }}
+                              >
                                 {vehicle.vehicle_number}
                               </span>
-                              <span className={`text-[10px] block truncate ${isSelected ? 'text-violet-200' : 'text-gray-400'}`}>
+                              <span 
+                                className="text-[10px] block truncate"
+                                style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : 'hsl(220 10% 55%)' }}
+                              >
                                 {vehicle.make} {vehicle.model}
                               </span>
                             </div>
                           </div>
                           {hasFaults && (
-                            <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm ${
-                              isSelected 
-                                ? 'bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]' 
-                                : 'bg-gradient-to-b from-red-500 to-red-600 text-white'
-                            }`}>
+                            <span 
+                              className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0"
+                              style={{
+                                background: isSelected 
+                                  ? 'rgba(255,255,255,0.25)'
+                                  : 'linear-gradient(180deg, hsl(0 85% 55%) 0%, hsl(0 85% 45%) 100%)',
+                                color: 'white',
+                                boxShadow: isSelected
+                                  ? 'inset 0 1px 0 rgba(255,255,255,0.3)'
+                                  : '0 2px 4px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
+                              }}
+                            >
                               {vehicleFaults.length}
                             </span>
                           )}
