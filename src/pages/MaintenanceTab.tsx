@@ -440,13 +440,32 @@ export default function MaintenanceTab() {
     e.preventDefault();
     if (!draggedTruckId) return;
     
-    const currentOrder = truckOrder.length > 0 ? truckOrder : Array.from(new Set(repairs.map(r => r.vehicle_id)));
+    // Build complete order including any new trucks not yet in truckOrder
+    const allVehicleIds = Array.from(new Set(repairs.map(r => r.vehicle_id)));
+    let currentOrder: string[];
+    
+    if (truckOrder.length > 0) {
+      // Start with existing order, then add any new trucks at the end
+      currentOrder = [...truckOrder];
+      allVehicleIds.forEach(id => {
+        if (!currentOrder.includes(id)) {
+          currentOrder.push(id);
+        }
+      });
+      // Remove any trucks that no longer have repairs
+      currentOrder = currentOrder.filter(id => allVehicleIds.includes(id));
+    } else {
+      currentOrder = allVehicleIds;
+    }
+    
     const currentIndex = currentOrder.indexOf(draggedTruckId);
     
     if (currentIndex !== -1 && currentIndex !== targetIndex) {
       const newOrder = [...currentOrder];
       const [removed] = newOrder.splice(currentIndex, 1);
-      newOrder.splice(targetIndex, 0, removed);
+      // Adjust target index if needed when moving right
+      const adjustedTarget = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
+      newOrder.splice(adjustedTarget, 0, removed);
       setTruckOrder(newOrder);
       
       // Trigger glow effect on dropped truck
@@ -1294,34 +1313,51 @@ export default function MaintenanceTab() {
                     repairs: repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.sort_order - b.sort_order)
                   }));
                 
-                // Sort by custom order if set, otherwise by vehicle number
-                const sortedGroups = truckOrder.length > 0
-                  ? vehicleGroups.sort((a, b) => {
-                      const idxA = truckOrder.indexOf(a.vehicleId);
-                      const idxB = truckOrder.indexOf(b.vehicleId);
-                      if (idxA === -1 && idxB === -1) return 0;
-                      if (idxA === -1) return 1;
-                      if (idxB === -1) return -1;
-                      return idxA - idxB;
-                    })
-                  : vehicleGroups.sort((a, b) => {
-                      const numA = parseInt(a.repairs[0]?.vehicles?.vehicle_number || '999');
-                      const numB = parseInt(b.repairs[0]?.vehicles?.vehicle_number || '999');
-                      return numA - numB;
-                    });
+                // Build complete order including any new trucks
+                const allVehicleIds = vehicleGroups.map(g => g.vehicleId);
+                let completeOrder: string[];
                 
-                return sortedGroups.map(({ vehicleId, repairs: vehicleRepairs }, groupIndex) => {
-                  const vehicle = vehicleRepairs[0]?.vehicles;
-                  const isTruckDragging = draggedTruckId === vehicleId;
-                  const isTruckDropTarget = truckDropTargetIndex === groupIndex && draggedTruckId && draggedTruckId !== vehicleId;
-                  const isJustDropped = justDroppedTruckId === vehicleId;
-                  
-                  return (
-                    <div key={vehicleId} className="relative flex">
-                      {/* Drop indicator line - shows to the LEFT of the target */}
-                      {isTruckDropTarget && (
-                        <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 z-50 shadow-[0_0_12px_4px_rgba(59,130,246,0.7)]" />
-                      )}
+                if (truckOrder.length > 0) {
+                  completeOrder = [...truckOrder];
+                  allVehicleIds.forEach(id => {
+                    if (!completeOrder.includes(id)) completeOrder.push(id);
+                  });
+                  completeOrder = completeOrder.filter(id => allVehicleIds.includes(id));
+                } else {
+                  completeOrder = allVehicleIds.sort((a, b) => {
+                    const numA = parseInt(vehicleGroups.find(g => g.vehicleId === a)?.repairs[0]?.vehicles?.vehicle_number || '999');
+                    const numB = parseInt(vehicleGroups.find(g => g.vehicleId === b)?.repairs[0]?.vehicles?.vehicle_number || '999');
+                    return numA - numB;
+                  });
+                }
+                
+                const sortedGroups = completeOrder
+                  .map(id => vehicleGroups.find(g => g.vehicleId === id)!)
+                  .filter(Boolean);
+                
+                const totalGroups = sortedGroups.length;
+                
+                return (
+                  <>
+                    {sortedGroups.map(({ vehicleId, repairs: vehicleRepairs }, groupIndex) => {
+                      const vehicle = vehicleRepairs[0]?.vehicles;
+                      const isTruckDragging = draggedTruckId === vehicleId;
+                      const isTruckDropTarget = truckDropTargetIndex === groupIndex && draggedTruckId && draggedTruckId !== vehicleId;
+                      const isJustDropped = justDroppedTruckId === vehicleId;
+                      const isLastItem = groupIndex === totalGroups - 1;
+                      const isEndDropTarget = truckDropTargetIndex === totalGroups && draggedTruckId && isLastItem;
+                      
+                      return (
+                        <div key={vehicleId} className="relative flex">
+                          {/* Drop indicator line - shows to the LEFT of the target */}
+                          {isTruckDropTarget && (
+                            <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 z-50 shadow-[0_0_12px_4px_rgba(59,130,246,0.7)]" />
+                          )}
+                          
+                          {/* Drop indicator on RIGHT for last item when dropping at end */}
+                          {isEndDropTarget && (
+                            <div className="absolute -right-0.5 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 z-50 shadow-[0_0_12px_4px_rgba(59,130,246,0.7)]" />
+                          )}
                       
                       <div 
                         draggable
@@ -1470,10 +1506,20 @@ export default function MaintenanceTab() {
                         onDrop={(e) => handleDrop(e, vehicleId, vehicleRepairs.length)}
                       />
                     </div>
+                          {/* Invisible drop zone on the right side for last item */}
+                          {isLastItem && draggedTruckId && draggedTruckId !== vehicleId && (
+                            <div 
+                              className="absolute -right-2 top-0 bottom-0 w-4 z-40"
+                              onDragOver={(e) => { e.preventDefault(); handleTruckDragOver(e, totalGroups); }}
+                              onDrop={(e) => handleTruckDrop(e, totalGroups)}
+                            />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                });
+                    );
+                  })}
+                  </>
+                );
               })()}
             </div>
           </ScrollArea>
