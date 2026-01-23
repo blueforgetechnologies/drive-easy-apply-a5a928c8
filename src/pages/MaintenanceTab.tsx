@@ -72,11 +72,16 @@ export default function MaintenanceTab() {
   const [editRepairDialogOpen, setEditRepairDialogOpen] = useState(false);
   const [editingRepair, setEditingRepair] = useState<RepairItem | null>(null);
   
-  // Drag and drop state
+  // Drag and drop state for repairs
   const [draggedRepair, setDraggedRepair] = useState<RepairItem | null>(null);
   const [draggedVehicleId, setDraggedVehicleId] = useState<string | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
+  
+  // Drag and drop state for truck groups
+  const [draggedTruckId, setDraggedTruckId] = useState<string | null>(null);
+  const [truckDropTargetIndex, setTruckDropTargetIndex] = useState<number | null>(null);
+  const [truckOrder, setTruckOrder] = useState<string[]>([]);
   const [newRecord, setNewRecord] = useState({
     asset_id: "",
     maintenance_type: "PM",
@@ -409,6 +414,43 @@ export default function MaintenanceTab() {
     
     handleDragEnd();
   }, [draggedRepair, draggedVehicleId, repairs, query, loadRepairs, handleDragEnd]);
+
+  // Truck group drag handlers
+  const handleTruckDragStart = useCallback((e: React.DragEvent, vehicleId: string) => {
+    setDraggedTruckId(vehicleId);
+    e.dataTransfer.effectAllowed = 'move';
+    const target = e.currentTarget as HTMLDivElement;
+    target.classList.add('opacity-50', 'scale-95');
+  }, []);
+
+  const handleTruckDragEnd = useCallback(() => {
+    setDraggedTruckId(null);
+    setTruckDropTargetIndex(null);
+  }, []);
+
+  const handleTruckDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedTruckId) {
+      setTruckDropTargetIndex(index);
+    }
+  }, [draggedTruckId]);
+
+  const handleTruckDrop = useCallback((e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!draggedTruckId) return;
+    
+    const currentOrder = truckOrder.length > 0 ? truckOrder : Array.from(new Set(repairs.map(r => r.vehicle_id)));
+    const currentIndex = currentOrder.indexOf(draggedTruckId);
+    
+    if (currentIndex !== -1 && currentIndex !== targetIndex) {
+      const newOrder = [...currentOrder];
+      const [removed] = newOrder.splice(currentIndex, 1);
+      newOrder.splice(targetIndex, 0, removed);
+      setTruckOrder(newOrder);
+    }
+    
+    handleTruckDragEnd();
+  }, [draggedTruckId, truckOrder, repairs, handleTruckDragEnd]);
 
   const handleSyncSamsara = async () => {
     if (!tenantId) {
@@ -1236,38 +1278,66 @@ export default function MaintenanceTab() {
             </Dialog>
           </div>
 
-          {/* Repairs grid by vehicle - narrow compact layout */}
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-12 gap-1">
-            {/* Group repairs by vehicle, sort by vehicle number */}
-            {Array.from(new Set(repairs.map(r => r.vehicle_id)))
-              .map(vehicleId => ({
-                vehicleId,
-                repairs: repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.sort_order - b.sort_order)
-              }))
-              .sort((a, b) => {
-                const numA = parseInt(a.repairs[0]?.vehicles?.vehicle_number || '999');
-                const numB = parseInt(b.repairs[0]?.vehicles?.vehicle_number || '999');
-                return numA - numB;
-              })
-              .map(({ vehicleId, repairs: vehicleRepairs }) => {
-                const vehicle = vehicleRepairs[0]?.vehicles;
-                return (
-                  <div 
-                    key={vehicleId} 
-                    className="bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-400/40"
-                  >
-                    {/* Vehicle header - puffy square */}
-                    <div className="py-1.5 px-2 bg-gradient-to-b from-slate-700 to-slate-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-1px_2px_rgba(0,0,0,0.3)]">
-                      <span className="text-white text-xs font-bold tracking-wide drop-shadow-md">
-                        #{vehicle?.vehicle_number || '?'}
-                      </span>
-                    </div>
-                    
-                    {/* Repairs list with drag-and-drop - engraved separators */}
+          {/* Repairs grid by vehicle - scrollable with truck drag */}
+          <ScrollArea className="h-[calc(100vh-280px)] min-h-[400px]">
+            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-12 gap-1 p-1">
+              {/* Group repairs by vehicle, use custom order or sort by vehicle number */}
+              {(() => {
+                const vehicleGroups = Array.from(new Set(repairs.map(r => r.vehicle_id)))
+                  .map(vehicleId => ({
+                    vehicleId,
+                    repairs: repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.sort_order - b.sort_order)
+                  }));
+                
+                // Sort by custom order if set, otherwise by vehicle number
+                const sortedGroups = truckOrder.length > 0
+                  ? vehicleGroups.sort((a, b) => {
+                      const idxA = truckOrder.indexOf(a.vehicleId);
+                      const idxB = truckOrder.indexOf(b.vehicleId);
+                      if (idxA === -1 && idxB === -1) return 0;
+                      if (idxA === -1) return 1;
+                      if (idxB === -1) return -1;
+                      return idxA - idxB;
+                    })
+                  : vehicleGroups.sort((a, b) => {
+                      const numA = parseInt(a.repairs[0]?.vehicles?.vehicle_number || '999');
+                      const numB = parseInt(b.repairs[0]?.vehicles?.vehicle_number || '999');
+                      return numA - numB;
+                    });
+                
+                return sortedGroups.map(({ vehicleId, repairs: vehicleRepairs }, groupIndex) => {
+                  const vehicle = vehicleRepairs[0]?.vehicles;
+                  const isTruckDragging = draggedTruckId === vehicleId;
+                  const isTruckDropTarget = truckDropTargetIndex === groupIndex && draggedTruckId && draggedTruckId !== vehicleId;
+                  
+                  return (
                     <div 
-                      className="min-h-[40px] bg-gradient-to-b from-slate-300/50 to-slate-400/30"
-                      onDragLeave={handleDragLeave}
+                      key={vehicleId}
+                      draggable
+                      onDragStart={(e) => { e.stopPropagation(); handleTruckDragStart(e, vehicleId); }}
+                      onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleTruckDragEnd(); }}
+                      onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
+                      onDrop={(e) => handleTruckDrop(e, groupIndex)}
+                      className={`
+                        bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden 
+                        shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
+                        border border-slate-400/40 transition-all duration-150
+                        ${isTruckDragging ? 'opacity-50 scale-95' : ''}
+                        ${isTruckDropTarget ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                      `}
                     >
+                      {/* Vehicle header - draggable */}
+                      <div className="py-1.5 px-2 bg-gradient-to-b from-slate-700 to-slate-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-1px_2px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing">
+                        <span className="text-white text-xs font-bold tracking-wide drop-shadow-md">
+                          #{vehicle?.vehicle_number || '?'}
+                        </span>
+                      </div>
+                      
+                      {/* Repairs list with drag-and-drop - engraved separators */}
+                      <div 
+                        className="min-h-[40px] bg-gradient-to-b from-slate-300/50 to-slate-400/30"
+                        onDragLeave={handleDragLeave}
+                      >
                       {vehicleRepairs.map((repair, index) => {
                         const bgColor = repair.color || '#fbbf24';
                         const isDragging = draggedRepair?.id === repair.id;
@@ -1389,10 +1459,12 @@ export default function MaintenanceTab() {
                         onDrop={(e) => handleDrop(e, vehicleId, vehicleRepairs.length)}
                       />
                     </div>
-                  </div>
-                );
-              })}
-          </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </ScrollArea>
 
           {repairs.length === 0 && (
             <div className="text-center py-16">
