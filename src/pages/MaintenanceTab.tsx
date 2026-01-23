@@ -82,6 +82,7 @@ export default function MaintenanceTab() {
   const [draggedTruckId, setDraggedTruckId] = useState<string | null>(null);
   const [truckDropTargetIndex, setTruckDropTargetIndex] = useState<number | null>(null);
   const [truckOrder, setTruckOrder] = useState<string[]>([]);
+  const [justDroppedTruckId, setJustDroppedTruckId] = useState<string | null>(null);
   const [newRecord, setNewRecord] = useState({
     asset_id: "",
     maintenance_type: "PM",
@@ -447,6 +448,10 @@ export default function MaintenanceTab() {
       const [removed] = newOrder.splice(currentIndex, 1);
       newOrder.splice(targetIndex, 0, removed);
       setTruckOrder(newOrder);
+      
+      // Trigger glow effect on dropped truck
+      setJustDroppedTruckId(draggedTruckId);
+      setTimeout(() => setJustDroppedTruckId(null), 1000);
     }
     
     handleTruckDragEnd();
@@ -1309,23 +1314,29 @@ export default function MaintenanceTab() {
                   const vehicle = vehicleRepairs[0]?.vehicles;
                   const isTruckDragging = draggedTruckId === vehicleId;
                   const isTruckDropTarget = truckDropTargetIndex === groupIndex && draggedTruckId && draggedTruckId !== vehicleId;
+                  const isJustDropped = justDroppedTruckId === vehicleId;
                   
                   return (
-                    <div 
-                      key={vehicleId}
-                      draggable
-                      onDragStart={(e) => { e.stopPropagation(); handleTruckDragStart(e, vehicleId); }}
-                      onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleTruckDragEnd(); }}
-                      onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
-                      onDrop={(e) => handleTruckDrop(e, groupIndex)}
-                      className={`
-                        bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden 
-                        shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
-                        border border-slate-400/40 transition-all duration-150
-                        ${isTruckDragging ? 'opacity-50 scale-95' : ''}
-                        ${isTruckDropTarget ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                      `}
-                    >
+                    <div key={vehicleId} className="relative flex">
+                      {/* Drop indicator line - shows to the LEFT of the target */}
+                      {isTruckDropTarget && (
+                        <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-400 z-50 shadow-[0_0_12px_4px_rgba(59,130,246,0.7)]" />
+                      )}
+                      
+                      <div 
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); handleTruckDragStart(e, vehicleId); }}
+                        onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleTruckDragEnd(); }}
+                        onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
+                        onDrop={(e) => handleTruckDrop(e, groupIndex)}
+                        className={`
+                          flex-1 bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden 
+                          shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
+                          border border-slate-400/40 transition-all duration-300
+                          ${isTruckDragging ? 'opacity-50 scale-95' : ''}
+                          ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
+                        `}
+                      >
                       {/* Vehicle header - draggable */}
                       <div className="py-1.5 px-2 bg-gradient-to-b from-slate-700 to-slate-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-1px_2px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing">
                         <span className="text-white text-xs font-bold tracking-wide drop-shadow-md">
@@ -1459,6 +1470,7 @@ export default function MaintenanceTab() {
                         onDrop={(e) => handleDrop(e, vehicleId, vehicleRepairs.length)}
                       />
                     </div>
+                      </div>
                     </div>
                   );
                 });
