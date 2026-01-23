@@ -35,6 +35,7 @@ interface VehicleWithFaults {
   last_updated: string | null;
   formatted_address: string | null;
   odometer: number | null;
+  provider_status: string | null;
 }
 
 export default function MaintenanceTab() {
@@ -121,7 +122,7 @@ export default function MaintenanceTab() {
     if (!isReady) return;
     try {
       const { data, error } = await query("vehicles")
-        .select("id, vehicle_number, make, model, fault_codes, last_updated, formatted_address, odometer")
+        .select("id, vehicle_number, make, model, fault_codes, last_updated, formatted_address, odometer, provider_status")
         .order("vehicle_number");
 
       if (error) throw error;
@@ -575,8 +576,12 @@ export default function MaintenanceTab() {
                 const isSelected = selectedVehicle?.id === vehicle.id;
                 const severity = getVehicleSeverity(vehicle);
                 
+                // Check if vehicle has Samsara connection (provider_status is not null)
+                const hasSamsaraConnection = vehicle.provider_status !== null;
+                
                 // Severity-based styling
                 const getSeverityStyle = () => {
+                  if (!hasSamsaraConnection) return { border: '4px solid #1f2937', bg: 'from-gray-200 to-gray-300/70' }; // No Samsara - blackish/dark gray
                   if (severity === 3) return { border: '4px solid #dc2626', bg: 'from-red-50 to-red-100/50' }; // Critical - red
                   if (severity === 2) return { border: '4px solid #f59e0b', bg: 'from-amber-50 to-amber-100/50' }; // Warning - amber
                   if (severity === 1) return { border: '4px solid #3b82f6', bg: 'from-blue-50 to-blue-100/50' }; // Info - blue
@@ -607,6 +612,7 @@ export default function MaintenanceTab() {
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <Truck className={`h-4 w-4 flex-shrink-0 ${
                           isSelected ? 'text-blue-600' : 
+                          !hasSamsaraConnection ? 'text-gray-700' :
                           severity === 3 ? 'text-red-500' : 
                           severity === 2 ? 'text-amber-500' : 
                           severity === 1 ? 'text-blue-500' : 'text-green-600'
@@ -614,13 +620,14 @@ export default function MaintenanceTab() {
                         <div className="min-w-0 flex-1">
                           <div className={`font-bold text-base leading-none truncate ${
                             isSelected ? 'text-blue-700' : 
+                            !hasSamsaraConnection ? 'text-gray-800' :
                             severity === 3 ? 'text-red-700' : 
                             severity === 2 ? 'text-amber-700' : 
                             severity === 1 ? 'text-blue-700' : 'text-green-800'
                           }`}>
                             {vehicle.vehicle_number}
                           </div>
-                          <div className="text-sm leading-none truncate text-gray-500 mt-0.5">
+                          <div className={`text-sm leading-none truncate mt-0.5 ${!hasSamsaraConnection ? 'text-gray-600' : 'text-gray-500'}`}>
                             {vehicle.make} {vehicle.model}
                           </div>
                         </div>
