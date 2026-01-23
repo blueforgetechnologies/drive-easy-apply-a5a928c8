@@ -1399,22 +1399,22 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - skinny oil can with round handle on right */}
+                            {/* Oil change indicator - skinny oil can with long spout */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 44 32" 
-                                  className="h-4 w-5 animate-pulse"
+                                  viewBox="0 0 48 36" 
+                                  className="h-4 w-6 animate-pulse"
                                   style={{
                                     filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(234, 88, 12, 0.8)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Skinny oil can body - tilted */}
+                                  {/* Skinny oil can body */}
                                   <path 
-                                    d="M10 8 L30 6 C34 5, 36 8, 35 12 L33 22 C32 26, 28 28, 24 27 L8 25 C4 24, 3 20, 4 16 L6 10 C7 7, 9 7, 10 8 Z" 
+                                    d="M16 10 L36 8 C40 7, 42 10, 41 14 L39 24 C38 28, 34 30, 30 29 L14 27 C10 26, 9 22, 10 18 L12 12 C13 9, 15 9, 16 10 Z" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
                                     strokeWidth="1.5"
@@ -1422,30 +1422,30 @@ export default function MaintenanceTab() {
                                   />
                                   {/* Round handle on right */}
                                   <circle 
-                                    cx="38" cy="10" r="4"
+                                    cx="44" cy="12" r="3.5"
                                     fill="none"
                                     stroke="#374151"
                                     strokeWidth="2.5"
                                   />
                                   {/* Handle connector */}
                                   <path 
-                                    d="M35 10 L34 8" 
+                                    d="M41 12 L40 10" 
                                     stroke="#374151"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                   />
-                                  {/* Spout pointing left */}
+                                  {/* Long tube spout pointing left */}
                                   <path 
-                                    d="M6 10 L2 6 L1 9 L4 14" 
+                                    d="M12 12 L6 8 L3 4 L1 6 L4 10 L6 16 L10 18" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
                                     strokeWidth="1.5"
                                     strokeLinejoin="round"
                                     strokeLinecap="round"
                                   />
-                                  {/* Oil drop falling from spout */}
-                                  <ellipse 
-                                    cx="2" cy="18" rx="2" ry="3"
+                                  {/* Nice size oil drop - teardrop shape */}
+                                  <path 
+                                    d="M2 14 C2 12, 4 14, 5 18 C5.5 21, 4 24, 2.5 24 C1 24, -0.5 21, 0 18 C0.5 14, 2 12, 2 14 Z" 
                                     fill="#374151"
                                   />
                                 </svg>
