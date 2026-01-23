@@ -3,7 +3,6 @@ import { createClient as _createClient } from "https://esm.sh/@supabase/supabase
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
 import {
   OTR_API_BASE_URL,
-  getOtrToken,
   getOtrCredentialsFromEnv,
 } from "../_shared/otrClient.ts";
 
@@ -44,11 +43,10 @@ interface OtrInvoiceResponse {
   [key: string]: unknown;
 }
 
-// Submit invoice to OTR Solutions using their exact API format
+// Submit invoice to OTR Solutions - only subscription key needed per OpenAPI spec
 async function submitInvoiceToOtr(
   payload: OtrPostInvoicePayload,
-  subscriptionKey: string,
-  accessToken: string
+  subscriptionKey: string
 ): Promise<{
   success: boolean;
   invoice_id?: string;
@@ -60,52 +58,23 @@ async function submitInvoiceToOtr(
     console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
     console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
     
-    // Try multiple endpoints - OTR docs mention various paths
-    // According to their API list: Post Load, Post Payable, etc.
-    const endpointsToTry = [
-      `${OTR_API_BASE_URL}/invoices`,        // Most common for invoice submission
-      `${OTR_API_BASE_URL}/load`,            // Singular form
-      `${OTR_API_BASE_URL}/payables`,        // Payables endpoint
-    ];
+    const endpoint = `${OTR_API_BASE_URL}/invoices`;
+    console.log(`[submit-otr-invoice] Posting to: ${endpoint}`);
     
-    let lastError = '';
-    let lastResponse: Response | null = null;
-    let responseText = '';
-    
-    for (const endpoint of endpointsToTry) {
-      console.log(`[submit-otr-invoice] Trying endpoint: ${endpoint}`);
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'ocp-apim-subscription-key': subscriptionKey,
-          'Authorization': `Bearer ${accessToken}`,
-          'x-is-test': 'true'
-        },
-        body: JSON.stringify(payload)
-      });
+    // Per OpenAPI spec: only ocp-apim-subscription-key header required (no Bearer token)
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'ocp-apim-subscription-key': subscriptionKey,
+      },
+      body: JSON.stringify(payload)
+    });
 
-      console.log(`[submit-otr-invoice] Response from ${endpoint}: ${response.status}`);
-      responseText = await response.text();
-      console.log(`[submit-otr-invoice] Response body: ${responseText}`);
-      
-      // If we get anything other than 404, this is the right endpoint
-      if (response.status !== 404) {
-        lastResponse = response;
-        break;
-      }
-      
-      lastError = `${endpoint} returned 404`;
-      lastResponse = response;
-    }
-    
-    if (!lastResponse) {
-      return { success: false, error: 'All OTR endpoints returned 404. Contact OTR support for correct API path.' };
-    }
-    
-    const response = lastResponse;
+    console.log(`[submit-otr-invoice] Response status: ${response.status}`);
+    const responseText = await response.text();
+    console.log(`[submit-otr-invoice] Response body: ${responseText}`);
 
     let data: OtrInvoiceResponse;
     try {
@@ -118,7 +87,7 @@ async function submitInvoiceToOtr(
       console.error(`[submit-otr-invoice] OTR API error: ${response.status}`);
       
       if (response.status === 401 || response.status === 403) {
-        return { success: false, error: 'Invalid OTR credentials or access denied' };
+        return { success: false, error: 'Invalid OTR subscription key or access denied', raw_response: data };
       }
       if (response.status === 400) {
         return { 
@@ -323,8 +292,8 @@ serve(async (req) => {
     // because OTR's PostInvoices examples typically use the invoice number (often numeric).
     let invoiceNumber: string | null = null;
     let invoiceAmount: number = Number(load.rate || 0);
-    // OTR schema marks this as date-time. Use RFC3339 (no milliseconds) to satisfy strict validators.
-    let invoiceDate: string = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    // OTR example shows YYYY-MM-DD format (not full RFC3339)
+    let invoiceDate: string = new Date().toISOString().split('T')[0];
 
     if (invoice_id) {
       const { data: invoice, error: invoiceError } = await adminClient
@@ -347,11 +316,10 @@ serve(async (req) => {
           invoiceAmount = parsedAmount;
         }
 
-        // invoice_date is DATE in DB (YYYY-MM-DD). Convert to RFC3339 date-time.
+        // invoice_date is DATE in DB (YYYY-MM-DD) - use directly per OTR example
         const rawInvoiceDate: unknown = (invoice as any).invoice_date;
         if (rawInvoiceDate) {
-          const yyyyMmDd = String(rawInvoiceDate);
-          invoiceDate = `${yyyyMmDd}T00:00:00Z`;
+          invoiceDate = String(rawInvoiceDate);
         }
       }
     }
@@ -374,35 +342,8 @@ serve(async (req) => {
       );
     }
 
-    // Authenticate with OTR
-    if (!credentials.username || !credentials.password) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'OTR username/password not configured'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const tokenResult = await getOtrToken(
-      credentials.subscriptionKey,
-      credentials.username,
-      credentials.password
-    );
-
-    if (!tokenResult.success || !tokenResult.access_token) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `OTR authentication failed: ${tokenResult.error}` 
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Build OTR payload with exact field names from API docs
-    // Ensure InvoiceAmount is a float (parseFloat ensures decimal representation)
+    // Per OpenAPI spec: InvoiceDate can be YYYY-MM-DD format
     const otrPayload: OtrPostInvoicePayload = {
       CustomerMC: customerMc,
       ClientDOT: String(companyProfile.dot_number),
@@ -426,11 +367,10 @@ serve(async (req) => {
 
     console.log('[submit-otr-invoice] Final OTR payload:', JSON.stringify(otrPayload, null, 2));
 
-    // Submit to OTR
+    // Submit to OTR - only subscription key needed per OpenAPI spec
     const result = await submitInvoiceToOtr(
       otrPayload,
-      credentials.subscriptionKey,
-      tokenResult.access_token
+      credentials.subscriptionKey
     );
 
     // Record submission attempt
