@@ -1385,23 +1385,23 @@ export default function MaintenanceTab() {
                           ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
                         `}
                       >
-                      {/* Elegant Vehicle header with status indicators - Silver theme */}
-                      <div className="relative bg-gradient-to-b from-gray-100 via-slate-200 to-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-lg overflow-hidden border-b border-slate-400/50">
-                        {/* Glossy top highlight */}
-                        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                      {/* Puffy raised Vehicle header with status indicators - Silver theme */}
+                      <div className="relative bg-gradient-to-b from-white via-gray-100 to-gray-300 shadow-[inset_0_2px_4px_rgba(255,255,255,1),inset_0_-3px_6px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-xl overflow-hidden border border-gray-300/80 border-b-gray-400">
+                        {/* Strong glossy top highlight */}
+                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-white/40 via-white to-white/40" />
                         
-                        {/* Header content */}
-                        <div className="flex items-center justify-between px-2 py-1.5">
+                        {/* Header content - taller padding */}
+                        <div className="flex items-center justify-between px-2.5 py-2.5">
                           {/* Truck number with elegant dark text */}
-                          <span className="text-slate-700 text-[11px] font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+                          <span className="text-slate-700 text-xs font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,1)]">
                             #{vehicle?.vehicle_number || '?'}
                           </span>
                           
                           {/* Status indicators */}
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             {/* Oil change indicator */}
                             {hasOilChange && (
-                              <div className="relative" title="Oil Change Needed">
+                              <div className="relative p-0.5 bg-gradient-to-b from-amber-100 to-amber-200 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2)]" title="Oil Change Needed">
                                 <img 
                                   src={oilChangeIcon} 
                                   alt="Oil" 
@@ -1413,7 +1413,11 @@ export default function MaintenanceTab() {
                             {/* Check engine light - color based on severity */}
                             {faultCodes.length > 0 && (
                               <div 
-                                className="relative" 
+                                className={`relative p-0.5 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${
+                                  severity === 3 
+                                    ? 'bg-gradient-to-b from-red-100 to-red-200' 
+                                    : 'bg-gradient-to-b from-orange-100 to-orange-200'
+                                }`}
                                 title={`${faultCodes.length} fault code${faultCodes.length > 1 ? 's' : ''}`}
                               >
                                 <img 
@@ -1435,8 +1439,8 @@ export default function MaintenanceTab() {
                           </div>
                         </div>
                         
-                        {/* Severity indicator bar at bottom */}
-                        <div className={`h-[3px] ${
+                        {/* Severity indicator bar at bottom - slightly thicker */}
+                        <div className={`h-[4px] ${
                           severity === 3 
                             ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.6)]' 
                             : severity === 2 
