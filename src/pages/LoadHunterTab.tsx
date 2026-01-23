@@ -76,7 +76,6 @@ export default function LoadHunterTab() {
     setHuntPlans,
     allDispatchers,
     carriersMap,
-    payeesMap,
     canonicalVehicleTypes,
     vehicleTypeMappings,
     loadMatches,
@@ -118,7 +117,6 @@ export default function LoadHunterTab() {
   } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
 
   // UI state that stays in the component
-  const [loads, setLoads] = useState<Load[]>([]);
   const [bookingMatch, setBookingMatch] = useState<any | null>(null);
   const [bookingEmail, setBookingEmail] = useState<any | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -1466,33 +1464,6 @@ export default function LoadHunterTab() {
     }
   };
 
-  const handleReparseEmails = async () => {
-    setRefreshing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('reparse-load-emails');
-
-      if (error) {
-        console.error('reparse-load-emails error:', error);
-        throw new Error(error.message || 'Failed to reparse emails');
-      }
-
-      console.log('Reparse response:', data);
-
-      if (data?.success > 0) {
-        toast.success(`Reparsed ${data.success} emails successfully`);
-        await loadLoadEmails();
-        await loadUnreviewedMatches();
-      } else {
-        toast.info('No emails to reparse');
-      }
-    } catch (error: any) {
-      console.error('Reparse error:', error);
-      toast.error('Failed to reparse emails');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const handleSkipMatch = (matchId: string) => {
     setMatchActionTaken(true); // Mark that action was taken
     
@@ -1666,25 +1637,6 @@ export default function LoadHunterTab() {
         loadUnreviewedMatches();
       }
     })();
-  };
-
-  const handleReviewEmail = async (emailId: string) => {
-    try {
-      const { error } = await supabase
-        .from('load_emails')
-        .update({ status: 'reviewed' })
-        .eq('id', emailId);
-
-      if (error) throw error;
-
-      // Remove from UI and reload view
-      setLoadEmails(loadEmails.filter(email => email.id !== emailId));
-      await loadUnreviewedMatches();
-      toast.success('Load email marked as reviewed');
-    } catch (error) {
-      console.error('Error reviewing email:', error);
-      toast.error('Failed to mark email as reviewed');
-    }
   };
 
   const handleWaitlistMatch = async (matchId: string) => {
