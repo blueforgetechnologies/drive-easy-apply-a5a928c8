@@ -193,6 +193,19 @@ async function submitInvoiceToOtr(
     if (!response.ok) {
       const otr_error_message = extractOtrErrorMessage(data, responseText);
       
+      // Handle 409 Conflict: OTR returns invoicePkey even on conflict - treat as success if we got a pkey
+      if (response.status === 409 && data.invoicePkey) {
+        console.log(`[OTR 409 WITH PKEY] Invoice created despite conflict. invoicePkey: ${data.invoicePkey}, invoiceExists: ${data.invoiceExists}`);
+        return {
+          success: true,
+          invoice_id: data.invoicePkey?.toString(),
+          invoice_pkey: data.invoicePkey,
+          status: data.invoiceExists ? 'existing' : 'created',
+          raw_response: data,
+          attempt_id
+        };
+      }
+      
       // Structured error logging
       console.error('\n[OTR ERROR LOG]', JSON.stringify({
         attempt_id,
