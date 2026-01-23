@@ -1,10 +1,9 @@
 // Shared OTR Solutions API client
 // Used by check-broker-credit and submit-otr-invoice
 
-// Alternative staging URL from OpenAPI spec - try if primary staging fails
-// The primary staging (servicesstg.otrsolutions.com) has been returning errors
-export const OTR_API_BASE_URL = 'https://services.stg.factorhawk.com/carrier-tms/2';
-// Primary staging URL: 'https://servicesstg.otrsolutions.com/carrier-tms/2'
+// Staging URL - primary OTR staging endpoint
+// Note: services.stg.factorhawk.com has expired SSL cert
+export const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
 // Production URL: 'https://services.otrsolutions.com/carrier-tms/2'
 
 export interface OtrTokenResponse {
