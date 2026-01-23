@@ -35,28 +35,32 @@ export default function DevelopmentTab() {
         <p className="text-muted-foreground">Documentation, integrations, and development tools</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-          <TabsList className="w-max sm:w-auto">
-            <TabsTrigger value="documentation">Docs</TabsTrigger>
-            <TabsTrigger value="parser-helper" className="flex items-center gap-2">
-              <FileSearch className="h-4 w-4" />
-              Parser
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="flex items-center gap-2">
-              <Plug className="h-4 w-4" />
-              Integrations
-            </TabsTrigger>
-            <TabsTrigger value="loadboard" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Load Hunter
-            </TabsTrigger>
-            <TabsTrigger value="changelog" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Changelog
-            </TabsTrigger>
-          </TabsList>
+      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-0 w-max sm:w-auto">
+          {[
+            { key: "documentation", label: "Docs", icon: null },
+            { key: "parser-helper", label: "Parser", icon: FileSearch },
+            { key: "integrations", label: "Integrations", icon: Plug },
+            { key: "loadboard", label: "Load Hunter", icon: Target },
+            { key: "changelog", label: "Changelog", icon: History },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`h-[32px] px-4 text-[13px] font-medium rounded-none first:rounded-l-full last:rounded-r-full border-0 flex items-center gap-2 transition-all ${
+                activeTab === tab.key 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700 hover:opacity-90'
+              }`}
+            >
+              {tab.icon && <tab.icon className="h-4 w-4" />}
+              {tab.label}
+            </button>
+          ))}
         </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
 
         <TabsContent value="parser-helper" className="mt-4">
           <ParserHelper initialLoadId={loadIdParam} />

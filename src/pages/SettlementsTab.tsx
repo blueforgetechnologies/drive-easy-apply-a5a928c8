@@ -423,40 +423,29 @@ export default function SettlementsTab() {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant={filter === "pending" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-            className={filter === "pending" ? "bg-yellow-500 text-white hover:bg-yellow-600" : ""}
-          >
-            Pending
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "approved" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "approved" });
-              setSearchQuery("");
-            }}
-            className={filter === "approved" ? "bg-green-600 text-white hover:bg-green-700" : ""}
-          >
-            Approved
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "paid" ? "default" : "outline"}
-            onClick={() => {
-              setSearchParams({ filter: "paid" });
-              setSearchQuery("");
-            }}
-            className={filter === "paid" ? "bg-green-800 text-white hover:bg-green-900" : ""}
-          >
-            Paid
-          </Button>
+        <div className="flex items-center gap-0">
+          {[
+            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", softBadgeClass: "badge-inset-soft-orange" },
+            { key: "approved", label: "Approved", activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "paid", label: "Paid", activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchParams({ filter: status.key });
+                setSearchQuery("");
+              }}
+              className={`h-[28px] px-3 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                filter === status.key 
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {status.label}
+            </Button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">

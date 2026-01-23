@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import InvoicesTab from "./InvoicesTab";
 import SettlementsTab from "./SettlementsTab";
 import AuditLogsTab from "./AuditLogsTab";
@@ -37,32 +36,52 @@ export default function AccountingTab() {
         </p>
       </div>
 
-      <Tabs value={activeSubTab} onValueChange={handleSubTabChange} defaultValue="ready_for_audit">
-        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-          <TabsList className="w-max sm:w-auto h-8">
-            <TabsTrigger value="ready_for_audit" className="text-xs h-7 px-3">Ready for Audit</TabsTrigger>
-            <TabsTrigger value="invoices" className="text-xs h-7 px-3">Invoices</TabsTrigger>
-            <TabsTrigger value="settlements" className="text-xs h-7 px-3">Settlements</TabsTrigger>
-            <TabsTrigger value="audit" className="text-xs h-7 px-3">Audit Logs</TabsTrigger>
-          </TabsList>
+      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-0 w-max sm:w-auto">
+          {[
+            { key: "ready_for_audit", label: "Ready for Audit" },
+            { key: "invoices", label: "Invoices" },
+            { key: "settlements", label: "Settlements" },
+            { key: "audit", label: "Audit Logs" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleSubTabChange(tab.key)}
+              className={`h-[28px] px-3 text-[12px] font-medium rounded-none first:rounded-l-full last:rounded-r-full border-0 transition-all ${
+                activeSubTab === tab.key 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700 hover:opacity-90'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        <TabsContent value="ready_for_audit" className="mt-2">
+      {activeSubTab === "ready_for_audit" && (
+        <div className="mt-2">
           <ReadyForAuditTab />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="invoices" className="mt-2">
+      {activeSubTab === "invoices" && (
+        <div className="mt-2">
           <InvoicesTab />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="settlements" className="mt-2">
+      {activeSubTab === "settlements" && (
+        <div className="mt-2">
           <SettlementsTab />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="audit" className="mt-2">
+      {activeSubTab === "audit" && (
+        <div className="mt-2">
           <AuditLogsTab />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }

@@ -124,22 +124,33 @@ const UsageTab = () => {
         />
       </div>
 
+      <div className="flex items-center gap-0 flex-wrap">
+        {subTabs.map((tab, index) => {
+          const Icon = tab.icon;
+          const isFirst = index === 0;
+          const isLast = index === subTabs.length - 1;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => handleSubTabChange(tab.value)}
+              className={`h-[32px] px-4 text-[13px] font-medium border-0 flex items-center gap-2 transition-all ${
+                isFirst ? 'rounded-l-full' : ''
+              } ${
+                isLast ? 'rounded-r-full' : ''
+              } ${
+                activeSubTab === tab.value 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700 hover:opacity-90'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="space-y-4">
-        <TabsList className="h-auto flex-wrap justify-start gap-1 p-1 bg-muted/50">
-          {subTabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="gap-2 data-[state=active]:bg-background"
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
 
         <TabsContent value="overview" className="mt-4">
           <UsageOverviewTab selectedMonth={selectedMonth} />
