@@ -686,48 +686,29 @@ export default function InvoicesTab() {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant={filter === "pending" ? "default" : "outline"}
-            onClick={() => setInvoiceFilter("pending")}
-            className={filter === "pending" ? "bg-amber-500 text-white hover:bg-amber-600" : ""}
-          >
-            <Clock className="h-3.5 w-3.5 mr-1" />
-            Pending
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "draft" ? "default" : "outline"}
-            onClick={() => setInvoiceFilter("draft")}
-            className={filter === "draft" ? "bg-gray-500 text-white hover:bg-gray-600" : ""}
-          >
-            Draft
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "sent" ? "default" : "outline"}
-            onClick={() => setInvoiceFilter("sent")}
-            className={filter === "sent" ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
-          >
-            Sent
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "paid" ? "default" : "outline"}
-            onClick={() => setInvoiceFilter("paid")}
-            className={filter === "paid" ? "bg-green-600 text-white hover:bg-green-700" : ""}
-          >
-            Paid
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "overdue" ? "default" : "outline"}
-            onClick={() => setInvoiceFilter("overdue")}
-            className={filter === "overdue" ? "bg-red-500 text-white hover:bg-red-600" : ""}
-          >
-            Overdue
-          </Button>
+        <div className="flex items-center gap-0">
+          {[
+            { key: "pending", label: "Pending", icon: Clock, activeClass: "btn-glossy-warning", softBadgeClass: "badge-inset-soft-orange" },
+            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy", softBadgeClass: "badge-inset" },
+            { key: "sent", label: "Sent", icon: null, activeClass: "btn-glossy-primary", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", softBadgeClass: "badge-inset-soft-red" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => setInvoiceFilter(status.key)}
+              className={`h-[28px] px-3 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                filter === status.key 
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {status.icon && <status.icon className="h-3 w-3" />}
+              {status.label}
+            </Button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">

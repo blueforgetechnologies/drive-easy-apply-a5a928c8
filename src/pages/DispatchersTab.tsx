@@ -275,51 +275,30 @@ export default function DispatchersTab() {
             className="pl-8 h-7 text-sm"
           />
         </div>
-        <div className="flex flex-wrap gap-1">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "all" });
-              setSearchQuery("");
-            }}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "active" });
-              setSearchQuery("");
-            }}
-          >
-            Active
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "inactive" });
-              setSearchQuery("");
-            }}
-          >
-            Inactive
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
-            onClick={() => {
-              setSearchParams({ filter: "pending" });
-              setSearchQuery("");
-            }}
-          >
-            Pending
-          </Button>
+        <div className="flex items-center gap-0">
+          {[
+            { key: "all", label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+            { key: "active", label: "Active", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "inactive", label: "Inactive", activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
+            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchParams({ filter: status.key });
+                setSearchQuery("");
+              }}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                filter === status.key 
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {status.label}
+            </Button>
+          ))}
         </div>
       </div>
 

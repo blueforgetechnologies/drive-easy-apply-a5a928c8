@@ -243,22 +243,37 @@ export default function MaintenanceTab() {
         </div>
       </div>
 
+      <div className="flex items-center gap-0 mb-4">
+        <button
+          onClick={() => setActiveTab('records')}
+          className={`h-[32px] px-4 text-[13px] font-medium rounded-l-full border-0 flex items-center gap-2 transition-all ${
+            activeTab === 'records' 
+              ? 'btn-glossy-primary text-white' 
+              : 'btn-glossy text-gray-700 hover:opacity-90'
+          }`}
+        >
+          <Calendar className="h-4 w-4" />
+          Records
+        </button>
+        <button
+          onClick={() => setActiveTab('faults')}
+          className={`h-[32px] px-4 text-[13px] font-medium rounded-r-full border-0 flex items-center gap-2 transition-all ${
+            activeTab === 'faults' 
+              ? 'btn-glossy-danger text-white' 
+              : 'btn-glossy text-gray-700 hover:opacity-90'
+          }`}
+        >
+          <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
+          Fault Codes
+          {totalFaultCodes > 0 && (
+            <span className={`${activeTab === 'faults' ? 'badge-inset-danger' : 'badge-inset-soft-red'} text-[10px] h-5`}>
+              {totalFaultCodes}
+            </span>
+          )}
+        </button>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList>
-          <TabsTrigger value="records">
-            <Calendar className="h-4 w-4 mr-2" />
-            Records
-          </TabsTrigger>
-          <TabsTrigger value="faults" className="relative">
-            <img src={checkEngineIcon} alt="Faults" className="h-4 w-4 mr-2" />
-            Fault Codes
-            {totalFaultCodes > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1.5 text-xs">
-                {totalFaultCodes}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
 
         {/* Records Tab */}
         <TabsContent value="records" className="space-y-4">
