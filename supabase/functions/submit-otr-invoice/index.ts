@@ -49,7 +49,28 @@ interface OtrFileUploadResult {
   success: boolean;
   document_type: string;
   file_name: string;
+  invoice_doc_types: number;
+  attempt_id: string;
+  http_status?: number;
+  response_body?: unknown;
   error?: string;
+}
+
+// Mime type inference from file extension
+function inferMimeType(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const mimeMap: Record<string, string> = {
+    'pdf': 'application/pdf',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'txt': 'text/plain',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+  return mimeMap[ext] || 'application/octet-stream';
 }
 
 // OTR InvoiceDocTypes enum per API spec
@@ -255,54 +276,98 @@ async function uploadDocumentToOtr(
   documentType: string,
   invoicePkey: number,
   subscriptionKey: string,
-  sendEmail: boolean = false
+  accessToken: string,
+  sendEmail: boolean = false,
+  mimeType?: string
 ): Promise<OtrFileUploadResult> {
+  const attempt_id = crypto.randomUUID();
   const timestamps = getTimestampInfo();
   const requestUrl = `${OTR_API_BASE_URL}/file-upload`;
   
   // Map document type to OTR InvoiceDocTypes
   const invoiceDocType = OTR_DOC_TYPES[documentType as keyof typeof OTR_DOC_TYPES] || OTR_DOC_TYPES.other;
   
+  // Determine mime type: use provided, or infer from filename
+  const resolvedMimeType = mimeType || inferMimeType(fileName);
+  
+  // Determine DocumentType form field: use param or default
+  const formDocumentType = documentType && documentType.trim() !== '' 
+    ? documentType 
+    : 'invoice-file-upload';
+  
   try {
     console.log('\n' + '='.repeat(70));
-    console.log(`[OTR DOCUMENT UPLOAD]`);
+    console.log(`[OTR DOCUMENT UPLOAD - ATTEMPT ${attempt_id}]`);
     console.log('='.repeat(70));
     console.log(`[TIMESTAMP] UTC: ${timestamps.utc_time}`);
     console.log(`[TIMESTAMP] Eastern: ${timestamps.eastern_time}`);
     console.log(`[REQUEST] URL: ${requestUrl}`);
     console.log(`[REQUEST] File: ${fileName} (${fileBuffer.length} bytes)`);
-    console.log(`[REQUEST] DocumentType: ${documentType} -> InvoiceDocTypes: ${invoiceDocType}`);
+    console.log(`[REQUEST] MimeType: ${resolvedMimeType}`);
+    console.log(`[REQUEST] DocumentType (form): ${formDocumentType}`);
+    console.log(`[REQUEST] InvoiceDocTypes: ${invoiceDocType}`);
     console.log(`[REQUEST] ItemPkey: ${invoicePkey}`);
     console.log(`[REQUEST] SendEmail: ${sendEmail}`);
+    console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
+    console.log(`[REQUEST] Bearer Token: ***PROVIDED***`);
     
     // Build multipart form data
     const formData = new FormData();
-    const blob = new Blob([fileBuffer.buffer as ArrayBuffer], { type: 'application/pdf' });
+    const blob = new Blob([fileBuffer.buffer as ArrayBuffer], { type: resolvedMimeType });
     formData.append('file', blob, fileName);
-    formData.append('DocumentType', 'invoice-file-upload');
+    formData.append('DocumentType', formDocumentType);
     formData.append('ItemPkey', invoicePkey.toString());
     formData.append('SendEmail', sendEmail.toString());
     formData.append('InvoiceDocTypes', invoiceDocType.toString());
     
+    // CRITICAL: Both subscription key AND bearer token required for file-upload
+    // Do NOT set Content-Type manually - FormData handles boundary automatically
     const response = await fetch(requestUrl, {
       method: 'POST',
       headers: {
-        'Ocp-Apim-Subscription-Key': subscriptionKey,
-        // Content-Type is set automatically for FormData
+        'ocp-apim-subscription-key': subscriptionKey,
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
       },
       body: formData
     });
 
     const responseText = await response.text();
+    let responseBody: unknown;
+    try {
+      responseBody = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      responseBody = responseText || {};
+    }
+    
     console.log(`[RESPONSE] Status: ${response.status}`);
     console.log(`[RESPONSE] Body: ${responseText}`);
+    console.log(`[RESPONSE] Attempt ID: ${attempt_id}`);
 
     if (!response.ok) {
-      console.error(`[OTR UPLOAD ERROR] Failed to upload ${fileName}: ${response.status} - ${responseText}`);
+      console.error('\n[OTR UPLOAD ERROR]', JSON.stringify({
+        attempt_id,
+        request_url: requestUrl,
+        http_status: response.status,
+        file_name: fileName,
+        document_type: formDocumentType,
+        invoice_doc_types: invoiceDocType,
+        item_pkey: invoicePkey,
+        mime_type: resolvedMimeType,
+        utc_time: timestamps.utc_time,
+        eastern_time: timestamps.eastern_time,
+        response_body: responseBody,
+      }, null, 2));
+      console.log('='.repeat(70) + '\n');
+      
       return {
         success: false,
-        document_type: documentType,
+        document_type: formDocumentType,
         file_name: fileName,
+        invoice_doc_types: invoiceDocType,
+        attempt_id,
+        http_status: response.status,
+        response_body: responseBody,
         error: `Upload failed (${response.status}): ${responseText}`
       };
     }
@@ -312,15 +377,21 @@ async function uploadDocumentToOtr(
     
     return {
       success: true,
-      document_type: documentType,
-      file_name: fileName
+      document_type: formDocumentType,
+      file_name: fileName,
+      invoice_doc_types: invoiceDocType,
+      attempt_id,
+      http_status: response.status,
+      response_body: responseBody
     };
   } catch (error) {
-    console.error(`[OTR UPLOAD EXCEPTION] ${fileName}:`, error);
+    console.error(`[OTR UPLOAD EXCEPTION - ${attempt_id}] ${fileName}:`, error);
     return {
       success: false,
-      document_type: documentType,
+      document_type: documentType || 'unknown',
       file_name: fileName,
+      invoice_doc_types: invoiceDocType,
+      attempt_id,
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
@@ -635,11 +706,14 @@ serve(async (req) => {
               .download(doc.file_url);
             
             if (downloadError || !fileData) {
+              const errorAttemptId = crypto.randomUUID();
               console.error(`[submit-otr-invoice] Failed to download ${doc.file_url}:`, downloadError);
               documentUploadResults.push({
                 success: false,
                 document_type: doc.document_type || 'unknown',
                 file_name: doc.file_name || doc.file_url,
+                invoice_doc_types: OTR_DOC_TYPES[doc.document_type as keyof typeof OTR_DOC_TYPES] || OTR_DOC_TYPES.other,
+                attempt_id: errorAttemptId,
                 error: `Download failed: ${downloadError?.message || 'No data'}`
               });
               continue;
@@ -649,24 +723,33 @@ serve(async (req) => {
             const arrayBuffer = await fileData.arrayBuffer();
             const fileBuffer = new Uint8Array(arrayBuffer);
             
-            // Upload to OTR
+            // Infer mime type from filename
+            const fileName = doc.file_name || doc.file_url.split('/').pop() || 'document.pdf';
+            const mimeType = fileData.type || inferMimeType(fileName);
+            
+            // Upload to OTR with access token
             const uploadResult = await uploadDocumentToOtr(
               fileBuffer,
-              doc.file_name || doc.file_url.split('/').pop() || 'document.pdf',
+              fileName,
               doc.document_type || 'other',
               result.invoice_pkey,
               credentials.subscriptionKey,
-              false // Don't send email for each document
+              tokenResult.access_token,  // Pass bearer token
+              false,                      // Don't send email
+              mimeType                    // Pass mime type
             );
             
             documentUploadResults.push(uploadResult);
             
           } catch (uploadError) {
+            const errorAttemptId = crypto.randomUUID();
             console.error(`[submit-otr-invoice] Exception uploading ${doc.file_url}:`, uploadError);
             documentUploadResults.push({
               success: false,
               document_type: doc.document_type || 'unknown',
               file_name: doc.file_name || doc.file_url,
+              invoice_doc_types: OTR_DOC_TYPES[(doc.document_type as keyof typeof OTR_DOC_TYPES)] || OTR_DOC_TYPES.other,
+              attempt_id: errorAttemptId,
               error: uploadError instanceof Error ? uploadError.message : 'Unknown upload error'
             });
           }
@@ -720,7 +803,7 @@ serve(async (req) => {
         .eq('id', invoice_id);
     }
 
-    // Build response with document upload details
+    // Build response in requested format
     const successfulUploads = documentUploadResults.filter(r => r.success);
     const failedUploads = documentUploadResults.filter(r => !r.success);
     
@@ -732,14 +815,37 @@ serve(async (req) => {
       message += `. Documents: ${successfulUploads.length}/${documentUploadResults.length} uploaded`;
     }
 
+    // Format uploads for response per test requirements
+    const uploadsFormatted = documentUploadResults.map(r => ({
+      fileName: r.file_name,
+      docType: r.document_type,
+      invoiceDocTypes: r.invoice_doc_types,
+      status: r.http_status,
+      success: r.success,
+      attempt_id: r.attempt_id,
+      responseBody: r.response_body,
+      error: r.error
+    }));
+
     return new Response(
       JSON.stringify({
         success: result.success,
+        message,
+        // Invoice details in structured format
+        invoice: {
+          invoiceNo: invoiceNumber,
+          invoicePkey: result.invoice_pkey,
+          status: result.status,
+          attempt_id: result.attempt_id,
+          error: result.error
+        },
+        // Uploads array per test requirements
+        uploads: uploadsFormatted,
+        // Legacy fields for backward compatibility
         invoice_id: result.invoice_id,
         invoice_pkey: result.invoice_pkey,
         status: result.status,
         error: result.error,
-        message,
         documents: {
           total: documentUploadResults.length,
           successful: successfulUploads.length,
