@@ -1581,9 +1581,6 @@ export default function MaintenanceTab() {
                           )}
                       
                       <div 
-                        draggable
-                        onDragStart={(e) => { e.stopPropagation(); handleTruckDragStart(e, vehicleId); }}
-                        onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleTruckDragEnd(); }}
                         onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
                         onDrop={(e) => handleTruckDrop(e, groupIndex)}
                         className={`
@@ -1594,8 +1591,13 @@ export default function MaintenanceTab() {
                           ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
                         `}
                       >
-                      {/* Puffy raised Vehicle header - Darker squared theme */}
-                      <div className="relative bg-gradient-to-b from-gray-200 via-gray-300 to-gray-400 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-3px_6px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-sm overflow-hidden border border-gray-400/80 border-b-gray-500">
+                      {/* Puffy raised Vehicle header - Darker squared theme - ONLY HEADER IS DRAGGABLE */}
+                      <div 
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); handleTruckDragStart(e, vehicleId); }}
+                        onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50', 'scale-95'); handleTruckDragEnd(); }}
+                        className="relative bg-gradient-to-b from-gray-200 via-gray-300 to-gray-400 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-3px_6px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-sm overflow-hidden border border-gray-400/80 border-b-gray-500"
+                      >
                         {/* Strong glossy top highlight */}
                         <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-white/30 via-white/80 to-white/30" />
                         
