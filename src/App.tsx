@@ -8,7 +8,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "./components/DashboardLayout";
 import PageLoader from "./components/PageLoader";
-
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 // ============================================
 // EAGER IMPORTS - Small, critical path pages
 // ============================================
@@ -79,14 +79,17 @@ const CustomerOnboardingTab = lazy(() => import("./pages/CustomerOnboardingTab")
 const queryClient = new QueryClient();
 
 /**
- * LazyRoute - Wraps lazy-loaded components with Suspense and DashboardLayout
+ * LazyRoute - Wraps lazy-loaded components with ErrorBoundary + Suspense + DashboardLayout
+ * The ErrorBoundary catches React crashes so they don't unmount the whole app
  * The PageLoader spinner appears inside the DashboardLayout content area
  */
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <DashboardLayout>
-    <Suspense fallback={<PageLoader />}>
-      {children}
-    </Suspense>
+    <RouteErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
+    </RouteErrorBoundary>
   </DashboardLayout>
 );
 
@@ -94,9 +97,11 @@ const LazyRoute = ({ children }: { children: React.ReactNode }) => (
  * LazyPublicRoute - For public pages outside DashboardLayout
  */
 const LazyPublicRoute = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<PageLoader />}>
-    {children}
-  </Suspense>
+  <RouteErrorBoundary fallbackPath="/auth">
+    <Suspense fallback={<PageLoader />}>
+      {children}
+    </Suspense>
+  </RouteErrorBoundary>
 );
 
 const App = () => (
