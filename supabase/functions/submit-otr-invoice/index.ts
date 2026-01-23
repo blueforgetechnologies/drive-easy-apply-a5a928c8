@@ -107,7 +107,12 @@ async function submitInvoiceToOtr(
       }, null, 2));
       
       if (response.status === 401) {
-        return { success: false, error: 'Invalid or missing subscription key', raw_response: data };
+        // Include actual OTR error message for better debugging
+        const otrMessage = String(data?.message || data?.Message || data?.error || '');
+        const errorMsg = otrMessage.includes('Not Authorized') 
+          ? `OTR account not authorized: ${otrMessage}`
+          : 'Invalid or missing subscription key';
+        return { success: false, error: errorMsg, raw_response: data };
       }
       if (response.status === 400) {
         return { 
