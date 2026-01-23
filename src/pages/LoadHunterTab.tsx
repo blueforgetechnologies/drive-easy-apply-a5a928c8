@@ -52,7 +52,7 @@ import {
   truncateText,
   groupMatchesByLoadEmail
 } from "@/utils/loadHunterHelpers";
-import { LoadHunterFilters } from "@/components/load-hunter/LoadHunterFilters";
+import { LoadHunterFilters, LoadHunterTableHeader, LoadHunterTableRowEnhanced, LoadHunterPagination } from "@/components/load-hunter";
 import type { SoundSettings } from "@/hooks/useUserPreferences";
 
 export default function LoadHunterTab() {
@@ -3907,79 +3907,12 @@ export default function LoadHunterTab() {
                   <>
                     <div className="flex-1 overflow-auto min-h-0">
                       <Table className={loadHunterTheme === 'aurora' ? '' : 'table-glossy'}>
-                      <TableHeader 
-                        className={loadHunterTheme === 'aurora' ? 'rounded-t-lg' : ''}
-                        style={loadHunterTheme === 'aurora' ? { 
-                          background: 'linear-gradient(180deg, #a78bfa 0%, #8b5cf6 40%, #7c3aed 100%)',
-                          borderBottom: '3px solid #5b21b6',
-                          boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.15), 0 4px 8px rgba(91,33,182,0.35)',
-                          textShadow: 'none'
-                        } : undefined}
-                      >
-                        <TableRow 
-                          className={loadHunterTheme === 'aurora' ? 'h-12' : 'h-9'}
-                          style={loadHunterTheme === 'aurora' ? { 
-                            background: 'transparent', 
-                            boxShadow: 'none',
-                            textShadow: 'none'
-                          } : undefined}
-                        >
-                          <TableHead className={`w-0 p-0 relative ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 p-0 ${loadHunterTheme === 'aurora' ? 'text-white hover:bg-white/20' : 'text-white hover:bg-white/20'}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowIdColumns(!showIdColumns);
-                              }}
-                              title={showIdColumns ? "Hide ID columns" : "Show ID columns"}
-                            >
-                              {showIdColumns ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                            </Button>
-                          </TableHead>
-                          {showIdColumns && (
-                            <>
-                              <TableHead className={`w-[80px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Order #</TableHead>
-                              <TableHead className={`w-[110px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Load ID</TableHead>
-                              {activeFilter !== 'all' && (
-                                <TableHead className={`w-[100px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Match ID</TableHead>
-                              )}
-                            </>
-                          )}
-                          {activeFilter !== 'all' && (
-                            <TableHead className={`w-[140px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Truck - Drivers<br/>Carrier</TableHead>
-                          )}
-                          <TableHead className={`w-[60px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Customer</TableHead>
-                          {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
-                            <TableHead className={`w-[95px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Received<br/>Expires</TableHead>
-                          )}
-                          <TableHead className={`w-[115px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Pickup Time<br/>Deliver Time</TableHead>
-                          <TableHead className={`w-[130px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Origin<br/>Destination</TableHead>
-                          <TableHead className={`w-[60px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Empty<br/>Loaded</TableHead>
-                          <TableHead className={`w-[100px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Vehicle Type<br/>Weight</TableHead>
-                          <TableHead className={`w-[70px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Pieces<br/>Dims</TableHead>
-                          <TableHead className={`w-[45px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Avail<br/>Posted</TableHead>
-                          <TableHead className={`w-[65px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Source</TableHead>
-                          {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
-                            <TableHead className={`w-[85px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Actions</TableHead>
-                          )}
-                          {activeFilter === 'mybids' && (
-                            <>
-                              <TableHead className={`w-[70px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Rate</TableHead>
-                              <TableHead className={`w-[90px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Dispatcher</TableHead>
-                              <TableHead className={`w-[60px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Award</TableHead>
-                              <TableHead className={`w-[80px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Bid Time</TableHead>
-                            </>
-                          )}
-                          {activeFilter === 'booked' && (
-                            <>
-                              <TableHead className={`w-[70px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Rate</TableHead>
-                              <TableHead className={`w-[90px] py-2 text-[12px] leading-[1.1] ${loadHunterTheme === 'aurora' ? '!text-white font-medium uppercase !tracking-normal [text-shadow:none]' : 'text-white font-semibold tracking-wide'}`} style={loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined}>Dispatcher</TableHead>
-                            </>
-                          )}
-                        </TableRow>
-                      </TableHeader>
+                        <LoadHunterTableHeader
+                          activeFilter={activeFilter}
+                          loadHunterTheme={loadHunterTheme}
+                          showIdColumns={showIdColumns}
+                          onToggleIdColumns={() => setShowIdColumns(!showIdColumns)}
+                        />
                       <TableBody>
                         {(activeFilter === 'unreviewed' ? filteredMatches 
                           : activeFilter === 'skipped' ? [...filteredSkippedMatches].sort((a, b) => new Date(b.load_emails?.received_at || 0).getTime() - new Date(a.load_emails?.received_at || 0).getTime())
