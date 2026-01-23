@@ -1399,13 +1399,19 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator */}
+                            {/* Oil change indicator - glowing dashboard light */}
                             {hasOilChange && (
-                              <div className="relative p-0.5 bg-gradient-to-b from-amber-100 to-amber-200 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2)]" title="Oil Change Needed">
+                              <div 
+                                className="relative" 
+                                title="Oil Change Needed"
+                              >
                                 <img 
                                   src={oilChangeIcon} 
                                   alt="Oil" 
-                                  className="h-3.5 w-3.5 drop-shadow-[0_0_3px_rgba(251,191,36,0.8)]"
+                                  className="h-4 w-4 animate-pulse"
+                                  style={{
+                                    filter: 'brightness(1.4) saturate(1.8) drop-shadow(0 0 4px rgba(251, 191, 36, 1)) drop-shadow(0 0 8px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6))'
+                                  }}
                                 />
                               </div>
                             )}
