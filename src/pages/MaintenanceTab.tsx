@@ -1276,10 +1276,11 @@ export default function MaintenanceTab() {
                                 </button>
                               </div>
                               
-                              {/* Description */}
+                              {/* Description - wrap text */}
                               <div className="flex-1 min-w-0">
                                 <p 
-                                  className={`text-xs font-semibold truncate drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
+                                  className={`text-[11px] font-medium leading-tight drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
+                                  style={{ wordBreak: 'break-word' }}
                                 >
                                   {repair.description}
                                 </p>
