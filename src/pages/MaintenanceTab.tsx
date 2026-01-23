@@ -1399,56 +1399,51 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - glowing oil can SVG */}
+                            {/* Oil change indicator - oil can with drop on left */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 64 52" 
+                                  viewBox="0 0 48 40" 
                                   className="h-5 w-6 animate-pulse"
                                   style={{
                                     filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(234, 88, 12, 0.8)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Main oil can body - rounded rectangle, tilted */}
+                                  {/* Oil can body - tilted with spout on left */}
                                   <path 
-                                    d="M8 18 C8 12, 14 8, 20 10 L44 6 C52 4, 56 10, 54 18 L50 38 C48 46, 40 48, 32 46 L12 42 C4 40, 4 32, 8 24 Z" 
+                                    d="M16 10 L40 14 C44 15, 46 20, 44 26 L42 32 C40 36, 34 38, 28 36 L14 32 C10 31, 8 26, 10 20 L12 14 C13 11, 14 10, 16 10 Z" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="2.5"
+                                    strokeWidth="2"
                                     strokeLinejoin="round"
                                   />
-                                  {/* Spout */}
+                                  {/* Spout pointing left */}
                                   <path 
-                                    d="M54 14 L62 8 L64 12 L58 20 L54 18" 
+                                    d="M12 14 L4 8 L2 12 L8 18" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="2.5"
+                                    strokeWidth="2"
                                     strokeLinejoin="round"
                                     strokeLinecap="round"
                                   />
-                                  {/* Handle stem */}
-                                  <rect 
-                                    x="28" y="2" width="6" height="10" rx="1"
+                                  {/* Handle - vertical bar on top */}
+                                  <path 
+                                    d="M26 6 L26 12 M24 4 L28 4 L28 7 L24 7 Z" 
                                     fill="#374151"
                                     stroke="#1f2937"
                                     strokeWidth="2"
+                                    strokeLinecap="round"
                                   />
-                                  {/* Handle top */}
-                                  <rect 
-                                    x="26" y="0" width="10" height="4" rx="1"
-                                    fill="#4b5563"
+                                  <rect x="24" y="3" width="5" height="5" rx="0.5" fill="#374151" stroke="#1f2937" strokeWidth="1.5"/>
+                                  {/* Oil drop falling from spout - on left */}
+                                  <ellipse 
+                                    cx="4" cy="22" rx="2.5" ry="4"
+                                    fill="#374151"
                                     stroke="#1f2937"
-                                    strokeWidth="1.5"
-                                  />
-                                  {/* Oil drop - teardrop shape */}
-                                  <path 
-                                    d="M60 24 C60 22, 62 26, 62 30 C62 34, 60 36, 58 36 C56 36, 54 34, 54 30 C54 26, 56 22, 58 24 C59 23, 60 22, 60 24 Z" 
-                                    fill="#f59e0b"
-                                    stroke="#1f2937"
-                                    strokeWidth="1.5"
+                                    strokeWidth="1"
                                   />
                                 </svg>
                               </div>
