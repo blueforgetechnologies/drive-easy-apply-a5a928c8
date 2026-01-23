@@ -545,97 +545,61 @@ export default function MaintenanceTab() {
           </div>
 
           <div className="flex gap-3 h-[calc(100vh-240px)] min-h-[500px]">
-            {/* Vehicle Sidebar - Load Hunter Style */}
-            <div 
-              className="w-60 flex-shrink-0 rounded-lg overflow-hidden flex flex-col"
-              style={{
-                background: 'linear-gradient(180deg, hsl(220 15% 96%) 0%, hsl(220 10% 92%) 50%, hsl(220 10% 88%) 100%)',
-                border: '1px solid hsl(220 10% 78%)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.1), inset 0 1px 0 hsl(0 0% 100%), inset 0 -1px 0 hsl(220 10% 85%)'
-              }}
-            >
-              <div 
-                className="py-2.5 px-3 flex-shrink-0"
-                style={{
-                  background: 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 97%) 100%)',
-                  borderBottom: '1px solid hsl(220 15% 85%)',
-                  boxShadow: 'inset 0 1px 0 hsl(0 0% 100%)'
-                }}
-              >
-                <h3 className="text-xs font-bold text-violet-600 uppercase tracking-wider">Fleet Vehicles</h3>
-              </div>
-              <ScrollArea className="flex-1">
-                <div className="p-2 space-y-1.5">
-                  {allVehicles.map((vehicle) => {
-                    const vehicleFaults = getFaultCodes(vehicle);
-                    const hasFaults = vehicleFaults.length > 0;
-                    const isSelected = selectedVehicle?.id === vehicle.id;
-                    
-                    return (
-                      <div
-                        key={vehicle.id}
-                        onClick={() => setSelectedVehicle(vehicle)}
-                        className="cursor-pointer transition-all"
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '9999px',
-                          background: isSelected 
-                            ? 'linear-gradient(180deg, hsl(262 83% 58%) 0%, hsl(262 83% 48%) 100%)'
-                            : 'linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 96%) 100%)',
-                          border: isSelected 
-                            ? '1px solid hsl(262 70% 55%)'
-                            : '1px solid hsl(220 15% 85%)',
-                          boxShadow: isSelected
-                            ? '0 3px 10px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
-                            : '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 hsl(0 0% 100%)'
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Truck 
-                              className="h-4 w-4 flex-shrink-0" 
-                              style={{ color: isSelected ? 'white' : 'hsl(220 10% 50%)' }}
-                            />
-                            <div className="min-w-0">
-                              <span 
-                                className="font-bold text-sm block truncate"
-                                style={{ 
-                                  color: isSelected ? 'white' : 'hsl(220 15% 25%)',
-                                  textShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
-                                }}
-                              >
-                                {vehicle.vehicle_number}
-                              </span>
-                              <span 
-                                className="text-[10px] block truncate"
-                                style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : 'hsl(220 10% 55%)' }}
-                              >
-                                {vehicle.make} {vehicle.model}
-                              </span>
-                            </div>
+            {/* Vehicle Sidebar - Load Hunter Style Identical */}
+            <div className="w-64 flex-shrink-0 space-y-1 overflow-y-auto pr-2 border-r border-purple-500/30">
+              {allVehicles.map((vehicle) => {
+                const vehicleFaults = getFaultCodes(vehicle);
+                const hasFaults = vehicleFaults.length > 0;
+                const isSelected = selectedVehicle?.id === vehicle.id;
+                
+                return (
+                  <div 
+                    key={vehicle.id} 
+                    className={`p-3 cursor-pointer rounded-lg relative transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-gradient-to-b from-purple-900/80 to-violet-900/60 border border-purple-400/60 shadow-lg shadow-purple-500/30'
+                        : 'bg-gradient-to-b from-purple-900/40 to-violet-900/30 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-md hover:shadow-purple-500/20'
+                    }`}
+                    style={{ 
+                      borderLeft: hasFaults ? '4px solid #ef4444' : '4px solid rgba(168,85,247,0.3)'
+                    }}
+                    onClick={() => setSelectedVehicle(vehicle)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <Truck className="h-5 w-5 flex-shrink-0 text-purple-300 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-base leading-tight truncate text-purple-100">
+                            {vehicle.vehicle_number}
+                          </div>
+                          <div className="text-sm leading-tight truncate text-purple-300/80 mt-0.5">
+                            {vehicle.make} {vehicle.model}
                           </div>
                           {hasFaults && (
-                            <span 
-                              className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0"
-                              style={{
-                                background: isSelected 
-                                  ? 'rgba(255,255,255,0.25)'
-                                  : 'linear-gradient(180deg, hsl(0 85% 55%) 0%, hsl(0 85% 45%) 100%)',
-                                color: 'white',
-                                boxShadow: isSelected
-                                  ? 'inset 0 1px 0 rgba(255,255,255,0.3)'
-                                  : '0 2px 4px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
-                              }}
-                            >
-                              {vehicleFaults.length}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
+                              <span className="text-sm font-semibold text-red-400">
+                                {vehicleFaults.length} fault{vehicleFaults.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                      
+                      {/* Fault count badge - top right corner like Load Hunter */}
+                      {hasFaults && (
+                        <div className="absolute -top-px -right-px flex items-center overflow-hidden rounded-bl-lg rounded-tr-lg shadow-[0_2px_8px_-2px_rgba(239,68,68,0.3)]">
+                          <div 
+                            className="h-7 px-3 !rounded-none !border-0 text-sm font-bold cursor-pointer transition-all flex items-center justify-center bg-gradient-to-b from-red-400 to-red-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-red-300 hover:to-red-500"
+                          >
+                            {vehicleFaults.length}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Fault Details Panel */}
