@@ -1760,13 +1760,10 @@ export default function MaintenanceTab() {
                                       : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
                                     }
                                     ${!isDragging && 'hover:-translate-y-0.5'}
-                                    ${isJustDropped ? 'z-30 scale-[1.03] ring-2 ring-white animate-pulse' : ''}
+                                    ${isJustDropped ? 'z-30 scale-[1.02] ring-[3px] ring-white shadow-[0_0_12px_2px_rgba(255,255,255,0.9),0_0_24px_4px_rgba(255,255,255,0.6)]' : ''}
                                   `}
                                   style={{ 
                                     background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
-                                    ...(isJustDropped && {
-                                      boxShadow: `0 0 20px 8px ${bgColor}, 0 0 40px 16px ${bgColor}80, inset 0 2px 4px rgba(255,255,255,0.9)`,
-                                    })
                                   }}
                                 >
                                   {/* Description */}
