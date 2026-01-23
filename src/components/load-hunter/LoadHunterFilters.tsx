@@ -298,61 +298,61 @@ export function LoadHunterFilters({
         />
       </div>
 
-      {/* Missed Button - Standalone */}
+      {/* Missed Button - Standalone - RED when selected */}
       <Button
         variant="ghost"
         size="sm" 
         className={`${btnBase} rounded-full mr-2 ${
           activeFilter === 'missed'
-            ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-warning text-white'
+            ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-red text-white' : 'btn-glossy-danger text-white'
             : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
         }`}
         onClick={() => handleFilterChange('missed')}
       >
         Missed
-        <span className={`${activeFilter === 'missed' ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>{missedCount}</span>
+        <span className={`${activeFilter === 'missed' ? 'badge-inset-danger' : 'badge-inset'} text-[10px] h-5`}>{missedCount}</span>
       </Button>
 
-      {/* Wait / Undec / Skip - Connected Group */}
+      {/* Wait / Undec / Skip - Connected Group - ORANGE when selected */}
       <div className="flex items-center mr-2">
         <Button
           variant="ghost"
           size="sm" 
           className={`${btnBase} rounded-none rounded-l-full ${
             activeFilter === 'waitlist'
-              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-orange text-white' : 'btn-glossy-warning text-white'
               : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('waitlist')}
         >
           Wait
-          <span className={`${activeFilter === 'waitlist' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{waitlistCount}</span>
+          <span className={`${activeFilter === 'waitlist' ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>{waitlistCount}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm" 
           className={`${btnBase} rounded-none ${
             activeFilter === 'undecided'
-              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-orange text-white' : 'btn-glossy-warning text-white'
               : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('undecided')}
         >
           Undec
-          <span className={`${activeFilter === 'undecided' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{undecidedCount}</span>
+          <span className={`${activeFilter === 'undecided' ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>{undecidedCount}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm" 
           className={`${btnBase} rounded-none rounded-r-full ${
             activeFilter === 'skipped'
-              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-orange text-white' : 'btn-glossy-warning text-white'
               : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('skipped')}
         >
           Skip
-          <span className={`${activeFilter === 'skipped' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{skippedCount}</span>
+          <span className={`${activeFilter === 'skipped' ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>{skippedCount}</span>
         </Button>
       </div>
 

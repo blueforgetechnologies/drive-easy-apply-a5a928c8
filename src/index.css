@@ -1261,6 +1261,70 @@ All colors MUST be HSL.
   border-bottom-width: 1px;
 }
 
+/* Aurora Active - Red (for Missed) */
+.btn-glossy-aurora-red {
+  @apply relative overflow-hidden transition-all duration-200 text-white;
+  background: linear-gradient(180deg, 
+    hsl(0 85% 65%) 0%, 
+    hsl(0 85% 55%) 35%,
+    hsl(0 85% 45%) 100%);
+  border: 1px solid hsl(0 85% 40%);
+  border-bottom: 3px solid hsl(0 85% 32%);
+  box-shadow: 
+    0 4px 12px rgba(239, 68, 68, 0.5),
+    0 2px 6px rgba(239, 68, 68, 0.35),
+    0 0 20px rgba(239, 68, 68, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-red:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 18px rgba(239, 68, 68, 0.6),
+    0 3px 8px rgba(239, 68, 68, 0.4),
+    0 0 25px rgba(239, 68, 68, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-red:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+/* Aurora Active - Orange (for Wait/Undec/Skip) */
+.btn-glossy-aurora-orange {
+  @apply relative overflow-hidden transition-all duration-200 text-white;
+  background: linear-gradient(180deg, 
+    hsl(38 92% 58%) 0%, 
+    hsl(38 92% 50%) 35%,
+    hsl(38 92% 42%) 100%);
+  border: 1px solid hsl(38 92% 38%);
+  border-bottom: 3px solid hsl(38 92% 30%);
+  box-shadow: 
+    0 4px 12px rgba(245, 158, 11, 0.5),
+    0 2px 6px rgba(245, 158, 11, 0.35),
+    0 0 20px rgba(245, 158, 11, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-orange:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 18px rgba(245, 158, 11, 0.6),
+    0 3px 8px rgba(245, 158, 11, 0.4),
+    0 0 25px rgba(245, 158, 11, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-orange:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
 /* Violet Glossy Button - For Source Filter */
 .btn-glossy-violet {
   @apply relative overflow-hidden transition-all duration-200 text-white;
