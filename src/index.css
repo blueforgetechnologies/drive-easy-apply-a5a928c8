@@ -1196,6 +1196,105 @@ All colors MUST be HSL.
   border-bottom-width: 1px;
 }
 
+/* Aurora Theme Glossy Buttons - For Load Hunter */
+.btn-glossy-aurora {
+  @apply relative overflow-hidden transition-all duration-200;
+  background: linear-gradient(180deg, 
+    hsl(260 30% 35%) 0%, 
+    hsl(260 30% 28%) 35%,
+    hsl(260 30% 22%) 100%);
+  border: 1px solid hsl(260 40% 25%);
+  border-bottom: 3px solid hsl(260 40% 18%);
+  box-shadow: 
+    0 4px 8px rgba(139, 92, 246, 0.25),
+    0 2px 4px rgba(139, 92, 246, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.btn-glossy-aurora:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, 
+    hsl(260 30% 40%) 0%, 
+    hsl(260 30% 32%) 35%,
+    hsl(260 30% 25%) 100%);
+  box-shadow: 
+    0 6px 14px rgba(139, 92, 246, 0.35),
+    0 3px 6px rgba(139, 92, 246, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.btn-glossy-aurora:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+.btn-glossy-aurora-active {
+  @apply relative overflow-hidden transition-all duration-200 text-white;
+  background: linear-gradient(180deg, 
+    hsl(270 80% 65%) 0%, 
+    hsl(270 80% 55%) 35%,
+    hsl(270 80% 45%) 100%);
+  border: 1px solid hsl(270 80% 40%);
+  border-bottom: 3px solid hsl(270 80% 32%);
+  box-shadow: 
+    0 4px 12px rgba(168, 85, 247, 0.5),
+    0 2px 6px rgba(168, 85, 247, 0.35),
+    0 0 20px rgba(168, 85, 247, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-active:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 18px rgba(168, 85, 247, 0.6),
+    0 3px 8px rgba(168, 85, 247, 0.4),
+    0 0 25px rgba(168, 85, 247, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-glossy-aurora-active:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+/* Violet Glossy Button - For Source Filter */
+.btn-glossy-violet {
+  @apply relative overflow-hidden transition-all duration-200 text-white;
+  background: linear-gradient(180deg, 
+    hsl(280 80% 62%) 0%, 
+    hsl(280 80% 52%) 35%,
+    hsl(300 80% 45%) 100%);
+  border: 1px solid hsl(280 80% 42%);
+  border-bottom: 3px solid hsl(280 80% 35%);
+  box-shadow: 
+    0 4px 8px rgba(168, 85, 247, 0.4),
+    0 2px 4px rgba(168, 85, 247, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-violet:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, 
+    hsl(280 80% 65%) 0%, 
+    hsl(280 80% 55%) 35%,
+    hsl(300 80% 48%) 100%);
+  box-shadow: 
+    0 6px 14px rgba(168, 85, 247, 0.5),
+    0 3px 6px rgba(168, 85, 247, 0.35),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glossy-violet:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
 /* Truck card glossy style - Puffed 3D */
 .card-glossy {
   @apply relative overflow-hidden transition-all duration-200;

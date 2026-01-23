@@ -70,17 +70,9 @@ interface LoadHunterFiltersProps {
   currentDispatcherInfo?: { first_name: string; last_name: string } | null;
 }
 
-// Shared styles for puffy buttons - compact but with same text size
-const puffyButtonBase = "h-7 px-2.5 text-sm font-semibold transition-all duration-200";
-const puffyIconSize = "h-3.5 w-3.5";
-
-// Active glow styles - bright lighting effect when selected
-const activeGlowAurora = "shadow-[0_0_18px_0px_rgba(255,255,255,0.4),0_0_25px_-5px_currentColor,inset_0_1px_2px_rgba(255,255,255,0.5)]";
-const activeGlowClassic = "shadow-[0_0_14px_-2px_currentColor,0_3px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.4)]";
-
-// Puffy container styles
-const puffyContainerAurora = "border border-purple-400/40 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]";
-const puffyContainerClassic = "border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)]";
+// Base button class - matches LoadsTab style
+const btnBase = "h-[30px] px-3 text-[13px] font-medium gap-1.5 border-0 transition-all duration-200";
+const iconSize = "h-3.5 w-3.5";
 
 export function LoadHunterFilters({
   activeMode,
@@ -129,28 +121,34 @@ export function LoadHunterFilters({
     setSelectedEmailForDetail(null);
   };
 
+  // For Aurora theme, use purple-tinted versions
+  const getAuroraActiveClass = (baseClass: string) => {
+    if (loadHunterTheme !== 'aurora') return baseClass;
+    // Aurora uses purple-tinted glossy buttons
+    return 'btn-glossy-aurora-active';
+  };
+
+  const getAuroraInactiveClass = () => {
+    if (loadHunterTheme !== 'aurora') return 'btn-glossy';
+    return 'btn-glossy-aurora';
+  };
+
   return (
-    <div className={`flex items-center gap-1.5 py-1.5 px-2 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
+    <div className={`flex items-center gap-0 py-2 px-2 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
       loadHunterTheme === 'aurora'
         ? 'bg-gradient-to-r from-slate-900/95 via-purple-900/50 to-slate-900/95 border-purple-500/30 backdrop-blur-md shadow-[0_4px_20px_-5px_rgba(168,85,247,0.3)]'
-        : 'bg-gradient-to-b from-gray-50 to-gray-100 border-gray-200'
+        : 'bg-gradient-to-b from-gray-100 to-gray-200 border-gray-300'
     }`}>
       
-      {/* Mode Toggle (Admin / My Trucks) */}
-      <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
-        loadHunterTheme === 'aurora' ? puffyContainerAurora : puffyContainerClassic
-      }`}>
+      {/* Mode Toggle (Admin / My Trucks) - Connected capsule */}
+      <div className="flex items-center mr-2">
         <Button
           variant="ghost"
           size="sm"
-          className={`${puffyButtonBase} !rounded-none !rounded-l-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeMode === 'admin'
-                ? `bg-gradient-to-b from-slate-400 to-slate-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeMode === 'admin'
-                ? `bg-gradient-to-b from-gray-400 to-gray-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-l-full ${
+            activeMode === 'admin'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => setActiveMode('admin')}
         >
@@ -159,14 +157,10 @@ export function LoadHunterFilters({
         <Button
           variant="ghost"
           size="sm"
-          className={`${puffyButtonBase} !rounded-none !rounded-r-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeMode === 'dispatch'
-                ? `bg-gradient-to-b from-blue-400 to-blue-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeMode === 'dispatch'
-                ? `bg-gradient-to-b from-blue-400 to-blue-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-r-full ${
+            activeMode === 'dispatch'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-primary text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => setActiveMode('dispatch')}
         >
@@ -174,37 +168,37 @@ export function LoadHunterFilters({
         </Button>
       </div>
 
-      {/* Add Vehicle Button */}
+      {/* Add Vehicle Button - Standalone */}
       <Button
         variant="ghost"
         size="sm"
-        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
-          loadHunterTheme === 'aurora'
-            ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white border border-emerald-400/40 shadow-[0_3px_12px_-3px_rgba(16,185,129,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_-2px_rgba(16,185,129,0.6)]`
-            : `bg-gradient-to-b from-emerald-400 to-emerald-600 text-white border border-emerald-500/60 shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_14px_-2px_rgba(16,185,129,0.5)]`
+        className={`${btnBase} rounded-full mr-2 ${
+          loadHunterTheme === 'aurora' 
+            ? 'btn-glossy-success text-white' 
+            : 'btn-glossy-success text-white'
         }`}
         onClick={() => handleFilterChange('vehicle-assignment')}
       >
-        <Truck className={puffyIconSize} />
+        <Truck className={iconSize} />
         Add Vehicle
       </Button>
 
-      {/* Search Input */}
-      <div className="flex-shrink-0 relative">
+      {/* Search Input - Carved inset style */}
+      <div className="flex-shrink-0 relative mr-2">
         <Input
           placeholder="Search match ID..."
           value={matchSearchQuery}
           onChange={(e) => setMatchSearchQuery(e.target.value)}
           onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-          className={`h-7 w-32 text-sm rounded-full px-3 border ${
+          className={`h-[30px] w-32 text-[13px] rounded-full px-3 ${
             loadHunterTheme === 'aurora'
-              ? 'bg-slate-800/70 border-purple-500/40 text-purple-100 placeholder:text-purple-300/50 focus:border-purple-400/70 focus:ring-purple-500/30 shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]'
-              : 'bg-white border-gray-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.8)] focus:border-blue-400'
+              ? 'bg-slate-900/80 border-purple-600/50 text-purple-100 placeholder:text-purple-400/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),inset_0_0_0_1px_rgba(139,92,246,0.2)] focus:border-purple-400/70'
+              : 'bg-white border-gray-400 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_0_1px_rgba(0,0,0,0.05)] focus:border-blue-400'
           }`}
         />
         {isSearchingArchive && (
           <div className="absolute right-4 top-1.5">
-            <RefreshCw className={`${puffyIconSize} animate-spin text-muted-foreground`} />
+            <RefreshCw className={`${iconSize} animate-spin text-muted-foreground`} />
           </div>
         )}
         {showArchiveResults && archivedSearchResults.length > 0 && (
@@ -240,29 +234,21 @@ export function LoadHunterFilters({
       </div>
 
       {/* ALL + Unreviewed + Sound Controls - Connected Group */}
-      <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
-        loadHunterTheme === 'aurora' ? puffyContainerAurora : puffyContainerClassic
-      }`}>
+      <div className="flex items-center mr-2">
         {/* ALL Button */}
         {showAllTabEnabled && (
           <Button
             variant="ghost"
             size="sm"
-            className={`${puffyButtonBase} gap-1.5 !rounded-none !rounded-l-full border-0 ${
-              loadHunterTheme === 'aurora'
-                ? activeFilter === 'all'
-                  ? `bg-gradient-to-b from-slate-400 to-slate-700 text-white ${activeGlowAurora}`
-                  : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-                : activeFilter === 'all'
-                  ? `bg-gradient-to-b from-gray-400 to-gray-700 text-white ${activeGlowClassic}`
-                  : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+            className={`${btnBase} rounded-none rounded-l-full ${
+              activeFilter === 'all'
+                ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+                : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
             }`}
             onClick={() => handleFilterChange('all')}
           >
             All
-            <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-              activeFilter === 'all' ? 'bg-white/30 text-white' : 'bg-gray-500 text-white'
-            }`}>{allEmailsCount}</span>
+            <span className={`${activeFilter === 'all' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{allEmailsCount}</span>
           </Button>
         )}
 
@@ -270,36 +256,28 @@ export function LoadHunterFilters({
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none border-0 ${
-            !showAllTabEnabled ? '!rounded-l-full' : ''
-          } ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'unreviewed'
-                ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'unreviewed'
-                ? `bg-gradient-to-b from-blue-400 to-blue-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none ${!showAllTabEnabled ? 'rounded-l-full' : ''} ${
+            activeFilter === 'unreviewed'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-success text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('unreviewed')}
         >
           Unreviewed
-          <span className="text-xs h-5 px-2 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">{unreviewedCount}</span>
+          <span className={`${activeFilter === 'unreviewed' ? 'badge-inset-success' : 'badge-inset'} text-[10px] h-5`}>{unreviewedCount}</span>
         </Button>
         
         {/* Sound Toggle */}
         <Button 
           variant="ghost"
           size="sm" 
-          className={`h-7 w-7 p-0 !rounded-none border-0 ${
-            loadHunterTheme === 'aurora'
-              ? 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-200'
+          className={`h-[30px] w-[30px] p-0 rounded-none border-0 ${
+            loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-600'
           }`}
           onClick={onToggleSound}
           title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
         >
-          {isSoundMuted ? <VolumeX className={puffyIconSize} /> : <Volume2 className={puffyIconSize} />}
+          {isSoundMuted ? <VolumeX className={iconSize} /> : <Volume2 className={iconSize} />}
         </Button>
         
         {/* Sound Settings */}
@@ -309,174 +287,126 @@ export function LoadHunterFilters({
             <Button 
               variant="ghost"
               size="sm" 
-              className={`h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-                  : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-200'
+              className={`h-[30px] w-[30px] p-0 rounded-none rounded-r-full border-0 ${
+                loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-600'
               }`}
               title="Sound settings"
             >
-              <Settings className={puffyIconSize} />
+              <Settings className={iconSize} />
             </Button>
           }
         />
       </div>
 
-      {/* Missed Button */}
+      {/* Missed Button - Standalone */}
       <Button
         variant="ghost"
         size="sm" 
-        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
-          loadHunterTheme === 'aurora'
-            ? activeFilter === 'missed'
-              ? `bg-gradient-to-b from-amber-400 to-amber-700 text-white border border-amber-400/40 ${activeGlowAurora}`
-              : `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100`
-            : activeFilter === 'missed'
-              ? `bg-gradient-to-b from-amber-400 to-amber-600 text-white border border-amber-500/60 ${activeGlowClassic}`
-              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+        className={`${btnBase} rounded-full mr-2 ${
+          activeFilter === 'missed'
+            ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-warning text-white'
+            : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
         }`}
         onClick={() => handleFilterChange('missed')}
       >
         Missed
-        <span className={`text-xs h-5 px-1.5 rounded-full flex items-center justify-center font-bold ${
-          activeFilter === 'missed' ? 'bg-white/30 text-white' : 'bg-amber-500 text-white'
-        }`}>{missedCount}</span>
+        <span className={`${activeFilter === 'missed' ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>{missedCount}</span>
       </Button>
 
       {/* Wait / Undec / Skip - Connected Group */}
-      <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
-        loadHunterTheme === 'aurora' ? puffyContainerAurora : puffyContainerClassic
-      }`}>
+      <div className="flex items-center mr-2">
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none !rounded-l-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'waitlist'
-                ? `bg-gradient-to-b from-slate-400 to-slate-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'waitlist'
-                ? `bg-gradient-to-b from-gray-400 to-gray-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-l-full ${
+            activeFilter === 'waitlist'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('waitlist')}
         >
           Wait
-          <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-            activeFilter === 'waitlist' ? 'bg-white/30 text-white' : 'bg-gray-400 text-white'
-          }`}>{waitlistCount}</span>
+          <span className={`${activeFilter === 'waitlist' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{waitlistCount}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'undecided'
-                ? `bg-gradient-to-b from-slate-400 to-slate-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'undecided'
-                ? `bg-gradient-to-b from-gray-400 to-gray-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none ${
+            activeFilter === 'undecided'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('undecided')}
         >
           Undec
-          <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-            activeFilter === 'undecided' ? 'bg-white/30 text-white' : 'bg-gray-400 text-white'
-          }`}>{undecidedCount}</span>
+          <span className={`${activeFilter === 'undecided' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{undecidedCount}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none !rounded-r-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'skipped'
-                ? `bg-gradient-to-b from-slate-400 to-slate-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'skipped'
-                ? `bg-gradient-to-b from-gray-400 to-gray-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-r-full ${
+            activeFilter === 'skipped'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-dark text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('skipped')}
         >
           Skip
-          <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-            activeFilter === 'skipped' ? 'bg-white/30 text-white' : 'bg-gray-400 text-white'
-          }`}>{skippedCount}</span>
+          <span className={`${activeFilter === 'skipped' ? 'badge-inset' : 'badge-inset'} text-[10px] h-5`}>{skippedCount}</span>
         </Button>
       </div>
 
       {/* Bids / Booked - Connected Group */}
-      <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
-        loadHunterTheme === 'aurora' ? puffyContainerAurora : puffyContainerClassic
-      }`}>
+      <div className="flex items-center mr-2">
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none !rounded-l-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'mybids'
-                ? `bg-gradient-to-b from-cyan-400 to-cyan-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'mybids'
-                ? `bg-gradient-to-b from-cyan-400 to-cyan-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-l-full ${
+            activeFilter === 'mybids'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-primary text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('mybids')}
         >
           Bids
-          <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-            activeFilter === 'mybids' ? 'bg-white/30 text-white' : 'bg-cyan-500 text-white'
-          }`}>{bidCount}</span>
+          <span className={`${activeFilter === 'mybids' ? 'badge-inset-primary' : 'badge-inset'} text-[10px] h-5`}>{bidCount}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm" 
-          className={`${puffyButtonBase} gap-1.5 !rounded-none !rounded-r-full border-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'booked'
-                ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white ${activeGlowAurora}`
-                : 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
-              : activeFilter === 'booked'
-                ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white ${activeGlowClassic}`
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-200'
+          className={`${btnBase} rounded-none rounded-r-full ${
+            activeFilter === 'booked'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-success text-white'
+              : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('booked')}
         >
           Booked
-          <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
-            activeFilter === 'booked' ? 'bg-white/30 text-white' : 'bg-emerald-500 text-white'
-          }`}>{bookedCount}</span>
+          <span className={`${activeFilter === 'booked' ? 'badge-inset-success' : 'badge-inset'} text-[10px] h-5`}>{bookedCount}</span>
         </Button>
       </div>
 
-      {/* Dispatcher Scorecard Button */}
+      {/* Dispatcher Scorecard Button - Standalone */}
       <Button
         variant="ghost"
         size="sm"
-        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
-          loadHunterTheme === 'aurora'
-            ? `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
-            : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+        className={`${btnBase} rounded-full mr-2 ${
+          loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
         }`}
         onClick={onOpenDispatcherScorecard}
       >
-        <Gauge className={puffyIconSize} />
+        <Gauge className={iconSize} />
         Scorecard
       </Button>
 
-      {/* Assign Button */}
+      {/* Assign Button - Standalone */}
       <Button 
         variant="ghost"
         size="sm" 
-        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
-          loadHunterTheme === 'aurora'
-            ? activeFilter === 'vehicle-assignment'
-              ? `bg-gradient-to-b from-violet-400 to-purple-700 text-white border border-violet-400/40 ${activeGlowAurora}`
-              : `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
-            : activeFilter === 'vehicle-assignment'
-              ? `bg-gradient-to-b from-violet-400 to-violet-700 text-white border border-violet-500/60 ${activeGlowClassic}`
-              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+        className={`${btnBase} rounded-full mr-2 ${
+          activeFilter === 'vehicle-assignment'
+            ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-primary text-white'
+            : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
         }`}
         onClick={() => {
           setActiveFilter('vehicle-assignment');
@@ -493,21 +423,15 @@ export function LoadHunterFilters({
           <Button
             variant="ghost"
             size="sm"
-            className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${
-              loadHunterTheme === 'aurora'
-                ? `bg-gradient-to-b from-violet-400 to-fuchsia-700 text-white border border-violet-400/40 shadow-[0_3px_16px_-3px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:shadow-[0_0_20px_-2px_rgba(139,92,246,0.7)]`
-                : `bg-gradient-to-b from-violet-400 to-fuchsia-600 text-white border border-violet-500/60 shadow-[0_3px_10px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_-2px_rgba(139,92,246,0.6)]`
-            } ${selectedSources.length < 2 ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''}`}
+            className={`${btnBase} rounded-full mr-2 btn-glossy-violet text-white ${
+              selectedSources.length < 2 ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''
+            }`}
           >
-            <svg className={`${puffyIconSize} drop-shadow-sm ${selectedSources.length < 2 ? 'animate-[ping_1.5s_ease-in-out_infinite]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg className={`${iconSize} drop-shadow-sm ${selectedSources.length < 2 ? 'animate-[ping_1.5s_ease-in-out_infinite]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Source
-            <span className={`flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[11px] font-bold rounded-full transition-colors ${
-              selectedSources.length < 2 
-                ? 'bg-amber-400 text-amber-900' 
-                : 'bg-white/30 text-white'
-            }`}>
+            <span className={`${selectedSources.length < 2 ? 'badge-inset-warning' : 'badge-inset'} text-[10px] h-5`}>
               {selectedSources.length}
             </span>
           </Button>
@@ -555,13 +479,11 @@ export function LoadHunterFilters({
           <Button
             variant="ghost"
             size="sm"
-            className={`h-7 w-7 p-0 rounded-full flex-shrink-0 ${
-              loadHunterTheme === 'aurora'
-                ? `bg-slate-800/60 border border-purple-400/40 text-purple-200 hover:bg-slate-700/60 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
-                : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+            className={`h-[30px] w-[30px] p-0 rounded-full ${
+              loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
             }`}
           >
-            <Menu className={puffyIconSize} />
+            <Menu className={iconSize} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52 bg-background z-50">
