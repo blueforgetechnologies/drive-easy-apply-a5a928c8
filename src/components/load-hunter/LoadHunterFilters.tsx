@@ -123,7 +123,60 @@ export function LoadHunterFilters({
         ? 'bg-gradient-to-r from-slate-900/95 via-purple-900/50 to-slate-900/95 border-purple-500/30 backdrop-blur-md shadow-[0_4px_20px_-5px_rgba(168,85,247,0.3)]'
         : 'bg-background'
     }`}>
-        
+      
+      {/* Mode Toggle (Admin / My Trucks) */}
+      <div className={`flex items-center overflow-hidden rounded-md flex-shrink-0 ${
+        loadHunterTheme === 'aurora' ? 'border border-purple-400/30' : 'border'
+      }`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-7 px-3 text-xs font-medium !rounded-none border-0 ${
+            loadHunterTheme === 'aurora'
+              ? activeMode === 'admin'
+                ? 'bg-gradient-to-b from-slate-600 to-slate-800 text-white'
+                : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+              : activeMode === 'admin'
+                ? 'bg-gradient-to-b from-slate-600 to-slate-700 text-white'
+                : 'btn-glossy text-gray-700'
+          }`}
+          onClick={() => setActiveMode('admin')}
+        >
+          Admin
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-7 px-3 text-xs font-medium !rounded-none border-0 ${
+            loadHunterTheme === 'aurora'
+              ? activeMode === 'dispatch'
+                ? 'bg-gradient-to-b from-blue-500 to-blue-700 text-white'
+                : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+              : activeMode === 'dispatch'
+                ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white'
+                : 'btn-glossy text-gray-700'
+          }`}
+          onClick={() => setActiveMode('dispatch')}
+        >
+          MY TRUCKS
+        </Button>
+      </div>
+
+      {/* Add Vehicle Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`h-7 px-3 text-xs font-medium gap-1.5 rounded-md flex-shrink-0 ${
+          loadHunterTheme === 'aurora'
+            ? 'bg-gradient-to-b from-emerald-500 to-emerald-700 text-white border border-emerald-400/30 shadow-[0_0_10px_-3px_rgba(16,185,129,0.4)]'
+            : 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-sm'
+        }`}
+        onClick={() => handleFilterChange('vehicle-assignment')}
+      >
+        <Truck className="h-3.5 w-3.5" />
+        Add Vehicle
+      </Button>
+
       {/* Search Input */}
       <div className="flex-shrink-0 relative">
         <Input
