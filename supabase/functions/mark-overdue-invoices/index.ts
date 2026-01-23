@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 /**
@@ -13,8 +13,23 @@ const corsHeaders = {
  * - due_date < today
  * - balance_due > 0
  * 
- * This is a service role function (no JWT verification) intended to be called
- * via cron or external scheduler.
+ * This function is secured via x-cron-secret header validation.
+ * Configure CRON_SECRET in your Supabase secrets.
+ * 
+ * Scheduling:
+ * Use Supabase pg_cron + pg_net to call this function daily:
+ * 
+ * SELECT cron.schedule(
+ *   'mark-overdue-invoices-daily',
+ *   '0 6 * * *',  -- 6 AM daily
+ *   $$
+ *   SELECT net.http_post(
+ *     url := 'https://vvbdmjjovzcfmfqywoty.supabase.co/functions/v1/mark-overdue-invoices',
+ *     headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_CRON_SECRET"}'::jsonb,
+ *     body := '{}'::jsonb
+ *   ) AS request_id;
+ *   $$
+ * );
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,6 +37,32 @@ serve(async (req) => {
   }
 
   try {
+    // Validate cron secret
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedSecret = req.headers.get('x-cron-secret');
+    
+    if (!cronSecret) {
+      console.error('[mark-overdue-invoices] CRON_SECRET not configured');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Server configuration error: CRON_SECRET not set' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!providedSecret || providedSecret !== cronSecret) {
+      console.warn('[mark-overdue-invoices] Invalid or missing x-cron-secret header');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Unauthorized: Invalid or missing x-cron-secret' 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     

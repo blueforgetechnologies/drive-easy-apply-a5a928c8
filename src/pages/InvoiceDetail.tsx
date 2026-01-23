@@ -233,7 +233,8 @@ export default function InvoiceDetail() {
       }
       
       if (data?.success) {
-        const newBillingMethod = data.approval_status === 'approved' ? 'otr' : 'direct_email';
+        const normalizedStatus = data.approval_status?.toLowerCase();
+        const newBillingMethod = normalizedStatus === 'approved' ? 'otr' : 'direct_email';
         
         // Update invoice billing_method if changed
         if (invoice.billing_method !== newBillingMethod) {
@@ -349,8 +350,8 @@ export default function InvoiceDetail() {
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
-            {/* OTR Factoring Submission - only for OTR billing method */}
-            {!invoice.otr_submitted_at && invoice.status !== "draft" && invoice.billing_method === 'otr' && (
+            {/* OTR Factoring Submission - only for OTR billing method when not yet submitted */}
+            {invoice.billing_method === 'otr' && !invoice.otr_submitted_at && (
               <Button 
                 onClick={() => handleSubmitToOtr(false)} 
                 disabled={submittingToOtr}
