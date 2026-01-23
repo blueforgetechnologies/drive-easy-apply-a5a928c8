@@ -1399,53 +1399,53 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - skinny oil can with long spout */}
+                            {/* Oil change indicator - tilted oil can pouring */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 48 36" 
-                                  className="h-4 w-6 animate-pulse"
+                                  viewBox="0 0 48 42" 
+                                  className="h-5 w-6 animate-pulse"
                                   style={{
                                     filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(234, 88, 12, 0.8)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Skinny oil can body */}
+                                  {/* Skinny oil can body - tilted down to the left */}
                                   <path 
-                                    d="M16 10 L36 8 C40 7, 42 10, 41 14 L39 24 C38 28, 34 30, 30 29 L14 27 C10 26, 9 22, 10 18 L12 12 C13 9, 15 9, 16 10 Z" 
+                                    d="M18 6 L38 10 C42 11, 44 15, 42 19 L38 28 C36 32, 32 33, 28 31 L12 24 C8 22, 8 18, 10 14 L14 8 C16 5, 17 5, 18 6 Z" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
                                     strokeWidth="1.5"
                                     strokeLinejoin="round"
                                   />
-                                  {/* Round handle on right */}
+                                  {/* Round handle on right - slightly up */}
                                   <circle 
-                                    cx="44" cy="12" r="3.5"
+                                    cx="44" cy="6" r="3.5"
                                     fill="none"
                                     stroke="#374151"
                                     strokeWidth="2.5"
                                   />
                                   {/* Handle connector */}
                                   <path 
-                                    d="M41 12 L40 10" 
+                                    d="M41 8 L40 10" 
                                     stroke="#374151"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                   />
-                                  {/* Long tube spout pointing left */}
+                                  {/* Long tube spout tilted down */}
                                   <path 
-                                    d="M12 12 L6 8 L3 4 L1 6 L4 10 L6 16 L10 18" 
+                                    d="M10 16 L6 20 L3 26 L1 25 L3 20 L8 14 L12 12" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
                                     strokeWidth="1.5"
                                     strokeLinejoin="round"
                                     strokeLinecap="round"
                                   />
-                                  {/* Nice size oil drop - teardrop shape */}
+                                  {/* Big oil drop - teardrop shape */}
                                   <path 
-                                    d="M2 14 C2 12, 4 14, 5 18 C5.5 21, 4 24, 2.5 24 C1 24, -0.5 21, 0 18 C0.5 14, 2 12, 2 14 Z" 
+                                    d="M3 30 C1 28, 4 30, 6 34 C7 38, 5 42, 3 42 C1 42, -1 38, 0 34 C1 30, 3 28, 3 30 Z" 
                                     fill="#374151"
                                   />
                                 </svg>
