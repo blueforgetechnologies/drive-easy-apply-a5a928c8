@@ -36,7 +36,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Extracted types and hooks for code splitting
-import type { Vehicle, Driver, HuntPlan, Load } from "@/types/loadHunter";
+import type { Vehicle, Driver, HuntPlan, Load, ActiveMode, ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
 import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
 import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
@@ -52,6 +52,7 @@ import {
   truncateText,
   groupMatchesByLoadEmail
 } from "@/utils/loadHunterHelpers";
+import { LoadHunterFilters } from "@/components/load-hunter/LoadHunterFilters";
 import type { SoundSettings } from "@/hooks/useUserPreferences";
 
 export default function LoadHunterTab() {
@@ -160,8 +161,8 @@ export default function LoadHunterTab() {
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [soundSettings, setSoundSettings] = useState<SoundSettings>(loadSoundSettings());
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [activeMode, setActiveMode] = useState<'admin' | 'dispatch'>('dispatch');
-  const [activeFilter, setActiveFilter] = useState<string>('unreviewed');
+  const [activeMode, setActiveMode] = useState<ActiveMode>('dispatch');
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('unreviewed');
   const [filterVehicleId, setFilterVehicleId] = useState<string | null>(null);
   const [showIdColumns, setShowIdColumns] = useState(false);
   const [showMultipleMatchesDialog, setShowMultipleMatchesDialog] = useState(false);
@@ -174,7 +175,7 @@ export default function LoadHunterTab() {
   const itemsPerPage = 14;
   
   const [selectedSources, setSelectedSources] = useState<string[]>(['sylectus', 'fullcircle']);
-  const [loadHunterTheme, setLoadHunterTheme] = useState<'classic' | 'aurora'>('classic');
+  const [loadHunterTheme, setLoadHunterTheme] = useState<LoadHunterTheme>('classic');
   const [groupMatchesEnabled, setGroupMatchesEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('loadHunterGroupMatches');
     return saved !== null ? saved === 'true' : true;
@@ -2404,7 +2405,7 @@ export default function LoadHunterTab() {
           carriersMap={carriersMap}
           onRefresh={handleRefreshLoads}
           onFilterChange={(filter, vehicleId) => {
-            setActiveFilter(filter);
+            setActiveFilter(filter as ActiveFilter);
             setFilterVehicleId(vehicleId ?? null);
             setSelectedVehicle(null);
             setSelectedEmailForDetail(null);
@@ -2527,620 +2528,69 @@ export default function LoadHunterTab() {
     <div className={`flex flex-col flex-1 min-h-0 ${
       loadHunterTheme === 'aurora' ? 'bg-gradient-to-b from-slate-900 via-purple-950/30 to-slate-900' : ''
     }`}>
-      {/* Filter Bar - Full Width - Always Visible */}
-      <div className={`flex items-center gap-2 py-2 px-2 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
-        loadHunterTheme === 'aurora'
-          ? 'bg-gradient-to-r from-slate-900/95 via-purple-900/50 to-slate-900/95 border-purple-500/30 backdrop-blur-md shadow-[0_4px_20px_-5px_rgba(168,85,247,0.3)]'
-          : 'bg-background'
-      }`}>
-          
-          {/* Mode Buttons - Merged Toggle */}
-          <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
-            loadHunterTheme === 'aurora'
-              ? 'border border-purple-400/40 shadow-[0_0_15px_-5px_rgba(168,85,247,0.5)]'
-              : 'border border-primary/30'
-          }`}>
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3.5 text-xs font-semibold !rounded-none !rounded-l-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? activeMode === 'admin'
-                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                    : 'bg-slate-800/60 text-purple-200 hover:bg-slate-700/60'
-                  : activeMode === 'admin' 
-                    ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => setActiveMode('admin')}
-            >
-              Admin
-            </Button>
-            
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3.5 text-xs font-medium !rounded-none !rounded-r-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? activeMode === 'dispatch'
-                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                    : 'bg-slate-800/60 text-purple-200 hover:bg-slate-700/60'
-                  : activeMode === 'dispatch' 
-                    ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveMode('dispatch');
-                // If on "All" tab, switch to "unreviewed" since "All" is only available in Admin mode
-                if (activeFilter === 'all') {
-                  setActiveFilter('unreviewed');
-                }
-              }}
-            >
-              MY TRUCKS
-            </Button>
-          </div>
-          
-          <div className="flex-shrink-0">
-            <Button 
-              size="sm" 
-              className={`h-7 px-3.5 text-xs font-medium rounded-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[0_0_15px_-3px_rgba(52,211,153,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:from-emerald-300 hover:to-emerald-500'
-                  : 'btn-glossy-success text-white'
-              }`}
-            >
-              Add Vehicle
-            </Button>
-          </div>
-
-          {/* Match Search */}
-          <div className="flex-shrink-0 relative">
-            <Input
-              placeholder="Search match ID..."
-              value={matchSearchQuery}
-              onChange={(e) => setMatchSearchQuery(e.target.value)}
-              onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-              className={`h-7 w-36 text-xs rounded-full px-3.5 ${
-                loadHunterTheme === 'aurora'
-                  ? 'bg-slate-800/60 border-purple-500/30 text-purple-100 placeholder:text-purple-300/50 focus:border-purple-400/60 focus:ring-purple-500/20'
-                  : 'input-inset'
-              }`}
-            />
-            {isSearchingArchive && (
-              <div className="absolute right-5 top-1.5">
-                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            {showArchiveResults && archivedSearchResults.length > 0 && (
-              <div className="absolute top-8 left-0 w-80 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
-                <div className="px-2 py-1 bg-gray-100 text-[10px] font-semibold text-gray-600 border-b">
-                  Archived Matches ({archivedSearchResults.length})
-                </div>
-                {archivedSearchResults.map((result) => (
-                  <div 
-                    key={result.id}
-                    className="px-2 py-1.5 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 text-[11px]"
-                    onClick={() => {
-                      // Open detail view for archived match
-                      const emailData = result.load_emails;
-                      if (emailData) {
-                        setSelectedEmailForDetail({
-                          ...emailData,
-                          match_id: result.original_match_id,
-                          vehicle_id: result.vehicle_id,
-                          hunt_plan_id: result.hunt_plan_id,
-                          distance_miles: result.distance_miles,
-                          match_status: result.match_status,
-                          archived: true,
-                          archived_at: result.archived_at
-                        });
-                        setSelectedEmailDistance(result.distance_miles);
-                        setSelectedMatchForDetail({
-                          match_id: result.original_match_id,
-                          vehicle_id: result.vehicle_id,
-                          archived: true
-                        });
-                      }
-                      setShowArchiveResults(false);
-                      setMatchSearchQuery('');
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-mono text-blue-600">{result.original_match_id?.slice(0, 8)}...</span>
-                      <Badge variant="outline" className="text-[9px] h-4">{result.match_status}</Badge>
-                    </div>
-                    <div className="text-gray-500 truncate">
-                      {result.load_emails?.parsed_data?.origin_city}, {result.load_emails?.parsed_data?.origin_state} → {result.load_emails?.parsed_data?.destination_city}, {result.load_emails?.parsed_data?.destination_state}
-                    </div>
-                    <div className="text-gray-400 text-[10px]">
-                      Archived: {new Date(result.archived_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {showArchiveResults && matchSearchQuery.length >= 3 && archivedSearchResults.length === 0 && !isSearchingArchive && (
-              <div className="absolute top-8 left-0 w-60 bg-white border rounded-md shadow-lg z-50 p-2 text-[11px] text-gray-500">
-                No archived matches found
-              </div>
-            )}
-          </div>
-
-          {/* Filter Buttons */}
-          <div className={`flex items-center gap-1 flex-shrink-0 ${
-            loadHunterTheme === 'aurora' ? 'text-purple-100' : ''
-          }`}>
-            {/* Merged button group: All, Unreviewed, Sound */}
-            <div className={`flex items-center overflow-hidden rounded-full ${
-              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
-            }`}>
-              {/* All tab only visible in Admin mode when showAllTabEnabled */}
-              {showAllTabEnabled && activeMode === 'admin' && (
-                <Button 
-                  variant="ghost"
-                  size="sm" 
-                  className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                    loadHunterTheme === 'aurora'
-                      ? activeFilter === 'all'
-                        ? 'bg-gradient-to-b from-slate-600 to-slate-800 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
-                        : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                      : activeFilter === 'all' 
-                        ? 'btn-glossy-dark text-white' 
-                        : 'btn-glossy text-gray-700'
-                  }`}
-                  onClick={() => {
-                    setActiveFilter('all');
-                    setFilterVehicleId(null);
-                    setSelectedVehicle(null);
-                    setSelectedEmailForDetail(null);
-                  }}
-                >
-                  All
-                  <span className={`badge-inset text-[10px] h-5 ${activeFilter === 'all' ? 'opacity-80' : ''}`}>{loadEmails.length + failedQueueItems.length}</span>
-                </Button>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
-                  !(showAllTabEnabled && activeMode === 'admin') ? '!rounded-l-full' : ''
-                } ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'unreviewed'
-                      ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'unreviewed' 
-                      ? 'btn-glossy-primary text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('unreviewed');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Unreviewed
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-rose-500/80 text-white px-1.5 rounded-full'
-                    : 'badge-inset-danger-bright'
-                }`}>{unreviewedCount}</span>
-              </Button>
-              
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 w-7 p-0 !rounded-none border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : 'btn-glossy text-gray-700'
-                }`}
-                onClick={toggleSound}
-                title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
-              >
-                {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-              </Button>
-              
-              <SoundSettingsDialog 
-                onSettingsChange={setSoundSettings}
-                trigger={
-                  <Button 
-                    variant="ghost"
-                    size="sm" 
-                    className={`h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 ${
-                      loadHunterTheme === 'aurora'
-                        ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                        : 'btn-glossy text-gray-700'
-                    }`}
-                    title="Sound settings"
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                  </Button>
-                }
-              />
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? activeFilter === 'missed'
-                    ? 'bg-gradient-to-b from-rose-500 to-rose-700 text-white shadow-[0_0_12px_-3px_rgba(244,63,94,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)]'
-                    : 'bg-slate-800/40 border border-purple-400/20 text-purple-200/70 hover:bg-slate-700/40'
-                  : activeFilter === 'missed' 
-                    ? 'btn-glossy-danger text-white' 
-                    : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('missed');
-                setFilterVehicleId(null);
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Missed
-              <span className={`text-[10px] h-5 ${
-                loadHunterTheme === 'aurora'
-                  ? 'bg-rose-600/60 text-white px-1.5 rounded-full'
-                  : 'badge-inset-danger'
-              }`}>{missedCount}</span>
-            </Button>
-            
-            {/* Merged button group: Wait, Undec, Skip */}
-            <div className={`flex items-center overflow-hidden rounded-full ${
-              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
-            }`}>
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'waitlist'
-                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'waitlist' 
-                      ? 'btn-glossy-warning text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('waitlist');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Wait
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset-warning'
-                }`}>{waitlistCount}</span>
-              </Button>
-              
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'undecided'
-                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'undecided' 
-                      ? 'btn-glossy-warning text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('undecided');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Undec
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset-warning'
-                }`}>{undecidedCount}</span>
-              </Button>
-              
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'skipped'
-                      ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'skipped' 
-                      ? 'btn-glossy-dark text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('skipped');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Skip
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-slate-600/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset'
-                }`}>{skippedCount}</span>
-              </Button>
-            </div>
-            
-            {/* Merged button group: Bids, Booked */}
-            <div className={`flex items-center overflow-hidden rounded-full ${
-              loadHunterTheme === 'aurora' ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' : ''
-            }`}>
-              <Button 
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'mybids'
-                      ? 'bg-gradient-to-b from-cyan-400 to-cyan-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'mybids' 
-                      ? 'btn-glossy-primary text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('mybids');
-                  setFilterVehicleId(null);
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Bids
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-cyan-500/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset-primary'
-                }`}>{bidCount}</span>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-r-full border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'booked'
-                      ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                      : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                    : activeFilter === 'booked' 
-                      ? 'btn-glossy-success text-white' 
-                      : 'btn-glossy text-gray-700'
-                }`}
-                onClick={() => {
-                  setActiveFilter('booked');
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                Booked
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-emerald-500/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset-success'
-                }`}>{bookedCount}</span>
-              </Button>
-            </div>
-            
-            {issuesCount > 0 && (
-              <Button
-                size="sm" 
-                className={`h-7 px-3 text-xs font-medium gap-1 rounded-full border-0 ${
-                  loadHunterTheme === 'aurora'
-                    ? activeFilter === 'issues'
-                      ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-[0_0_12px_-3px_rgba(251,191,36,0.6)]'
-                      : 'bg-slate-800/40 border border-amber-400/30 text-amber-400 hover:bg-slate-700/40'
-                    : activeFilter === 'issues' 
-                      ? 'btn-glossy-warning text-white' 
-                      : 'btn-glossy text-amber-600'
-                }`}
-                onClick={() => {
-                  setActiveFilter('issues');
-                  setSelectedVehicle(null);
-                  setSelectedEmailForDetail(null);
-                }}
-              >
-                ⚠️
-                <span className={`text-[10px] h-5 ${
-                  loadHunterTheme === 'aurora'
-                    ? 'bg-amber-500/60 text-white px-1.5 rounded-full'
-                    : 'badge-inset-warning'
-                }`}>{issuesCount}</span>
-              </Button>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-            {/* Metrics Button */}
-            <Button
-              variant="ghost"
-              size="sm" 
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? activeFilter === 'dispatcher-metrix'
-                    ? 'bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white shadow-[0_0_15px_-3px_rgba(217,70,239,0.6),inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                    : 'bg-slate-800/40 border border-fuchsia-400/30 text-fuchsia-300 hover:bg-slate-700/40'
-                  : activeFilter === 'dispatcher-metrix' 
-                    ? 'btn-glossy-primary text-white' 
-                    : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('dispatcher-metrix');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Dispatcher Score Card
-            </Button>
-
-            {/* Assign Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-7 px-3 text-xs font-medium rounded-full border-0 ${
-                loadHunterTheme === 'aurora'
-                  ? activeFilter === 'vehicle-assignment'
-                    ? 'bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-[0_0_15px_-3px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                    : 'bg-slate-800/40 border border-purple-400/30 text-purple-300 hover:bg-slate-700/40'
-                  : activeFilter === 'vehicle-assignment'
-                    ? 'btn-glossy-primary text-white'
-                    : 'btn-glossy text-gray-700'
-              }`}
-              onClick={() => {
-                setActiveFilter('vehicle-assignment');
-                setSelectedVehicle(null);
-                setSelectedEmailForDetail(null);
-              }}
-            >
-              Assign
-            </Button>
-
-            {/* Source Filter Popover - Special Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`h-8 px-4 text-xs font-semibold gap-2 rounded-full border border-white/40 bg-gradient-to-br from-violet-500/90 via-purple-500/90 to-fuchsia-500/90 text-white shadow-[0_4px_20px_-2px_rgba(139,92,246,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md hover:shadow-[0_6px_28px_-2px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ${
-                    selectedSources.length < 2 ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''
-                  }`}
-                >
-                  <svg className={`h-3.5 w-3.5 drop-shadow-sm ${selectedSources.length < 2 ? 'animate-[ping_1.5s_ease-in-out_infinite]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Source
-                  <span className={`flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-[10px] font-bold rounded-full border shadow-inner transition-colors ${
-                    selectedSources.length < 2 
-                      ? 'bg-amber-400/90 border-amber-300 text-amber-900' 
-                      : 'bg-white/25 backdrop-blur-sm border-white/40'
-                  }`}>
-                    {selectedSources.length}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-52 p-2" align="start">
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground px-2 py-1">Filter by Source</div>
-                  <div 
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                      selectedSources.includes('sylectus') ? 'bg-primary/10' : 'hover:bg-muted'
-                    }`}
-                    onClick={() => {
-                      setSelectedSources(prev => 
-                        prev.includes('sylectus') 
-                          ? prev.filter(s => s !== 'sylectus')
-                          : [...prev, 'sylectus']
-                      );
-                    }}
-                  >
-                    <Checkbox checked={selectedSources.includes('sylectus')} />
-                    <span className="text-sm">Sylectus</span>
-                  </div>
-                  <div 
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                      selectedSources.includes('fullcircle') ? 'bg-primary/10' : 'hover:bg-muted'
-                    }`}
-                    onClick={() => {
-                      setSelectedSources(prev => 
-                        prev.includes('fullcircle') 
-                          ? prev.filter(s => s !== 'fullcircle')
-                          : [...prev, 'fullcircle']
-                      );
-                    }}
-                  >
-                    <Checkbox checked={selectedSources.includes('fullcircle')} />
-                    <span className="text-sm">Full Circle TMS</span>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            {/* More Actions Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`h-7 w-7 p-0 rounded-full border-0 ${
-                    loadHunterTheme === 'aurora'
-                      ? 'bg-slate-800/60 border border-purple-400/30 text-purple-200 hover:bg-slate-700/60 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]'
-                      : 'btn-glossy text-gray-700'
-                  }`}
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 bg-background z-50">
-                {/* Theme Selection */}
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Theme</div>
-                <DropdownMenuItem
-                  className={loadHunterTheme === 'classic' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setLoadHunterTheme('classic')}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300" />
-                    Classic
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={loadHunterTheme === 'aurora' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => setLoadHunterTheme('aurora')}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 border border-white/40 shadow-[0_2px_8px_-2px_rgba(139,92,246,0.5)]" />
-                    Aurora
-                  </div>
-                </DropdownMenuItem>
-                <div className="h-px bg-border my-1" />
-                <DropdownMenuItem
-                  className={activeFilter === 'expired' ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => {
-                    setActiveFilter('expired');
-                    setFilterVehicleId(null);
-                    setSelectedVehicle(null);
-                    setSelectedEmailForDetail(null);
-                  }}
-                >
-                  Expired ({expiredCount})
-                </DropdownMenuItem>
-                <div className="h-px bg-border my-1" />
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Display</div>
-                <DropdownMenuItem
-                  className={groupMatchesEnabled ? 'bg-primary/10 text-primary' : ''}
-                  onClick={() => {
-                    const newValue = !groupMatchesEnabled;
-                    setGroupMatchesEnabled(newValue);
-                    localStorage.setItem('loadHunterGroupMatches', String(newValue));
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    {groupMatchesEnabled ? (
-                      <div className="w-4 h-4 rounded-sm bg-primary/20 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-sm bg-primary" />
-                      </div>
-                    ) : (
-                      <div className="w-4 h-4 rounded-sm border border-muted-foreground/40" />
-                    )}
-                    Group Matches by Load
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+      {/* Filter Bar - Full Width */}
+      <LoadHunterFilters
+        activeMode={activeMode}
+        setActiveMode={setActiveMode}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+        unreviewedCount={unreviewedCount}
+        skippedCount={skippedMatches.length}
+        bidCount={bidMatches.length}
+        bookedCount={bookedMatches.length}
+        missedCount={missedHistory.length}
+        expiredCount={expiredMatches.length}
+        waitlistCount={waitlistMatches.length}
+        undecidedCount={undecidedMatches.length}
+        allEmailsCount={loadEmails.length + failedQueueItems.length}
+        matchSearchQuery={matchSearchQuery}
+        setMatchSearchQuery={setMatchSearchQuery}
+        isSearchingArchive={isSearchingArchive}
+        showArchiveResults={showArchiveResults}
+        setShowArchiveResults={setShowArchiveResults}
+        archivedSearchResults={archivedSearchResults}
+        onArchiveResultClick={(result) => {
+          const emailData = result.load_emails;
+          if (emailData) {
+            setSelectedEmailForDetail({
+              ...emailData,
+              match_id: result.original_match_id,
+              vehicle_id: result.vehicle_id,
+              hunt_plan_id: result.hunt_plan_id,
+              distance_miles: result.distance_miles,
+              match_status: result.match_status,
+              archived: true,
+              archived_at: result.archived_at
+            });
+            setSelectedEmailDistance(result.distance_miles);
+            setSelectedMatchForDetail({
+              match_id: result.original_match_id,
+              vehicle_id: result.vehicle_id,
+              archived: true
+            });
+          }
+          setShowArchiveResults(false);
+          setMatchSearchQuery('');
+        }}
+        selectedSources={selectedSources}
+        setSelectedSources={setSelectedSources}
+        isSoundMuted={isSoundMuted}
+        onToggleSound={toggleSound}
+        onSoundSettingsChange={setSoundSettings}
+        loadHunterTheme={loadHunterTheme}
+        setLoadHunterTheme={setLoadHunterTheme}
+        groupMatchesEnabled={groupMatchesEnabled}
+        setGroupMatchesEnabled={setGroupMatchesEnabled}
+        refreshing={refreshing}
+        onRefresh={handleRefreshLoads}
+        showAllTabEnabled={showAllTabEnabled}
+        filterVehicleId={filterVehicleId}
+        setFilterVehicleId={setFilterVehicleId}
+        setSelectedVehicle={setSelectedVehicle}
+        setSelectedEmailForDetail={setSelectedEmailForDetail}
+        currentDispatcherInfo={currentDispatcherInfo}
+        onOpenDispatcherScorecard={() => setActiveFilter('dispatcher-metrix')}
+      />
 
       {/* Main Content Area */}
       <div className={`flex flex-1 gap-2 overflow-y-auto overflow-x-hidden pt-3 ${
