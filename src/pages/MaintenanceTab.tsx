@@ -260,6 +260,17 @@ export default function MaintenanceTab() {
         }
       }
 
+      // Get current vehicle odometer
+      let currentOdometer: number | null = null;
+      const { data: vehicleData } = await query("vehicles")
+        .select("odometer")
+        .eq("id", repair.vehicle_id)
+        .single();
+      
+      if (vehicleData) {
+        currentOdometer = (vehicleData as { odometer?: number }).odometer || null;
+      }
+
       const now = new Date();
       const completionNote = `Completed from Repairs Needed on ${format(now, 'MMM d, yyyy')} at ${format(now, 'h:mm a')} by ${performedByName}${repair.notes ? `\n\nOriginal Notes: ${repair.notes}` : ''}`;
 
@@ -272,6 +283,7 @@ export default function MaintenanceTab() {
         status: "completed",
         performed_by: performedByName,
         notes: completionNote,
+        odometer: currentOdometer,
         tenant_id: tenantId,
       });
 
