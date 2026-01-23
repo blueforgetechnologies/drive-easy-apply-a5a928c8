@@ -1464,25 +1464,25 @@ export default function MaintenanceTab() {
                                   style={{
                                     filter: severity === 3 
                                       ? 'drop-shadow(0 0 4px rgba(239, 68, 68, 1)) drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.5))'
-                                      : 'drop-shadow(0 0 3px rgba(251, 146, 60, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.7))'
+                                      : 'drop-shadow(0 0 3px rgba(253, 186, 116, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.7))'
                                   }}
                                 >
                                   {/* Main engine block outline - side profile */}
                                   <path 
                                     d="M6 12 L6 8 L12 8 L12 6 L36 6 L36 8 L42 8 L42 12 L44 12 L44 20 L42 20 L42 24 L36 24 L36 26 L12 26 L12 24 L6 24 L6 20 L4 20 L4 12 Z" 
-                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
+                                    fill={severity === 3 ? '#dc2626' : '#fdba74'}
                                     stroke="#0f172a"
                                     strokeWidth="1.5"
                                     strokeLinejoin="round"
                                   />
                                   {/* Intake manifold runners on top */}
-                                  <rect x="16" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
-                                  <rect x="22" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
-                                  <rect x="28" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  <rect x="16" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#fdba74'} stroke="#0f172a" strokeWidth="1" />
+                                  <rect x="22" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#fdba74'} stroke="#0f172a" strokeWidth="1" />
+                                  <rect x="28" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#fdba74'} stroke="#0f172a" strokeWidth="1" />
                                   {/* Exhaust manifold on left side */}
-                                  <path d="M4 14 L1 14 L1 18 L4 18" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  <path d="M4 14 L1 14 L1 18 L4 18" fill={severity === 3 ? '#dc2626' : '#fdba74'} stroke="#0f172a" strokeWidth="1" />
                                   {/* Alternator/pulley on right */}
-                                  <circle cx="44" cy="16" r="3" fill={severity === 3 ? '#b91c1c' : '#ea580c'} stroke="#0f172a" strokeWidth="1" />
+                                  <circle cx="44" cy="16" r="3" fill={severity === 3 ? '#b91c1c' : '#fb923c'} stroke="#0f172a" strokeWidth="1" />
                                   {/* Valve cover detail lines */}
                                   <line x1="14" y1="10" x2="34" y2="10" stroke="#0f172a" strokeWidth="1" />
                                   {/* Crankcase detail */}
