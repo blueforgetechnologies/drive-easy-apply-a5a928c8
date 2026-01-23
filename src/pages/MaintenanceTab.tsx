@@ -1187,23 +1187,22 @@ export default function MaintenanceTab() {
                 return (
                   <div 
                     key={vehicleId} 
-                    className="bg-gradient-to-b from-slate-50 to-slate-100/80 rounded-lg overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-200/50"
+                    className="bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-400/40"
                   >
-                    {/* Vehicle header - compact */}
-                    <div className="py-1 px-2 bg-gradient-to-b from-slate-600 to-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                      <span className="text-white text-[11px] font-bold tracking-wide drop-shadow-sm">
+                    {/* Vehicle header - puffy square */}
+                    <div className="py-1.5 px-2 bg-gradient-to-b from-slate-700 to-slate-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-1px_2px_rgba(0,0,0,0.3)]">
+                      <span className="text-white text-xs font-bold tracking-wide drop-shadow-md">
                         #{vehicle?.vehicle_number || '?'}
                       </span>
                     </div>
                     
-                    {/* Repairs list with drag-and-drop */}
+                    {/* Repairs list with drag-and-drop - engraved separators */}
                     <div 
-                      className="p-1.5 min-h-[40px]"
+                      className="min-h-[40px] bg-gradient-to-b from-slate-300/50 to-slate-400/30"
                       onDragLeave={handleDragLeave}
                     >
                       {vehicleRepairs.map((repair, index) => {
                         const bgColor = repair.color || '#fbbf24';
-                        const isLight = ['#fbbf24', '#22c55e', '#ffffff', '#f97316'].some(c => bgColor.toLowerCase().includes(c.slice(1)));
                         const isDragging = draggedRepair?.id === repair.id;
                         const isDropTarget = draggedVehicleId === vehicleId && dropTargetIndex === index;
                         
@@ -1211,7 +1210,12 @@ export default function MaintenanceTab() {
                           <div key={repair.id} className="relative">
                             {/* Drop indicator - shows above the item */}
                             {isDropTarget && !isDragging && (
-                              <div className="absolute -top-0.5 left-1 right-1 h-1 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse z-30" />
+                              <div className="absolute -top-0.5 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.8)] z-30" />
+                            )}
+                            
+                            {/* Engraved separator between items */}
+                            {index > 0 && (
+                              <div className="h-[3px] bg-gradient-to-b from-slate-500/40 via-slate-600/30 to-white/60" />
                             )}
                             
                             <div
@@ -1221,21 +1225,19 @@ export default function MaintenanceTab() {
                               onDragOver={(e) => handleDragOver(e, vehicleId, index)}
                               onDrop={(e) => handleDrop(e, vehicleId, index)}
                               className={`
-                                relative px-2 py-1.5 flex items-center gap-1.5 group
-                                rounded-lg mb-1 last:mb-0
+                                relative px-2 py-2 flex items-center gap-1.5 group
                                 transition-all duration-150 ease-out
                                 cursor-grab active:cursor-grabbing
-                                backdrop-blur-sm
-                                shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)]
-                                border border-white/60
+                                shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.1)]
+                                border-x border-white/30
                                 ${isDragging 
                                   ? 'opacity-30 scale-95 shadow-none' 
-                                  : 'hover:scale-[1.03] hover:shadow-[0_10px_25px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] hover:z-20'
+                                  : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
                                 }
-                                ${!isDragging && 'hover:-translate-y-1'}
+                                ${!isDragging && 'hover:-translate-y-0.5'}
                               `}
                               style={{ 
-                                background: `linear-gradient(to bottom, ${bgColor}55, ${bgColor}40)`,
+                                background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
                               }}
                             >
                               {/* Drag handle with grip lines */}
