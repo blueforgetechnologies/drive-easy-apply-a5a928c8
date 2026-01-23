@@ -531,6 +531,16 @@ serve(async (req) => {
       })
       .eq('id', load_id);
 
+    // Update invoice with OTR submission status
+    if (invoice_id) {
+      await adminClient
+        .from('invoices')
+        .update({
+          otr_submitted_at: result.success ? new Date().toISOString() : null,
+        })
+        .eq('id', invoice_id);
+    }
+
     return new Response(
       JSON.stringify({
         success: result.success,
