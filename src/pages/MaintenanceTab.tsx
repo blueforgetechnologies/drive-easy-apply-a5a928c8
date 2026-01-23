@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical, ArrowUp, ArrowDown, Palette, CheckCircle, Pencil, ChevronsUp } from "lucide-react";
 import { format } from "date-fns";
 import checkEngineIcon from '@/assets/check-engine-icon.png';
+import oilChangeIcon from '@/assets/oil-change-icon.png';
 import { getDTCInfo, getDTCLookupUrl, getSeverityColor, parseDTCCode } from "@/lib/dtc-lookup";
 
 interface VehicleBasic {
@@ -1347,6 +1348,17 @@ export default function MaintenanceTab() {
                       const isLastItem = groupIndex === totalGroups - 1;
                       const isEndDropTarget = truckDropTargetIndex === totalGroups && draggedTruckId && isLastItem;
                       
+                      // Get vehicle fault data from allVehicles
+                      const vehicleData = allVehicles.find(v => v.id === vehicleId);
+                      const faultCodes = vehicleData ? getFaultCodes(vehicleData) : [];
+                      const severity = vehicleData ? getVehicleSeverity(vehicleData) : 0;
+                      
+                      // Check if any repair mentions oil change
+                      const hasOilChange = vehicleRepairs.some(r => 
+                        r.description.toLowerCase().includes('oil') || 
+                        r.description.toLowerCase().includes('lube')
+                      );
+                      
                       return (
                         <div key={vehicleId} className="relative flex">
                           {/* Drop indicator line - shows to the LEFT of the target */}
@@ -1366,18 +1378,73 @@ export default function MaintenanceTab() {
                         onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
                         onDrop={(e) => handleTruckDrop(e, groupIndex)}
                         className={`
-                          flex-1 bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden 
+                          flex-1 bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden rounded-lg
                           shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
                           border border-slate-400/40 transition-all duration-300
                           ${isTruckDragging ? 'opacity-50 scale-95' : ''}
                           ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
                         `}
                       >
-                      {/* Vehicle header - draggable */}
-                      <div className="py-1.5 px-2 bg-gradient-to-b from-slate-700 to-slate-800 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-1px_2px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing">
-                        <span className="text-white text-xs font-bold tracking-wide drop-shadow-md">
-                          #{vehicle?.vehicle_number || '?'}
-                        </span>
+                      {/* Elegant Vehicle header with status indicators */}
+                      <div className="relative bg-gradient-to-b from-slate-800 via-slate-700 to-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing rounded-t-lg overflow-hidden">
+                        {/* Glossy top highlight */}
+                        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                        
+                        {/* Header content */}
+                        <div className="flex items-center justify-between px-2 py-1.5">
+                          {/* Truck number with subtle glow */}
+                          <span className="text-white text-[11px] font-bold tracking-wider drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                            #{vehicle?.vehicle_number || '?'}
+                          </span>
+                          
+                          {/* Status indicators */}
+                          <div className="flex items-center gap-1">
+                            {/* Oil change indicator */}
+                            {hasOilChange && (
+                              <div className="relative" title="Oil Change Needed">
+                                <img 
+                                  src={oilChangeIcon} 
+                                  alt="Oil" 
+                                  className="h-3.5 w-3.5 drop-shadow-[0_0_3px_rgba(251,191,36,0.8)]"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Check engine light - color based on severity */}
+                            {faultCodes.length > 0 && (
+                              <div 
+                                className="relative" 
+                                title={`${faultCodes.length} fault code${faultCodes.length > 1 ? 's' : ''}`}
+                              >
+                                <img 
+                                  src={checkEngineIcon} 
+                                  alt="Engine" 
+                                  className={`h-3.5 w-3.5 ${
+                                    severity === 3 
+                                      ? 'drop-shadow-[0_0_6px_rgba(239,68,68,0.9)] animate-pulse' 
+                                      : 'drop-shadow-[0_0_4px_rgba(251,146,60,0.8)]'
+                                  }`}
+                                  style={{
+                                    filter: severity === 3 
+                                      ? 'brightness(1.1) saturate(1.5) hue-rotate(-10deg)' 
+                                      : 'brightness(1.2) saturate(1.3) hue-rotate(10deg)'
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Severity indicator bar at bottom */}
+                        <div className={`h-[3px] ${
+                          severity === 3 
+                            ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.6)]' 
+                            : severity === 2 
+                              ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 shadow-[0_0_6px_rgba(251,191,36,0.5)]'
+                              : hasOilChange
+                                ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400'
+                                : 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500'
+                        }`} />
                       </div>
                       
                       {/* Repairs list with drag-and-drop - engraved separators */}
