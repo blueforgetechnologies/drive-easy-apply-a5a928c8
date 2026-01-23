@@ -11,11 +11,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OTR PostInvoices payload - matches exact field names from OTR API v2.1 docs
-// Based on their API Reference Body Params section
+// OTR PostInvoices payload - using field names from OTR API example
+// Note: Example uses "BrokerMC" though schema says "CustomerMC" - using BrokerMC to match example
 interface OtrPostInvoicePayload {
-  // Required fields (from OTR API docs)
-  CustomerMC: number;        // Broker MC number (numeric) - required
+  // Required fields (from OTR API example)
+  BrokerMC: number;          // Broker MC number (numeric) - from example
   ClientDOT: string;         // Your carrier DOT number - required
   FromCity: string;          // Pickup city - required
   FromState: string;         // Pickup state (2-letter) - required
@@ -23,7 +23,7 @@ interface OtrPostInvoicePayload {
   ToState: string;           // Delivery state (2-letter) - required
   PoNumber: string;          // PO/Reference number - required
   InvoiceNo: string;         // Invoice number - required
-  InvoiceDate: string;       // date-time format (ISO 8601 recommended)
+  InvoiceDate: string;       // YYYY-MM-DD format per example
   InvoiceAmount: number;     // float - required
   
   // Optional fields
@@ -342,10 +342,10 @@ serve(async (req) => {
       );
     }
 
-    // Build OTR payload with exact field names from API docs
-    // Per OpenAPI spec: InvoiceDate can be YYYY-MM-DD format
+    // Build OTR payload - using BrokerMC per API example (not CustomerMC from schema)
+    // Per OpenAPI example: InvoiceDate is YYYY-MM-DD format
     const otrPayload: OtrPostInvoicePayload = {
-      CustomerMC: customerMc,
+      BrokerMC: customerMc,
       ClientDOT: String(companyProfile.dot_number),
       FromCity: load.pickup_city.toUpperCase(),
       FromState: load.pickup_state.toUpperCase().slice(0, 2),
@@ -354,7 +354,7 @@ serve(async (req) => {
       PoNumber: poNumber,
       InvoiceNo: invoiceNumber,
       InvoiceDate: invoiceDate,
-      InvoiceAmount: parseFloat(invoiceAmount.toFixed(2)), // Ensure float format
+      InvoiceAmount: invoiceAmount, // Use raw number, OTR example shows integer
     };
 
     // Add optional fields if available
