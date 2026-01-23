@@ -44,6 +44,23 @@ interface OtrInvoiceResponse {
   [key: string]: unknown;
 }
 
+// OTR file upload response
+interface OtrFileUploadResult {
+  success: boolean;
+  document_type: string;
+  file_name: string;
+  error?: string;
+}
+
+// OTR InvoiceDocTypes enum per API spec
+const OTR_DOC_TYPES = {
+  rate_confirmation: 1, // Rate Confirmation/Contract
+  bill_of_lading: 2,    // Bill of Lading / Delivery Receipt
+  pod: 2,               // POD is same as BOL
+  invoice: 3,           // Invoice document
+  other: 4,             // Other supporting documents
+} as const;
+
 // ============================================================================
 // Timezone Helpers - US/Eastern with explicit Intl.DateTimeFormat
 // ============================================================================
@@ -111,6 +128,7 @@ async function submitInvoiceToOtr(
 ): Promise<{
   success: boolean;
   invoice_id?: string;
+  invoice_pkey?: number;
   status?: string;
   raw_response?: OtrInvoiceResponse;
   error?: string;
@@ -204,6 +222,7 @@ async function submitInvoiceToOtr(
     return {
       success: true,
       invoice_id: data.invoicePkey?.toString() || data.invoiceId,
+      invoice_pkey: data.invoicePkey,
       status: data.status || 'submitted',
       raw_response: data,
       attempt_id
@@ -221,6 +240,88 @@ async function submitInvoiceToOtr(
       success: false, 
       error: `OTR request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       attempt_id
+    };
+  }
+}
+
+// ============================================================================
+// Upload document to OTR Solutions
+// Endpoint: POST {BASE_URL}/file-upload (multipart/form-data)
+// ============================================================================
+
+async function uploadDocumentToOtr(
+  fileBuffer: Uint8Array,
+  fileName: string,
+  documentType: string,
+  invoicePkey: number,
+  subscriptionKey: string,
+  sendEmail: boolean = false
+): Promise<OtrFileUploadResult> {
+  const timestamps = getTimestampInfo();
+  const requestUrl = `${OTR_API_BASE_URL}/file-upload`;
+  
+  // Map document type to OTR InvoiceDocTypes
+  const invoiceDocType = OTR_DOC_TYPES[documentType as keyof typeof OTR_DOC_TYPES] || OTR_DOC_TYPES.other;
+  
+  try {
+    console.log('\n' + '='.repeat(70));
+    console.log(`[OTR DOCUMENT UPLOAD]`);
+    console.log('='.repeat(70));
+    console.log(`[TIMESTAMP] UTC: ${timestamps.utc_time}`);
+    console.log(`[TIMESTAMP] Eastern: ${timestamps.eastern_time}`);
+    console.log(`[REQUEST] URL: ${requestUrl}`);
+    console.log(`[REQUEST] File: ${fileName} (${fileBuffer.length} bytes)`);
+    console.log(`[REQUEST] DocumentType: ${documentType} -> InvoiceDocTypes: ${invoiceDocType}`);
+    console.log(`[REQUEST] ItemPkey: ${invoicePkey}`);
+    console.log(`[REQUEST] SendEmail: ${sendEmail}`);
+    
+    // Build multipart form data
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer.buffer as ArrayBuffer], { type: 'application/pdf' });
+    formData.append('file', blob, fileName);
+    formData.append('DocumentType', 'invoice-file-upload');
+    formData.append('ItemPkey', invoicePkey.toString());
+    formData.append('SendEmail', sendEmail.toString());
+    formData.append('InvoiceDocTypes', invoiceDocType.toString());
+    
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': subscriptionKey,
+        // Content-Type is set automatically for FormData
+      },
+      body: formData
+    });
+
+    const responseText = await response.text();
+    console.log(`[RESPONSE] Status: ${response.status}`);
+    console.log(`[RESPONSE] Body: ${responseText}`);
+
+    if (!response.ok) {
+      console.error(`[OTR UPLOAD ERROR] Failed to upload ${fileName}: ${response.status} - ${responseText}`);
+      return {
+        success: false,
+        document_type: documentType,
+        file_name: fileName,
+        error: `Upload failed (${response.status}): ${responseText}`
+      };
+    }
+
+    console.log(`[SUCCESS] Document ${fileName} uploaded successfully`);
+    console.log('='.repeat(70) + '\n');
+    
+    return {
+      success: true,
+      document_type: documentType,
+      file_name: fileName
+    };
+  } catch (error) {
+    console.error(`[OTR UPLOAD EXCEPTION] ${fileName}:`, error);
+    return {
+      success: false,
+      document_type: documentType,
+      file_name: fileName,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }
@@ -501,6 +602,84 @@ serve(async (req) => {
     // Submit to OTR with required bearer token
     const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey, tokenResult.access_token);
 
+    // Track document upload results
+    const documentUploadResults: OtrFileUploadResult[] = [];
+    
+    // If invoice submission succeeded and we have an invoicePkey, upload documents
+    if (result.success && result.invoice_pkey) {
+      console.log(`[submit-otr-invoice] Invoice submitted successfully. Uploading documents to OTR (ItemPkey: ${result.invoice_pkey})...`);
+      
+      // Fetch load documents (BOL and Rate Confirmation)
+      const { data: loadDocuments, error: docsError } = await adminClient
+        .from('load_documents')
+        .select('id, document_type, file_name, file_url')
+        .eq('load_id', load_id)
+        .eq('tenant_id', tenant_id)
+        .in('document_type', ['rate_confirmation', 'bill_of_lading', 'pod']);
+      
+      if (docsError) {
+        console.warn('[submit-otr-invoice] Failed to fetch load documents:', docsError);
+      } else if (loadDocuments && loadDocuments.length > 0) {
+        console.log(`[submit-otr-invoice] Found ${loadDocuments.length} documents to upload`);
+        
+        for (const doc of loadDocuments) {
+          if (!doc.file_url) {
+            console.warn(`[submit-otr-invoice] Skipping document ${doc.id}: no file_url`);
+            continue;
+          }
+          
+          try {
+            // Download file from Supabase Storage
+            const { data: fileData, error: downloadError } = await adminClient.storage
+              .from('load-documents')
+              .download(doc.file_url);
+            
+            if (downloadError || !fileData) {
+              console.error(`[submit-otr-invoice] Failed to download ${doc.file_url}:`, downloadError);
+              documentUploadResults.push({
+                success: false,
+                document_type: doc.document_type || 'unknown',
+                file_name: doc.file_name || doc.file_url,
+                error: `Download failed: ${downloadError?.message || 'No data'}`
+              });
+              continue;
+            }
+            
+            // Convert blob to Uint8Array
+            const arrayBuffer = await fileData.arrayBuffer();
+            const fileBuffer = new Uint8Array(arrayBuffer);
+            
+            // Upload to OTR
+            const uploadResult = await uploadDocumentToOtr(
+              fileBuffer,
+              doc.file_name || doc.file_url.split('/').pop() || 'document.pdf',
+              doc.document_type || 'other',
+              result.invoice_pkey,
+              credentials.subscriptionKey,
+              false // Don't send email for each document
+            );
+            
+            documentUploadResults.push(uploadResult);
+            
+          } catch (uploadError) {
+            console.error(`[submit-otr-invoice] Exception uploading ${doc.file_url}:`, uploadError);
+            documentUploadResults.push({
+              success: false,
+              document_type: doc.document_type || 'unknown',
+              file_name: doc.file_name || doc.file_url,
+              error: uploadError instanceof Error ? uploadError.message : 'Unknown upload error'
+            });
+          }
+        }
+        
+        // Log document upload summary
+        const successCount = documentUploadResults.filter(r => r.success).length;
+        console.log(`[submit-otr-invoice] Document uploads complete: ${successCount}/${documentUploadResults.length} successful`);
+      } else {
+        console.log('[submit-otr-invoice] No documents found for this load');
+      }
+    }
+
     // Record submission attempt
     await adminClient
       .from('otr_invoice_submissions')
@@ -541,15 +720,32 @@ serve(async (req) => {
         .eq('id', invoice_id);
     }
 
+    // Build response with document upload details
+    const successfulUploads = documentUploadResults.filter(r => r.success);
+    const failedUploads = documentUploadResults.filter(r => !r.success);
+    
+    let message = result.success 
+      ? `Invoice ${invoiceNumber} submitted to OTR successfully`
+      : `Failed to submit invoice: ${result.error}`;
+    
+    if (result.success && documentUploadResults.length > 0) {
+      message += `. Documents: ${successfulUploads.length}/${documentUploadResults.length} uploaded`;
+    }
+
     return new Response(
       JSON.stringify({
         success: result.success,
         invoice_id: result.invoice_id,
+        invoice_pkey: result.invoice_pkey,
         status: result.status,
         error: result.error,
-        message: result.success 
-          ? `Invoice ${invoiceNumber} submitted to OTR successfully` 
-          : `Failed to submit invoice: ${result.error}`
+        message,
+        documents: {
+          total: documentUploadResults.length,
+          successful: successfulUploads.length,
+          failed: failedUploads.length,
+          results: documentUploadResults
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
