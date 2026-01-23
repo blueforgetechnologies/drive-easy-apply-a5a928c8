@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [authReady, setAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [impersonateDialogOpen, setImpersonateDialogOpen] = useState(false);
-  const { isPlatformAdmin, isImpersonating, effectiveTenant } = useTenantContext();
+  const { isPlatformAdmin, isImpersonating, effectiveTenant, loading: tenantLoading } = useTenantContext();
   
   // Load user's permissions from custom roles - STRICT enforcement
   const { 
@@ -684,8 +684,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Platform Admin and Inspector are exempt from tenant requirement */}
         {location.pathname.includes('/platform-admin') || location.pathname.includes('/inspector') ? (
           children
-        ) : permissionsLoading ? (
-          // Prevent any tenant pages from rendering until permissions are resolved
+        ) : tenantLoading || permissionsLoading ? (
+          // Prevent any tenant pages from rendering until tenant context AND permissions are resolved
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-sm text-muted-foreground">Checking access…</div>
           </div>
