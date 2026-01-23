@@ -38,10 +38,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 // Extracted types and hooks for code splitting
 import type { Vehicle, Driver, HuntPlan, Load } from "@/types/loadHunter";
 import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
-// Future integration: These hooks are ready but not yet wired up
-// import { useLoadHunterData } from "@/hooks/useLoadHunterData";
-// import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
-// import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
+import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { 
   normalizeDate, 
   normalizeTime, 
@@ -59,6 +56,18 @@ export default function LoadHunterTab() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { tenantId, shouldFilter } = useTenantFilter();
+  
+  // ===== DISPATCHER HOOK - replaces inline state + effects =====
+  const {
+    currentDispatcherId,
+    currentDispatcherInfo,
+    currentDispatcherIdRef,
+    myVehicleIds,
+    setMyVehicleIds,
+    showAllTabEnabled,
+    refreshMyVehicleIds,
+  } = useLoadHunterDispatcher({ tenantId, shouldFilter });
+  
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
@@ -138,37 +147,7 @@ export default function LoadHunterTab() {
     const saved = localStorage.getItem('loadHunterGroupMatches');
     return saved !== null ? saved === 'true' : true; // Default: enabled
   });
-  const [currentDispatcherId, setCurrentDispatcherId] = useState<string | null>(null);
-  const [currentDispatcherInfo, setCurrentDispatcherInfo] = useState<{ id: string; first_name: string; last_name: string; email: string; show_all_tab?: boolean } | null>(null);
   
-  // Track showAllTab with state that updates on storage events
-  const [showAllTabState, setShowAllTabState] = useState<boolean>(() => localStorage.getItem('showAllTab') === 'true');
-  
-  // Listen for localStorage changes from DashboardLayout toggle
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'showAllTab') {
-        setShowAllTabState(e.newValue === 'true');
-      }
-    };
-    
-    // Also handle same-tab updates via custom event
-    const handleLocalUpdate = () => {
-      setShowAllTabState(localStorage.getItem('showAllTab') === 'true');
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('showAllTabChanged', handleLocalUpdate);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('showAllTabChanged', handleLocalUpdate);
-    };
-  }, []);
-  
-  const showAllTabEnabled = currentDispatcherInfo?.show_all_tab || showAllTabState;
-  const currentDispatcherIdRef = useRef<string | null>(null);
-  const [myVehicleIds, setMyVehicleIds] = useState<string[]>([]);
   const mapContainer = React.useRef<HTMLDivElement>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const isTabHiddenRef = useRef(false);
@@ -1147,30 +1126,7 @@ export default function LoadHunterTab() {
     };
   }, [audioContext]);
 
-  // Function to refresh my vehicles (assigned to current dispatcher)
-  const refreshMyVehicleIds = async () => {
-    const dispatcherId = currentDispatcherIdRef.current;
-    if (!dispatcherId) return;
-    
-    // Get vehicles where dispatcher is primary OR in secondary_dispatcher_ids array
-    let query = supabase
-      .from('vehicles')
-      .select('id, vehicle_number')
-      .or(`primary_dispatcher_id.eq.${dispatcherId},secondary_dispatcher_ids.cs.{${dispatcherId}}`);
-    
-    // Apply tenant filter
-    if (shouldFilter && tenantId) {
-      query = query.eq('tenant_id', tenantId);
-    }
-
-    const { data: assignedVehicles } = await query;
-    
-    if (assignedVehicles) {
-      setMyVehicleIds(assignedVehicles.map(v => v.id));
-      console.log('✅ Refreshed my vehicle IDs (primary + secondary):', assignedVehicles.map(v => v.id));
-    }
-  };
-  
+  // Dispatcher logic (refreshMyVehicleIds, dispatcher info) is now handled by useLoadHunterDispatcher hook
   // Keep refs updated for real-time subscription callbacks
   refreshMyVehicleIdsRef.current = refreshMyVehicleIds;
   
@@ -1179,73 +1135,6 @@ export default function LoadHunterTab() {
     await loadVehicles();
     await refreshMyVehicleIds();
   };
-
-  // Fetch current user's dispatcher info and assigned vehicles
-  // CRITICAL: Clear stale state immediately on tenant change to prevent cross-tenant filtering
-  useEffect(() => {
-    // IMMEDIATELY clear stale dispatcher/vehicle state when tenant changes
-    // This prevents showing matches filtered by wrong tenant's vehicles
-    setCurrentDispatcherId(null);
-    setCurrentDispatcherInfo(null);
-    currentDispatcherIdRef.current = null;
-    setMyVehicleIds([]);
-    console.log('🔄 Tenant changed to', tenantId, '- cleared dispatcher state');
-    
-    const fetchUserDispatcherInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔍 Current user:', user?.email, 'for tenant:', tenantId);
-      
-      if (!user?.email) {
-        console.log('❌ No user email found');
-        return;
-      }
-      
-      if (!tenantId) {
-        console.log('⏳ No tenant ID yet, skipping dispatcher lookup');
-        return;
-      }
-      
-      // Check if user is a dispatcher - ALWAYS filter by tenant
-      const { data: dispatcher, error: dispatcherError } = await supabase
-        .from('dispatchers')
-        .select('id, first_name, last_name, email, show_all_tab')
-        .ilike('email', user.email)
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
-      
-      console.log('🔍 Dispatcher lookup for tenant', tenantId, ':', { dispatcher, error: dispatcherError });
-      
-      if (dispatcher) {
-        setCurrentDispatcherId(dispatcher.id);
-        setCurrentDispatcherInfo(dispatcher);
-        currentDispatcherIdRef.current = dispatcher.id;
-        console.log('✅ Found dispatcher:', dispatcher.first_name, dispatcher.last_name, 'ID:', dispatcher.id);
-        
-        // Get vehicles assigned to this dispatcher (primary OR secondary)
-        const { data: assignedVehicles, error: vehiclesError } = await supabase
-          .from('vehicles')
-          .select('id, vehicle_number')
-          .or(`primary_dispatcher_id.eq.${dispatcher.id},secondary_dispatcher_ids.cs.{${dispatcher.id}}`)
-          .eq('tenant_id', tenantId);
-        
-        console.log('🔍 Assigned vehicles (primary + secondary):', { assignedVehicles, error: vehiclesError });
-        
-        if (assignedVehicles && assignedVehicles.length > 0) {
-          setMyVehicleIds(assignedVehicles.map(v => v.id));
-          console.log('✅ My vehicle IDs:', assignedVehicles.map(v => v.id));
-        } else {
-          // Dispatcher exists but has no assigned vehicles - keep empty array
-          console.log('⚠️ Dispatcher has no assigned vehicles');
-          setMyVehicleIds([]);
-        }
-      } else {
-        // No dispatcher found for this tenant - state already cleared above
-        console.log('❌ No dispatcher found for email:', user.email, 'in tenant:', tenantId);
-      }
-    };
-    
-    fetchUserDispatcherInfo();
-  }, [tenantId]);
 
   // REFS for channel cleanup - ensures cleanup works even if tenantReady=false
   const emailsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
