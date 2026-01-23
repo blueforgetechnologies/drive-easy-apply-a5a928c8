@@ -44,9 +44,10 @@ export function useLoadHunterCounts(): LoadHunterCounts {
       console.log(`[LoadHunterCounts] Fetching for tenant: ${tenantId}, epoch: ${tenantEpoch}`);
 
       // Query unreviewed matches with tenant filter - ALWAYS
+      // NOTE: unreviewed_matches view uses `id` as the primary identifier (not `match_id`).
       const { count: unreviewedCount } = await supabase
         .from("unreviewed_matches")
-        .select("match_id", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId);
 
       // Skipped - NOW uses direct tenant_id column (added via migration)
