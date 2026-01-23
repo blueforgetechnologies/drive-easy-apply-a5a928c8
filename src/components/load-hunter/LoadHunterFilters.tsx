@@ -70,17 +70,17 @@ interface LoadHunterFiltersProps {
   currentDispatcherInfo?: { first_name: string; last_name: string } | null;
 }
 
-// Shared styles for puffy buttons - 10% bigger with enhanced glow
-const puffyButtonBase = "h-8 px-4 text-sm font-semibold transition-all duration-200";
-const puffyIconSize = "h-4 w-4";
+// Shared styles for puffy buttons - compact but with same text size
+const puffyButtonBase = "h-7 px-2.5 text-sm font-semibold transition-all duration-200";
+const puffyIconSize = "h-3.5 w-3.5";
 
 // Active glow styles - bright lighting effect when selected
-const activeGlowAurora = "shadow-[0_0_20px_0px_rgba(255,255,255,0.4),0_0_30px_-5px_currentColor,inset_0_1px_2px_rgba(255,255,255,0.5)]";
-const activeGlowClassic = "shadow-[0_0_16px_-2px_currentColor,0_4px_8px_rgba(0,0,0,0.2),inset_0_2px_0_rgba(255,255,255,0.4)]";
+const activeGlowAurora = "shadow-[0_0_18px_0px_rgba(255,255,255,0.4),0_0_25px_-5px_currentColor,inset_0_1px_2px_rgba(255,255,255,0.5)]";
+const activeGlowClassic = "shadow-[0_0_14px_-2px_currentColor,0_3px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.4)]";
 
 // Puffy container styles
-const puffyContainerAurora = "border-2 border-purple-400/40 shadow-[0_4px_16px_-4px_rgba(168,85,247,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]";
-const puffyContainerClassic = "border-2 border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.12),inset_0_2px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(0,0,0,0.05)]";
+const puffyContainerAurora = "border border-purple-400/40 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]";
+const puffyContainerClassic = "border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)]";
 
 export function LoadHunterFilters({
   activeMode,
@@ -130,7 +130,7 @@ export function LoadHunterFilters({
   };
 
   return (
-    <div className={`flex items-center gap-2.5 py-2.5 px-3 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
+    <div className={`flex items-center gap-1.5 py-1.5 px-2 border-y overflow-x-auto flex-shrink-0 relative z-10 ${
       loadHunterTheme === 'aurora'
         ? 'bg-gradient-to-r from-slate-900/95 via-purple-900/50 to-slate-900/95 border-purple-500/30 backdrop-blur-md shadow-[0_4px_20px_-5px_rgba(168,85,247,0.3)]'
         : 'bg-gradient-to-b from-gray-50 to-gray-100 border-gray-200'
@@ -178,10 +178,10 @@ export function LoadHunterFilters({
       <Button
         variant="ghost"
         size="sm"
-        className={`${puffyButtonBase} gap-2 rounded-full flex-shrink-0 ${
+        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
           loadHunterTheme === 'aurora'
-            ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white border-2 border-emerald-400/40 shadow-[0_4px_16px_-4px_rgba(16,185,129,0.5),inset_0_1px_2px_rgba(255,255,255,0.3)] hover:shadow-[0_0_20px_-2px_rgba(16,185,129,0.6)]`
-            : `bg-gradient-to-b from-emerald-400 to-emerald-600 text-white border-2 border-emerald-500/60 shadow-[0_4px_10px_rgba(16,185,129,0.35),inset_0_2px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_-2px_rgba(16,185,129,0.5)]`
+            ? `bg-gradient-to-b from-emerald-400 to-emerald-700 text-white border border-emerald-400/40 shadow-[0_3px_12px_-3px_rgba(16,185,129,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_-2px_rgba(16,185,129,0.6)]`
+            : `bg-gradient-to-b from-emerald-400 to-emerald-600 text-white border border-emerald-500/60 shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_14px_-2px_rgba(16,185,129,0.5)]`
         }`}
         onClick={() => handleFilterChange('vehicle-assignment')}
       >
@@ -196,14 +196,14 @@ export function LoadHunterFilters({
           value={matchSearchQuery}
           onChange={(e) => setMatchSearchQuery(e.target.value)}
           onFocus={() => matchSearchQuery && setShowArchiveResults(true)}
-          className={`h-8 w-40 text-sm rounded-full px-4 border-2 ${
+          className={`h-7 w-32 text-sm rounded-full px-3 border ${
             loadHunterTheme === 'aurora'
-              ? 'bg-slate-800/70 border-purple-500/40 text-purple-100 placeholder:text-purple-300/50 focus:border-purple-400/70 focus:ring-purple-500/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]'
-              : 'bg-white border-gray-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.8)] focus:border-blue-400'
+              ? 'bg-slate-800/70 border-purple-500/40 text-purple-100 placeholder:text-purple-300/50 focus:border-purple-400/70 focus:ring-purple-500/30 shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]'
+              : 'bg-white border-gray-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.8)] focus:border-blue-400'
           }`}
         />
         {isSearchingArchive && (
-          <div className="absolute right-5 top-2">
+          <div className="absolute right-4 top-1.5">
             <RefreshCw className={`${puffyIconSize} animate-spin text-muted-foreground`} />
           </div>
         )}
@@ -291,7 +291,7 @@ export function LoadHunterFilters({
         <Button 
           variant="ghost"
           size="sm" 
-          className={`h-8 w-8 p-0 !rounded-none border-0 ${
+          className={`h-7 w-7 p-0 !rounded-none border-0 ${
             loadHunterTheme === 'aurora'
               ? 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
               : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-200'
@@ -309,7 +309,7 @@ export function LoadHunterFilters({
             <Button 
               variant="ghost"
               size="sm" 
-              className={`h-8 w-8 p-0 !rounded-none !rounded-r-full border-0 ${
+              className={`h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 ${
                 loadHunterTheme === 'aurora'
                   ? 'bg-slate-800/50 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100'
                   : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-200'
@@ -329,16 +329,16 @@ export function LoadHunterFilters({
         className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
           loadHunterTheme === 'aurora'
             ? activeFilter === 'missed'
-              ? `bg-gradient-to-b from-amber-400 to-amber-700 text-white border-2 border-amber-400/40 ${activeGlowAurora}`
-              : `bg-slate-800/50 border-2 ${puffyContainerAurora.split(' ')[0]} border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100`
+              ? `bg-gradient-to-b from-amber-400 to-amber-700 text-white border border-amber-400/40 ${activeGlowAurora}`
+              : `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100`
             : activeFilter === 'missed'
-              ? `bg-gradient-to-b from-amber-400 to-amber-600 text-white border-2 border-amber-500/60 ${activeGlowClassic}`
-              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border-2 border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.12),inset_0_2px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+              ? `bg-gradient-to-b from-amber-400 to-amber-600 text-white border border-amber-500/60 ${activeGlowClassic}`
+              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
         }`}
         onClick={() => handleFilterChange('missed')}
       >
         Missed
-        <span className={`text-xs h-5 px-2 rounded-full flex items-center justify-center font-bold ${
+        <span className={`text-xs h-5 px-1.5 rounded-full flex items-center justify-center font-bold ${
           activeFilter === 'missed' ? 'bg-white/30 text-white' : 'bg-amber-500 text-white'
         }`}>{missedCount}</span>
       </Button>
@@ -454,10 +454,10 @@ export function LoadHunterFilters({
       <Button
         variant="ghost"
         size="sm"
-        className={`${puffyButtonBase} gap-2 rounded-full flex-shrink-0 ${
+        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
           loadHunterTheme === 'aurora'
-            ? `bg-slate-800/50 border-2 border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_4px_16px_-4px_rgba(168,85,247,0.5)]`
-            : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border-2 border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.12),inset_0_2px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+            ? `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
+            : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
         }`}
         onClick={onOpenDispatcherScorecard}
       >
@@ -469,14 +469,14 @@ export function LoadHunterFilters({
       <Button 
         variant="ghost"
         size="sm" 
-        className={`${puffyButtonBase} gap-2 rounded-full flex-shrink-0 ${
+        className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 ${
           loadHunterTheme === 'aurora'
             ? activeFilter === 'vehicle-assignment'
-              ? `bg-gradient-to-b from-violet-400 to-purple-700 text-white border-2 border-violet-400/40 ${activeGlowAurora}`
-              : `bg-slate-800/50 border-2 border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_4px_16px_-4px_rgba(168,85,247,0.5)]`
+              ? `bg-gradient-to-b from-violet-400 to-purple-700 text-white border border-violet-400/40 ${activeGlowAurora}`
+              : `bg-slate-800/50 border border-purple-400/40 text-purple-200/70 hover:bg-slate-700/50 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
             : activeFilter === 'vehicle-assignment'
-              ? `bg-gradient-to-b from-violet-400 to-violet-700 text-white border-2 border-violet-500/60 ${activeGlowClassic}`
-              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border-2 border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.12),inset_0_2px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+              ? `bg-gradient-to-b from-violet-400 to-violet-700 text-white border border-violet-500/60 ${activeGlowClassic}`
+              : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
         }`}
         onClick={() => {
           setActiveFilter('vehicle-assignment');
@@ -493,17 +493,17 @@ export function LoadHunterFilters({
           <Button
             variant="ghost"
             size="sm"
-            className={`${puffyButtonBase} gap-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+            className={`${puffyButtonBase} gap-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${
               loadHunterTheme === 'aurora'
-                ? `bg-gradient-to-b from-violet-400 to-fuchsia-700 text-white border-2 border-violet-400/40 shadow-[0_4px_20px_-4px_rgba(139,92,246,0.6),inset_0_1px_2px_rgba(255,255,255,0.4)] hover:shadow-[0_0_24px_-2px_rgba(139,92,246,0.7)]`
-                : `bg-gradient-to-b from-violet-400 to-fuchsia-600 text-white border-2 border-violet-500/60 shadow-[0_4px_12px_rgba(139,92,246,0.4),inset_0_2px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_18px_-2px_rgba(139,92,246,0.6)]`
+                ? `bg-gradient-to-b from-violet-400 to-fuchsia-700 text-white border border-violet-400/40 shadow-[0_3px_16px_-3px_rgba(139,92,246,0.6),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:shadow-[0_0_20px_-2px_rgba(139,92,246,0.7)]`
+                : `bg-gradient-to-b from-violet-400 to-fuchsia-600 text-white border border-violet-500/60 shadow-[0_3px_10px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_-2px_rgba(139,92,246,0.6)]`
             } ${selectedSources.length < 2 ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''}`}
           >
             <svg className={`${puffyIconSize} drop-shadow-sm ${selectedSources.length < 2 ? 'animate-[ping_1.5s_ease-in-out_infinite]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Source
-            <span className={`flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-xs font-bold rounded-full transition-colors ${
+            <span className={`flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[11px] font-bold rounded-full transition-colors ${
               selectedSources.length < 2 
                 ? 'bg-amber-400 text-amber-900' 
                 : 'bg-white/30 text-white'
@@ -555,10 +555,10 @@ export function LoadHunterFilters({
           <Button
             variant="ghost"
             size="sm"
-            className={`h-8 w-8 p-0 rounded-full flex-shrink-0 ${
+            className={`h-7 w-7 p-0 rounded-full flex-shrink-0 ${
               loadHunterTheme === 'aurora'
-                ? `bg-slate-800/60 border-2 border-purple-400/40 text-purple-200 hover:bg-slate-700/60 hover:text-purple-100 shadow-[0_4px_16px_-4px_rgba(168,85,247,0.5)]`
-                : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border-2 border-gray-300 shadow-[0_4px_10px_rgba(0,0,0,0.12),inset_0_2px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
+                ? `bg-slate-800/60 border border-purple-400/40 text-purple-200 hover:bg-slate-700/60 hover:text-purple-100 shadow-[0_3px_12px_-3px_rgba(168,85,247,0.5)]`
+                : `bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-[0_3px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] hover:from-gray-50 hover:to-gray-200`
             }`}
           >
             <Menu className={puffyIconSize} />
