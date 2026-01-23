@@ -1378,17 +1378,17 @@ export default function MaintenanceTab() {
                         onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
                         onDrop={(e) => handleTruckDrop(e, groupIndex)}
                         className={`
-                          flex-1 bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden rounded-lg
+                          flex-1 bg-gradient-to-b from-slate-300 to-slate-400/80 overflow-hidden rounded-sm
                           shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
                           border border-slate-400/40 transition-all duration-300
                           ${isTruckDragging ? 'opacity-50 scale-95' : ''}
                           ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
                         `}
                       >
-                      {/* Puffy raised Vehicle header with status indicators - Silver theme */}
-                      <div className="relative bg-gradient-to-b from-white via-gray-100 to-gray-300 shadow-[inset_0_2px_4px_rgba(255,255,255,1),inset_0_-3px_6px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-xl overflow-hidden border border-gray-300/80 border-b-gray-400">
+                      {/* Puffy raised Vehicle header - Darker squared theme */}
+                      <div className="relative bg-gradient-to-b from-gray-200 via-gray-300 to-gray-400 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-3px_6px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-sm overflow-hidden border border-gray-400/80 border-b-gray-500">
                         {/* Strong glossy top highlight */}
-                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-white/40 via-white to-white/40" />
+                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-white/30 via-white/80 to-white/30" />
                         
                         {/* Header content - taller padding */}
                         <div className="flex items-center justify-between px-2.5 py-2.5">
