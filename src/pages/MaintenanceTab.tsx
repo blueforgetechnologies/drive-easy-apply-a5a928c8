@@ -1221,16 +1221,17 @@ export default function MaintenanceTab() {
                                 rounded-lg mb-1 last:mb-0
                                 transition-all duration-150 ease-out
                                 cursor-grab active:cursor-grabbing
-                                shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.5)]
-                                border border-white/40
+                                backdrop-blur-sm
+                                shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)]
+                                border border-white/60
                                 ${isDragging 
-                                  ? 'opacity-40 scale-95 shadow-none' 
-                                  : 'hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.6)] hover:z-20'
+                                  ? 'opacity-30 scale-95 shadow-none' 
+                                  : 'hover:scale-[1.03] hover:shadow-[0_10px_25px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] hover:z-20'
                                 }
-                                ${!isDragging && 'hover:-translate-y-0.5'}
+                                ${!isDragging && 'hover:-translate-y-1'}
                               `}
                               style={{ 
-                                background: `linear-gradient(to bottom, ${bgColor}f5, ${bgColor}e0)`,
+                                background: `linear-gradient(to bottom, ${bgColor}55, ${bgColor}40)`,
                               }}
                             >
                               {/* Drag handle with grip lines */}
