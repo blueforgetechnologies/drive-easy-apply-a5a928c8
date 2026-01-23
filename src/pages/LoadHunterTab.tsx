@@ -12,8 +12,7 @@ import { DispatcherMetricsView } from "@/components/DispatcherMetricsView";
 import { UserActivityTracker } from "@/components/UserActivityTracker";
 import LoadHunterMobile from "@/components/LoadHunterMobile";
 import { BookLoadDialog } from "@/components/BookLoadDialog";
-import { SoundSettingsDialog, getSoundPrompt, loadSoundSettings } from "@/components/SoundSettingsDialog";
-import { useUserPreferences, type SoundSettings } from "@/hooks/useUserPreferences";
+import { SoundSettingsDialog } from "@/components/SoundSettingsDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -36,82 +35,22 @@ import checkEngineIcon from '@/assets/check-engine-icon.png';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-interface Vehicle {
-  id: string;
-  tenant_id: string;
-  vehicle_number: string | null;
-  carrier: string | null;
-  bid_as: string | null;
-  asset_type: string | null;
-  asset_subtype: string | null;
-  dimensions_length: number | null;
-  driver_1_id: string | null;
-  driver_2_id: string | null;
-  status: string;
-  formatted_address: string | null;
-  last_location: string | null;
-  odometer: number | null;
-  oil_change_remaining: number | null;
-  next_service_date: string | null;
-  notes: string | null;
-  fault_codes: any;
-  speed: number | null;
-  stopped_status: string | null;
-}
-
-interface Driver {
-  id: string;
-  personal_info: any;
-}
-
-interface Load {
-  id: string;
-  truck_driver_carrier: string;
-  customer: string;
-  received: string;
-  expires: string;
-  pickup_time: string;
-  pickup_date: string;
-  delivery_time: string;
-  delivery_date: string;
-  origin_city: string;
-  origin_state: string;
-  destination_city: string;
-  destination_state: string;
-  empty_drive_miles: number;
-  loaded_drive_miles: number;
-  vehicle_type: string;
-  weight: string;
-  pieces: number;
-  dimensions: string;
-  avail_ft: string;
-  source: string;
-}
-
-interface HuntPlan {
-  id: string;
-  vehicleId: string;
-  planName: string;
-  vehicleSizes: string[];
-  zipCode: string;
-  availableFeet: string;
-  partial: boolean;
-  pickupRadius: string;
-  mileLimit: string;
-  loadCapacity: string;
-  availableDate: string;
-  availableTime: string;
-  destinationZip: string;
-  destinationRadius: string;
-  notes: string;
-  createdBy: string;
-  createdAt: Date;
-  lastModified: Date;
-  huntCoordinates?: { lat: number; lng: number } | null;
-  enabled: boolean;
-  floorLoadId?: string | null;
-  initialMatchDone?: boolean;
-}
+// Extracted types and hooks for code splitting
+import type { Vehicle, Driver, HuntPlan, Load, DispatcherInfo, LoadHunterTheme, ActiveFilter, ActiveMode, EmailTimeWindow } from "@/types/loadHunter";
+import { useLoadHunterSound, loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
+import { useLoadHunterMatching } from "@/hooks/useLoadHunterMatching";
+import { 
+  normalizeDate, 
+  normalizeTime, 
+  formatTimeAgo, 
+  formatExpiresIn,
+  buildPickupDisplay,
+  buildDeliveryDisplay,
+  stripHtmlTags,
+  truncateText,
+  groupMatchesByLoadEmail
+} from "@/utils/loadHunterHelpers";
+import type { SoundSettings } from "@/hooks/useUserPreferences";
 
 export default function LoadHunterTab() {
   const navigate = useNavigate();
