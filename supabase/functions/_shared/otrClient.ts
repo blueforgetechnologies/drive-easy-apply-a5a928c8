@@ -1,9 +1,8 @@
 // Shared OTR Solutions API client
 // Used by check-broker-credit and submit-otr-invoice
 
-// Staging URL - switch to production after OTR approves test invoices
-export const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
-// Production URL (use after approval): 'https://services.otrsolutions.com/carrier-tms/2'
+// Production URL for live OTR submissions
+export const OTR_API_BASE_URL = 'https://services.otrsolutions.com/carrier-tms/2';
 
 export interface OtrTokenResponse {
   access_token: string;
