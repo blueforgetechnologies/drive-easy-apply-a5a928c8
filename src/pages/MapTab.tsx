@@ -882,8 +882,8 @@ const MapTab = () => {
         </div>
         
         ${vehicle.odometer ? `
-        <!-- Odometer - Puffy pill -->
-        <div style="padding: 6px 10px; background: white; display: flex; align-items: center; gap: 6px;">
+        <!-- Odometer + History - Puffy pill -->
+        <div style="padding: 6px 10px; background: white; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 4px; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); padding: 3px 8px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8);">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
@@ -892,6 +892,14 @@ const MapTab = () => {
             <span style="color: #374151; font-size: 10px; font-weight: 600;">
               ${vehicle.odometer.toLocaleString()} mi
             </span>
+          </div>
+          <!-- History icon - puffy button -->
+          <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); cursor: pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+              <path d="M12 7v5l4 2"/>
+            </svg>
           </div>
         </div>
         ` : ''}
