@@ -413,8 +413,8 @@ export function LoadHunterVehicleDetail({
 
                 {/* Meta Info */}
                 <div className="space-y-1 text-xs text-muted-foreground pt-2">
-                  <div>Created by {plan.createdBy}: {getTimeAgo(plan.createdAt)}</div>
-                  <div>Last Modified: {getTimeAgo(plan.lastModified)}</div>
+                  <div>Created by {plan.createdBy}: {getTimeAgo(plan.createdAt instanceof Date ? plan.createdAt.toISOString() : plan.createdAt)}</div>
+                  <div>Last Modified: {getTimeAgo(plan.lastModified instanceof Date ? plan.lastModified.toISOString() : plan.lastModified)}</div>
                   <div className="text-right">Id: {plan.id}</div>
                 </div>
 
