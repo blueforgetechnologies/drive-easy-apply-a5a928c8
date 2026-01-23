@@ -1,9 +1,10 @@
 // Shared OTR Solutions API client
 // Used by check-broker-credit and submit-otr-invoice
 
-// Staging URL - the provided subscription key is for staging environment
-// Switch to production URL with production credentials when ready
-export const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
+// Alternative staging URL from OpenAPI spec - try if primary staging fails
+// The primary staging (servicesstg.otrsolutions.com) has been returning errors
+export const OTR_API_BASE_URL = 'https://services.stg.factorhawk.com/carrier-tms/2';
+// Primary staging URL: 'https://servicesstg.otrsolutions.com/carrier-tms/2'
 // Production URL: 'https://services.otrsolutions.com/carrier-tms/2'
 
 export interface OtrTokenResponse {
