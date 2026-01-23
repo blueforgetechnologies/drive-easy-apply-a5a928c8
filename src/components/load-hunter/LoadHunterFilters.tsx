@@ -243,13 +243,13 @@ export function LoadHunterFilters({
           size="sm" 
           className={`${btnBase} rounded-none ${!showAllTabEnabled ? 'rounded-l-full' : ''} ${
             activeFilter === 'unreviewed'
-              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-success text-white'
+              ? loadHunterTheme === 'aurora' ? 'btn-glossy-aurora-active text-white' : 'btn-glossy-primary text-white'
               : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
           }`}
           onClick={() => handleFilterChange('unreviewed')}
         >
           Unreviewed
-          <span className={`${unreviewedCount > 0 ? (activeFilter === 'unreviewed' ? 'badge-inset-danger' : 'badge-inset-soft-red') : (activeFilter === 'unreviewed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset-soft-green')} text-[10px] h-5`}>{unreviewedCount}</span>
+          <span className={`${unreviewedCount > 0 ? (activeFilter === 'unreviewed' ? 'badge-inset-danger' : 'badge-inset-soft-red') : (activeFilter === 'unreviewed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-dark') : 'badge-inset-soft-green')} text-[10px] h-5`}>{unreviewedCount}</span>
         </Button>
         
         {/* Sound Toggle */}
