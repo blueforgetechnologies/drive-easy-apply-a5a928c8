@@ -1399,51 +1399,54 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - oil can with drop on left */}
+                            {/* Oil change indicator - skinny oil can with round handle on right */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 48 40" 
-                                  className="h-5 w-6 animate-pulse"
+                                  viewBox="0 0 44 32" 
+                                  className="h-4 w-5 animate-pulse"
                                   style={{
                                     filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(234, 88, 12, 0.8)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Oil can body - tilted with spout on left */}
+                                  {/* Skinny oil can body - tilted */}
                                   <path 
-                                    d="M16 10 L40 14 C44 15, 46 20, 44 26 L42 32 C40 36, 34 38, 28 36 L14 32 C10 31, 8 26, 10 20 L12 14 C13 11, 14 10, 16 10 Z" 
+                                    d="M10 8 L30 6 C34 5, 36 8, 35 12 L33 22 C32 26, 28 28, 24 27 L8 25 C4 24, 3 20, 4 16 L6 10 C7 7, 9 7, 10 8 Z" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="2"
+                                    strokeWidth="1.5"
                                     strokeLinejoin="round"
+                                  />
+                                  {/* Round handle on right */}
+                                  <circle 
+                                    cx="38" cy="10" r="4"
+                                    fill="none"
+                                    stroke="#374151"
+                                    strokeWidth="2.5"
+                                  />
+                                  {/* Handle connector */}
+                                  <path 
+                                    d="M35 10 L34 8" 
+                                    stroke="#374151"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
                                   />
                                   {/* Spout pointing left */}
                                   <path 
-                                    d="M12 14 L4 8 L2 12 L8 18" 
+                                    d="M6 10 L2 6 L1 9 L4 14" 
                                     fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="2"
+                                    strokeWidth="1.5"
                                     strokeLinejoin="round"
                                     strokeLinecap="round"
                                   />
-                                  {/* Handle - vertical bar on top */}
-                                  <path 
-                                    d="M26 6 L26 12 M24 4 L28 4 L28 7 L24 7 Z" 
-                                    fill="#374151"
-                                    stroke="#1f2937"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                  />
-                                  <rect x="24" y="3" width="5" height="5" rx="0.5" fill="#374151" stroke="#1f2937" strokeWidth="1.5"/>
-                                  {/* Oil drop falling from spout - on left */}
+                                  {/* Oil drop falling from spout */}
                                   <ellipse 
-                                    cx="4" cy="22" rx="2.5" ry="4"
+                                    cx="2" cy="18" rx="2" ry="3"
                                     fill="#374151"
-                                    stroke="#1f2937"
-                                    strokeWidth="1"
                                   />
                                 </svg>
                               </div>
