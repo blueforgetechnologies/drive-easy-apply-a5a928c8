@@ -1399,44 +1399,53 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - glowing dashboard light with SVG oil can */}
+                            {/* Oil change indicator - glowing oil can SVG */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 100 80" 
+                                  viewBox="0 0 64 52" 
                                   className="h-5 w-6 animate-pulse"
                                   style={{
-                                    filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
+                                    filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(234, 88, 12, 0.8)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Oil can body - tilted */}
+                                  {/* Main oil can body - rounded rectangle, tilted */}
                                   <path 
-                                    d="M25 25 L70 15 Q78 13 80 20 L85 45 Q87 55 78 58 L30 65 Q20 67 18 58 L15 35 Q13 25 25 25 Z" 
-                                    fill="#ef4444"
+                                    d="M8 18 C8 12, 14 8, 20 10 L44 6 C52 4, 56 10, 54 18 L50 38 C48 46, 40 48, 32 46 L12 42 C4 40, 4 32, 8 24 Z" 
+                                    fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="3"
+                                    strokeWidth="2.5"
+                                    strokeLinejoin="round"
                                   />
                                   {/* Spout */}
                                   <path 
-                                    d="M80 20 L92 12 L95 18 L85 28" 
-                                    fill="#ef4444"
+                                    d="M54 14 L62 8 L64 12 L58 20 L54 18" 
+                                    fill="#dc2626"
                                     stroke="#1f2937"
-                                    strokeWidth="3"
+                                    strokeWidth="2.5"
                                     strokeLinejoin="round"
+                                    strokeLinecap="round"
                                   />
-                                  {/* Handle on top */}
+                                  {/* Handle stem */}
                                   <rect 
-                                    x="42" y="8" width="8" height="14" rx="1"
+                                    x="28" y="2" width="6" height="10" rx="1"
                                     fill="#374151"
                                     stroke="#1f2937"
                                     strokeWidth="2"
                                   />
-                                  {/* Oil drop falling */}
+                                  {/* Handle top */}
+                                  <rect 
+                                    x="26" y="0" width="10" height="4" rx="1"
+                                    fill="#4b5563"
+                                    stroke="#1f2937"
+                                    strokeWidth="1.5"
+                                  />
+                                  {/* Oil drop - teardrop shape */}
                                   <path 
-                                    d="M94 30 Q94 28 95 32 Q97 40 94 44 Q91 40 93 32 Q94 28 94 30 Z" 
+                                    d="M60 24 C60 22, 62 26, 62 30 C62 34, 60 36, 58 36 C56 36, 54 34, 54 30 C54 26, 56 22, 58 24 C59 23, 60 22, 60 24 Z" 
                                     fill="#f59e0b"
                                     stroke="#1f2937"
                                     strokeWidth="1.5"
