@@ -249,7 +249,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('unreviewed')}
         >
           Unreviewed
-          <span className={`${activeFilter === 'unreviewed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset'} text-[10px] h-5`}>{unreviewedCount}</span>
+          <span className={`${activeFilter === 'unreviewed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset-soft-green'} text-[10px] h-5`}>{unreviewedCount}</span>
         </Button>
         
         {/* Sound Toggle */}
@@ -295,7 +295,7 @@ export function LoadHunterFilters({
         onClick={() => handleFilterChange('missed')}
       >
         Missed
-        <span className={`${activeFilter === 'missed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-danger' : 'badge-inset-danger') : 'badge-inset'} text-[10px] h-5`}>{missedCount}</span>
+        <span className={`${activeFilter === 'missed' ? 'badge-inset-danger' : 'badge-inset-soft-red'} text-[10px] h-5`}>{missedCount}</span>
       </Button>
 
       {/* Wait / Undec / Skip - Connected Group - ORANGE when selected */}
@@ -311,7 +311,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('waitlist')}
         >
           Wait
-          <span className={`${activeFilter === 'waitlist' ? (loadHunterTheme === 'aurora' ? 'badge-inset-warning' : 'badge-inset-warning') : 'badge-inset'} text-[10px] h-5`}>{waitlistCount}</span>
+          <span className={`${activeFilter === 'waitlist' ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{waitlistCount}</span>
         </Button>
         <Button
           variant="ghost"
@@ -324,7 +324,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('undecided')}
         >
           Undec
-          <span className={`${activeFilter === 'undecided' ? (loadHunterTheme === 'aurora' ? 'badge-inset-warning' : 'badge-inset-warning') : 'badge-inset'} text-[10px] h-5`}>{undecidedCount}</span>
+          <span className={`${activeFilter === 'undecided' ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{undecidedCount}</span>
         </Button>
         <Button
           variant="ghost"
@@ -337,7 +337,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('skipped')}
         >
           Skip
-          <span className={`${activeFilter === 'skipped' ? (loadHunterTheme === 'aurora' ? 'badge-inset-warning' : 'badge-inset-warning') : 'badge-inset'} text-[10px] h-5`}>{skippedCount}</span>
+          <span className={`${activeFilter === 'skipped' ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{skippedCount}</span>
         </Button>
       </div>
 
@@ -354,7 +354,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('mybids')}
         >
           Bids
-          <span className={`${activeFilter === 'mybids' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-primary') : 'badge-inset'} text-[10px] h-5`}>{bidCount}</span>
+          <span className={`${activeFilter === 'mybids' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-primary') : 'badge-inset-soft-blue'} text-[10px] h-5`}>{bidCount}</span>
         </Button>
         <Button
           variant="ghost"
@@ -367,7 +367,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('booked')}
         >
           Booked
-          <span className={`${activeFilter === 'booked' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset'} text-[10px] h-5`}>{bookedCount}</span>
+          <span className={`${activeFilter === 'booked' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset-soft-green'} text-[10px] h-5`}>{bookedCount}</span>
         </Button>
       </div>
 
