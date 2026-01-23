@@ -521,15 +521,24 @@ export default function MaintenanceTab() {
         <TabsContent value="faults" className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Badge variant={vehiclesWithFaults.length > 0 ? "destructive" : "secondary"} className="text-sm px-3 py-1">
-                <img src={checkEngineIcon} alt="Faults" className="h-4 w-4 mr-2" />
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium shadow-md ${
+                vehiclesWithFaults.length > 0 
+                  ? 'bg-gradient-to-b from-red-500 to-red-600 text-white' 
+                  : 'bg-gradient-to-b from-gray-100 to-gray-200 text-gray-700'
+              }`}>
+                <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
                 {vehiclesWithFaults.length} vehicle{vehiclesWithFaults.length !== 1 ? 's' : ''} with faults
-              </Badge>
+              </div>
               <span className="text-sm text-muted-foreground">
                 {totalFaultCodes} total fault code{totalFaultCodes !== 1 ? 's' : ''}
               </span>
             </div>
-            <Button variant="outline" onClick={handleSyncSamsara} disabled={syncing}>
+            <Button 
+              variant="outline" 
+              onClick={handleSyncSamsara} 
+              disabled={syncing}
+              className="bg-gradient-to-b from-white to-gray-50 border-gray-200 shadow-md hover:shadow-lg transition-all"
+            >
               <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? 'Syncing...' : 'Sync from Samsara'}
             </Button>
@@ -537,12 +546,12 @@ export default function MaintenanceTab() {
 
           <div className="flex gap-4 h-[calc(100vh-320px)] min-h-[400px]">
             {/* Vehicle Sidebar */}
-            <Card className="w-72 flex-shrink-0">
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm font-medium">Fleet Vehicles</CardTitle>
-              </CardHeader>
+            <div className="w-80 flex-shrink-0 bg-gradient-to-b from-white to-gray-50/80 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="py-4 px-5 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
+                <h3 className="text-sm font-semibold text-gray-800">Fleet Vehicles</h3>
+              </div>
               <ScrollArea className="h-[calc(100%-56px)]">
-                <div className="px-2 pb-2 space-y-1">
+                <div className="p-3 space-y-2">
                   {allVehicles.map((vehicle) => {
                     const vehicleFaults = getFaultCodes(vehicle);
                     const hasFaults = vehicleFaults.length > 0;
@@ -552,32 +561,34 @@ export default function MaintenanceTab() {
                       <div
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors border ${
+                        className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
                           isSelected 
-                            ? 'bg-primary/10 border-primary' 
-                            : 'hover:bg-muted/50 border-transparent'
+                            ? 'bg-gradient-to-b from-violet-100 to-violet-50 border-violet-400 shadow-md' 
+                            : 'bg-white hover:bg-gray-50 border-transparent hover:border-gray-200 shadow-sm hover:shadow-md'
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Truck className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">
+                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-violet-200' : 'bg-gray-100'}`}>
+                              <Truck className={`h-4 w-4 ${isSelected ? 'text-violet-600' : 'text-gray-500'}`} />
+                            </div>
+                            <span className="font-semibold text-sm text-gray-800">
                               {vehicle.vehicle_number}
                             </span>
                           </div>
                           {hasFaults && (
-                            <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                            <span className="inline-flex items-center justify-center h-6 min-w-6 px-2 text-xs font-bold text-white bg-gradient-to-b from-red-500 to-red-600 rounded-full shadow-sm">
                               {vehicleFaults.length}
-                            </Badge>
+                            </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 ml-6">
+                        <p className="text-xs text-gray-500 mt-1.5 ml-9">
                           {vehicle.make} {vehicle.model}
                         </p>
                         {hasFaults && (
-                          <div className="flex items-center gap-1 mt-1 ml-6">
-                            <img src={checkEngineIcon} alt="Check engine" className="h-3 w-3" />
-                            <span className="text-xs text-red-500 font-medium">
+                          <div className="flex items-center gap-1.5 mt-2 ml-9">
+                            <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5" />
+                            <span className="text-xs text-red-500 font-semibold">
                               {vehicleFaults.length} fault{vehicleFaults.length !== 1 ? 's' : ''}
                             </span>
                           </div>
@@ -587,92 +598,115 @@ export default function MaintenanceTab() {
                   })}
                 </div>
               </ScrollArea>
-            </Card>
+            </div>
 
             {/* Fault Details Panel */}
-            <Card className="flex-1">
+            <div className="flex-1 bg-gradient-to-b from-white to-gray-50/50 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               {selectedVehicle ? (
                 (() => {
                   const selectedFaults = getFaultCodes(selectedVehicle);
                   return (
                     <>
-                      <CardHeader className="pb-3">
+                      <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="flex items-center gap-2">
-                              <Truck className="h-5 w-5" />
-                              Vehicle {selectedVehicle.vehicle_number}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground">
-                              {selectedVehicle.make} {selectedVehicle.model}
-                            </p>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-gradient-to-b from-violet-100 to-violet-200 shadow-sm">
+                              <Truck className="h-5 w-5 text-violet-600" />
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-bold text-gray-900">
+                                Vehicle {selectedVehicle.vehicle_number}
+                              </h2>
+                              <p className="text-sm text-gray-500">
+                                {selectedVehicle.make} {selectedVehicle.model}
+                              </p>
+                            </div>
                           </div>
                           {selectedFaults.length > 0 ? (
-                            <Badge variant="destructive" className="text-sm px-3 py-1">
-                              <img src={checkEngineIcon} alt="Faults" className="h-4 w-4 mr-2" />
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-b from-red-500 to-red-600 text-white shadow-md">
+                              <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
                               {selectedFaults.length} Active Fault{selectedFaults.length !== 1 ? 's' : ''}
-                            </Badge>
+                            </div>
                           ) : (
-                            <Badge variant="secondary" className="text-sm px-3 py-1">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-b from-green-500 to-green-600 text-white shadow-md">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
                               No Active Faults
-                            </Badge>
+                            </div>
                           )}
                         </div>
-                      </CardHeader>
-                      <CardContent>
+                      </div>
+                      <div className="p-6">
+                        {/* Stats Grid */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
-                          <div className="p-3 bg-muted/30 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Odometer</p>
-                            <p className="font-semibold">
+                          <div className="p-4 bg-gradient-to-b from-white to-blue-50/50 rounded-xl border border-blue-100 shadow-sm">
+                            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Odometer</p>
+                            <p className="text-lg font-bold text-gray-900 mt-1">
                               {selectedVehicle.odometer?.toLocaleString() || 'N/A'} mi
                             </p>
                           </div>
-                          <div className="p-3 bg-muted/30 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Last Updated</p>
-                            <p className="font-semibold text-sm">
+                          <div className="p-4 bg-gradient-to-b from-white to-violet-50/50 rounded-xl border border-violet-100 shadow-sm">
+                            <p className="text-xs font-medium text-violet-600 uppercase tracking-wide">Last Updated</p>
+                            <p className="text-lg font-bold text-gray-900 mt-1">
                               {selectedVehicle.last_updated 
                                 ? format(new Date(selectedVehicle.last_updated), "MM/dd/yy HH:mm")
                                 : 'N/A'
                               }
                             </p>
                           </div>
-                          <div className="p-3 bg-muted/30 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Location</p>
-                            <p className="font-semibold text-sm truncate">
+                          <div className="p-4 bg-gradient-to-b from-white to-emerald-50/50 rounded-xl border border-emerald-100 shadow-sm">
+                            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Location</p>
+                            <p className="text-sm font-bold text-gray-900 mt-1 truncate">
                               {selectedVehicle.formatted_address || 'Unknown'}
                             </p>
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <h3 className="font-semibold text-sm flex items-center gap-2">
-                            <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
+                        {/* DTCs Section */}
+                        <div className="space-y-4">
+                          <h3 className="font-bold text-sm flex items-center gap-2 text-gray-800">
+                            <img src={checkEngineIcon} alt="Faults" className="h-5 w-5" />
                             Diagnostic Trouble Codes (DTCs)
                           </h3>
                           
                           {selectedFaults.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {selectedFaults.map((code, index) => {
                                 const dtcInfo = getDTCInfo(code);
                                 const parsed = parseDTCCode(code);
-                                const colors = dtcInfo ? getSeverityColor(dtcInfo.severity) : getSeverityColor('warning');
+                                const severity = dtcInfo?.severity || 'warning';
                                 const lookupUrl = parsed.spn ? getDTCLookupUrl(parsed.spn, parsed.fmi ?? undefined) : null;
+                                
+                                const severityStyles = {
+                                  critical: 'from-red-50 to-red-100/50 border-red-200 text-red-700',
+                                  warning: 'from-amber-50 to-amber-100/50 border-amber-200 text-amber-700',
+                                  info: 'from-blue-50 to-blue-100/50 border-blue-200 text-blue-700'
+                                };
+                                
+                                const iconStyles = {
+                                  critical: 'text-red-500',
+                                  warning: 'text-amber-500',
+                                  info: 'text-blue-500'
+                                };
                                 
                                 return (
                                   <Collapsible key={index}>
-                                    <div className={`p-3 ${colors.bg} border ${colors.border} rounded-lg`}>
+                                    <div className={`p-4 bg-gradient-to-b ${severityStyles[severity]} border-2 rounded-xl shadow-sm transition-all hover:shadow-md`}>
                                       <CollapsibleTrigger className="w-full">
-                                        <div className="flex items-start gap-2">
-                                          <AlertTriangle className={`h-4 w-4 ${colors.text} mt-0.5 flex-shrink-0`} />
+                                        <div className="flex items-start gap-3">
+                                          <div className={`p-1.5 rounded-lg bg-white/80 shadow-sm`}>
+                                            <AlertTriangle className={`h-4 w-4 ${iconStyles[severity]}`} />
+                                          </div>
                                           <div className="flex-1 text-left">
                                             <div className="flex items-center justify-between">
-                                              <p className={`font-mono text-sm font-medium ${colors.text}`}>
+                                              <p className="font-mono text-sm font-bold">
                                                 {code}
                                               </p>
-                                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                              <ChevronDown className="h-4 w-4 text-gray-400" />
                                             </div>
                                             {dtcInfo && (
-                                              <p className="text-xs text-muted-foreground mt-1">
+                                              <p className="text-xs text-gray-600 mt-1">
                                                 {dtcInfo.component} - Click for details
                                               </p>
                                             )}
@@ -680,37 +714,40 @@ export default function MaintenanceTab() {
                                         </div>
                                       </CollapsibleTrigger>
                                       
-                                      <CollapsibleContent className="mt-3 pt-3 border-t border-current/10">
-                                        <div className="space-y-2 text-sm">
+                                      <CollapsibleContent className="mt-4 pt-4 border-t border-current/10">
+                                        <div className="space-y-3 text-sm">
                                           {dtcInfo && (
                                             <>
-                                              <div>
-                                                <span className="font-medium">Component:</span>{" "}
-                                                <span className="text-muted-foreground">{dtcInfo.component}</span>
+                                              <div className="flex gap-2">
+                                                <span className="font-semibold text-gray-700 w-24">Component:</span>
+                                                <span className="text-gray-600">{dtcInfo.component}</span>
                                               </div>
-                                              <div>
-                                                <span className="font-medium">Description:</span>{" "}
-                                                <span className="text-muted-foreground">{dtcInfo.description}</span>
+                                              <div className="flex gap-2">
+                                                <span className="font-semibold text-gray-700 w-24">Description:</span>
+                                                <span className="text-gray-600">{dtcInfo.description}</span>
                                               </div>
                                               {dtcInfo.possibleCauses && dtcInfo.possibleCauses.length > 0 && (
-                                                <div>
-                                                  <span className="font-medium">Failure Mode:</span>{" "}
-                                                  <span className="text-muted-foreground">{dtcInfo.possibleCauses[0]}</span>
+                                                <div className="flex gap-2">
+                                                  <span className="font-semibold text-gray-700 w-24">Failure Mode:</span>
+                                                  <span className="text-gray-600">{dtcInfo.possibleCauses[0]}</span>
                                                 </div>
                                               )}
-                                              <div>
-                                                <span className="font-medium">Severity:</span>{" "}
-                                                <Badge 
-                                                  variant={dtcInfo.severity === 'critical' ? 'destructive' : dtcInfo.severity === 'warning' ? 'secondary' : 'outline'}
-                                                  className="ml-1 text-xs"
-                                                >
-                                                  {dtcInfo.severity.toUpperCase()}
-                                                </Badge>
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-gray-700 w-24">Severity:</span>
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${
+                                                  severity === 'critical' 
+                                                    ? 'bg-gradient-to-b from-red-500 to-red-600 text-white' 
+                                                    : severity === 'warning'
+                                                    ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-white'
+                                                    : 'bg-gradient-to-b from-blue-500 to-blue-600 text-white'
+                                                }`}>
+                                                  {severity.toUpperCase()}
+                                                </span>
                                               </div>
                                               {dtcInfo.recommendedAction && (
-                                                <div className="p-2 bg-background/50 rounded text-xs">
-                                                  <span className="font-medium">Recommended Action:</span>{" "}
-                                                  {dtcInfo.recommendedAction}
+                                                <div className="p-3 bg-white/60 rounded-lg border border-current/10 text-xs">
+                                                  <span className="font-semibold text-gray-700">Recommended Action:</span>{" "}
+                                                  <span className="text-gray-600">{dtcInfo.recommendedAction}</span>
                                                 </div>
                                               )}
                                             </>
@@ -721,9 +758,9 @@ export default function MaintenanceTab() {
                                               href={lookupUrl}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                                              className="inline-flex items-center gap-1.5 text-xs text-violet-600 hover:text-violet-700 font-medium mt-2 hover:underline"
                                             >
-                                              <ExternalLink className="h-3 w-3" />
+                                              <ExternalLink className="h-3.5 w-3.5" />
                                               Look up full diagnostic details
                                             </a>
                                           )}
@@ -735,34 +772,36 @@ export default function MaintenanceTab() {
                               })}
                             </div>
                           ) : (
-                            <div className="p-8 text-center bg-muted/30 rounded-lg">
-                              <div className="flex flex-col items-center gap-2">
-                                <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-                                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <div className="p-10 text-center bg-gradient-to-b from-green-50 to-emerald-50/50 rounded-xl border-2 border-green-100 shadow-sm">
+                              <div className="flex flex-col items-center gap-3">
+                                <div className="h-14 w-14 rounded-full bg-gradient-to-b from-green-400 to-green-500 flex items-center justify-center shadow-md">
+                                  <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                   </svg>
                                 </div>
-                                <p className="font-medium text-green-700 dark:text-green-400">No Active Faults</p>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="font-bold text-green-700">No Active Faults</p>
+                                <p className="text-sm text-green-600">
                                   This vehicle has no diagnostic trouble codes
                                 </p>
                               </div>
                             </div>
                           )}
                         </div>
-                      </CardContent>
+                      </div>
                     </>
                   );
                 })()
               ) : (
                 <div className="h-full flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>Select a vehicle to view fault codes</p>
+                  <div className="text-center">
+                    <div className="p-4 rounded-2xl bg-gradient-to-b from-gray-100 to-gray-200 inline-block mb-4 shadow-sm">
+                      <Truck className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">Select a vehicle to view fault codes</p>
                   </div>
                 </div>
               )}
-            </Card>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
