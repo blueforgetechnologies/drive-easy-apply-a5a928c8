@@ -238,8 +238,14 @@ export default function MaintenanceTab() {
     return maxSeverity;
   };
 
-  // Sort vehicles by severity (most severe first), then by fault count
+  // Sort vehicles: no Samsara connection at bottom, then by severity (most severe first), then by fault count
   const sortedVehicles = [...allVehicles].sort((a, b) => {
+    // Vehicles without Samsara connection go to bottom
+    const hasConnectionA = a.provider_status !== null;
+    const hasConnectionB = b.provider_status !== null;
+    if (hasConnectionA !== hasConnectionB) return hasConnectionB ? 1 : -1;
+    
+    // Then sort by severity
     const severityA = getVehicleSeverity(a);
     const severityB = getVehicleSeverity(b);
     if (severityB !== severityA) return severityB - severityA;
