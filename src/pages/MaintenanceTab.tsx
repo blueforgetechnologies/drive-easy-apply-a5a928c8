@@ -1399,20 +1399,29 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - glowing dashboard light */}
+                            {/* Oil change indicator - glowing dashboard light with SVG */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
-                                <img 
-                                  src={oilChangeIcon} 
-                                  alt="Oil" 
-                                  className="h-4 w-4 animate-pulse mix-blend-multiply"
+                                <svg 
+                                  viewBox="0 0 24 24" 
+                                  className="h-4 w-4 animate-pulse"
                                   style={{
-                                    filter: 'brightness(1.4) saturate(1.8) drop-shadow(0 0 4px rgba(251, 191, 36, 1)) drop-shadow(0 0 8px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6))'
+                                    filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 1)) drop-shadow(0 0 8px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6))'
                                   }}
-                                />
+                                >
+                                  {/* Oil drop shape */}
+                                  <path 
+                                    d="M12 2C12 2 6 10 6 14.5C6 17.5376 8.68629 20 12 20C15.3137 20 18 17.5376 18 14.5C18 10 12 2 12 2Z" 
+                                    fill="#f59e0b"
+                                    stroke="#ea580c"
+                                    strokeWidth="0.5"
+                                  />
+                                  {/* Inner highlight */}
+                                  <ellipse cx="10" cy="13" rx="1.5" ry="2" fill="rgba(255,255,255,0.4)" />
+                                </svg>
                               </div>
                             )}
                             
