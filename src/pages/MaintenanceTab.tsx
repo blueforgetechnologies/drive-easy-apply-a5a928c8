@@ -1378,7 +1378,7 @@ export default function MaintenanceTab() {
                         onDragOver={(e) => handleTruckDragOver(e, groupIndex)}
                         onDrop={(e) => handleTruckDrop(e, groupIndex)}
                         className={`
-                          flex-1 bg-gradient-to-b from-slate-300 to-slate-400/80 overflow-hidden rounded-sm
+                          flex-1 bg-gradient-to-b from-slate-200 to-slate-300/80 overflow-hidden rounded-lg
                           shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] 
                           border border-slate-400/40 transition-all duration-300
                           ${isTruckDragging ? 'opacity-50 scale-95' : ''}
