@@ -221,6 +221,44 @@ export default function MaintenanceTab() {
     }
   };
 
+  const handleSendBackToRepairs = async (record: any) => {
+    try {
+      // Get the next sort order for repairs
+      const vehicleRepairs = repairs.filter(r => r.vehicle_id === record.asset_id);
+      const maxSortOrder = vehicleRepairs.length > 0 
+        ? Math.max(...vehicleRepairs.map(r => r.sort_order)) + 1 
+        : 0;
+
+      // Create a repair entry
+      const { error: insertError } = await query("repairs_needed").insert({
+        tenant_id: tenantId,
+        vehicle_id: record.asset_id,
+        description: record.description,
+        urgency: 3, // Default to medium urgency
+        color: "#fbbf24", // Default amber color
+        status: "pending",
+        sort_order: maxSortOrder,
+        notes: `Sent back from Records on ${format(new Date(), 'MMM d, yyyy')} at ${format(new Date(), 'h:mm a')}`
+      });
+
+      if (insertError) throw insertError;
+
+      // Delete the maintenance record
+      const { error: deleteError } = await query("maintenance_records")
+        .delete()
+        .eq("id", record.id);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Sent back to Repairs Needed");
+      loadRepairs();
+      loadMaintenanceRecords();
+    } catch (error: any) {
+      toast.error("Failed to send back to repairs");
+      console.error(error);
+    }
+  };
+
   const handleCompleteRepair = async (repairId: string) => {
     try {
       // Find the repair to get its details
@@ -980,12 +1018,13 @@ export default function MaintenanceTab() {
               <ScrollArea className="flex-1">
                 <div className="bg-gradient-to-b from-slate-100 to-slate-200/80 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-300/60 overflow-hidden">
                   {/* Table header */}
-                  <div className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px] gap-2 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-700 text-white text-xs font-bold uppercase tracking-wider">
+                  <div className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px_80px] gap-2 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-700 text-white text-xs font-bold uppercase tracking-wider">
                     <div>Repair</div>
                     <div>Notes</div>
                     <div>Marked Completed By</div>
                     <div>Date</div>
                     <div>Time</div>
+                    <div></div>
                   </div>
                   
                   {/* Table rows */}
@@ -1006,7 +1045,7 @@ export default function MaintenanceTab() {
                         return (
                           <div 
                             key={record.id} 
-                            className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
+                            className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px_80px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
                           >
                             <div>
                               <div className="font-semibold text-sm text-slate-800">
@@ -1027,6 +1066,18 @@ export default function MaintenanceTab() {
                             </div>
                             <div className="text-sm text-slate-600">
                               {completionTime}
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSendBackToRepairs(record)}
+                                className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1 h-auto"
+                                title="Send back to Repairs Needed"
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Undo
+                              </Button>
                             </div>
                           </div>
                         );
