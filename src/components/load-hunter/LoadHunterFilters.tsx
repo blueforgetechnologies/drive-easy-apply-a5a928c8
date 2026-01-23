@@ -168,21 +168,6 @@ export function LoadHunterFilters({
         </Button>
       </div>
 
-      {/* Add Vehicle Button - Standalone */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`${btnBase} rounded-full mr-2 ${
-          loadHunterTheme === 'aurora' 
-            ? 'btn-glossy-success text-white' 
-            : 'btn-glossy-success text-white'
-        }`}
-        onClick={() => handleFilterChange('vehicle-assignment')}
-      >
-        <Truck className={iconSize} />
-        Add Vehicle
-      </Button>
-
       {/* Search Input - Carved inset style */}
       <div className="flex-shrink-0 relative mr-2">
         <Input
