@@ -15,6 +15,7 @@ import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2, Refre
 import InvoicePreview from "@/components/InvoicePreview";
 import { OtrVerificationDialog } from "@/components/OtrVerificationDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useAccountingCounts } from "@/hooks/useAccountingCounts";
 
 interface Invoice {
   id: string;
@@ -79,6 +80,7 @@ export default function InvoicesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId, shouldFilter } = useTenantFilter();
+  const { invoicesByStatus } = useAccountingCounts();
   const filter = searchParams.get("filter") || "pending";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
@@ -688,18 +690,18 @@ export default function InvoicesTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-0">
           {[
-            { key: "pending", label: "Pending", icon: Clock, activeClass: "btn-glossy-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy", softBadgeClass: "badge-inset" },
-            { key: "sent", label: "Sent", icon: null, activeClass: "btn-glossy-primary", softBadgeClass: "badge-inset-soft-blue" },
-            { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
-            { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", softBadgeClass: "badge-inset-soft-red" },
+            { key: "pending", label: "Pending", icon: Clock, activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+            { key: "sent", label: "Sent", icon: null, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
           ].map((status) => (
             <Button
               key={status.key}
               variant="ghost"
               size="sm"
               onClick={() => setInvoiceFilter(status.key)}
-              className={`h-[28px] px-3 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+              className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
                 filter === status.key 
                   ? `${status.activeClass} text-white` 
                   : 'btn-glossy text-gray-700'
@@ -707,6 +709,9 @@ export default function InvoicesTab() {
             >
               {status.icon && <status.icon className="h-3 w-3" />}
               {status.label}
+              <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                {invoicesByStatus[status.key as keyof typeof invoicesByStatus]}
+              </span>
             </Button>
           ))}
         </div>

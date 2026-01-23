@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { Search, Plus, FileText, DollarSign, CheckCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useAccountingCounts } from "@/hooks/useAccountingCounts";
 
 interface Settlement {
   id: string;
@@ -45,6 +46,7 @@ export default function SettlementsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId, shouldFilter } = useTenantFilter();
+  const { settlementsByStatus } = useAccountingCounts();
   const filter = searchParams.get("filter") || "pending";
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -425,9 +427,9 @@ export default function SettlementsTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-0">
           {[
-            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "approved", label: "Approved", activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
-            { key: "paid", label: "Paid", activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+            { key: "approved", label: "Approved", activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "paid", label: "Paid", activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
           ].map((status) => (
             <Button
               key={status.key}
@@ -437,13 +439,16 @@ export default function SettlementsTab() {
                 setSearchParams({ filter: status.key });
                 setSearchQuery("");
               }}
-              className={`h-[28px] px-3 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+              className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
                 filter === status.key 
                   ? `${status.activeClass} text-white` 
                   : 'btn-glossy text-gray-700'
               }`}
             >
               {status.label}
+              <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                {settlementsByStatus[status.key as keyof typeof settlementsByStatus]}
+              </span>
             </Button>
           ))}
         </div>
