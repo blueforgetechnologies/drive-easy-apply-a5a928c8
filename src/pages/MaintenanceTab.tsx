@@ -86,6 +86,7 @@ export default function MaintenanceTab() {
   const [truckDropTargetIndex, setTruckDropTargetIndex] = useState<number | null>(null);
   const [truckOrder, setTruckOrder] = useState<string[]>([]);
   const [justDroppedTruckId, setJustDroppedTruckId] = useState<string | null>(null);
+  const [justDroppedRepairId, setJustDroppedRepairId] = useState<string | null>(null);
   const [newRecord, setNewRecord] = useState({
     asset_id: "",
     maintenance_type: "PM",
@@ -519,6 +520,11 @@ export default function MaintenanceTab() {
         query("repairs_needed").update({ sort_order: idx }).eq("id", repair.id)
       );
       await Promise.all(updates);
+      
+      // Set the dropped repair to glow
+      setJustDroppedRepairId(draggedRepair.id);
+      setTimeout(() => setJustDroppedRepairId(null), 1000);
+      
       loadRepairs();
     } catch (error: any) {
       toast.error("Failed to reorder");
@@ -1721,6 +1727,7 @@ export default function MaintenanceTab() {
                         const bgColor = repair.color || '#fbbf24';
                         const isDragging = draggedRepair?.id === repair.id;
                         const isDropTarget = draggedVehicleId === vehicleId && dropTargetIndex === index;
+                        const isJustDropped = justDroppedRepairId === repair.id;
                         
                         return (
                           <ContextMenu key={repair.id}>
@@ -1753,9 +1760,13 @@ export default function MaintenanceTab() {
                                       : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
                                     }
                                     ${!isDragging && 'hover:-translate-y-0.5'}
+                                    ${isJustDropped ? 'z-30 scale-[1.03] ring-2 ring-white animate-pulse' : ''}
                                   `}
                                   style={{ 
                                     background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
+                                    ...(isJustDropped && {
+                                      boxShadow: `0 0 20px 8px ${bgColor}, 0 0 40px 16px ${bgColor}80, inset 0 2px 4px rgba(255,255,255,0.9)`,
+                                    })
                                   }}
                                 >
                                   {/* Description */}
