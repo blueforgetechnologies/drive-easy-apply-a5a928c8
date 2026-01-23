@@ -371,6 +371,9 @@ export function LoadHunterFilters({
         </Button>
       </div>
 
+      {/* Spacer to push remaining buttons to the right */}
+      <div className="flex-1" />
+
       {/* Dispatcher Scorecard Button - Standalone with beautiful cyan glow when selected */}
       <Button
         variant="ghost"
