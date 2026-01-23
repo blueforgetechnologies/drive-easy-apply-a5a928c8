@@ -227,58 +227,64 @@ export function LoadHunterFilters({
         )}
       </div>
 
-      {/* ALL Button - Toggleable */}
-      {showAllTabEnabled && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`h-7 px-3 text-xs font-medium gap-1 rounded-full flex-shrink-0 ${
-            loadHunterTheme === 'aurora'
-              ? activeFilter === 'all'
-                ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
-                : 'bg-slate-800/40 border border-purple-400/30 text-purple-200/70 hover:bg-slate-700/40'
-              : activeFilter === 'all'
-                ? 'bg-gradient-to-b from-gray-500 to-gray-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
-                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-sm hover:from-gray-50 hover:to-gray-150'
-          }`}
-          onClick={() => handleFilterChange('all')}
-        >
-          All
-          <span className={`text-[10px] h-5 px-1.5 rounded-full flex items-center justify-center ${
-            activeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-400 text-white'
-          }`}>{allEmailsCount}</span>
-        </Button>
-      )}
-
-      {/* Unreviewed Button with Sound controls */}
+      {/* ALL + Unreviewed + Sound Controls - Connected Group */}
       <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
         loadHunterTheme === 'aurora' 
           ? 'border border-purple-400/30 shadow-[0_0_10px_-3px_rgba(168,85,247,0.4)]' 
-          : 'border border-blue-300 shadow-sm'
+          : 'border border-gray-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.8)]'
       }`}>
+        {/* ALL Button */}
+        {showAllTabEnabled && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+              loadHunterTheme === 'aurora'
+                ? activeFilter === 'all'
+                  ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                  : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
+                : activeFilter === 'all'
+                  ? 'bg-gradient-to-b from-gray-500 to-gray-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+                  : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-150'
+            }`}
+            onClick={() => handleFilterChange('all')}
+          >
+            All
+            <span className={`text-[10px] h-5 px-1.5 rounded-full flex items-center justify-center ${
+              activeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-500 text-white'
+            }`}>{allEmailsCount}</span>
+          </Button>
+        )}
+
+        {/* Unreviewed Button */}
         <Button
           variant="ghost"
           size="sm" 
-          className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none !rounded-l-full border-0 ${
+          className={`h-7 px-3 text-xs font-medium gap-1 !rounded-none border-0 ${
+            !showAllTabEnabled ? '!rounded-l-full' : ''
+          } ${
             loadHunterTheme === 'aurora'
               ? activeFilter === 'unreviewed'
                 ? 'bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
                 : 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-              : 'bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+              : activeFilter === 'unreviewed'
+                ? 'bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 hover:from-gray-50 hover:to-gray-150'
           }`}
           onClick={() => handleFilterChange('unreviewed')}
         >
           Unreviewed
-          <span className="text-[10px] h-5 px-1.5 rounded-full bg-rose-500 text-white flex items-center justify-center">{unreviewedCount}</span>
+          <span className="text-[10px] h-5 px-1.5 rounded-full bg-emerald-500 text-white flex items-center justify-center">{unreviewedCount}</span>
         </Button>
         
+        {/* Sound Toggle */}
         <Button 
           variant="ghost"
           size="sm" 
           className={`h-7 w-7 p-0 !rounded-none border-0 ${
             loadHunterTheme === 'aurora'
               ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-              : 'bg-gradient-to-b from-blue-500 to-blue-700 text-white hover:from-blue-600 hover:to-blue-800'
+              : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-150'
           }`}
           onClick={onToggleSound}
           title={isSoundMuted ? "Sound alerts off" : "Sound alerts on"}
@@ -286,6 +292,7 @@ export function LoadHunterFilters({
           {isSoundMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
         </Button>
         
+        {/* Sound Settings */}
         <SoundSettingsDialog 
           onSettingsChange={onSoundSettingsChange}
           trigger={
@@ -295,7 +302,7 @@ export function LoadHunterFilters({
               className={`h-7 w-7 p-0 !rounded-none !rounded-r-full border-0 ${
                 loadHunterTheme === 'aurora'
                   ? 'bg-slate-800/40 text-purple-200/70 hover:bg-slate-700/40'
-                  : 'bg-gradient-to-b from-blue-500 to-blue-700 text-white hover:from-blue-600 hover:to-blue-800'
+                  : 'bg-gradient-to-b from-white to-gray-100 text-gray-600 hover:from-gray-50 hover:to-gray-150'
               }`}
               title="Sound settings"
             >
