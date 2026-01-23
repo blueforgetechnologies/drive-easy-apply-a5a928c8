@@ -1452,74 +1452,45 @@ export default function MaintenanceTab() {
                               </div>
                             )}
                             
-                            {/* Check engine light - authentic engine block design */}
+                            {/* Check engine light - authentic MIL symbol */}
                             {faultCodes.length > 0 && (
                               <div 
                                 className="relative"
                                 title={`${faultCodes.length} fault code${faultCodes.length > 1 ? 's' : ''}`}
                               >
                                 <svg 
-                                  viewBox="0 0 40 32" 
-                                  className={`h-5 w-6 ${severity === 3 ? 'animate-pulse' : ''}`}
+                                  viewBox="0 0 48 32" 
+                                  className={`h-5 w-7 ${severity === 3 ? 'animate-pulse' : ''}`}
                                   style={{
                                     filter: severity === 3 
                                       ? 'drop-shadow(0 0 4px rgba(239, 68, 68, 1)) drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.5))'
                                       : 'drop-shadow(0 0 3px rgba(251, 146, 60, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.7))'
                                   }}
                                 >
-                                  {/* Engine block body */}
+                                  {/* Main engine block outline - side profile */}
                                   <path 
-                                    d="M8 10 L32 10 L32 26 L8 26 Z" 
+                                    d="M6 12 L6 8 L12 8 L12 6 L36 6 L36 8 L42 8 L42 12 L44 12 L44 20 L42 20 L42 24 L36 24 L36 26 L12 26 L12 24 L6 24 L6 20 L4 20 L4 12 Z" 
                                     fill={severity === 3 ? '#dc2626' : '#f97316'}
-                                    stroke="#1f2937"
+                                    stroke="#0f172a"
                                     strokeWidth="1.5"
+                                    strokeLinejoin="round"
                                   />
-                                  {/* Cylinder head / valve cover */}
-                                  <path 
-                                    d="M10 6 L30 6 L32 10 L8 10 Z" 
-                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
-                                    stroke="#1f2937"
-                                    strokeWidth="1.5"
-                                  />
-                                  {/* Air intake manifold on top */}
-                                  <rect 
-                                    x="14" y="2" width="12" height="4" rx="1"
-                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
-                                    stroke="#1f2937"
-                                    strokeWidth="1"
-                                  />
-                                  {/* Cooling fins / ribs on block */}
-                                  <line x1="12" y1="13" x2="28" y2="13" stroke="#1f2937" strokeWidth="1" />
-                                  <line x1="12" y1="17" x2="28" y2="17" stroke="#1f2937" strokeWidth="1" />
-                                  <line x1="12" y1="21" x2="28" y2="21" stroke="#1f2937" strokeWidth="1" />
-                                  {/* Oil pan at bottom */}
-                                  <path 
-                                    d="M10 26 L10 29 L30 29 L30 26" 
-                                    fill={severity === 3 ? '#b91c1c' : '#ea580c'}
-                                    stroke="#1f2937"
-                                    strokeWidth="1.5"
-                                  />
-                                  {/* Left exhaust port */}
-                                  <rect 
-                                    x="4" y="12" width="4" height="6" rx="1"
-                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
-                                    stroke="#1f2937"
-                                    strokeWidth="1"
-                                  />
-                                  {/* Right side mount / accessory */}
-                                  <rect 
-                                    x="32" y="14" width="4" height="8" rx="1"
-                                    fill={severity === 3 ? '#dc2626' : '#f97316'}
-                                    stroke="#1f2937"
-                                    strokeWidth="1"
-                                  />
-                                  {/* Lightning bolt / warning indicator in center */}
-                                  <path 
-                                    d="M22 12 L18 18 L21 18 L19 24 L25 17 L22 17 L24 12 Z" 
-                                    fill="#fbbf24"
-                                    stroke="#1f2937"
-                                    strokeWidth="0.5"
-                                  />
+                                  {/* Intake manifold runners on top */}
+                                  <rect x="16" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  <rect x="22" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  <rect x="28" y="2" width="3" height="4" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  {/* Exhaust manifold on left side */}
+                                  <path d="M4 14 L1 14 L1 18 L4 18" fill={severity === 3 ? '#dc2626' : '#f97316'} stroke="#0f172a" strokeWidth="1" />
+                                  {/* Alternator/pulley on right */}
+                                  <circle cx="44" cy="16" r="3" fill={severity === 3 ? '#b91c1c' : '#ea580c'} stroke="#0f172a" strokeWidth="1" />
+                                  {/* Valve cover detail lines */}
+                                  <line x1="14" y1="10" x2="34" y2="10" stroke="#0f172a" strokeWidth="1" />
+                                  {/* Crankcase detail */}
+                                  <line x1="14" y1="22" x2="34" y2="22" stroke="#0f172a" strokeWidth="1" />
+                                  {/* Center bolt pattern */}
+                                  <circle cx="18" cy="16" r="1.5" fill="#0f172a" />
+                                  <circle cx="24" cy="16" r="1.5" fill="#0f172a" />
+                                  <circle cx="30" cy="16" r="1.5" fill="#0f172a" />
                                 </svg>
                               </div>
                             )}
