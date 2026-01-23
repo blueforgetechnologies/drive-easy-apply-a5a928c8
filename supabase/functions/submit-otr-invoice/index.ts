@@ -1,36 +1,33 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient as _createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
-import {
-  OTR_API_BASE_URL,
-  getOtrCredentialsFromEnv,
-} from "../_shared/otrClient.ts";
+import { OTR_API_BASE_URL, getOtrCredentialsFromEnv } from "../_shared/otrClient.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// OTR PostInvoices payload - using field names from OTR API example
-// Note: Example uses "BrokerMC" though schema says "CustomerMC" - using BrokerMC to match example
+// OTR PostInvoices payload per OTR specification
+// BrokerMC: dynamic (provided per request)
+// ClientDOT: 2391750 (Talbi Logistics)
 interface OtrPostInvoicePayload {
-  // Required fields (from OTR API example)
-  BrokerMC: number;          // Broker MC number (numeric) - from example
-  ClientDOT: string;         // Your carrier DOT number - required
-  FromCity: string;          // Pickup city - required
-  FromState: string;         // Pickup state (2-letter) - required
-  ToCity: string;            // Delivery city - required
-  ToState: string;           // Delivery state (2-letter) - required
-  PoNumber: string;          // PO/Reference number - required
-  InvoiceNo: string;         // Invoice number - required
-  InvoiceDate: string;       // YYYY-MM-DD format per example
-  InvoiceAmount: number;     // float - required
+  BrokerMC: number;          // Broker MC number (numeric)
+  ClientDOT: string;         // Your carrier DOT number
+  FromCity: string;          // Pickup city
+  FromState: string;         // Pickup state (2-letter)
+  ToCity: string;            // Delivery city
+  ToState: string;           // Delivery state (2-letter)
+  PoNumber: string;          // PO/Reference number
+  InvoiceNo: string;         // Invoice number
+  InvoiceDate: string;       // YYYY-MM-DD format (ISO, do not localize)
+  InvoiceAmount: number;     // Invoice amount
   
   // Optional fields
-  TermPkey?: number;         // Payment terms key
-  Weight?: number;           // Total weight
-  Miles?: number;            // Total miles
-  Notes?: string;            // Additional notes
+  TermPkey?: number;
+  Weight?: number;
+  Miles?: number;
+  Notes?: string;
 }
 
 interface OtrInvoiceResponse {
@@ -43,7 +40,8 @@ interface OtrInvoiceResponse {
   [key: string]: unknown;
 }
 
-// Submit invoice to OTR Solutions - only subscription key needed per OpenAPI spec
+// Submit invoice to OTR Solutions
+// Per OTR: Only ocp-apim-subscription-key header required, no OAuth
 async function submitInvoiceToOtr(
   payload: OtrPostInvoicePayload,
   subscriptionKey: string
@@ -56,12 +54,12 @@ async function submitInvoiceToOtr(
 }> {
   try {
     console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
-    console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
+    console.log(`[submit-otr-invoice] Full request payload:`, JSON.stringify(payload, null, 2));
     
     const endpoint = `${OTR_API_BASE_URL}/invoices`;
-    console.log(`[submit-otr-invoice] Posting to: ${endpoint}`);
+    console.log(`[submit-otr-invoice] POST ${endpoint}`);
+    console.log(`[submit-otr-invoice] Headers: Content-Type: application/json, ocp-apim-subscription-key: ${subscriptionKey.substring(0, 8)}...`);
     
-    // Per OpenAPI spec: only ocp-apim-subscription-key header required (no Bearer token)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -85,14 +83,20 @@ async function submitInvoiceToOtr(
 
     if (!response.ok) {
       console.error(`[submit-otr-invoice] OTR API error: ${response.status}`);
+      console.error(`[submit-otr-invoice] Full request that failed:`, JSON.stringify({
+        endpoint,
+        payload,
+        response_status: response.status,
+        response_body: data
+      }, null, 2));
       
-      if (response.status === 401 || response.status === 403) {
-        return { success: false, error: 'Invalid OTR subscription key or access denied', raw_response: data };
+      if (response.status === 401) {
+        return { success: false, error: 'Invalid or missing subscription key', raw_response: data };
       }
       if (response.status === 400) {
         return { 
           success: false, 
-          error: `Validation error: ${data.message || data.errors?.join(', ') || 'Invalid invoice data'}`,
+          error: `Validation error: ${data.message || data.errors?.join(', ') || 'Invalid Request'}`,
           raw_response: data
         };
       }
@@ -127,8 +131,8 @@ serve(async (req) => {
     const body = await req.json();
     const { 
       tenant_id,
-      load_id: providedLoadId,  // Single load ID to submit (optional if invoice_id provided)
-      invoice_id,               // Invoice ID - will look up loads from invoice_loads table
+      load_id: providedLoadId,
+      invoice_id,
       quick_pay = false
     } = body;
 
@@ -142,19 +146,19 @@ serve(async (req) => {
 
     const adminClient = getServiceClient();
 
-    // Get OTR credentials
+    // Get OTR credentials (subscription key only)
     const credentials = getOtrCredentialsFromEnv();
     if (!credentials) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'OTR Solutions credentials not configured' 
+          error: 'OTR Solutions subscription key not configured (OTR_API_KEY)' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get company profile for carrier info (ClientDOT)
+    // Get company profile for ClientDOT
     const { data: companyProfile } = await adminClient
       .from('company_profile')
       .select('*')
@@ -181,11 +185,10 @@ serve(async (req) => {
       );
     }
 
-    // Determine load_id - either provided directly or look up from invoice_loads table
+    // Determine load_id
     let load_id = providedLoadId;
     
     if (!load_id && invoice_id) {
-      // Look up load(s) from invoice_loads join table
       const { data: invoiceLoads, error: invoiceLoadsError } = await adminClient
         .from('invoice_loads')
         .select('load_id')
@@ -197,7 +200,6 @@ serve(async (req) => {
       }
       
       if (invoiceLoads && invoiceLoads.length > 0) {
-        // Use the first load associated with this invoice
         load_id = invoiceLoads[0].load_id;
         console.log(`[submit-otr-invoice] Found load_id ${load_id} from invoice ${invoice_id}`);
       }
@@ -232,8 +234,8 @@ serve(async (req) => {
       );
     }
 
-    // Get customer/broker info for MC number
-    let customerMc: number | null = null;
+    // Get BrokerMC from customer
+    let brokerMc: number | null = null;
     let brokerName = load.broker_name || load.customer_name;
 
     if (load.customer_id) {
@@ -244,20 +246,19 @@ serve(async (req) => {
         .single();
 
       if (customer?.mc_number) {
-        // Clean MC number and convert to number
         const cleanMc = customer.mc_number.replace(/^MC-?/i, '').replace(/\D/g, '').trim();
-        customerMc = parseInt(cleanMc, 10);
+        brokerMc = parseInt(cleanMc, 10);
         brokerName = customer.name || brokerName;
       }
     }
 
-    // Try to get MC from load's broker_mc field if not found on customer
-    if (!customerMc && load.broker_mc) {
+    // Try load's broker_mc field if not found on customer
+    if (!brokerMc && load.broker_mc) {
       const cleanMc = String(load.broker_mc).replace(/^MC-?/i, '').replace(/\D/g, '').trim();
-      customerMc = parseInt(cleanMc, 10);
+      brokerMc = parseInt(cleanMc, 10);
     }
 
-    if (!customerMc || isNaN(customerMc)) {
+    if (!brokerMc || isNaN(brokerMc)) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -267,7 +268,7 @@ serve(async (req) => {
       );
     }
 
-    // Validate required location fields
+    // Validate locations
     if (!load.pickup_city || !load.pickup_state) {
       return new Response(
         JSON.stringify({ 
@@ -288,12 +289,10 @@ serve(async (req) => {
       );
     }
 
-    // If invoice_id is provided, prefer invoice fields (invoice_number / total_amount / invoice_date)
-    // because OTR's PostInvoices examples typically use the invoice number (often numeric).
+    // Get invoice details if invoice_id provided
     let invoiceNumber: string | null = null;
     let invoiceAmount: number = Number(load.rate || 0);
-    // OTR example shows YYYY-MM-DD format (not full RFC3339)
-    let invoiceDate: string = new Date().toISOString().split('T')[0];
+    let invoiceDate: string = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     if (invoice_id) {
       const { data: invoice, error: invoiceError } = await adminClient
@@ -309,14 +308,13 @@ serve(async (req) => {
       if (invoice) {
         invoiceNumber = invoice.invoice_number ? String(invoice.invoice_number) : null;
 
-        // total_amount is NUMERIC in DB; it may come back as string.
         const rawAmount: unknown = (invoice as any).total_amount;
         const parsedAmount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount || '0'));
         if (!Number.isNaN(parsedAmount)) {
           invoiceAmount = parsedAmount;
         }
 
-        // invoice_date is DATE in DB (YYYY-MM-DD) - use directly per OTR example
+        // InvoiceDate: use YYYY-MM-DD format directly, do not localize
         const rawInvoiceDate: unknown = (invoice as any).invoice_date;
         if (rawInvoiceDate) {
           invoiceDate = String(rawInvoiceDate);
@@ -324,12 +322,10 @@ serve(async (req) => {
       }
     }
 
-    // Fallback invoice number: use load_number or generated value
     if (!invoiceNumber) {
       invoiceNumber = String(load.load_number || `INV-${Date.now()}`);
     }
 
-    // Get reference/PO number - use reference_number, po_number, or load_number
     const poNumber = String(load.reference_number || load.po_number || load.load_number || invoiceNumber);
     
     if (invoiceAmount <= 0) {
@@ -342,10 +338,9 @@ serve(async (req) => {
       );
     }
 
-    // Build OTR payload - using BrokerMC per API example (not CustomerMC from schema)
-    // Per OpenAPI example: InvoiceDate is YYYY-MM-DD format
+    // Build OTR payload per specification
     const otrPayload: OtrPostInvoicePayload = {
-      BrokerMC: customerMc,
+      BrokerMC: brokerMc,
       ClientDOT: String(companyProfile.dot_number),
       FromCity: load.pickup_city.toUpperCase(),
       FromState: load.pickup_state.toUpperCase().slice(0, 2),
@@ -354,10 +349,9 @@ serve(async (req) => {
       PoNumber: poNumber,
       InvoiceNo: invoiceNumber,
       InvoiceDate: invoiceDate,
-      InvoiceAmount: invoiceAmount, // Use raw number, OTR example shows integer
+      InvoiceAmount: invoiceAmount,
     };
 
-    // Add optional fields if available
     if (load.weight) {
       otrPayload.Weight = load.weight;
     }
@@ -367,11 +361,8 @@ serve(async (req) => {
 
     console.log('[submit-otr-invoice] Final OTR payload:', JSON.stringify(otrPayload, null, 2));
 
-    // Submit to OTR - only subscription key needed per OpenAPI spec
-    const result = await submitInvoiceToOtr(
-      otrPayload,
-      credentials.subscriptionKey
-    );
+    // Submit to OTR - only subscription key needed
+    const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey);
 
     // Record submission attempt
     await adminClient
@@ -380,7 +371,7 @@ serve(async (req) => {
         tenant_id,
         invoice_id: invoice_id || null,
         load_id,
-        broker_mc: customerMc.toString(),
+        broker_mc: brokerMc.toString(),
         broker_name: brokerName,
         invoice_number: invoiceNumber,
         invoice_amount: invoiceAmount,
