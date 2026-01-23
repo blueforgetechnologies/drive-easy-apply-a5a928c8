@@ -1408,7 +1408,7 @@ export default function MaintenanceTab() {
                                 <img 
                                   src={oilChangeIcon} 
                                   alt="Oil" 
-                                  className="h-4 w-4 animate-pulse"
+                                  className="h-4 w-4 animate-pulse mix-blend-multiply"
                                   style={{
                                     filter: 'brightness(1.4) saturate(1.8) drop-shadow(0 0 4px rgba(251, 191, 36, 1)) drop-shadow(0 0 8px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6))'
                                   }}
