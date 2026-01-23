@@ -147,6 +147,38 @@ All colors MUST be HSL.
 
 @layer components {
   /* ========== GLOSSY MODERN DESIGN SYSTEM ========== */
+
+  /* Mapbox popup (vehicle markers) - remove the square/grey wrapper so only the rounded card shows */
+  .vehicle-popup.mapboxgl-popup {
+    background: transparent !important;
+  }
+
+  .vehicle-popup .mapboxgl-popup-content {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .vehicle-popup .mapboxgl-popup-tip {
+    display: none !important;
+  }
+
+  .vehicle-popup .mapboxgl-popup-close-button {
+    width: 28px;
+    height: 28px;
+    margin: 8px;
+    border-radius: 9999px;
+    background: hsl(var(--primary-foreground) / 0.14);
+    color: hsl(var(--primary-foreground) / 0.92);
+    font-size: 18px;
+    line-height: 28px;
+  }
+
+  .vehicle-popup .mapboxgl-popup-close-button:hover {
+    background: hsl(var(--primary-foreground) / 0.2);
+  }
   
   /* Glossy Button Variants */
   .btn-glossy-primary {
