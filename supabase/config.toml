@@ -233,3 +233,6 @@ verify_jwt = true
 
 [functions.backfill-posted-expires]
 verify_jwt = true
+
+[functions.mark-overdue-invoices]
+verify_jwt = false

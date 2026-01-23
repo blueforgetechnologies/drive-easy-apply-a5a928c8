@@ -2254,6 +2254,7 @@ export type Database = {
           advance_issued: number | null
           amount_paid: number | null
           balance_due: number | null
+          billing_method: string | null
           billing_party: string | null
           created_at: string | null
           customer_address: string | null
@@ -2287,6 +2288,7 @@ export type Database = {
           advance_issued?: number | null
           amount_paid?: number | null
           balance_due?: number | null
+          billing_method?: string | null
           billing_party?: string | null
           created_at?: string | null
           customer_address?: string | null
@@ -2320,6 +2322,7 @@ export type Database = {
           advance_issued?: number | null
           amount_paid?: number | null
           balance_due?: number | null
+          billing_method?: string | null
           billing_party?: string | null
           created_at?: string | null
           customer_address?: string | null
