@@ -37,6 +37,7 @@ interface Invoice {
   otr_submitted_at: string | null;
   otr_invoice_id: string | null;
   billing_method: 'unknown' | 'otr' | 'direct_email';
+  customers?: { mc_number: string | null } | null;
 }
 
 interface Customer {
@@ -181,10 +182,10 @@ export default function InvoicesTab() {
         setPendingLoads((data as PendingLoad[]) || []);
         setInvoices([]);
       } else {
-        // Load regular invoices
+        // Load regular invoices with customer MC number
         let query = supabase
           .from("invoices" as any)
-          .select("*")
+          .select("*, customers(mc_number)")
           .eq("status", filter)
           .order("created_at", { ascending: false });
         
@@ -863,12 +864,27 @@ export default function InvoicesTab() {
                           {load.invoice_number || load.load_number}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div>{load.customers?.name || "—"}</div>
-                            {load.customers?.mc_number && (
-                              <div className="text-xs text-muted-foreground">MC-{load.customers.mc_number}</div>
-                            )}
-                          </div>
+                          {load.customer_id ? (
+                            <div
+                              className="cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/customer/${load.customer_id}`);
+                              }}
+                            >
+                              <div className="text-primary">{load.customers?.name || "—"}</div>
+                              {load.customers?.mc_number && (
+                                <div className="text-xs text-muted-foreground">MC-{load.customers.mc_number}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <div>{load.customers?.name || "—"}</div>
+                              {load.customers?.mc_number && (
+                                <div className="text-xs text-muted-foreground">MC-{load.customers.mc_number}</div>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {load.customers?.factoring_approval === 'approved' ? (
@@ -992,7 +1008,24 @@ export default function InvoicesTab() {
                   return (
                     <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
                       <TableCell className="font-medium text-primary">{invoice.invoice_number}</TableCell>
-                      <TableCell>{invoice.customer_name || "—"}</TableCell>
+                      <TableCell>
+                        {invoice.customer_id ? (
+                          <div
+                            className="cursor-pointer hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/dashboard/customer/${invoice.customer_id}`);
+                            }}
+                          >
+                            <div className="text-primary">{invoice.customer_name || "—"}</div>
+                            {invoice.customers?.mc_number && (
+                              <div className="text-xs text-muted-foreground">MC-{invoice.customers.mc_number}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>{invoice.customer_name || "—"}</div>
+                        )}
+                      </TableCell>
                       <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
                       <TableCell>{invoice.billing_party || "—"}</TableCell>
                       <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "M/d/yyyy") : "—"}</TableCell>
