@@ -371,13 +371,11 @@ export function LoadHunterFilters({
         </Button>
       </div>
 
-      {/* Dispatcher Scorecard Button - Standalone */}
+      {/* Dispatcher Scorecard Button - Standalone with beautiful cyan glow when active */}
       <Button
         variant="ghost"
         size="sm"
-        className={`${btnBase} rounded-full mr-2 ${
-          loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
-        }`}
+        className={`${btnBase} rounded-full mr-2 btn-glossy-cyan text-white`}
         onClick={onOpenDispatcherScorecard}
       >
         <Gauge className={iconSize} />
