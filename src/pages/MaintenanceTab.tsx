@@ -1760,7 +1760,7 @@ export default function MaintenanceTab() {
                                       : 'hover:scale-[1.02] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),0_8px_20px_rgba(0,0,0,0.2)] hover:z-20'
                                     }
                                     ${!isDragging && 'hover:-translate-y-0.5'}
-                                    ${isJustDropped ? 'z-30 scale-[1.02] ring-[3px] ring-white shadow-[0_0_12px_2px_rgba(255,255,255,0.9),0_0_24px_4px_rgba(255,255,255,0.6)]' : ''}
+                                    ${isJustDropped ? 'z-30 scale-[1.02] ring-[3px] ring-red-500 shadow-[0_0_15px_3px_rgba(239,68,68,1),0_0_30px_8px_rgba(239,68,68,0.8),0_0_50px_15px_rgba(239,68,68,0.5)] animate-pulse' : ''}
                                   `}
                                   style={{ 
                                     background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
