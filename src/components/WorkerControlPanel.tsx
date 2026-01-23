@@ -99,19 +99,24 @@ export function WorkerControlPanel() {
 
   // Cleanup dead workers (offline > 24 hours)
   const cleanupDeadWorkers = async () => {
+    console.log("Cleaning up dead workers...");
     setCleaningUp(true);
     try {
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      console.log("Cutoff time:", cutoff);
       
       const { data: deadWorkers, error: selectError } = await supabase
         .from("worker_heartbeats")
         .select("id")
         .lt("last_heartbeat", cutoff);
       
+      console.log("Dead workers found:", deadWorkers, "Error:", selectError);
+      
       if (selectError) throw selectError;
       
       if (!deadWorkers || deadWorkers.length === 0) {
         toast.info("No dead workers to clean up");
+        setCleaningUp(false);
         return;
       }
       
@@ -119,6 +124,8 @@ export function WorkerControlPanel() {
         .from("worker_heartbeats")
         .delete()
         .lt("last_heartbeat", cutoff);
+      
+      console.log("Delete result:", deleteError);
       
       if (deleteError) throw deleteError;
       
