@@ -1243,7 +1243,7 @@ export default function MaintenanceTab() {
                                 flex-shrink-0 transition-all duration-200
                                 ${isDragging ? 'opacity-20' : 'opacity-50 group-hover:opacity-100'}
                               `}>
-                                <GripVertical className={`h-4 w-4 ${isLight ? 'text-gray-700' : 'text-white/80'}`} />
+                                <GripVertical className="h-4 w-4 text-gray-800" />
                               </div>
                               
                               {/* Quick move buttons */}
@@ -1256,7 +1256,7 @@ export default function MaintenanceTab() {
                                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'up'); }}
                                   disabled={index === 0}
                                   className={`p-0.5 rounded transition-all disabled:opacity-20 
-                                    ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                    text-gray-800 hover:bg-black/10
                                     active:scale-75
                                   `}
                                   title="Move up"
@@ -1267,7 +1267,7 @@ export default function MaintenanceTab() {
                                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMoveRepair(vehicleId, repair.id, 'down'); }}
                                   disabled={index === vehicleRepairs.length - 1}
                                   className={`p-0.5 rounded transition-all disabled:opacity-20 
-                                    ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                    text-gray-800 hover:bg-black/10
                                     active:scale-75
                                   `}
                                   title="Move down"
@@ -1279,7 +1279,7 @@ export default function MaintenanceTab() {
                               {/* Description - wrap text */}
                               <div className="flex-1 min-w-0">
                                 <p 
-                                  className={`text-[11px] font-medium leading-tight drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
+                                  className="text-[11px] font-medium leading-tight text-gray-900"
                                   style={{ wordBreak: 'break-word' }}
                                 >
                                   {repair.description}
