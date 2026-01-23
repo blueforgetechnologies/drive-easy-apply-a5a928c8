@@ -68,6 +68,7 @@ export default function MaintenanceTab() {
   const [repairs, setRepairs] = useState<RepairItem[]>([]);
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [newRepair, setNewRepair] = useState({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
+  const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState<string | null>(null);
   
   // Edit repair state
   const [editRepairDialogOpen, setEditRepairDialogOpen] = useState(false);
@@ -719,244 +720,309 @@ export default function MaintenanceTab() {
 
         {/* Records Tab */}
         <TabsContent value="records" className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search maintenance records..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Add Record</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add Maintenance Record</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Vehicle *</Label>
-                      <Select value={newRecord.asset_id} onValueChange={(value) => setNewRecord({ ...newRecord, asset_id: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select vehicle" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vehicles.map((vehicle) => (
-                            <SelectItem key={vehicle.id} value={vehicle.id}>
-                              {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label>Type *</Label>
-                      <Select value={newRecord.maintenance_type} onValueChange={(value) => setNewRecord({ ...newRecord, maintenance_type: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PM">PM Service</SelectItem>
-                          <SelectItem value="repair">Repair</SelectItem>
-                          <SelectItem value="inspection">Inspection</SelectItem>
-                          <SelectItem value="tire">Tire</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Service Date *</Label>
-                      <Input
-                        type="date"
-                        value={newRecord.service_date}
-                        onChange={(e) => setNewRecord({ ...newRecord, service_date: e.target.value })}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label>Odometer</Label>
-                      <Input
-                        type="number"
-                        value={newRecord.odometer}
-                        onChange={(e) => setNewRecord({ ...newRecord, odometer: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Description *</Label>
-                    <Textarea
-                      value={newRecord.description}
-                      onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
-                      placeholder="Describe the maintenance work..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={newRecord.cost}
-                        onChange={(e) => setNewRecord({ ...newRecord, cost: e.target.value })}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label>Downtime (hours)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={newRecord.downtime_hours}
-                        onChange={(e) => setNewRecord({ ...newRecord, downtime_hours: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Vendor</Label>
-                      <Input
-                        value={newRecord.vendor}
-                        onChange={(e) => setNewRecord({ ...newRecord, vendor: e.target.value })}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label>Invoice Number</Label>
-                      <Input
-                        value={newRecord.invoice_number}
-                        onChange={(e) => setNewRecord({ ...newRecord, invoice_number: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Next Service Date</Label>
-                      <Input
-                        type="date"
-                        value={newRecord.next_service_date}
-                        onChange={(e) => setNewRecord({ ...newRecord, next_service_date: e.target.value })}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label>Next Service Odometer</Label>
-                      <Input
-                        type="number"
-                        value={newRecord.next_service_odometer}
-                        onChange={(e) => setNewRecord({ ...newRecord, next_service_odometer: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Performed By</Label>
-                    <Input
-                      value={newRecord.performed_by}
-                      onChange={(e) => setNewRecord({ ...newRecord, performed_by: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Notes</Label>
-                    <Textarea
-                      value={newRecord.notes}
-                      onChange={(e) => setNewRecord({ ...newRecord, notes: e.target.value })}
-                    />
-                  </div>
+          <div className="flex gap-4 h-[calc(100vh-220px)]">
+            {/* Vehicle sidebar */}
+            <div className="w-48 flex-shrink-0">
+              <div className="bg-gradient-to-b from-slate-200 to-slate-300/80 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-400/40 overflow-hidden h-full">
+                <div className="bg-gradient-to-b from-gray-200 via-gray-300 to-gray-400 px-3 py-2.5 border-b border-gray-400/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-3px_6px_rgba(0,0,0,0.2)]">
+                  <span className="text-slate-700 text-xs font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,1)]">
+                    TRUCK IDs
+                  </span>
                 </div>
-                <Button onClick={handleAddRecord} className="w-full">Add Record</Button>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="space-y-3">
-            {filteredRecords.map((record) => (
-              <Card key={record.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">
-                        {record.vehicles?.vehicle_number} - {record.maintenance_type}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {record.vehicles?.make} {record.vehicles?.model}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(record.status)}>
-                        {record.status}
-                      </Badge>
-                      {record.cost && (
-                        <Badge variant="outline">${record.cost.toLocaleString()}</Badge>
-                      )}
-                    </div>
+                <ScrollArea className="h-[calc(100%-44px)]">
+                  <div className="p-1.5 space-y-1">
+                    {/* All trucks option */}
+                    <button
+                      onClick={() => setSelectedRecordVehicleId(null)}
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                        selectedRecordVehicleId === null
+                          ? 'btn-glossy-primary text-white'
+                          : 'btn-glossy text-gray-700 hover:opacity-90'
+                      }`}
+                    >
+                      All Trucks
+                      <span className={`ml-2 ${selectedRecordVehicleId === null ? 'badge-inset-primary' : 'badge-inset-soft-blue'} text-[10px]`}>
+                        {records.length}
+                      </span>
+                    </button>
+                    
+                    {/* Individual trucks with records */}
+                    {(() => {
+                      const vehiclesWithRecords = [...new Set(records.map(r => r.asset_id))];
+                      return vehiclesWithRecords.map(vehicleId => {
+                        const vehicle = vehicles.find(v => v.id === vehicleId);
+                        const recordCount = records.filter(r => r.asset_id === vehicleId).length;
+                        if (!vehicle) return null;
+                        return (
+                          <button
+                            key={vehicleId}
+                            onClick={() => setSelectedRecordVehicleId(vehicleId)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                              selectedRecordVehicleId === vehicleId
+                                ? 'btn-glossy-success text-white'
+                                : 'btn-glossy text-gray-700 hover:opacity-90'
+                            }`}
+                          >
+                            #{vehicle.vehicle_number}
+                            <span className={`ml-2 ${selectedRecordVehicleId === vehicleId ? 'badge-inset-success' : 'badge-inset-soft-green'} text-[10px]`}>
+                              {recordCount}
+                            </span>
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm">{record.description}</p>
+                </ScrollArea>
+              </div>
+            </div>
+
+            {/* Records content */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search maintenance records..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button><Plus className="mr-2 h-4 w-4" /> Add Record</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add Maintenance Record</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Vehicle *</Label>
+                          <Select value={newRecord.asset_id} onValueChange={(value) => setNewRecord({ ...newRecord, asset_id: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select vehicle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vehicles.map((vehicle) => (
+                                <SelectItem key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.vehicle_number} - {vehicle.make} {vehicle.model}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <Label>Type *</Label>
+                          <Select value={newRecord.maintenance_type} onValueChange={(value) => setNewRecord({ ...newRecord, maintenance_type: value })}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PM">PM Service</SelectItem>
+                              <SelectItem value="Repair">Repair</SelectItem>
+                              <SelectItem value="inspection">Inspection</SelectItem>
+                              <SelectItem value="tire">Tire</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Service Date *</Label>
+                          <Input
+                            type="date"
+                            value={newRecord.service_date}
+                            onChange={(e) => setNewRecord({ ...newRecord, service_date: e.target.value })}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Odometer</Label>
+                          <Input
+                            type="number"
+                            value={newRecord.odometer}
+                            onChange={(e) => setNewRecord({ ...newRecord, odometer: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Description *</Label>
+                        <Textarea
+                          value={newRecord.description}
+                          onChange={(e) => setNewRecord({ ...newRecord, description: e.target.value })}
+                          placeholder="Describe the maintenance performed..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Cost</Label>
+                          <Input
+                            type="number"
+                            value={newRecord.cost}
+                            onChange={(e) => setNewRecord({ ...newRecord, cost: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Vendor</Label>
+                          <Input
+                            value={newRecord.vendor}
+                            onChange={(e) => setNewRecord({ ...newRecord, vendor: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Invoice Number</Label>
+                          <Input
+                            value={newRecord.invoice_number}
+                            onChange={(e) => setNewRecord({ ...newRecord, invoice_number: e.target.value })}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Downtime Hours</Label>
+                          <Input
+                            type="number"
+                            value={newRecord.downtime_hours}
+                            onChange={(e) => setNewRecord({ ...newRecord, downtime_hours: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Performed By</Label>
+                          <Input
+                            value={newRecord.performed_by}
+                            onChange={(e) => setNewRecord({ ...newRecord, performed_by: e.target.value })}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Status</Label>
+                          <Select value={newRecord.status} onValueChange={(value) => setNewRecord({ ...newRecord, status: value })}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="scheduled">Scheduled</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Next Service Date</Label>
+                          <Input
+                            type="date"
+                            value={newRecord.next_service_date}
+                            onChange={(e) => setNewRecord({ ...newRecord, next_service_date: e.target.value })}
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label>Next Service Odometer</Label>
+                          <Input
+                            type="number"
+                            value={newRecord.next_service_odometer}
+                            onChange={(e) => setNewRecord({ ...newRecord, next_service_odometer: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Notes</Label>
+                        <Textarea
+                          value={newRecord.notes}
+                          onChange={(e) => setNewRecord({ ...newRecord, notes: e.target.value })}
+                          placeholder="Additional notes..."
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={handleAddRecord} className="w-full">Add Record</Button>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Records table */}
+              <ScrollArea className="flex-1">
+                <div className="bg-gradient-to-b from-slate-100 to-slate-200/80 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-300/60 overflow-hidden">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px] gap-2 px-4 py-3 bg-gradient-to-b from-gray-600 to-gray-700 text-white text-xs font-bold uppercase tracking-wider">
+                    <div>Repair</div>
+                    <div>Notes</div>
+                    <div>Marked Completed By</div>
+                    <div>Date</div>
+                    <div>Time</div>
+                  </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Service Date</p>
-                      <p className="font-medium flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(record.service_date), "MM/dd/yyyy")}
-                      </p>
-                    </div>
-                    
-                    {record.odometer && (
-                      <div>
-                        <p className="text-muted-foreground">Odometer</p>
-                        <p className="font-medium">{record.odometer.toLocaleString()} mi</p>
-                      </div>
-                    )}
-                    
-                    {record.vendor && (
-                      <div>
-                        <p className="text-muted-foreground">Vendor</p>
-                        <p className="font-medium">{record.vendor}</p>
-                      </div>
-                    )}
-                    
-                    {record.downtime_hours && (
-                      <div>
-                        <p className="text-muted-foreground">Downtime</p>
-                        <p className="font-medium">{record.downtime_hours} hrs</p>
-                      </div>
-                    )}
+                  {/* Table rows */}
+                  <div className="divide-y divide-slate-300/60">
+                    {filteredRecords
+                      .filter(record => selectedRecordVehicleId === null || record.asset_id === selectedRecordVehicleId)
+                      .map((record) => {
+                        // Parse completion info from notes
+                        const notesMatch = record.notes?.match(/Completed from Repairs Needed on (.+?) at (.+?) by (.+?)(?:\n|$)/);
+                        const completionDate = notesMatch ? notesMatch[1] : format(new Date(record.service_date), "MMM d, yyyy");
+                        const completionTime = notesMatch ? notesMatch[2] : "-";
+                        const completedBy = record.performed_by || (notesMatch ? notesMatch[3] : "-");
+                        
+                        // Extract original notes if present
+                        const originalNotesMatch = record.notes?.match(/Original Notes: (.+)/s);
+                        const displayNotes = originalNotesMatch ? originalNotesMatch[1] : (notesMatch ? "" : record.notes || "");
+                        
+                        return (
+                          <div 
+                            key={record.id} 
+                            className="grid grid-cols-[1fr_2fr_1.5fr_120px_100px] gap-2 px-4 py-3 hover:bg-slate-200/50 transition-colors items-start"
+                          >
+                            <div>
+                              <div className="font-semibold text-sm text-slate-800">
+                                {record.description}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                #{record.vehicles?.vehicle_number} • {record.maintenance_type}
+                              </div>
+                            </div>
+                            <div className="text-sm text-slate-600 line-clamp-2">
+                              {displayNotes || <span className="text-slate-400 italic">No notes</span>}
+                            </div>
+                            <div className="text-sm text-slate-700 font-medium">
+                              {completedBy}
+                            </div>
+                            <div className="text-sm text-slate-600">
+                              {completionDate}
+                            </div>
+                            <div className="text-sm text-slate-600">
+                              {completionTime}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
-
-                  {record.next_service_date && (
-                    <div className="text-sm">
-                      <p className="text-muted-foreground">
-                        Next service due: {format(new Date(record.next_service_date), "MM/dd/yyyy")}
-                        {record.next_service_odometer && ` at ${record.next_service_odometer.toLocaleString()} mi`}
-                      </p>
+                  
+                  {filteredRecords.filter(record => selectedRecordVehicleId === null || record.asset_id === selectedRecordVehicleId).length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No maintenance records found
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredRecords.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No maintenance records found
+                </div>
+              </ScrollArea>
             </div>
-          )}
+          </div>
         </TabsContent>
 
         {/* Fault Codes Tab */}
