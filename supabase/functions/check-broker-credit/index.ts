@@ -1,7 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
-import { OTR_API_BASE_URL, decrypt } from "../_shared/otrClient.ts";
+import { 
+  OTR_API_BASE_URL, 
+  decrypt, 
+  maskSubscriptionKey,
+  isTokenAuthEnabled,
+  getOtrHeaders,
+  getOtrHeadersWithToken,
+  getOtrToken,
+} from "../_shared/otrClient.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,10 +27,11 @@ interface OtrBrokerCheckResponse {
 }
 
 // Check broker credit using OTR Solutions API
-// Per OTR: Only subscription key header required, no OAuth
+// Endpoint: GET {BASE_URL}/broker-check/{brokerMc}
 async function checkWithOtr(
   mcNumber: string, 
-  subscriptionKey: string
+  subscriptionKey: string,
+  accessToken?: string  // Optional: only used if token auth is enabled
 ): Promise<{
   success: boolean;
   approval_status?: string;
@@ -33,24 +42,25 @@ async function checkWithOtr(
 }> {
   try {
     const cleanMc = mcNumber.replace(/^MC-?/i, '').trim();
-    console.log(`[check-broker-credit] Checking OTR for MC: ${cleanMc}`);
-    console.log(`[check-broker-credit] Endpoint: GET ${OTR_API_BASE_URL}/broker-check/${cleanMc}`);
+    const requestUrl = `${OTR_API_BASE_URL}/broker-check/${cleanMc}`;
     
-    const response = await fetch(
-      `${OTR_API_BASE_URL}/broker-check/${cleanMc}`,
-      { 
-        method: 'GET',
-        headers: { 
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'ocp-apim-subscription-key': subscriptionKey,
-        } 
-      }
-    );
+    console.log(`[check-broker-credit] GET ${requestUrl}`);
+    console.log(`[check-broker-credit] Subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
+    console.log(`[check-broker-credit] Token auth enabled: ${isTokenAuthEnabled()}`);
+    
+    // Use token auth headers if enabled and token provided
+    const headers = accessToken && isTokenAuthEnabled() 
+      ? getOtrHeadersWithToken(subscriptionKey, accessToken)
+      : getOtrHeaders(subscriptionKey);
+    
+    const response = await fetch(requestUrl, { 
+      method: 'GET',
+      headers,
+    });
 
-    console.log(`[check-broker-credit] OTR API response status: ${response.status}`);
+    console.log(`[check-broker-credit] Response status: ${response.status}`);
     const responseText = await response.text();
-    console.log(`[check-broker-credit] OTR API response body: ${responseText}`);
+    console.log(`[check-broker-credit] Response body: ${responseText}`);
 
     let data: OtrBrokerCheckResponse;
     try {
@@ -163,14 +173,22 @@ async function checkWithFmcsa(mcNumber: string): Promise<{
 }
 
 // Get OTR subscription key from secrets or tenant integrations
-async function getOtrSubscriptionKey(adminClient: ReturnType<typeof getServiceClient>, tenantId: string): Promise<string | null> {
+async function getOtrSubscriptionKey(adminClient: ReturnType<typeof getServiceClient>, tenantId: string): Promise<{
+  subscriptionKey: string;
+  username?: string;
+  password?: string;
+} | null> {
   try {
     // First try global secret
     const subscriptionKey = Deno.env.get('OTR_API_KEY');
     
     if (subscriptionKey) {
-      console.log('[check-broker-credit] Using global OTR subscription key');
-      return subscriptionKey;
+      console.log(`[check-broker-credit] Using global OTR subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
+      return { 
+        subscriptionKey,
+        username: Deno.env.get('OTR_USERNAME'),
+        password: Deno.env.get('OTR_PASSWORD'),
+      };
     }
 
     // Then try tenant-specific integration
@@ -190,8 +208,12 @@ async function getOtrSubscriptionKey(adminClient: ReturnType<typeof getServiceCl
           const decrypted = await decrypt(integrationData.encrypted_credentials, masterKey);
           const creds = JSON.parse(decrypted);
           if (creds.api_key) {
-            console.log('[check-broker-credit] Using tenant OTR subscription key');
-            return creds.api_key;
+            console.log(`[check-broker-credit] Using tenant OTR subscription key: ${maskSubscriptionKey(creds.api_key)}`);
+            return { 
+              subscriptionKey: creds.api_key,
+              username: creds.username,
+              password: creds.password,
+            };
           }
         } catch (e) {
           console.error('[check-broker-credit] Failed to decrypt OTR credentials:', e);
@@ -368,8 +390,8 @@ serve(async (req) => {
       );
     }
 
-    // Get OTR subscription key
-    const subscriptionKey = await getOtrSubscriptionKey(adminClient, tenant_id);
+    // Get OTR credentials
+    const credentials = await getOtrSubscriptionKey(adminClient, tenant_id);
     let otrResult: { 
       success: boolean; 
       approval_status?: string; 
@@ -379,10 +401,28 @@ serve(async (req) => {
       error?: string;
     } | null = null;
     
-    if (subscriptionKey) {
-      console.log('[check-broker-credit] OTR subscription key found, checking broker...');
-      // Direct API call - no OAuth needed per OTR clarification
-      otrResult = await checkWithOtr(mcToCheck, subscriptionKey);
+    if (credentials) {
+      console.log('[check-broker-credit] OTR credentials found, checking broker...');
+      
+      let accessToken: string | undefined;
+      
+      // Only attempt token auth if explicitly enabled via env flag
+      if (isTokenAuthEnabled() && credentials.username && credentials.password) {
+        console.log('[check-broker-credit] Token auth enabled, getting token...');
+        const tokenResult = await getOtrToken(
+          credentials.subscriptionKey,
+          credentials.username,
+          credentials.password
+        );
+        if (tokenResult.success) {
+          accessToken = tokenResult.access_token;
+        } else {
+          console.warn('[check-broker-credit] Token auth failed, falling back to subscription-key-only:', tokenResult.error);
+        }
+      }
+      
+      // Call OTR API (with or without token)
+      otrResult = await checkWithOtr(mcToCheck, credentials.subscriptionKey, accessToken);
     } else {
       console.log('[check-broker-credit] No OTR subscription key configured');
     }
