@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Wrench, Calendar, AlertTriangle, Truck, RefreshCw, ExternalLink, ChevronDown, ChevronRight, ClipboardList, Trash2, GripVertical } from "lucide-react";
 import { format } from "date-fns";
 import checkEngineIcon from '@/assets/check-engine-icon.png';
 import { getDTCInfo, getDTCLookupUrl, getSeverityColor, parseDTCCode } from "@/lib/dtc-lookup";
@@ -38,6 +38,18 @@ interface VehicleWithFaults {
   provider_status: string | null;
 }
 
+interface RepairItem {
+  id: string;
+  vehicle_id: string;
+  description: string;
+  urgency: number;
+  color: string | null;
+  status: string;
+  notes: string | null;
+  sort_order: number;
+  vehicles?: { vehicle_number: string; make: string | null; model: string | null };
+}
+
 export default function MaintenanceTab() {
   const [searchParams] = useSearchParams();
   const vehicleIdFromUrl = searchParams.get('vehicle');
@@ -51,6 +63,9 @@ export default function MaintenanceTab() {
   const [activeTab, setActiveTab] = useState(vehicleIdFromUrl ? "faults" : "records");
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleWithFaults | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [repairs, setRepairs] = useState<RepairItem[]>([]);
+  const [repairDialogOpen, setRepairDialogOpen] = useState(false);
+  const [newRepair, setNewRepair] = useState({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
   const [newRecord, setNewRecord] = useState({
     asset_id: "",
     maintenance_type: "PM",
@@ -73,6 +88,7 @@ export default function MaintenanceTab() {
     loadMaintenanceRecords();
     loadVehicles();
     loadAllVehiclesWithFaults();
+    loadRepairs();
   }, [isReady, tenantId]);
 
   // Auto-select vehicle from URL parameter
@@ -129,6 +145,74 @@ export default function MaintenanceTab() {
       setAllVehicles((data as unknown as VehicleWithFaults[]) || []);
     } catch (error: any) {
       console.error("Failed to load vehicles with faults:", error);
+    }
+  };
+
+  const loadRepairs = async () => {
+    if (!isReady) return;
+    try {
+      const { data, error } = await query("repairs_needed")
+        .select("*, vehicles(vehicle_number, make, model)")
+        .eq("status", "pending")
+        .order("urgency", { ascending: true })
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      setRepairs((data as unknown as RepairItem[]) || []);
+    } catch (error: any) {
+      console.error("Failed to load repairs:", error);
+    }
+  };
+
+  const handleAddRepair = async () => {
+    if (!tenantId || !newRepair.vehicle_id || !newRepair.description) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    try {
+      const { error } = await query("repairs_needed").insert({
+        tenant_id: tenantId,
+        vehicle_id: newRepair.vehicle_id,
+        description: newRepair.description,
+        urgency: newRepair.urgency,
+        color: newRepair.color,
+        status: "pending",
+        sort_order: repairs.length
+      });
+      if (error) throw error;
+      toast.success("Repair added");
+      setRepairDialogOpen(false);
+      setNewRepair({ vehicle_id: "", description: "", urgency: 3, color: "#fbbf24" });
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to add repair");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteRepair = async (id: string) => {
+    try {
+      const { error } = await query("repairs_needed").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Repair removed");
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to delete repair");
+      console.error(error);
+    }
+  };
+
+  const handleCompleteRepair = async (id: string) => {
+    try {
+      const { error } = await query("repairs_needed")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Repair marked complete");
+      loadRepairs();
+    } catch (error: any) {
+      toast.error("Failed to update repair");
+      console.error(error);
     }
   };
 
@@ -283,6 +367,22 @@ export default function MaintenanceTab() {
         >
           <Calendar className="h-4 w-4" />
           Records
+        </button>
+        <button
+          onClick={() => setActiveTab('repairs')}
+          className={`h-[32px] px-4 text-[13px] font-medium rounded-none border-0 flex items-center gap-2 transition-all ${
+            activeTab === 'repairs' 
+              ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-md' 
+              : 'btn-glossy text-gray-700 hover:opacity-90'
+          }`}
+        >
+          <ClipboardList className="h-4 w-4" />
+          Repairs Needed
+          {repairs.length > 0 && (
+            <span className={`${activeTab === 'repairs' ? 'bg-amber-800/40 text-white' : 'bg-amber-100 text-amber-700'} text-[10px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold`}>
+              {repairs.length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('faults')}
@@ -859,6 +959,152 @@ export default function MaintenanceTab() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        {/* Repairs Needed Tab */}
+        <TabsContent value="repairs" className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-amber-600" />
+              <span className="text-sm text-muted-foreground">
+                {repairs.length} pending repair{repairs.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <Dialog open={repairDialogOpen} onOpenChange={setRepairDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white border-0">
+                  <Plus className="mr-2 h-4 w-4" /> Add Repair
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Repair Needed</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Vehicle *</Label>
+                    <Select value={newRepair.vehicle_id} onValueChange={(v) => setNewRepair({ ...newRepair, vehicle_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vehicle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicles.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.vehicle_number} - {v.make} {v.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Description *</Label>
+                    <Textarea
+                      value={newRepair.description}
+                      onChange={(e) => setNewRepair({ ...newRepair, description: e.target.value })}
+                      placeholder="e.g., DEF Fluid Filter, Windshield Crack..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Urgency</Label>
+                      <Select value={String(newRepair.urgency)} onValueChange={(v) => setNewRepair({ ...newRepair, urgency: Number(v) })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">🔴 Critical</SelectItem>
+                          <SelectItem value="2">🟠 High</SelectItem>
+                          <SelectItem value="3">🟡 Medium</SelectItem>
+                          <SelectItem value="4">🟢 Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Color</Label>
+                      <div className="flex gap-2 mt-1">
+                        {['#ef4444', '#f97316', '#fbbf24', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setNewRepair({ ...newRepair, color: c })}
+                            className={`w-7 h-7 rounded-full border-2 ${newRepair.color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Button onClick={handleAddRepair} className="w-full mt-4 bg-gradient-to-b from-amber-400 to-amber-600 text-white border-0">
+                  Add Repair
+                </Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Repairs grid by vehicle */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Group repairs by vehicle */}
+            {Array.from(new Set(repairs.map(r => r.vehicle_id))).map(vehicleId => {
+              const vehicleRepairs = repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.urgency - b.urgency);
+              const vehicle = vehicleRepairs[0]?.vehicles;
+              return (
+                <Card key={vehicleId} className="overflow-hidden">
+                  <CardHeader className="py-2 px-3 bg-gradient-to-b from-gray-800 to-gray-900">
+                    <CardTitle className="text-white text-sm font-bold flex items-center gap-2">
+                      <Truck className="h-4 w-4" />
+                      Truck: {vehicle?.vehicle_number || 'Unknown'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-gray-100">
+                      {vehicleRepairs.map((repair) => (
+                        <div
+                          key={repair.id}
+                          className="px-2 py-1.5 flex items-start gap-2 group hover:bg-gray-50 transition-colors"
+                          style={{ borderLeft: `4px solid ${repair.color || '#fbbf24'}` }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate" style={{ color: repair.color || undefined }}>
+                              {repair.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleCompleteRepair(repair.id)}
+                              className="p-1 rounded hover:bg-green-100 text-green-600"
+                              title="Mark complete"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRepair(repair.id)}
+                              className="p-1 rounded hover:bg-red-100 text-red-600"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {repairs.length === 0 && (
+            <div className="text-center py-16">
+              <div className="p-4 rounded-2xl bg-gradient-to-b from-amber-50 to-amber-100 inline-block mb-4 shadow-sm">
+                <ClipboardList className="h-12 w-12 text-amber-400" />
+              </div>
+              <p className="text-gray-500 font-medium">No repairs needed</p>
+              <p className="text-sm text-muted-foreground mt-1">Click "Add Repair" to track repairs for your vehicles</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
