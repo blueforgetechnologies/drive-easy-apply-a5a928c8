@@ -1399,28 +1399,48 @@ export default function MaintenanceTab() {
                           
                           {/* Status indicators */}
                           <div className="flex items-center gap-1.5">
-                            {/* Oil change indicator - glowing dashboard light with SVG */}
+                            {/* Oil change indicator - glowing dashboard light with SVG oil can */}
                             {hasOilChange && (
                               <div 
                                 className="relative" 
                                 title="Oil Change Needed"
                               >
                                 <svg 
-                                  viewBox="0 0 24 24" 
-                                  className="h-4 w-4 animate-pulse"
+                                  viewBox="0 0 100 80" 
+                                  className="h-5 w-6 animate-pulse"
                                   style={{
-                                    filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 1)) drop-shadow(0 0 8px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6))'
+                                    filter: 'drop-shadow(0 0 3px rgba(251, 191, 36, 1)) drop-shadow(0 0 6px rgba(251, 146, 60, 0.9)) drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))'
                                   }}
                                 >
-                                  {/* Oil drop shape */}
+                                  {/* Oil can body - tilted */}
                                   <path 
-                                    d="M12 2C12 2 6 10 6 14.5C6 17.5376 8.68629 20 12 20C15.3137 20 18 17.5376 18 14.5C18 10 12 2 12 2Z" 
-                                    fill="#f59e0b"
-                                    stroke="#ea580c"
-                                    strokeWidth="0.5"
+                                    d="M25 25 L70 15 Q78 13 80 20 L85 45 Q87 55 78 58 L30 65 Q20 67 18 58 L15 35 Q13 25 25 25 Z" 
+                                    fill="#ef4444"
+                                    stroke="#1f2937"
+                                    strokeWidth="3"
                                   />
-                                  {/* Inner highlight */}
-                                  <ellipse cx="10" cy="13" rx="1.5" ry="2" fill="rgba(255,255,255,0.4)" />
+                                  {/* Spout */}
+                                  <path 
+                                    d="M80 20 L92 12 L95 18 L85 28" 
+                                    fill="#ef4444"
+                                    stroke="#1f2937"
+                                    strokeWidth="3"
+                                    strokeLinejoin="round"
+                                  />
+                                  {/* Handle on top */}
+                                  <rect 
+                                    x="42" y="8" width="8" height="14" rx="1"
+                                    fill="#374151"
+                                    stroke="#1f2937"
+                                    strokeWidth="2"
+                                  />
+                                  {/* Oil drop falling */}
+                                  <path 
+                                    d="M94 30 Q94 28 95 32 Q97 40 94 44 Q91 40 93 32 Q94 28 94 30 Z" 
+                                    fill="#f59e0b"
+                                    stroke="#1f2937"
+                                    strokeWidth="1.5"
+                                  />
                                 </svg>
                               </div>
                             )}
