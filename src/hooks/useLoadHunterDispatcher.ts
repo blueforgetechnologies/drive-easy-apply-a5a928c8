@@ -48,7 +48,8 @@ export function useLoadHunterDispatcher({
     };
   }, []);
 
-  const showAllTabEnabled = currentDispatcherInfo?.show_all_tab || showAllTabState;
+  // localStorage takes priority since the toggle in menu controls it directly
+  const showAllTabEnabled = showAllTabState;
 
   // Refresh my vehicle IDs
   const refreshMyVehicleIds = useCallback(async () => {
