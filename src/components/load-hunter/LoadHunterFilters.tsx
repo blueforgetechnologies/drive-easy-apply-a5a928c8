@@ -249,7 +249,7 @@ export function LoadHunterFilters({
           onClick={() => handleFilterChange('unreviewed')}
         >
           Unreviewed
-          <span className={`${activeFilter === 'unreviewed' ? 'badge-inset-danger' : 'badge-inset-soft-red'} text-[10px] h-5`}>{unreviewedCount}</span>
+          <span className={`${unreviewedCount > 0 ? (activeFilter === 'unreviewed' ? 'badge-inset-danger' : 'badge-inset-soft-red') : (activeFilter === 'unreviewed' ? (loadHunterTheme === 'aurora' ? 'badge-inset-aurora' : 'badge-inset-success') : 'badge-inset-soft-green')} text-[10px] h-5`}>{unreviewedCount}</span>
         </Button>
         
         {/* Sound Toggle */}
