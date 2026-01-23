@@ -414,15 +414,8 @@ export default function LoadHunterTab() {
   // When a hunt is enabled, it does a one-time 15-min backfill then only looks forward
   useEffect(() => {
     const searchLoadsForHunts = async () => {
-      console.log('🔍 Running cursor-based hunt matching. LoadEmails:', loadEmails.length, 'Hunt plans:', huntPlans.length);
-      
       const enabledHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
-      if (enabledHunts.length === 0) {
-        console.log('❌ No enabled hunt plans with initial match done');
-        return;
-      }
-      
-      console.log('✅ Found', enabledHunts.length, 'enabled hunt plans ready for matching');
+      if (enabledHunts.length === 0) return;
       
       // CURSOR-BASED: Only process loads AFTER each hunt's floor_load_id
       const candidateLoads = loadEmails.filter(email => {
@@ -436,12 +429,7 @@ export default function LoadHunterTab() {
         });
       });
       
-      console.log('📧 Candidate loads for matching (cursor-based):', candidateLoads.length);
-      
-      if (candidateLoads.length === 0) {
-        console.log('📭 No new loads past floor cursor');
-        return;
-      }
+      if (candidateLoads.length === 0) return;
       
       const newMatchedIds = new Set<string>();
       const newDistances = new Map<string, number>();
@@ -483,7 +471,6 @@ export default function LoadHunterTab() {
         
         if (matchingHunts.length > 0) {
           matchCount++;
-          console.log('✅ Match found:', email.load_id, '→', matchingHunts.length, 'hunt(s)');
           
           newMatchedIds.add(email.id);
           newHuntMap.set(email.id, matchingHunts[0].id);
@@ -513,22 +500,13 @@ export default function LoadHunterTab() {
       
       // Batch insert ONLY new matches (don't overwrite existing ones that may be skipped)
       if (allMatches.length > 0) {
-        console.log('💾 Batch saving', allMatches.length, 'matches');
-        const { error } = await supabase
+        await supabase
           .from('load_hunt_matches')
           .upsert(allMatches, { 
             onConflict: 'load_email_id,hunt_plan_id',
             ignoreDuplicates: true  // Don't overwrite existing matches (preserves skipped status)
           });
-        
-        if (error) {
-          console.error('❌ Error batch persisting matches:', error);
-        } else {
-          console.log('✅ Batch saved', allMatches.length, 'matches');
-        }
       }
-      
-      console.log('🎯 Matching complete:', matchCount, 'matched,', skippedCount, 'skipped (no location)');
       
       setMatchedLoadIds(prev => new Set([...prev, ...newMatchedIds]));
       setLoadDistances(prev => new Map([...prev, ...newDistances]));
@@ -542,7 +520,6 @@ export default function LoadHunterTab() {
     // Only trigger if we have enabled hunts with initialMatchDone
     const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
     if (readyHunts.length > 0 && loadEmails.length > 0) {
-      console.log('🚀 Triggering cursor-based hunt matching');
       searchLoadsForHunts();
     }
   }, [loadEmails.length, huntPlans]);
@@ -558,18 +535,12 @@ export default function LoadHunterTab() {
     const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
     if (readyHunts.length === 0) return;
     
-    console.log('⏰ Starting backup periodic re-match (every 60 seconds)');
-    
     const interval = setInterval(() => {
-      console.log('⏰ Backup re-match triggered');
       // Force re-matching by updating state (triggers the matching useEffect above)
       setLoadEmails(current => [...current]);
-    }, 60 * 1000); // Every 60 seconds (was 20s)
+    }, 60 * 1000); // Every 60 seconds
     
-    return () => {
-      console.log('⏰ Stopping backup periodic re-match');
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [huntPlans]);
 
   // REALTIME SUBSCRIPTION: Auto-refresh when new matches arrive
@@ -638,11 +609,6 @@ export default function LoadHunterTab() {
         }
         return true;
       });
-
-  // Debug: Log filtered emails count for all filter
-  if (activeFilter === 'all') {
-    console.log(`📧 All filter: ${filteredEmails.length} emails (${loadEmails.length} processed + ${failedQueueItems.length} failed)`);
-  }
 
   // DISPATCH MODE: In "My Trucks" mode, only show matches for assigned vehicles
   // If no vehicles assigned, show nothing (0 counts) - user needs to be assigned trucks first
@@ -758,11 +724,6 @@ export default function LoadHunterTab() {
   const filteredExpiredMatches = filterVehicleId 
     ? expiredMatches.filter(m => m.vehicle_id === filterVehicleId)
     : expiredMatches;
-  
-  // Debug logging for filtered results
-  if (activeFilter === 'unreviewed') {
-    console.log(`📊 filteredMatches: ${filteredMatches.length} grouped (from ${filteredMatchesRaw.length} raw, mode: ${activeMode}, myVehicles: ${myVehicleIds.length})`);
-  }
 
   // Count uses raw filtered data (not grouped) for accuracy - shows actual match count
   // In dispatch mode, only count matches for assigned vehicles (show 0 if none assigned)
@@ -884,12 +845,7 @@ export default function LoadHunterTab() {
 
   // Generic function to play a sound by type (load_receive or bid_sent)
   const playSound = async (soundType: 'load_receive' | 'bid_sent', force = false) => {
-    console.log(`🔔 playSound called for ${soundType}, isSoundMuted:`, isSoundMuted, 'force:', force);
-
-    if (isSoundMuted && !force) {
-      console.log('❌ Sound is muted, skipping');
-      return;
-    }
+    if (isSoundMuted && !force) return;
 
     ensureSoundRefs();
 
@@ -912,10 +868,9 @@ export default function LoadHunterTab() {
         const audio = new Audio(cachedAudioUrl);
         audio.volume = volume;
         await audio.play();
-        console.log(`✅ Played cached AI sound: ${soundId}`);
         return;
-      } catch (error) {
-        console.error('Error playing cached sound:', error);
+      } catch {
+        // Fall through to generate new sound
       }
     }
 
@@ -972,9 +927,7 @@ export default function LoadHunterTab() {
         const audio = new Audio(audioUrl);
         audio.volume = volume;
         await audio.play();
-        console.log(`✅ AI sound generated and played: ${soundId}`);
-      } catch (error) {
-        console.error('Error generating AI sound, using fallback:', error);
+      } catch {
         playFallbackSound();
       } finally {
         // Defensive: avoid ref corruption causing a blank screen
@@ -1025,10 +978,8 @@ export default function LoadHunterTab() {
       
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.4);
-      
-      console.log('✅ Fallback sound played');
-    } catch (error) {
-      console.error('❌ Error playing fallback sound:', error);
+    } catch {
+      // Fallback sound failed silently
     }
   };
   // Request notification permission
@@ -1037,7 +988,6 @@ export default function LoadHunterTab() {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         setNotificationsEnabled(true);
-        console.log('✅ Browser notifications enabled');
         return true;
       }
     }
@@ -1069,37 +1019,27 @@ export default function LoadHunterTab() {
   };
 
   const toggleSound = async () => {
-    console.log('🔘 toggleSound clicked, current state:', isSoundMuted);
-    
     const newMutedState = !isSoundMuted;
     setIsSoundMuted(newMutedState);
     
-    console.log('🔘 New muted state:', newMutedState);
-    
     // Initialize audio context and play test sound when unmuting
     if (!newMutedState) {
-      console.log('🔊 Enabling sound alerts...');
-      
       // Request notification permission for background alerts
       const notifGranted = await requestNotificationPermission();
       
       // Create audio context on user interaction
       if (!audioContext) {
-        console.log('🎵 Creating AudioContext on user interaction');
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         setAudioContext(ctx);
         
         // Resume if needed
         if (ctx.state === 'suspended') {
-          ctx.resume().then(() => {
-            console.log('🔓 AudioContext resumed');
-          });
+          ctx.resume();
         }
       }
       
       // Play test sound
       setTimeout(() => {
-        console.log('⏰ Playing test sound after delay');
         playAlertSound(true);
         if (notifGranted) {
           toast.success('Sound & background notifications enabled');
@@ -1108,7 +1048,6 @@ export default function LoadHunterTab() {
         }
       }, 100);
     } else {
-      console.log('🔇 Sound alerts muted');
       toast.info('Sound alerts muted');
     }
   };
@@ -1117,10 +1056,8 @@ export default function LoadHunterTab() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('👋 Tab hidden - background mode');
         isTabHiddenRef.current = true;
       } else {
-        console.log('👀 Tab visible - refreshing data');
         isTabHiddenRef.current = false;
         
         // Immediately refresh all data when user returns
