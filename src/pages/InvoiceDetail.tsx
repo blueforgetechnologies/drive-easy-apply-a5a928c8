@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -33,6 +33,7 @@ export default function InvoiceDetail() {
   const [availableLoads, setAvailableLoads] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLoad, setSelectedLoad] = useState("");
+  const [refreshingOtrStatus, setRefreshingOtrStatus] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -212,6 +213,50 @@ export default function InvoiceDetail() {
     }
   };
 
+  const handleRefreshOtrStatus = async () => {
+    if (!tenantId || !invoice.customer_id) {
+      toast.error("Cannot refresh: missing customer or tenant context");
+      return;
+    }
+    
+    setRefreshingOtrStatus(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-broker-credit", {
+        body: {
+          tenant_id: tenantId,
+          customer_id: invoice.customer_id,
+        },
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.success) {
+        const newBillingMethod = data.approval_status === 'approved' ? 'otr' : 'direct_email';
+        
+        // Update invoice billing_method if changed
+        if (invoice.billing_method !== newBillingMethod) {
+          await supabase
+            .from("invoices" as any)
+            .update({ billing_method: newBillingMethod })
+            .eq("id", id);
+          
+          setInvoice({ ...invoice, billing_method: newBillingMethod });
+        }
+        
+        toast.success(`OTR Status: ${data.approval_status} ${data.credit_limit ? `($${data.credit_limit.toLocaleString()})` : ''}`);
+      } else {
+        toast.warning(data?.error || "Could not determine OTR status");
+      }
+    } catch (error: any) {
+      console.error("OTR status refresh error:", error);
+      toast.error("Failed to refresh OTR status: " + error.message);
+    } finally {
+      setRefreshingOtrStatus(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
@@ -236,6 +281,17 @@ export default function InvoiceDetail() {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const getBillingMethodBadge = () => {
+    switch (invoice.billing_method) {
+      case 'otr':
+        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white">OTR Factoring</Badge>;
+      case 'direct_email':
+        return <Badge variant="secondary">Direct Billing</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -255,11 +311,30 @@ export default function InvoiceDetail() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Invoice {invoice.invoice_number}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold">Invoice {invoice.invoice_number}</h1>
+                {getBillingMethodBadge()}
+              </div>
               <p className="text-muted-foreground">{invoice.customer_name}</p>
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
+            {/* Refresh OTR Status Button */}
+            {invoice.customer_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshOtrStatus}
+                disabled={refreshingOtrStatus}
+              >
+                {refreshingOtrStatus ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh OTR Status
+              </Button>
+            )}
             <Button onClick={handleSave} disabled={saving} variant="outline">
               <Save className="h-4 w-4 mr-2" />
               Save
@@ -274,8 +349,8 @@ export default function InvoiceDetail() {
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
-            {/* OTR Factoring Submission */}
-            {!invoice.otr_submitted_at && invoice.status !== "draft" && (
+            {/* OTR Factoring Submission - only for OTR billing method */}
+            {!invoice.otr_submitted_at && invoice.status !== "draft" && invoice.billing_method === 'otr' && (
               <Button 
                 onClick={() => handleSubmitToOtr(false)} 
                 disabled={submittingToOtr}

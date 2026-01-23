@@ -36,6 +36,7 @@ interface Invoice {
   otr_status: string | null;
   otr_submitted_at: string | null;
   otr_invoice_id: string | null;
+  billing_method: 'unknown' | 'otr' | 'direct_email';
 }
 
 interface Customer {
@@ -95,6 +96,7 @@ export default function InvoicesTab() {
   const [selectedLoadForOtr, setSelectedLoadForOtr] = useState<PendingLoad | null>(null);
   const [verifiedLoadIds, setVerifiedLoadIds] = useState<Set<string>>(new Set());
   const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
+  const [billingMethodFilter, setBillingMethodFilter] = useState<'all' | 'otr' | 'direct_email'>('all');
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -252,7 +254,35 @@ export default function InvoicesTab() {
     setSendingOtrLoadId(load.id);
 
     try {
-      // First, create an invoice for this load
+      // Step 1: Check broker credit status first
+      let billingMethod: 'otr' | 'direct_email' = 'direct_email';
+      let otrApproved = false;
+      
+      if (load.customers?.mc_number || load.customer_id) {
+        const { data: creditResult, error: creditError } = await supabase.functions.invoke(
+          "check-broker-credit",
+          {
+            body: {
+              tenant_id: tenantId,
+              mc_number: load.customers?.mc_number,
+              customer_id: load.customer_id,
+              broker_name: load.customers?.name || load.broker_name,
+            },
+          }
+        );
+        
+        if (creditError) {
+          console.warn("Broker credit check failed:", creditError);
+        } else if (creditResult?.approval_status === 'approved') {
+          billingMethod = 'otr';
+          otrApproved = true;
+          console.log(`[InvoicesTab] Broker ${load.customers?.name} is OTR approved`);
+        } else {
+          console.log(`[InvoicesTab] Broker ${load.customers?.name} not OTR approved (status: ${creditResult?.approval_status})`);
+        }
+      }
+
+      // Step 2: Get next invoice number
       const { data: lastInvoice } = await supabase
         .from("invoices" as any)
         .select("invoice_number")
@@ -269,23 +299,25 @@ export default function InvoicesTab() {
         }
       }
 
-      // Create invoice
+      // Step 3: Create invoice with billing_method
+      // For OTR: start as 'draft', only set 'sent' after successful OTR submission
+      // For direct_email: keep as 'draft' (no actual email sending yet)
       const invoiceData = {
         tenant_id: tenantId,
         invoice_number: String(nextNumber),
         customer_name: load.customers?.name || load.broker_name,
         customer_id: load.customer_id,
-        billing_party: factoringCompany || 'OTR Solutions',
+        billing_party: otrApproved ? (factoringCompany || 'OTR Solutions') : (load.customers?.name || load.broker_name),
         invoice_date: format(new Date(), "yyyy-MM-dd"),
         due_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
         payment_terms: "Net 30",
-        status: "sent",
+        status: "draft", // Start as draft, update to sent only on OTR success
+        billing_method: billingMethod,
         subtotal: load.rate || 0,
         tax: 0,
         total_amount: load.rate || 0,
         amount_paid: 0,
         balance_due: load.rate || 0,
-        sent_at: new Date().toISOString(),
       };
 
       const { data: newInvoice, error: invoiceError } = await supabase
@@ -318,30 +350,44 @@ export default function InvoicesTab() {
         })
         .eq("id", load.id);
 
-      // Call OTR submit edge function
-      const { data: otrResult, error: otrError } = await supabase.functions.invoke(
-        "submit-otr-invoice",
-        {
-          body: {
-            tenant_id: tenantId,
-            invoice_id: (newInvoice as any).id,
-            broker_mc: load.customers?.mc_number,
-            broker_name: load.customers?.name || load.broker_name,
-          },
+      // Step 4: If OTR approved, submit to OTR and update status on success
+      if (otrApproved) {
+        const { data: otrResult, error: otrError } = await supabase.functions.invoke(
+          "submit-otr-invoice",
+          {
+            body: {
+              tenant_id: tenantId,
+              invoice_id: (newInvoice as any).id,
+              broker_mc: load.customers?.mc_number,
+              broker_name: load.customers?.name || load.broker_name,
+            },
+          }
+        );
+
+        if (otrError) {
+          console.error("OTR submission error:", otrError);
+          toast.error(`Invoice created but OTR submission failed: ${otrError.message}`);
+        } else if (otrResult?.success) {
+          // Only set status='sent' after successful OTR submission
+          await supabase
+            .from("invoices" as any)
+            .update({
+              status: "sent",
+              sent_at: new Date().toISOString(),
+            })
+            .eq("id", (newInvoice as any).id);
+          
+          toast.success(`Invoice ${nextNumber} submitted to OTR Solutions`);
+          setInvoiceFilter("sent");
+        } else {
+          toast.warning(`Invoice created but OTR returned: ${otrResult?.error || 'Unknown error'}`);
+          setInvoiceFilter("draft");
         }
-      );
-
-      if (otrError) {
-        console.error("OTR submission error:", otrError);
-        toast.error(`Invoice created but OTR submission failed: ${otrError.message}`);
-      } else if (otrResult?.success) {
-        toast.success(`Invoice ${nextNumber} submitted to OTR Solutions`);
       } else {
-        toast.warning(`Invoice created but OTR returned: ${otrResult?.error || 'Unknown error'}`);
+        // Direct email billing - invoice stays as draft until email is actually sent
+        toast.success(`Invoice ${nextNumber} created (direct billing - awaiting email send)`);
+        setInvoiceFilter("draft");
       }
-
-      // Switch to Sent so the newly created invoice is visible immediately
-      setInvoiceFilter("sent");
     } catch (error) {
       console.error("Error submitting to OTR:", error);
       toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -583,11 +629,24 @@ export default function InvoicesTab() {
 
   const filteredInvoices = invoices.filter((invoice) => {
     const searchLower = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       invoice.invoice_number.toLowerCase().includes(searchLower) ||
       (invoice.customer_name || "").toLowerCase().includes(searchLower)
     );
+    const matchesBillingMethod = billingMethodFilter === 'all' || invoice.billing_method === billingMethodFilter;
+    return matchesSearch && matchesBillingMethod;
   });
+  
+  const getBillingMethodBadge = (method: string) => {
+    switch (method) {
+      case 'otr':
+        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR</Badge>;
+      case 'direct_email':
+        return <Badge variant="secondary" className="text-xs">Direct</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">Unknown</Badge>;
+    }
+  };
 
   const filteredPendingLoads = pendingLoads.filter((load) => {
     const searchLower = searchQuery.toLowerCase();
@@ -717,6 +776,19 @@ export default function InvoicesTab() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Billing Method Filter - only show when not on pending tab */}
+          {filter !== "pending" && (
+            <Select value={billingMethodFilter} onValueChange={(value) => setBillingMethodFilter(value as 'all' | 'otr' | 'direct_email')}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="Billing Method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Methods</SelectItem>
+                <SelectItem value="otr">OTR Only</SelectItem>
+                <SelectItem value="direct_email">Direct Only</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Badge variant="secondary" className="text-xs">
             {filter === "pending" ? filteredPendingLoads.length : filteredInvoices.length} {filter === "pending" ? "loads" : "invoices"}
           </Badge>
@@ -888,6 +960,7 @@ export default function InvoicesTab() {
               <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
                 <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
@@ -903,7 +976,7 @@ export default function InvoicesTab() {
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="py-12 text-center">
+                  <TableCell colSpan={13} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FileText className="h-10 w-10 mb-3 opacity-50" />
                       <p className="text-base font-medium">No {filter} invoices</p>
@@ -922,6 +995,7 @@ export default function InvoicesTab() {
                     <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
                       <TableCell className="font-medium text-primary">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customer_name || "—"}</TableCell>
+                      <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
                       <TableCell>{invoice.billing_party || "—"}</TableCell>
                       <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "M/d/yyyy") : "—"}</TableCell>
                       <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
