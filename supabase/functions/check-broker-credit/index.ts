@@ -5,10 +5,7 @@ import {
   OTR_API_BASE_URL, 
   decrypt, 
   maskSubscriptionKey,
-  isTokenAuthEnabled,
   getOtrHeaders,
-  getOtrHeadersWithToken,
-  getOtrToken,
 } from "../_shared/otrClient.ts";
 
 const corsHeaders = {
@@ -28,10 +25,10 @@ interface OtrBrokerCheckResponse {
 
 // Check broker credit using OTR Solutions API
 // Endpoint: GET {BASE_URL}/broker-check/{brokerMc}
+// NOTE: Broker check does NOT require bearer token, only subscription key
 async function checkWithOtr(
   mcNumber: string, 
-  subscriptionKey: string,
-  accessToken?: string  // Optional: only used if token auth is enabled
+  subscriptionKey: string
 ): Promise<{
   success: boolean;
   approval_status?: string;
@@ -46,12 +43,9 @@ async function checkWithOtr(
     
     console.log(`[check-broker-credit] GET ${requestUrl}`);
     console.log(`[check-broker-credit] Subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
-    console.log(`[check-broker-credit] Token auth enabled: ${isTokenAuthEnabled()}`);
     
-    // Use token auth headers if enabled and token provided
-    const headers = accessToken && isTokenAuthEnabled() 
-      ? getOtrHeadersWithToken(subscriptionKey, accessToken)
-      : getOtrHeaders(subscriptionKey);
+    // Broker check uses subscription key only (no bearer token required)
+    const headers = getOtrHeaders(subscriptionKey);
     
     const response = await fetch(requestUrl, { 
       method: 'GET',
@@ -404,25 +398,8 @@ serve(async (req) => {
     if (credentials) {
       console.log('[check-broker-credit] OTR credentials found, checking broker...');
       
-      let accessToken: string | undefined;
-      
-      // Only attempt token auth if explicitly enabled via env flag
-      if (isTokenAuthEnabled() && credentials.username && credentials.password) {
-        console.log('[check-broker-credit] Token auth enabled, getting token...');
-        const tokenResult = await getOtrToken(
-          credentials.subscriptionKey,
-          credentials.username,
-          credentials.password
-        );
-        if (tokenResult.success) {
-          accessToken = tokenResult.access_token;
-        } else {
-          console.warn('[check-broker-credit] Token auth failed, falling back to subscription-key-only:', tokenResult.error);
-        }
-      }
-      
-      // Call OTR API (with or without token)
-      otrResult = await checkWithOtr(mcToCheck, credentials.subscriptionKey, accessToken);
+      // Broker check does NOT require bearer token - only subscription key
+      otrResult = await checkWithOtr(mcToCheck, credentials.subscriptionKey);
     } else {
       console.log('[check-broker-credit] No OTR subscription key configured');
     }

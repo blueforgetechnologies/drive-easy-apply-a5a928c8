@@ -69,15 +69,6 @@ export function maskSubscriptionKey(key: string): string {
 }
 
 /**
- * Check if token-based OAuth is enabled via environment
- * Default: false (subscription-key-only mode)
- */
-export function isTokenAuthEnabled(): boolean {
-  const flag = Deno.env.get('OTR_USE_TOKEN_AUTH');
-  return flag === 'true' || flag === '1';
-}
-
-/**
  * Check if ISO datetime format should be used for InvoiceDate
  * Default: false (YYYY-MM-DD format)
  * Set OTR_USE_ISO_DATE=true for YYYY-MM-DDT00:00:00Z format
@@ -208,31 +199,74 @@ export function getOtrCredentialsFromEnv(): OtrCredentials | null {
 }
 
 // =============================================================================
-// TOKEN AUTH (disabled by default, toggle with OTR_USE_TOKEN_AUTH=true)
+// TOKEN AUTH (REQUIRED for invoice submission per OTR support confirmation)
 // =============================================================================
 
+interface OtrTokenResult {
+  success: boolean;
+  access_token?: string;
+  attempt_id: string;
+  error?: string;
+  response_status?: number;
+  response_body?: unknown;
+  utc_time: string;
+  eastern_time: string;
+}
+
 /**
- * Get OAuth token from OTR Solutions (only used if OTR_USE_TOKEN_AUTH=true)
- * This is kept for future use if OTR requires token-based auth
+ * Get timestamp info for logging
+ */
+function getTimestampInfo(): { utc_time: string; eastern_time: string; eastern_hour: number } {
+  const now = new Date();
+  const utc_time = now.toISOString();
+  
+  const easternFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  
+  const parts = easternFormatter.formatToParts(now);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || "";
+  const eastern_time = `${getPart("year")}-${getPart("month")}-${getPart("day")}T${getPart("hour")}:${getPart("minute")}:${getPart("second")} America/New_York`;
+  const eastern_hour = parseInt(getPart("hour"), 10);
+  
+  return { utc_time, eastern_time, eastern_hour };
+}
+
+/**
+ * Get OAuth token from OTR Solutions - REQUIRED for invoice submission
+ * Per OTR support: All POST /invoices requests MUST include Bearer token
  */
 export async function getOtrToken(
   subscriptionKey: string, 
   username: string, 
   password: string
-): Promise<{
-  success: boolean;
-  access_token?: string;
-  error?: string;
-}> {
+): Promise<OtrTokenResult> {
+  const attempt_id = crypto.randomUUID();
+  const timestamps = getTimestampInfo();
+  const tokenUrl = `${OTR_API_BASE_URL}/auth/token`;
+  
+  console.log('\n' + '='.repeat(70));
+  console.log(`[OTR TOKEN - ATTEMPT ${attempt_id}]`);
+  console.log('='.repeat(70));
+  console.log(`[TIMESTAMP] UTC: ${timestamps.utc_time}`);
+  console.log(`[TIMESTAMP] Eastern: ${timestamps.eastern_time}`);
+  console.log(`[REQUEST] URL: ${tokenUrl}`);
+  console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
+  console.log(`[REQUEST] Username: ${username ? username.substring(0, 3) + '***' : 'NOT SET'}`);
+  console.log(`[REQUEST] Password: ${password ? '***SET***' : 'NOT SET'}`);
+  
   try {
-    console.log(`[otr-client] Token auth: Authenticating with OTR (key: ${maskSubscriptionKey(subscriptionKey)})`);
-    
+    // OTR uses simple username/password auth - no grant_type required
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
-    
-    const tokenUrl = `${OTR_API_BASE_URL}/auth/token`;
-    console.log(`[otr-client] Token auth: POST ${tokenUrl}`);
     
     const response = await fetch(tokenUrl, {
       method: 'POST',
@@ -244,26 +278,66 @@ export async function getOtrToken(
       body: formData.toString()
     });
     
-    console.log(`[otr-client] Token auth response status: ${response.status}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[otr-client] Token auth error: ${response.status} - ${errorText}`);
-      return { success: false, error: `Authentication failed: ${response.status}` };
+    const responseText = await response.text();
+    let responseBody: unknown;
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch {
+      responseBody = responseText;
     }
     
-    const data: OtrTokenResponse = await response.json();
-    console.log('[otr-client] Token auth successful');
+    console.log(`[RESPONSE] Status: ${response.status}`);
+    console.log(`[RESPONSE] Body:`, JSON.stringify(responseBody, null, 2));
+    console.log('='.repeat(70) + '\n');
+    
+    if (!response.ok) {
+      console.error(`[OTR TOKEN ERROR]`, JSON.stringify({
+        attempt_id,
+        request_url: tokenUrl,
+        status: response.status,
+        response_body: responseBody,
+        utc_time: timestamps.utc_time,
+        eastern_time: timestamps.eastern_time,
+      }, null, 2));
+      
+      return { 
+        success: false, 
+        attempt_id,
+        error: `Token authentication failed: HTTP ${response.status}`,
+        response_status: response.status,
+        response_body: responseBody,
+        utc_time: timestamps.utc_time,
+        eastern_time: timestamps.eastern_time,
+      };
+    }
+    
+    const data = responseBody as OtrTokenResponse;
+    console.log(`[OTR TOKEN SUCCESS] Token obtained (attempt: ${attempt_id})`);
     
     return {
       success: true,
-      access_token: data.access_token
+      access_token: data.access_token,
+      attempt_id,
+      response_status: response.status,
+      response_body: { token_type: data.token_type, expires_in: data.expires_in },
+      utc_time: timestamps.utc_time,
+      eastern_time: timestamps.eastern_time,
     };
   } catch (error) {
-    console.error('[otr-client] Token auth error:', error);
+    console.error('[OTR TOKEN EXCEPTION]', JSON.stringify({
+      attempt_id,
+      request_url: tokenUrl,
+      error: error instanceof Error ? error.message : String(error),
+      utc_time: timestamps.utc_time,
+      eastern_time: timestamps.eastern_time,
+    }, null, 2));
+    
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Authentication failed'
+      attempt_id,
+      error: error instanceof Error ? error.message : 'Token authentication failed',
+      utc_time: timestamps.utc_time,
+      eastern_time: timestamps.eastern_time,
     };
   }
 }
