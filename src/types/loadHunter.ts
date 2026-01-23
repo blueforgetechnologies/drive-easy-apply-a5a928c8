@@ -147,7 +147,7 @@ export interface MatchResult {
 }
 
 export type LoadHunterTheme = 'classic' | 'aurora';
-export type ActiveFilter = 'unreviewed' | 'all' | 'skipped' | 'mybids' | 'booked' | 'undecided' | 'waitlist' | 'missed' | 'expired' | 'issues';
+export type ActiveFilter = 'unreviewed' | 'all' | 'skipped' | 'mybids' | 'booked' | 'undecided' | 'waitlist' | 'missed' | 'expired' | 'issues' | 'vehicle-assignment' | 'dispatcher-metrix';
 export type ActiveMode = 'admin' | 'dispatch';
 export type EmailTimeWindow = '30m' | '6h' | '24h' | 'session';
 
