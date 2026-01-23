@@ -464,28 +464,34 @@ export default function SettlementsTab() {
         </div>
       </div>
 
-      {filteredSettlements.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">
-          {searchQuery ? "No settlements match your search" : `No ${filter} settlements found`}
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                <TableHead className="text-primary font-medium uppercase text-xs">Settlement #</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Period</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Loads</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Miles</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Gross Pay</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Deductions</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Net Pay</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+              <TableHead className="text-primary font-medium uppercase text-xs">Settlement #</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Period</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Loads</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Miles</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Gross Pay</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Deductions</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Net Pay</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredSettlements.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <DollarSign className="h-10 w-10 mb-3 opacity-50" />
+                    <p className="text-base font-medium">No {filter} settlements</p>
+                    <p className="text-sm">{searchQuery ? "No settlements match your search" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} settlements will appear here`}</p>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSettlements.map((settlement) => (
+            ) : (
+              filteredSettlements.map((settlement) => (
                 <TableRow key={settlement.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewSettlementDetail(settlement.id)}>
                       <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                       <TableCell>
@@ -510,11 +516,11 @@ export default function SettlementsTab() {
                         </div>
                       </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
