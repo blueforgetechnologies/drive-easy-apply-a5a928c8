@@ -46,28 +46,93 @@ interface OtrInvoiceResponse {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// Timezone Helpers - US/Eastern with explicit Intl.DateTimeFormat
+// ============================================================================
+
+interface TimestampInfo {
+  utc_time: string;
+  eastern_time: string;
+  eastern_hour: number;
+}
+
+function getTimestampInfo(): TimestampInfo {
+  const now = new Date();
+  const utc_time = now.toISOString();
+  
+  const easternFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  
+  const parts = easternFormatter.formatToParts(now);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || "";
+  const eastern_time = `${getPart("year")}-${getPart("month")}-${getPart("day")}T${getPart("hour")}:${getPart("minute")}:${getPart("second")} America/New_York`;
+  const eastern_hour = parseInt(getPart("hour"), 10);
+  
+  return { utc_time, eastern_time, eastern_hour };
+}
+
+// ============================================================================
+// OTR Error Message Extraction - Priority: message > error > detail > raw
+// ============================================================================
+
+function extractOtrErrorMessage(data: unknown, rawText: string): string {
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    // Priority order: message, Message, error, Error, detail, Detail
+    if (typeof obj.message === 'string' && obj.message) return obj.message;
+    if (typeof obj.Message === 'string' && obj.Message) return obj.Message;
+    if (typeof obj.error === 'string' && obj.error) return obj.error;
+    if (typeof obj.Error === 'string' && obj.Error) return obj.Error;
+    if (typeof obj.detail === 'string' && obj.detail) return obj.detail;
+    if (typeof obj.Detail === 'string' && obj.Detail) return obj.Detail;
+    // Check for errors array
+    if (Array.isArray(obj.errors) && obj.errors.length > 0) {
+      return obj.errors.join(', ');
+    }
+  }
+  return rawText || 'Unknown error';
+}
+
+// ============================================================================
 // Submit invoice to OTR Solutions
 // Endpoint: POST {BASE_URL}/invoices
+// ============================================================================
+
 async function submitInvoiceToOtr(
   payload: OtrPostInvoicePayload,
   subscriptionKey: string,
-  accessToken?: string  // Optional: only used if token auth is enabled
+  accessToken?: string
 ): Promise<{
   success: boolean;
   invoice_id?: string;
   status?: string;
   raw_response?: OtrInvoiceResponse;
   error?: string;
+  attempt_id?: string;
 }> {
+  const attempt_id = crypto.randomUUID();
+  const timestamps = getTimestampInfo();
+  const requestUrl = `${OTR_API_BASE_URL}/invoices`;
+  
   try {
-    const requestUrl = `${OTR_API_BASE_URL}/invoices`;
+    console.log('\n' + '='.repeat(70));
+    console.log(`[OTR SUBMIT - ATTEMPT ${attempt_id}]`);
+    console.log('='.repeat(70));
+    console.log(`[TIMESTAMP] UTC: ${timestamps.utc_time}`);
+    console.log(`[TIMESTAMP] Eastern: ${timestamps.eastern_time}`);
+    console.log(`[REQUEST] URL: ${requestUrl}`);
+    console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
+    console.log(`[REQUEST] Token Auth Enabled: ${isTokenAuthEnabled()}`);
+    console.log(`[REQUEST] Payload:`, JSON.stringify(payload, null, 2));
     
-    console.log(`[submit-otr-invoice] POST ${requestUrl}`);
-    console.log(`[submit-otr-invoice] Subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
-    console.log(`[submit-otr-invoice] Token auth enabled: ${isTokenAuthEnabled()}`);
-    console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
-    
-    // Use token auth headers if enabled and token provided
     const headers = accessToken && isTokenAuthEnabled() 
       ? getOtrHeadersWithToken(subscriptionKey, accessToken)
       : getOtrHeaders(subscriptionKey);
@@ -78,67 +143,87 @@ async function submitInvoiceToOtr(
       body: JSON.stringify(payload)
     });
 
-    console.log(`[submit-otr-invoice] Response status: ${response.status}`);
     const responseText = await response.text();
-    console.log(`[submit-otr-invoice] Response body: ${responseText}`);
-
     let data: OtrInvoiceResponse;
     try {
       data = JSON.parse(responseText);
     } catch {
       data = { success: response.ok, message: responseText };
     }
+    
+    console.log(`[RESPONSE] Status: ${response.status}`);
+    console.log(`[RESPONSE] Body: ${responseText}`);
 
     if (!response.ok) {
-      console.error(`[submit-otr-invoice] OTR API error: ${response.status}`);
-      console.error(`[submit-otr-invoice] Full request details:`, JSON.stringify({
-        url: requestUrl,
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
-        },
-        payload,
-        response: {
-          status: response.status,
-          body: data
-        }
-      }, null, 2));
+      const otr_error_message = extractOtrErrorMessage(data, responseText);
       
+      // Structured error logging
+      console.error('\n[OTR ERROR LOG]', JSON.stringify({
+        attempt_id,
+        request_url: requestUrl,
+        status: response.status,
+        otr_error_message,
+        subscription_key_masked: maskSubscriptionKey(subscriptionKey),
+        utc_time: timestamps.utc_time,
+        eastern_time: timestamps.eastern_time,
+        payload,
+        raw_response: data,
+      }, null, 2));
+      console.log('='.repeat(70) + '\n');
+      
+      // 401 handling with specific messages
       if (response.status === 401) {
-        // Include actual OTR error message for better debugging
-        const otrMessage = String(data?.message || data?.Message || data?.error || '');
-        const errorMsg = otrMessage.includes('Not Authorized') 
-          ? `OTR account not authorized: ${otrMessage}`
-          : 'Invalid or missing subscription key';
-        return { success: false, error: errorMsg, raw_response: data };
+        let errorMsg: string;
+        if (otr_error_message.includes('Not Authorized')) {
+          errorMsg = `OTR: Not authorized to post invoices for this ClientDOT (staging enablement needed). Details: ${otr_error_message}`;
+        } else {
+          errorMsg = `OTR: Invalid or missing subscription key. Details: ${otr_error_message}`;
+        }
+        return { success: false, error: errorMsg, raw_response: data, attempt_id };
       }
+      
+      // 400 validation errors
       if (response.status === 400) {
         return { 
           success: false, 
-          error: `Validation error: ${data.message || data.errors?.join(', ') || 'Invalid Request'}`,
-          raw_response: data
+          error: `OTR validation error: ${otr_error_message}`,
+          raw_response: data,
+          attempt_id
         };
       }
+      
+      // Other errors
       return { 
         success: false, 
-        error: `OTR API error: ${response.status} - ${data.message || responseText}`,
-        raw_response: data
+        error: `OTR API error (${response.status}): ${otr_error_message}`,
+        raw_response: data,
+        attempt_id
       };
     }
 
+    console.log(`[SUCCESS] Invoice submitted successfully`);
+    console.log('='.repeat(70) + '\n');
+    
     return {
       success: true,
       invoice_id: data.invoicePkey?.toString() || data.invoiceId,
       status: data.status || 'submitted',
-      raw_response: data
+      raw_response: data,
+      attempt_id
     };
   } catch (error) {
-    console.error('[submit-otr-invoice] OTR API error:', error);
+    console.error('\n[OTR EXCEPTION]', JSON.stringify({
+      attempt_id,
+      request_url: requestUrl,
+      error: error instanceof Error ? error.message : String(error),
+      utc_time: timestamps.utc_time,
+      eastern_time: timestamps.eastern_time,
+    }, null, 2));
+    
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Failed to submit invoice'
+      error: `OTR request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      attempt_id
     };
   }
 }
