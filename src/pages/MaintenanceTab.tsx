@@ -1069,8 +1069,8 @@ export default function MaintenanceTab() {
             </Dialog>
           </div>
 
-          {/* Repairs grid by vehicle - compact layout */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+          {/* Repairs grid by vehicle - puffy light aesthetic with carved separators */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
             {/* Group repairs by vehicle, sort by most repairs first */}
             {Array.from(new Set(repairs.map(r => r.vehicle_id)))
               .map(vehicleId => ({
@@ -1081,71 +1081,106 @@ export default function MaintenanceTab() {
               .map(({ vehicleId, repairs: vehicleRepairs }) => {
                 const vehicle = vehicleRepairs[0]?.vehicles;
                 return (
-                  <div key={vehicleId} className="bg-gray-900 rounded overflow-hidden">
-                    <div className="py-1 px-2 bg-gradient-to-b from-gray-700 to-gray-900 border-b border-gray-600">
-                      <span className="text-white text-xs font-bold">
+                  <div 
+                    key={vehicleId} 
+                    className="bg-gradient-to-b from-slate-100 to-slate-200/80 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-200/60"
+                  >
+                    {/* Vehicle header - puffy style */}
+                    <div className="py-1.5 px-2.5 bg-gradient-to-b from-slate-600 to-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+                      <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
                         Truck: {vehicle?.vehicle_number || '?'}
                       </span>
                     </div>
-                    <div className="divide-y divide-gray-800">
-                      {vehicleRepairs.map((repair, index) => (
-                        <div
-                          key={repair.id}
-                          className="px-1 py-0.5 flex items-center gap-1 group hover:bg-gray-800 transition-colors"
-                          style={{ 
-                            backgroundColor: repair.color && repair.color !== '#ffffff' ? repair.color : undefined,
-                            borderLeft: `3px solid ${repair.color || '#fbbf24'}` 
-                          }}
-                        >
-                          {/* Move buttons - compact */}
-                          <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handleMoveRepair(vehicleId, repair.id, 'up')}
-                              disabled={index === 0}
-                              className="p-0.5 text-gray-300 hover:text-white disabled:opacity-30"
-                              title="Move up"
-                            >
-                              <ArrowUp className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={() => handleMoveRepair(vehicleId, repair.id, 'down')}
-                              disabled={index === vehicleRepairs.length - 1}
-                              className="p-0.5 text-gray-300 hover:text-white disabled:opacity-30"
-                              title="Move down"
-                            >
-                              <ArrowDown className="h-3 w-3" />
-                            </button>
+                    
+                    {/* Repairs list with carved separators */}
+                    <div className="p-1">
+                      {vehicleRepairs.map((repair, index) => {
+                        const bgColor = repair.color || '#fbbf24';
+                        const isLight = ['#fbbf24', '#22c55e', '#ffffff', '#f97316'].some(c => bgColor.toLowerCase().includes(c.slice(1)));
+                        
+                        return (
+                          <div
+                            key={repair.id}
+                            className={`
+                              relative px-2 py-1.5 flex items-center gap-1.5 group cursor-grab active:cursor-grabbing
+                              rounded-lg mb-1 last:mb-0
+                              transition-all duration-200 ease-out
+                              hover:scale-[1.02] hover:shadow-lg hover:z-10
+                              active:scale-[1.05] active:shadow-xl active:z-20
+                              shadow-[0_1px_3px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.4)]
+                              hover:shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.5)]
+                              border border-white/30
+                            `}
+                            style={{ 
+                              background: `linear-gradient(to bottom, ${bgColor}ee, ${bgColor}dd)`,
+                            }}
+                          >
+                            {/* Drag handle - always visible */}
+                            <div className="flex-shrink-0 opacity-40 group-hover:opacity-80 transition-opacity cursor-grab active:cursor-grabbing">
+                              <GripVertical className={`h-4 w-4 ${isLight ? 'text-gray-700' : 'text-white/80'}`} />
+                            </div>
+                            
+                            {/* Move buttons - appear on hover */}
+                            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 -ml-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleMoveRepair(vehicleId, repair.id, 'up'); }}
+                                disabled={index === 0}
+                                className={`p-0.5 rounded-md transition-all disabled:opacity-20 
+                                  ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                  active:scale-90
+                                `}
+                                title="Move up"
+                              >
+                                <ArrowUp className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleMoveRepair(vehicleId, repair.id, 'down'); }}
+                                disabled={index === vehicleRepairs.length - 1}
+                                className={`p-0.5 rounded-md transition-all disabled:opacity-20 
+                                  ${isLight ? 'text-gray-700 hover:bg-black/10' : 'text-white/90 hover:bg-white/20'}
+                                  active:scale-90
+                                `}
+                                title="Move down"
+                              >
+                                <ArrowDown className="h-3 w-3" />
+                              </button>
+                            </div>
+                            
+                            {/* Description */}
+                            <div className="flex-1 min-w-0">
+                              <p 
+                                className={`text-xs font-semibold truncate drop-shadow-sm ${isLight ? 'text-gray-800' : 'text-white'}`}
+                              >
+                                {repair.description}
+                              </p>
+                            </div>
+                            
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCompleteRepair(repair.id); }}
+                                className={`p-1 rounded-md transition-all active:scale-90
+                                  ${isLight ? 'hover:bg-green-600/20 text-green-700' : 'hover:bg-green-500/30 text-green-300'}
+                                `}
+                                title="Complete"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteRepair(repair.id); }}
+                                className={`p-1 rounded-md transition-all active:scale-90
+                                  ${isLight ? 'hover:bg-red-600/20 text-red-700' : 'hover:bg-red-500/30 text-red-300'}
+                                `}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p 
-                              className="text-xs font-medium truncate"
-                              style={{ 
-                                color: repair.color && repair.color !== '#ffffff' ? '#000' : (repair.color === '#ffffff' ? '#fff' : '#fff')
-                              }}
-                            >
-                              {repair.description}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handleCompleteRepair(repair.id)}
-                              className="p-0.5 rounded hover:bg-green-500/30 text-green-400"
-                              title="Complete"
-                            >
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRepair(repair.id)}
-                              className="p-0.5 rounded hover:bg-red-500/30 text-red-400"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
