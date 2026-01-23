@@ -544,14 +544,14 @@ export default function MaintenanceTab() {
             </Button>
           </div>
 
-          <div className="flex gap-4 h-[calc(100vh-320px)] min-h-[400px]">
-            {/* Vehicle Sidebar */}
-            <div className="w-80 flex-shrink-0 bg-gradient-to-b from-white to-gray-50/80 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="py-4 px-5 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
-                <h3 className="text-sm font-semibold text-gray-800">Fleet Vehicles</h3>
+          <div className="flex gap-3 h-[calc(100vh-240px)] min-h-[500px]">
+            {/* Vehicle Sidebar - Compact */}
+            <div className="w-56 flex-shrink-0 bg-gradient-to-b from-white to-gray-50/80 rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
+              <div className="py-2.5 px-3 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white flex-shrink-0">
+                <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Fleet Vehicles</h3>
               </div>
-              <ScrollArea className="h-[calc(100%-56px)]">
-                <div className="p-3 space-y-2">
+              <ScrollArea className="flex-1">
+                <div className="p-1.5 space-y-1">
                   {allVehicles.map((vehicle) => {
                     const vehicleFaults = getFaultCodes(vehicle);
                     const hasFaults = vehicleFaults.length > 0;
@@ -561,38 +561,34 @@ export default function MaintenanceTab() {
                       <div
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
-                        className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                        className={`px-2.5 py-2 rounded-lg cursor-pointer transition-all group ${
                           isSelected 
-                            ? 'bg-gradient-to-b from-violet-100 to-violet-50 border-violet-400 shadow-md' 
-                            : 'bg-white hover:bg-gray-50 border-transparent hover:border-gray-200 shadow-sm hover:shadow-md'
+                            ? 'bg-gradient-to-r from-violet-500 to-violet-600 shadow-md' 
+                            : 'hover:bg-gray-50 hover:shadow-sm'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-violet-200' : 'bg-gray-100'}`}>
-                              <Truck className={`h-4 w-4 ${isSelected ? 'text-violet-600' : 'text-gray-500'}`} />
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Truck className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-white' : 'text-gray-400'}`} />
+                            <div className="min-w-0">
+                              <span className={`font-bold text-sm block truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+                                {vehicle.vehicle_number}
+                              </span>
+                              <span className={`text-[10px] block truncate ${isSelected ? 'text-violet-200' : 'text-gray-400'}`}>
+                                {vehicle.make} {vehicle.model}
+                              </span>
                             </div>
-                            <span className="font-semibold text-sm text-gray-800">
-                              {vehicle.vehicle_number}
-                            </span>
                           </div>
                           {hasFaults && (
-                            <span className="inline-flex items-center justify-center h-6 min-w-6 px-2 text-xs font-bold text-white bg-gradient-to-b from-red-500 to-red-600 rounded-full shadow-sm">
+                            <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold rounded-full flex-shrink-0 ${
+                              isSelected 
+                                ? 'bg-white/20 text-white' 
+                                : 'bg-gradient-to-b from-red-500 to-red-600 text-white shadow-sm'
+                            }`}>
                               {vehicleFaults.length}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1.5 ml-9">
-                          {vehicle.make} {vehicle.model}
-                        </p>
-                        {hasFaults && (
-                          <div className="flex items-center gap-1.5 mt-2 ml-9">
-                            <img src={checkEngineIcon} alt="Check engine" className="h-3.5 w-3.5" />
-                            <span className="text-xs text-red-500 font-semibold">
-                              {vehicleFaults.length} fault{vehicleFaults.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -601,67 +597,68 @@ export default function MaintenanceTab() {
             </div>
 
             {/* Fault Details Panel */}
-            <div className="flex-1 bg-gradient-to-b from-white to-gray-50/50 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="flex-1 bg-gradient-to-b from-white to-gray-50/50 rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
               {selectedVehicle ? (
                 (() => {
                   const selectedFaults = getFaultCodes(selectedVehicle);
                   return (
                     <>
-                      <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
+                      <div className="px-5 py-3 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white flex-shrink-0">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-xl bg-gradient-to-b from-violet-100 to-violet-200 shadow-sm">
-                              <Truck className="h-5 w-5 text-violet-600" />
+                            <div className="p-2 rounded-lg bg-gradient-to-b from-violet-100 to-violet-200 shadow-sm">
+                              <Truck className="h-4 w-4 text-violet-600" />
                             </div>
                             <div>
-                              <h2 className="text-lg font-bold text-gray-900">
+                              <h2 className="text-base font-bold text-gray-900">
                                 Vehicle {selectedVehicle.vehicle_number}
                               </h2>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-xs text-gray-500">
                                 {selectedVehicle.make} {selectedVehicle.model}
                               </p>
                             </div>
                           </div>
                           {selectedFaults.length > 0 ? (
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-b from-red-500 to-red-600 text-white shadow-md">
-                              <img src={checkEngineIcon} alt="Faults" className="h-4 w-4" />
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-b from-red-500 to-red-600 text-white shadow-md">
+                              <img src={checkEngineIcon} alt="Faults" className="h-3.5 w-3.5" />
                               {selectedFaults.length} Active Fault{selectedFaults.length !== 1 ? 's' : ''}
                             </div>
                           ) : (
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-b from-green-500 to-green-600 text-white shadow-md">
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-b from-green-500 to-green-600 text-white shadow-md">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              No Active Faults
+                              No Faults
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="p-6">
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                          <div className="p-4 bg-gradient-to-b from-white to-blue-50/50 rounded-xl border border-blue-100 shadow-sm">
-                            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Odometer</p>
-                            <p className="text-lg font-bold text-gray-900 mt-1">
-                              {selectedVehicle.odometer?.toLocaleString() || 'N/A'} mi
-                            </p>
+                      <ScrollArea className="flex-1">
+                        <div className="p-4">
+                          {/* Stats Grid - Compact */}
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="p-3 bg-gradient-to-b from-white to-blue-50/50 rounded-lg border border-blue-100 shadow-sm">
+                              <p className="text-[10px] font-medium text-blue-600 uppercase tracking-wide">Odometer</p>
+                              <p className="text-sm font-bold text-gray-900 mt-0.5">
+                                {selectedVehicle.odometer?.toLocaleString() || 'N/A'} mi
+                              </p>
+                            </div>
+                            <div className="p-3 bg-gradient-to-b from-white to-violet-50/50 rounded-lg border border-violet-100 shadow-sm">
+                              <p className="text-[10px] font-medium text-violet-600 uppercase tracking-wide">Last Updated</p>
+                              <p className="text-sm font-bold text-gray-900 mt-0.5">
+                                {selectedVehicle.last_updated 
+                                  ? format(new Date(selectedVehicle.last_updated), "MM/dd/yy HH:mm")
+                                  : 'N/A'
+                                }
+                              </p>
+                            </div>
+                            <div className="p-3 bg-gradient-to-b from-white to-emerald-50/50 rounded-lg border border-emerald-100 shadow-sm">
+                              <p className="text-[10px] font-medium text-emerald-600 uppercase tracking-wide">Location</p>
+                              <p className="text-xs font-bold text-gray-900 mt-0.5 truncate">
+                                {selectedVehicle.formatted_address || 'Unknown'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="p-4 bg-gradient-to-b from-white to-violet-50/50 rounded-xl border border-violet-100 shadow-sm">
-                            <p className="text-xs font-medium text-violet-600 uppercase tracking-wide">Last Updated</p>
-                            <p className="text-lg font-bold text-gray-900 mt-1">
-                              {selectedVehicle.last_updated 
-                                ? format(new Date(selectedVehicle.last_updated), "MM/dd/yy HH:mm")
-                                : 'N/A'
-                              }
-                            </p>
-                          </div>
-                          <div className="p-4 bg-gradient-to-b from-white to-emerald-50/50 rounded-xl border border-emerald-100 shadow-sm">
-                            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Location</p>
-                            <p className="text-sm font-bold text-gray-900 mt-1 truncate">
-                              {selectedVehicle.formatted_address || 'Unknown'}
-                            </p>
-                          </div>
-                        </div>
 
                         {/* DTCs Section */}
                         <div className="space-y-4">
@@ -787,7 +784,8 @@ export default function MaintenanceTab() {
                             </div>
                           )}
                         </div>
-                      </div>
+                        </div>
+                      </ScrollArea>
                     </>
                   );
                 })()
