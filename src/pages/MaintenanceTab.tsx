@@ -235,21 +235,28 @@ export default function MaintenanceTab() {
       let performedByName = "Unknown";
       
       if (user) {
-        // Try to get user's name from users table
-        const { data: userData } = await query("users")
-          .select("first_name, last_name, email")
+        // Try to get user's full name from profiles table first
+        const { data: profileData } = await query("profiles")
+          .select("full_name, email")
           .eq("id", user.id)
           .single();
         
-        const userInfo = userData as { first_name?: string; last_name?: string; email?: string } | null;
-        if (userInfo) {
-          if (userInfo.first_name || userInfo.last_name) {
+        const profile = profileData as { full_name?: string; email?: string } | null;
+        if (profile?.full_name) {
+          performedByName = profile.full_name;
+        } else {
+          // Fallback to users table
+          const { data: userData } = await query("users")
+            .select("first_name, last_name")
+            .eq("id", user.id)
+            .single();
+          
+          const userInfo = userData as { first_name?: string; last_name?: string } | null;
+          if (userInfo?.first_name || userInfo?.last_name) {
             performedByName = `${userInfo.first_name || ''} ${userInfo.last_name || ''}`.trim();
           } else {
-            performedByName = userInfo.email || user.email || "Unknown";
+            performedByName = profile?.email || user.email || "Unknown";
           }
-        } else {
-          performedByName = user.email || "Unknown";
         }
       }
 
