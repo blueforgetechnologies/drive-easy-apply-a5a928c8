@@ -729,34 +729,38 @@ export default function InvoicesTab() {
 
       <div className="overflow-x-auto">
         {filter === "pending" ? (
-          // Pending loads table
-          filteredPendingLoads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Clock className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No pending loads</p>
-              <p className="text-sm">Approved loads awaiting invoice creation will appear here</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Factoring</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+          // Pending loads table - always show header
+          <Table>
+            <TableHeader>
+              <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Factoring</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPendingLoads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={13} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Clock className="h-10 w-10 mb-3 opacity-50" />
+                      <p className="text-base font-medium">No pending invoices</p>
+                      <p className="text-sm">Approved loads awaiting invoice creation will appear here</p>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPendingLoads.map((load) => {
+              ) : (
+                filteredPendingLoads.map((load) => {
                   const billingDate = load.completed_at || load.delivery_date || load.pickup_date;
                   const daysSinceBilling = billingDate
                     ? Math.floor((Date.now() - new Date(billingDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -868,36 +872,42 @@ export default function InvoicesTab() {
                       )}
                     </Fragment>
                   );
-                })}
-              </TableBody>
-            </Table>
-          )
+                })
+              )}
+            </TableBody>
+          </Table>
         ) : (
-          // Regular invoices table
-          filteredInvoices.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {searchQuery ? "No invoices match your search" : `No ${filter} invoices found`}
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
-                  <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
+          // Regular invoices table - always show header
+          <Table>
+            <TableHeader>
+              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInvoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={12} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <FileText className="h-10 w-10 mb-3 opacity-50" />
+                      <p className="text-base font-medium">No {filter} invoices</p>
+                      <p className="text-sm">{searchQuery ? "No invoices match your search" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} invoices will appear here`}</p>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvoices.map((invoice) => {
+              ) : (
+                filteredInvoices.map((invoice) => {
                   const daysSinceBilling = invoice.invoice_date 
                     ? Math.floor((Date.now() - new Date(invoice.invoice_date).getTime()) / (1000 * 60 * 60 * 24))
                     : 0;
@@ -925,10 +935,10 @@ export default function InvoicesTab() {
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          )
+                })
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
 

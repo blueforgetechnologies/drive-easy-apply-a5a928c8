@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search } from "lucide-react";
+import { Search, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { useTenantQuery } from "@/hooks/useTenantQuery";
 
@@ -73,27 +73,33 @@ export default function AuditLogsTab() {
         </div>
       </div>
 
-      {filteredLogs.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          No audit logs found
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                <TableHead className="text-primary font-medium uppercase text-xs">Action</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Entity Type</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Field</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Old Value</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">New Value</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">User</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Timestamp</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">IP Address</TableHead>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+              <TableHead className="text-primary font-medium uppercase text-xs">Action</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Entity Type</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Field</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Old Value</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">New Value</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">User</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Timestamp</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">IP Address</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <FileText className="h-10 w-10 mb-3 opacity-50" />
+                    <p className="text-base font-medium">No audit logs</p>
+                    <p className="text-sm">{searchTerm ? "No logs match your search" : "Activity logs will appear here"}</p>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogs.map((log) => (
+            ) : (
+              filteredLogs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-muted/50">
                   <TableCell>
                     <Badge className={getActionColor(log.action)}>
@@ -108,11 +114,11 @@ export default function AuditLogsTab() {
                   <TableCell>{format(new Date(log.timestamp), "MM/dd/yyyy h:mm a")}</TableCell>
                   <TableCell className="text-muted-foreground">{log.ip_address || "—"}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
