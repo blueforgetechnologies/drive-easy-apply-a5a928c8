@@ -1439,21 +1439,13 @@ export default function MaintenanceTab() {
                           </div>
                         </div>
                         
-                        {/* Severity indicator bar at bottom - slightly thicker */}
-                        <div className={`h-[4px] ${
-                          severity === 3 
-                            ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.6)]' 
-                            : severity === 2 
-                              ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 shadow-[0_0_6px_rgba(251,191,36,0.5)]'
-                              : hasOilChange
-                                ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400'
-                                : 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500'
-                        }`} />
+                        {/* Engraved divider between header and repairs */}
+                        <div className="h-[5px] bg-gradient-to-b from-gray-400/60 via-gray-500/40 to-white/70 shadow-[inset_0_2px_3px_rgba(0,0,0,0.3),inset_0_-1px_0_rgba(255,255,255,0.9)]" />
                       </div>
                       
                       {/* Repairs list with drag-and-drop - engraved separators */}
                       <div 
-                        className="min-h-[40px] bg-gradient-to-b from-slate-300/50 to-slate-400/30"
+                        className="min-h-[40px] bg-gradient-to-b from-slate-200/80 to-slate-300/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
                         onDragLeave={handleDragLeave}
                       >
                       {vehicleRepairs.map((repair, index) => {
