@@ -36,12 +36,12 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Extracted types and hooks for code splitting
-import type { Vehicle, Driver, HuntPlan, Load, DispatcherInfo, LoadHunterTheme, ActiveFilter, ActiveMode, EmailTimeWindow } from "@/types/loadHunter";
-import { useLoadHunterSound, loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
-import { useLoadHunterMatching } from "@/hooks/useLoadHunterMatching";
-import { useLoadHunterData } from "@/hooks/useLoadHunterData";
-import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
-import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
+import type { Vehicle, Driver, HuntPlan, Load } from "@/types/loadHunter";
+import { loadSoundSettings, getSoundPrompt } from "@/hooks/useLoadHunterSound";
+// Future integration: These hooks are ready but not yet wired up
+// import { useLoadHunterData } from "@/hooks/useLoadHunterData";
+// import { useLoadHunterRealtime } from "@/hooks/useLoadHunterRealtime";
+// import { useLoadHunterDispatcher } from "@/hooks/useLoadHunterDispatcher";
 import { 
   normalizeDate, 
   normalizeTime, 
