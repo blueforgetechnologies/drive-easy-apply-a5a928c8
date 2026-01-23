@@ -96,110 +96,112 @@ export default function ReadyForAuditTab() {
       </div>
 
       {!selectedLoadId && (
-        <>
-          {filteredLoads?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FileCheck className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No loads ready for audit</p>
-              <p className="text-sm">Loads marked as "Ready for Audit" will appear here</p>
-            </div>
-          ) : (
-            <div className="rounded-lg border overflow-hidden shadow-lg">
-              <Table className="text-sm">
-                <TableHeader>
-                  <TableRow className="bg-muted/50 backdrop-blur-sm border-b-0">
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Our Load ID</div>
-                      <div className="text-muted-foreground font-normal">Customer Load</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Carrier</div>
-                      <div className="text-muted-foreground font-normal">Customer</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Origin</div>
-                      <div className="text-muted-foreground font-normal">Destination</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Pick Up</div>
-                      <div className="text-muted-foreground font-normal">Drop Off Date</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Rate</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Load Owner</div>
-                      <div className="text-muted-foreground font-normal">Dispatcher</div>
-                    </TableHead>
-                    <TableHead className="text-primary font-semibold text-xs py-2 px-3">
-                      <div>Truck ID</div>
-                      <div className="text-muted-foreground font-normal">Driver</div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLoads?.map((load) => {
-                    const loadOwner = load.load_owner as any;
-                    const dispatcher = load.dispatchers as any;
-                    const loadOwnerName = loadOwner 
-                      ? `${loadOwner.first_name || ""} ${loadOwner.last_name || ""}`.trim()
-                      : "";
-                    const dispatcherName = dispatcher 
-                      ? `${dispatcher.first_name || ""} ${dispatcher.last_name || ""}`.trim()
-                      : "";
-                    const driverName = getDriverName(load.driver);
-                    const isSetAside = load.status === "set_aside";
+        <div className="rounded-lg border overflow-hidden shadow-lg">
+          <Table className="text-sm">
+            <TableHeader>
+              <TableRow className="bg-muted/50 backdrop-blur-sm border-b-0">
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Our Load ID</div>
+                  <div className="text-muted-foreground font-normal">Customer Load</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Carrier</div>
+                  <div className="text-muted-foreground font-normal">Customer</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Origin</div>
+                  <div className="text-muted-foreground font-normal">Destination</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Pick Up</div>
+                  <div className="text-muted-foreground font-normal">Drop Off Date</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Rate</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Load Owner</div>
+                  <div className="text-muted-foreground font-normal">Dispatcher</div>
+                </TableHead>
+                <TableHead className="text-primary font-semibold text-xs py-2 px-3">
+                  <div>Truck ID</div>
+                  <div className="text-muted-foreground font-normal">Driver</div>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLoads?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <FileCheck className="h-10 w-10 mb-3 opacity-50" />
+                      <p className="text-base font-medium">Nothing to audit</p>
+                      <p className="text-sm">Loads marked as "Ready for Audit" will appear here</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLoads?.map((load) => {
+                  const loadOwner = load.load_owner as any;
+                  const dispatcher = load.dispatchers as any;
+                  const loadOwnerName = loadOwner 
+                    ? `${loadOwner.first_name || ""} ${loadOwner.last_name || ""}`.trim()
+                    : "";
+                  const dispatcherName = dispatcher 
+                    ? `${dispatcher.first_name || ""} ${dispatcher.last_name || ""}`.trim()
+                    : "";
+                  const driverName = getDriverName(load.driver);
+                  const isSetAside = load.status === "set_aside";
 
-                    return (
-                      <TableRow 
-                        key={load.id} 
-                        className={`cursor-pointer hover:bg-muted/50 transition-colors ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : "border-l-4 border-l-primary"}`}
-                        onClick={() => setSelectedLoadId(load.id)}
-                      >
-                        <TableCell className="py-2 px-3">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-sm">{load.load_number}</div>
-                            {isSetAside && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
-                                Set Aside
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="font-semibold text-sm">{load.carriers?.name || ""}</div>
-                          <div className="text-muted-foreground text-xs">{load.customers?.name || ""}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}`.trim() : ""}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}`.trim() : ""}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="text-sm">{formatDate(load.pickup_date)}</div>
-                          <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="font-medium text-sm">{loadOwnerName}</div>
-                          <div className="text-muted-foreground text-xs">{dispatcherName}</div>
-                        </TableCell>
-                        <TableCell className="py-2 px-3">
-                          <div className="font-medium text-sm">{load.vehicles?.vehicle_number || ""}</div>
-                          <div className="text-muted-foreground text-xs">{driverName}</div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
+                  return (
+                    <TableRow 
+                      key={load.id} 
+                      className={`cursor-pointer hover:bg-muted/50 transition-colors ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : "border-l-4 border-l-primary"}`}
+                      onClick={() => setSelectedLoadId(load.id)}
+                    >
+                      <TableCell className="py-2 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-sm">{load.load_number}</div>
+                          {isSetAside && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
+                              Set Aside
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground text-xs">{load.reference_number || ""}</div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="font-semibold text-sm">{load.carriers?.name || ""}</div>
+                        <div className="text-muted-foreground text-xs">{load.customers?.name || ""}</div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="text-sm">{load.pickup_city ? `${load.pickup_city}, ${load.pickup_state || ""}`.trim() : ""}</div>
+                        <div className="text-muted-foreground text-xs">
+                          {load.delivery_city ? `${load.delivery_city}, ${load.delivery_state || ""}`.trim() : ""}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="text-sm">{formatDate(load.pickup_date)}</div>
+                        <div className="text-muted-foreground text-xs">{formatDate(load.delivery_date)}</div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="font-medium text-sm">{formatCurrency(load.rate)}</div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="font-medium text-sm">{loadOwnerName}</div>
+                        <div className="text-muted-foreground text-xs">{dispatcherName}</div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="font-medium text-sm">{load.vehicles?.vehicle_number || ""}</div>
+                        <div className="text-muted-foreground text-xs">{driverName}</div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {selectedLoadId && (
