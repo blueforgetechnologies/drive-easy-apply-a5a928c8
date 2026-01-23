@@ -1385,15 +1385,15 @@ export default function MaintenanceTab() {
                           ${isJustDropped ? 'ring-2 ring-green-500 shadow-[0_0_20px_6px_rgba(34,197,94,0.5)]' : ''}
                         `}
                       >
-                      {/* Elegant Vehicle header with status indicators */}
-                      <div className="relative bg-gradient-to-b from-slate-800 via-slate-700 to-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing rounded-t-lg overflow-hidden">
+                      {/* Elegant Vehicle header with status indicators - Silver theme */}
+                      <div className="relative bg-gradient-to-b from-gray-100 via-slate-200 to-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing rounded-t-lg overflow-hidden border-b border-slate-400/50">
                         {/* Glossy top highlight */}
-                        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
                         
                         {/* Header content */}
                         <div className="flex items-center justify-between px-2 py-1.5">
-                          {/* Truck number with subtle glow */}
-                          <span className="text-white text-[11px] font-bold tracking-wider drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                          {/* Truck number with elegant dark text */}
+                          <span className="text-slate-700 text-[11px] font-bold tracking-wider drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
                             #{vehicle?.vehicle_number || '?'}
                           </span>
                           
