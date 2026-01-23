@@ -161,7 +161,6 @@ export function LoadHunterFilters({
           }`}
           onClick={() => {
             setActiveMode('dispatch');
-            // If on "All" tab, switch to "unreviewed" since "All" is only available in Admin mode
             if (activeFilter === 'all') {
               setActiveFilter('unreviewed');
             }
@@ -235,7 +234,7 @@ export function LoadHunterFilters({
         )}
       </div>
 
-      {/* Filter Buttons */}
+      {/* Filter Buttons - Main group */}
       <div className={`flex items-center gap-1 flex-shrink-0 ${
         loadHunterTheme === 'aurora' ? 'text-purple-100' : ''
       }`}>
