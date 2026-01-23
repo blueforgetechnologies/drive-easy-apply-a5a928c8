@@ -227,6 +227,29 @@ export function LoadHunterFilters({
         )}
       </div>
 
+      {/* ALL Button - Toggleable */}
+      {showAllTabEnabled && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-7 px-3 text-xs font-medium gap-1 rounded-full flex-shrink-0 ${
+            loadHunterTheme === 'aurora'
+              ? activeFilter === 'all'
+                ? 'bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
+                : 'bg-slate-800/40 border border-purple-400/30 text-purple-200/70 hover:bg-slate-700/40'
+              : activeFilter === 'all'
+                ? 'bg-gradient-to-b from-gray-500 to-gray-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+                : 'bg-gradient-to-b from-white to-gray-100 text-gray-700 border border-gray-300 shadow-sm hover:from-gray-50 hover:to-gray-150'
+          }`}
+          onClick={() => handleFilterChange('all')}
+        >
+          All
+          <span className={`text-[10px] h-5 px-1.5 rounded-full flex items-center justify-center ${
+            activeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-400 text-white'
+          }`}>{allEmailsCount}</span>
+        </Button>
+      )}
+
       {/* Unreviewed Button with Sound controls */}
       <div className={`flex items-center overflow-hidden rounded-full flex-shrink-0 ${
         loadHunterTheme === 'aurora' 
