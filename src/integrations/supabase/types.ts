@@ -6775,6 +6775,7 @@ export type Database = {
         Returns: boolean
       }
       is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      next_invoice_number: { Args: { p_tenant_id: string }; Returns: string }
       reset_stale_email_queue: { Args: never; Returns: number }
       resolve_integration_config: {
         Args: { p_integration_key: string; p_tenant_id: string }

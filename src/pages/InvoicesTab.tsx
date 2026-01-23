@@ -273,38 +273,35 @@ export default function InvoicesTab() {
         
         if (creditError) {
           console.warn("Broker credit check failed:", creditError);
-        } else if (creditResult?.approval_status === 'approved') {
-          billingMethod = 'otr';
-          otrApproved = true;
-          console.log(`[InvoicesTab] Broker ${load.customers?.name} is OTR approved`);
         } else {
-          console.log(`[InvoicesTab] Broker ${load.customers?.name} not OTR approved (status: ${creditResult?.approval_status})`);
+          // Normalize to lower-case for comparison
+          const normalizedStatus = creditResult?.approval_status?.toLowerCase();
+          if (normalizedStatus === 'approved') {
+            billingMethod = 'otr';
+            otrApproved = true;
+            console.log(`[InvoicesTab] Broker ${load.customers?.name} is OTR approved`);
+          } else {
+            console.log(`[InvoicesTab] Broker ${load.customers?.name} not OTR approved (status: ${creditResult?.approval_status})`);
+          }
         }
       }
 
-      // Step 2: Get next invoice number
-      const { data: lastInvoice } = await supabase
-        .from("invoices" as any)
-        .select("invoice_number")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+      // Step 2: Get next invoice number atomically via DB function
+      const { data: invoiceNumberResult, error: invoiceNumberError } = await supabase
+        .rpc('next_invoice_number', { p_tenant_id: tenantId });
 
-      let nextNumber = 1000001;
-      const invoiceRecord = lastInvoice as { invoice_number?: string } | null;
-      if (invoiceRecord?.invoice_number) {
-        const lastNum = parseInt(invoiceRecord.invoice_number, 10);
-        if (!isNaN(lastNum)) {
-          nextNumber = lastNum + 1;
-        }
+      if (invoiceNumberError) {
+        throw new Error(`Failed to generate invoice number: ${invoiceNumberError.message}`);
       }
+
+      const nextNumber = invoiceNumberResult as string;
 
       // Step 3: Create invoice with billing_method
       // For OTR: start as 'draft', only set 'sent' after successful OTR submission
       // For direct_email: keep as 'draft' (no actual email sending yet)
       const invoiceData = {
         tenant_id: tenantId,
-        invoice_number: String(nextNumber),
+        invoice_number: nextNumber,
         customer_name: load.customers?.name || load.broker_name,
         customer_id: load.customer_id,
         billing_party: otrApproved ? (factoringCompany || 'OTR Solutions') : (load.customers?.name || load.broker_name),
@@ -341,16 +338,7 @@ export default function InvoicesTab() {
           amount: load.rate || 0,
         });
 
-      // Update load financial status
-      await supabase
-        .from("loads")
-        .update({
-          financial_status: "invoiced",
-          invoice_number: String(nextNumber),
-        })
-        .eq("id", load.id);
-
-      // Step 4: If OTR approved, submit to OTR and update status on success
+      // Step 4: If OTR approved, submit to OTR and update status + load on success
       if (otrApproved) {
         const { data: otrResult, error: otrError } = await supabase.functions.invoke(
           "submit-otr-invoice",
@@ -368,7 +356,7 @@ export default function InvoicesTab() {
           console.error("OTR submission error:", otrError);
           toast.error(`Invoice created but OTR submission failed: ${otrError.message}`);
         } else if (otrResult?.success) {
-          // Only set status='sent' after successful OTR submission
+          // Only set status='sent' and financial_status='invoiced' after successful OTR submission
           await supabase
             .from("invoices" as any)
             .update({
@@ -377,6 +365,15 @@ export default function InvoicesTab() {
             })
             .eq("id", (newInvoice as any).id);
           
+          // Update load financial_status only on OTR success
+          await supabase
+            .from("loads")
+            .update({
+              financial_status: "invoiced",
+              invoice_number: nextNumber,
+            })
+            .eq("id", load.id);
+          
           toast.success(`Invoice ${nextNumber} submitted to OTR Solutions`);
           setInvoiceFilter("sent");
         } else {
@@ -384,7 +381,8 @@ export default function InvoicesTab() {
           setInvoiceFilter("draft");
         }
       } else {
-        // Direct email billing - invoice stays as draft until email is actually sent
+        // Direct email billing - invoice stays as draft, load stays as pending_invoice
+        // Do NOT set financial_status to 'invoiced' until email is actually sent
         toast.success(`Invoice ${nextNumber} created (direct billing - awaiting email send)`);
         setInvoiceFilter("draft");
       }
