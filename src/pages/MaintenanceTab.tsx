@@ -1236,8 +1236,8 @@ export default function MaintenanceTab() {
             </Dialog>
           </div>
 
-          {/* Repairs grid by vehicle - compact layout */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-9 gap-1.5">
+          {/* Repairs grid by vehicle - narrow compact layout */}
+          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-12 gap-1">
             {/* Group repairs by vehicle, sort by vehicle number */}
             {Array.from(new Set(repairs.map(r => r.vehicle_id)))
               .map(vehicleId => ({
@@ -1309,11 +1309,6 @@ export default function MaintenanceTab() {
                                     background: `linear-gradient(to bottom, ${bgColor}70, ${bgColor}50, ${bgColor}60)`,
                                   }}
                                 >
-                                  {/* Drag handle */}
-                                  <div className={`flex-shrink-0 transition-all duration-200 ${isDragging ? 'opacity-20' : 'opacity-50 group-hover:opacity-100'}`}>
-                                    <GripVertical className="h-4 w-4 text-gray-800" />
-                                  </div>
-                                  
                                   {/* Description */}
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-medium leading-tight text-gray-900" style={{ wordBreak: 'break-word' }}>
