@@ -371,11 +371,15 @@ export function LoadHunterFilters({
         </Button>
       </div>
 
-      {/* Dispatcher Scorecard Button - Standalone with beautiful cyan glow when active */}
+      {/* Dispatcher Scorecard Button - Standalone with beautiful cyan glow when selected */}
       <Button
         variant="ghost"
         size="sm"
-        className={`${btnBase} rounded-full mr-2 btn-glossy-cyan text-white`}
+        className={`${btnBase} rounded-full mr-2 ${
+          activeFilter === 'dispatcher-metrix'
+            ? 'btn-glossy-cyan text-white'
+            : loadHunterTheme === 'aurora' ? 'btn-glossy-aurora text-purple-200' : 'btn-glossy text-gray-700'
+        }`}
         onClick={onOpenDispatcherScorecard}
       >
         <Gauge className={iconSize} />
