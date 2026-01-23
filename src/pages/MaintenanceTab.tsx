@@ -633,14 +633,14 @@ export default function MaintenanceTab() {
           onClick={() => setActiveTab('repairs')}
           className={`h-[32px] px-4 text-[13px] font-medium rounded-none border-0 flex items-center gap-2 transition-all ${
             activeTab === 'repairs' 
-              ? 'bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-md' 
+              ? 'btn-glossy-warning text-white' 
               : 'btn-glossy text-gray-700 hover:opacity-90'
           }`}
         >
           <ClipboardList className="h-4 w-4" />
           Repairs Needed
           {repairs.length > 0 && (
-            <span className={`${activeTab === 'repairs' ? 'bg-amber-800/40 text-white' : 'bg-amber-100 text-amber-700'} text-[10px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold`}>
+            <span className={`${activeTab === 'repairs' ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>
               {repairs.length}
             </span>
           )}
