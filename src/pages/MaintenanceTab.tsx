@@ -580,7 +580,7 @@ export default function MaintenanceTab() {
                   if (severity === 3) return { border: '4px solid #dc2626', bg: 'from-red-50 to-red-100/50' }; // Critical - red
                   if (severity === 2) return { border: '4px solid #f59e0b', bg: 'from-amber-50 to-amber-100/50' }; // Warning - amber
                   if (severity === 1) return { border: '4px solid #3b82f6', bg: 'from-blue-50 to-blue-100/50' }; // Info - blue
-                  return { border: '4px solid #d1d5db', bg: '' }; // None - gray
+                  return { border: '4px solid #22c55e', bg: 'from-green-50 to-green-100/50' }; // Healthy - green
                 };
                 
                 const severityStyle = getSeverityStyle();
@@ -596,9 +596,7 @@ export default function MaintenanceTab() {
                     className={`px-2 py-1.5 cursor-pointer rounded-md relative transition-all duration-200 ${
                       isSelected 
                         ? 'card-glossy-selected' 
-                        : hasFaults 
-                          ? `bg-gradient-to-b ${severityStyle.bg} border border-current/20 shadow-sm hover:shadow-md`
-                          : 'card-glossy'
+                        : `bg-gradient-to-b ${severityStyle.bg} border border-current/20 shadow-sm hover:shadow-md`
                     }`}
                     style={{ 
                       borderLeft: severityStyle.border
@@ -611,13 +609,14 @@ export default function MaintenanceTab() {
                           isSelected ? 'text-blue-600' : 
                           severity === 3 ? 'text-red-500' : 
                           severity === 2 ? 'text-amber-500' : 
-                          severity === 1 ? 'text-blue-500' : 'text-gray-500'
+                          severity === 1 ? 'text-blue-500' : 'text-green-600'
                         }`} />
                         <div className="min-w-0 flex-1">
                           <div className={`font-bold text-base leading-none truncate ${
                             isSelected ? 'text-blue-700' : 
                             severity === 3 ? 'text-red-700' : 
-                            severity === 2 ? 'text-amber-700' : 'text-gray-800'
+                            severity === 2 ? 'text-amber-700' : 
+                            severity === 1 ? 'text-blue-700' : 'text-green-800'
                           }`}>
                             {vehicle.vehicle_number}
                           </div>
