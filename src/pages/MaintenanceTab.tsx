@@ -1169,26 +1169,30 @@ export default function MaintenanceTab() {
             </Dialog>
           </div>
 
-          {/* Repairs grid by vehicle - puffy light aesthetic with carved separators */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-            {/* Group repairs by vehicle, sort by most repairs first */}
+          {/* Repairs grid by vehicle - compact layout */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-9 gap-1.5">
+            {/* Group repairs by vehicle, sort by vehicle number */}
             {Array.from(new Set(repairs.map(r => r.vehicle_id)))
               .map(vehicleId => ({
                 vehicleId,
                 repairs: repairs.filter(r => r.vehicle_id === vehicleId).sort((a, b) => a.sort_order - b.sort_order)
               }))
-              .sort((a, b) => b.repairs.length - a.repairs.length)
+              .sort((a, b) => {
+                const numA = parseInt(a.repairs[0]?.vehicles?.vehicle_number || '999');
+                const numB = parseInt(b.repairs[0]?.vehicles?.vehicle_number || '999');
+                return numA - numB;
+              })
               .map(({ vehicleId, repairs: vehicleRepairs }) => {
                 const vehicle = vehicleRepairs[0]?.vehicles;
                 return (
                   <div 
                     key={vehicleId} 
-                    className="bg-gradient-to-b from-slate-100 to-slate-200/80 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-200/60"
+                    className="bg-gradient-to-b from-slate-50 to-slate-100/80 rounded-lg overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-slate-200/50"
                   >
-                    {/* Vehicle header - puffy style */}
-                    <div className="py-1.5 px-2.5 bg-gradient-to-b from-slate-600 to-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
-                      <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
-                        Truck: {vehicle?.vehicle_number || '?'}
+                    {/* Vehicle header - compact */}
+                    <div className="py-1 px-2 bg-gradient-to-b from-slate-600 to-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+                      <span className="text-white text-[11px] font-bold tracking-wide drop-shadow-sm">
+                        #{vehicle?.vehicle_number || '?'}
                       </span>
                     </div>
                     
