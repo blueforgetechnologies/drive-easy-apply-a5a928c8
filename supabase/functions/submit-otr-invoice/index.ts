@@ -1,7 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient as _createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAccess.ts";
-import { OTR_API_BASE_URL, getOtrCredentialsFromEnv } from "../_shared/otrClient.ts";
+import { 
+  OTR_API_BASE_URL, 
+  getOtrCredentialsFromEnv,
+  maskSubscriptionKey,
+  isTokenAuthEnabled,
+  getOtrHeaders,
+  getOtrHeadersWithToken,
+  getOtrToken,
+} from "../_shared/otrClient.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,11 +17,9 @@ const corsHeaders = {
 };
 
 // OTR PostInvoices payload per OTR specification
-// BrokerMC: dynamic (provided per request)
-// ClientDOT: 2391750 (Talbi Logistics)
 interface OtrPostInvoicePayload {
-  BrokerMC: number;          // Broker MC number (numeric)
-  ClientDOT: string;         // Your carrier DOT number
+  BrokerMC: number;          // Broker MC number (numeric, dynamic per request)
+  ClientDOT: string;         // Your carrier DOT number (2391750 for Talbi)
   FromCity: string;          // Pickup city
   FromState: string;         // Pickup state (2-letter)
   ToCity: string;            // Delivery city
@@ -41,10 +47,11 @@ interface OtrInvoiceResponse {
 }
 
 // Submit invoice to OTR Solutions
-// Per OTR: Only ocp-apim-subscription-key header required, no OAuth
+// Endpoint: POST {BASE_URL}/invoices
 async function submitInvoiceToOtr(
   payload: OtrPostInvoicePayload,
-  subscriptionKey: string
+  subscriptionKey: string,
+  accessToken?: string  // Optional: only used if token auth is enabled
 ): Promise<{
   success: boolean;
   invoice_id?: string;
@@ -53,20 +60,21 @@ async function submitInvoiceToOtr(
   error?: string;
 }> {
   try {
-    console.log(`[submit-otr-invoice] Submitting invoice ${payload.InvoiceNo} to OTR...`);
-    console.log(`[submit-otr-invoice] Full request payload:`, JSON.stringify(payload, null, 2));
+    const requestUrl = `${OTR_API_BASE_URL}/invoices`;
     
-    const endpoint = `${OTR_API_BASE_URL}/invoices`;
-    console.log(`[submit-otr-invoice] POST ${endpoint}`);
-    console.log(`[submit-otr-invoice] Headers: Content-Type: application/json, ocp-apim-subscription-key: ${subscriptionKey.substring(0, 8)}...`);
+    console.log(`[submit-otr-invoice] POST ${requestUrl}`);
+    console.log(`[submit-otr-invoice] Subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
+    console.log(`[submit-otr-invoice] Token auth enabled: ${isTokenAuthEnabled()}`);
+    console.log(`[submit-otr-invoice] Payload:`, JSON.stringify(payload, null, 2));
     
-    const response = await fetch(endpoint, {
+    // Use token auth headers if enabled and token provided
+    const headers = accessToken && isTokenAuthEnabled() 
+      ? getOtrHeadersWithToken(subscriptionKey, accessToken)
+      : getOtrHeaders(subscriptionKey);
+    
+    const response = await fetch(requestUrl, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'ocp-apim-subscription-key': subscriptionKey,
-      },
+      headers,
       body: JSON.stringify(payload)
     });
 
@@ -83,11 +91,19 @@ async function submitInvoiceToOtr(
 
     if (!response.ok) {
       console.error(`[submit-otr-invoice] OTR API error: ${response.status}`);
-      console.error(`[submit-otr-invoice] Full request that failed:`, JSON.stringify({
-        endpoint,
+      console.error(`[submit-otr-invoice] Full request details:`, JSON.stringify({
+        url: requestUrl,
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
+        },
         payload,
-        response_status: response.status,
-        response_body: data
+        response: {
+          status: response.status,
+          body: data
+        }
       }, null, 2));
       
       if (response.status === 401) {
@@ -146,7 +162,7 @@ serve(async (req) => {
 
     const adminClient = getServiceClient();
 
-    // Get OTR credentials (subscription key only)
+    // Get OTR credentials
     const credentials = getOtrCredentialsFromEnv();
     if (!credentials) {
       return new Response(
@@ -361,8 +377,25 @@ serve(async (req) => {
 
     console.log('[submit-otr-invoice] Final OTR payload:', JSON.stringify(otrPayload, null, 2));
 
-    // Submit to OTR - only subscription key needed
-    const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey);
+    // Get access token if token auth is enabled
+    let accessToken: string | undefined;
+    
+    if (isTokenAuthEnabled() && credentials.username && credentials.password) {
+      console.log('[submit-otr-invoice] Token auth enabled, getting token...');
+      const tokenResult = await getOtrToken(
+        credentials.subscriptionKey,
+        credentials.username,
+        credentials.password
+      );
+      if (tokenResult.success) {
+        accessToken = tokenResult.access_token;
+      } else {
+        console.warn('[submit-otr-invoice] Token auth failed, falling back to subscription-key-only:', tokenResult.error);
+      }
+    }
+
+    // Submit to OTR (with or without token)
+    const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey, accessToken);
 
     // Record submission attempt
     await adminClient
