@@ -3,11 +3,11 @@ import {
   OTR_API_BASE_URL, 
   getOtrCredentialsFromEnv,
   maskSubscriptionKey,
-  isTokenAuthEnabled,
   useIsoDateFormat,
   testOtrBrokerCheck,
-  getOtrHeaders,
+  getOtrHeadersWithToken,
   validateOtrPayload,
+  getOtrToken,
   type OtrInvoicePayload,
 } from "../_shared/otrClient.ts";
 
@@ -69,6 +69,11 @@ function getTimestampInfo(): TimestampInfo {
 interface CorrelatedRequest {
   attempt_id: string;
   timestamps: TimestampInfo;
+  token_result?: {
+    success: boolean;
+    attempt_id: string;
+    error?: string;
+  };
   request_url: string;
   subscription_key_masked: string;
   payload: OtrInvoicePayload;
@@ -79,13 +84,12 @@ interface CorrelatedRequest {
 }
 
 async function executeCorrelatedInvoiceSubmit(
-  subscriptionKey: string,
+  credentials: { subscriptionKey: string; username?: string; password?: string },
   payload: OtrInvoicePayload,
   timestamps: TimestampInfo
 ): Promise<CorrelatedRequest> {
   const attempt_id = crypto.randomUUID();
   const request_url = `${OTR_API_BASE_URL}/invoices`;
-  const headers = getOtrHeaders(subscriptionKey);
   
   console.log('\n' + '='.repeat(70));
   console.log(`[ATTEMPT ${attempt_id}]`);
@@ -96,8 +100,56 @@ async function executeCorrelatedInvoiceSubmit(
   console.log(`[TIMESTAMP] Within Staging Hours (08:00-23:00 ET): ${timestamps.within_staging_hours}`);
   console.log(`[REQUEST] URL: ${request_url}`);
   console.log(`[REQUEST] Method: POST`);
-  console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
+  console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(credentials.subscriptionKey)}`);
   console.log(`[REQUEST] Payload:`, JSON.stringify(payload, null, 2));
+  
+  // Get OAuth token first (REQUIRED for invoice submission)
+  if (!credentials.username || !credentials.password) {
+    console.error('[ERROR] OTR_USERNAME and OTR_PASSWORD required for invoice submission');
+    return {
+      attempt_id,
+      timestamps,
+      request_url,
+      subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
+      payload,
+      response_status: 0,
+      response_headers: {},
+      response_body: { error: 'OTR_USERNAME and OTR_PASSWORD secrets required for invoice submission' },
+      success: false,
+    };
+  }
+  
+  console.log('[TOKEN] Getting OAuth bearer token (REQUIRED for invoice submission)...');
+  const tokenResult = await getOtrToken(
+    credentials.subscriptionKey,
+    credentials.username,
+    credentials.password
+  );
+  
+  if (!tokenResult.success || !tokenResult.access_token) {
+    console.error('[TOKEN] Failed to get token:', tokenResult.error);
+    return {
+      attempt_id,
+      timestamps,
+      token_result: {
+        success: false,
+        attempt_id: tokenResult.attempt_id,
+        error: tokenResult.error,
+      },
+      request_url,
+      subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
+      payload,
+      response_status: 0,
+      response_headers: {},
+      response_body: { error: `Token authentication failed: ${tokenResult.error}` },
+      success: false,
+    };
+  }
+  
+  console.log(`[TOKEN] Token obtained successfully (attempt: ${tokenResult.attempt_id})`);
+  
+  // Use bearer token for invoice submission
+  const headers = getOtrHeadersWithToken(credentials.subscriptionKey, tokenResult.access_token);
   
   try {
     const response = await fetch(request_url, {
@@ -125,8 +177,12 @@ async function executeCorrelatedInvoiceSubmit(
     return {
       attempt_id,
       timestamps,
+      token_result: {
+        success: true,
+        attempt_id: tokenResult.attempt_id,
+      },
       request_url,
-      subscription_key_masked: maskSubscriptionKey(subscriptionKey),
+      subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
       payload,
       response_status: response.status,
       response_headers: responseHeaders,
@@ -140,8 +196,12 @@ async function executeCorrelatedInvoiceSubmit(
     return {
       attempt_id,
       timestamps,
+      token_result: {
+        success: true,
+        attempt_id: tokenResult.attempt_id,
+      },
       request_url,
-      subscription_key_masked: maskSubscriptionKey(subscriptionKey),
+      subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
       payload,
       response_status: 0,
       response_headers: {},
@@ -223,7 +283,8 @@ serve(async (req) => {
 
     console.log(`[CONFIG] Base URL: ${OTR_API_BASE_URL}`);
     console.log(`[CONFIG] Subscription key: ${maskSubscriptionKey(credentials.subscriptionKey)}`);
-    console.log(`[CONFIG] Token auth enabled: ${isTokenAuthEnabled()}`);
+    console.log(`[CONFIG] Username configured: ${credentials.username ? 'YES' : 'NO'}`);
+    console.log(`[CONFIG] Password configured: ${credentials.password ? 'YES' : 'NO'}`);
     console.log(`[CONFIG] ISO date format enabled: ${useIsoDateFormat()}`);
     console.log(`[CONFIG] Test type: ${test_type}`);
 
@@ -232,11 +293,14 @@ serve(async (req) => {
       config: {
         base_url: string;
         subscription_key_masked: string;
-        token_auth_enabled: boolean;
+        token_auth_required: boolean;
+        username_configured: boolean;
+        password_configured: boolean;
         iso_date_format_enabled: boolean;
         endpoints: {
           broker_check: string;
           invoices: string;
+          token: string;
         };
       };
       broker_check?: unknown;
@@ -245,11 +309,14 @@ serve(async (req) => {
       config: {
         base_url: OTR_API_BASE_URL,
         subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
-        token_auth_enabled: isTokenAuthEnabled(),
+        token_auth_required: true, // OTR confirmed bearer token is REQUIRED
+        username_configured: !!credentials.username,
+        password_configured: !!credentials.password,
         iso_date_format_enabled: useIsoDateFormat(),
         endpoints: {
           broker_check: `${OTR_API_BASE_URL}/broker-check/{brokerMc}`,
           invoices: `${OTR_API_BASE_URL}/invoices`,
+          token: `${OTR_API_BASE_URL}/token`,
         },
       },
     };
@@ -288,9 +355,9 @@ serve(async (req) => {
       const validation = validateOtrPayload(knownGoodPayload);
       console.log(`[VALIDATION] Pre-submission validation:`, JSON.stringify(validation, null, 2));
       
-      // Execute with correlation logging
+      // Execute with correlation logging (includes token fetch)
       results.invoice_submit = await executeCorrelatedInvoiceSubmit(
-        credentials.subscriptionKey,
+        credentials,
         knownGoodPayload,
         timestamps
       );

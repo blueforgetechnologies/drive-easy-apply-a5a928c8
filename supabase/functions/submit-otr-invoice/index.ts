@@ -5,8 +5,6 @@ import {
   OTR_API_BASE_URL, 
   getOtrCredentialsFromEnv,
   maskSubscriptionKey,
-  isTokenAuthEnabled,
-  getOtrHeaders,
   getOtrHeadersWithToken,
   getOtrToken,
 } from "../_shared/otrClient.ts";
@@ -109,7 +107,7 @@ function extractOtrErrorMessage(data: unknown, rawText: string): string {
 async function submitInvoiceToOtr(
   payload: OtrPostInvoicePayload,
   subscriptionKey: string,
-  accessToken?: string
+  accessToken: string  // REQUIRED - OTR confirmed bearer token is mandatory for invoice submission
 ): Promise<{
   success: boolean;
   invoice_id?: string;
@@ -130,12 +128,11 @@ async function submitInvoiceToOtr(
     console.log(`[TIMESTAMP] Eastern: ${timestamps.eastern_time}`);
     console.log(`[REQUEST] URL: ${requestUrl}`);
     console.log(`[REQUEST] Subscription Key: ${maskSubscriptionKey(subscriptionKey)}`);
-    console.log(`[REQUEST] Token Auth Enabled: ${isTokenAuthEnabled()}`);
+    console.log(`[REQUEST] Bearer Token: ***PROVIDED***`);
     console.log(`[REQUEST] Payload:`, JSON.stringify(payload, null, 2));
     
-    const headers = accessToken && isTokenAuthEnabled() 
-      ? getOtrHeadersWithToken(subscriptionKey, accessToken)
-      : getOtrHeaders(subscriptionKey);
+    // ALWAYS use bearer token for invoice submission (OTR requirement)
+    const headers = getOtrHeadersWithToken(subscriptionKey, accessToken);
     
     const response = await fetch(requestUrl, {
       method: 'POST',
@@ -467,25 +464,42 @@ serve(async (req) => {
 
     console.log('[submit-otr-invoice] Final OTR payload:', JSON.stringify(otrPayload, null, 2));
 
-    // Get access token if token auth is enabled
-    let accessToken: string | undefined;
-    
-    if (isTokenAuthEnabled() && credentials.username && credentials.password) {
-      console.log('[submit-otr-invoice] Token auth enabled, getting token...');
-      const tokenResult = await getOtrToken(
-        credentials.subscriptionKey,
-        credentials.username,
-        credentials.password
+    // Get access token - REQUIRED for invoice submission (per OTR support confirmation)
+    if (!credentials.username || !credentials.password) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'OTR username and password required for invoice submission. Configure OTR_USERNAME and OTR_PASSWORD secrets.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      if (tokenResult.success) {
-        accessToken = tokenResult.access_token;
-      } else {
-        console.warn('[submit-otr-invoice] Token auth failed, falling back to subscription-key-only:', tokenResult.error);
-      }
     }
-
-    // Submit to OTR (with or without token)
-    const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey, accessToken);
+    
+    console.log('[submit-otr-invoice] Getting OAuth bearer token (REQUIRED for invoice submission)...');
+    const tokenResult = await getOtrToken(
+      credentials.subscriptionKey,
+      credentials.username,
+      credentials.password
+    );
+    
+    if (!tokenResult.success || !tokenResult.access_token) {
+      console.error('[submit-otr-invoice] Token auth FAILED:', tokenResult.error);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `OTR authentication failed: ${tokenResult.error}`,
+          token_attempt_id: tokenResult.attempt_id,
+          utc_time: tokenResult.utc_time,
+          eastern_time: tokenResult.eastern_time,
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`[submit-otr-invoice] Token obtained successfully (attempt: ${tokenResult.attempt_id})`);
+    
+    // Submit to OTR with required bearer token
+    const result = await submitInvoiceToOtr(otrPayload, credentials.subscriptionKey, tokenResult.access_token);
 
     // Record submission attempt
     await adminClient
