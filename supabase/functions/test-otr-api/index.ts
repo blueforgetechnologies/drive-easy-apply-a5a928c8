@@ -4,8 +4,11 @@ import {
   getOtrCredentialsFromEnv,
   maskSubscriptionKey,
   isTokenAuthEnabled,
+  useIsoDateFormat,
   testOtrBrokerCheck,
   testOtrInvoiceSubmit,
+  validateOtrPayload,
+  type OtrInvoicePayload,
 } from "../_shared/otrClient.ts";
 
 const corsHeaders = {
@@ -23,7 +26,8 @@ const corsHeaders = {
  *   POST /test-otr-api
  *   Body: { "test_type": "broker_check", "broker_mc": "635576" }
  *   Body: { "test_type": "invoice", "payload": { ... } }
- *   Body: { "test_type": "both" } - runs both with sample data
+ *   Body: { "test_type": "invoice_exact" } - runs with exact OTR-specified payload
+ *   Body: { "test_type": "invoice_iso" } - runs with ISO date format (YYYY-MM-DDT00:00:00Z)
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -32,7 +36,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { test_type = 'both', broker_mc, payload } = body;
+    const { test_type = 'invoice_exact', broker_mc, payload } = body;
 
     // Get credentials
     const credentials = getOtrCredentialsFromEnv();
@@ -46,45 +50,35 @@ serve(async (req) => {
       );
     }
 
-    console.log('='.repeat(60));
+    console.log('='.repeat(70));
     console.log('[test-otr-api] OTR API Test Starting');
-    console.log('='.repeat(60));
+    console.log('='.repeat(70));
     console.log(`[test-otr-api] Base URL: ${OTR_API_BASE_URL}`);
     console.log(`[test-otr-api] Subscription key: ${maskSubscriptionKey(credentials.subscriptionKey)}`);
     console.log(`[test-otr-api] Token auth enabled: ${isTokenAuthEnabled()}`);
+    console.log(`[test-otr-api] ISO date format enabled: ${useIsoDateFormat()}`);
     console.log(`[test-otr-api] Test type: ${test_type}`);
-    console.log('='.repeat(60));
+    console.log('='.repeat(70));
 
     const results: {
       config: {
         base_url: string;
         subscription_key_masked: string;
         token_auth_enabled: boolean;
+        iso_date_format_enabled: boolean;
         endpoints: {
           broker_check: string;
           invoices: string;
         };
       };
-      broker_check?: {
-        success: boolean;
-        request_url: string;
-        response_status: number;
-        response_body: unknown;
-        error?: string;
-      };
-      invoice_submit?: {
-        success: boolean;
-        request_url: string;
-        request_payload: unknown;
-        response_status: number;
-        response_body: unknown;
-        error?: string;
-      };
+      broker_check?: unknown;
+      invoice_submit?: unknown;
     } = {
       config: {
         base_url: OTR_API_BASE_URL,
         subscription_key_masked: maskSubscriptionKey(credentials.subscriptionKey),
         token_auth_enabled: isTokenAuthEnabled(),
+        iso_date_format_enabled: useIsoDateFormat(),
         endpoints: {
           broker_check: `${OTR_API_BASE_URL}/broker-check/{brokerMc}`,
           invoices: `${OTR_API_BASE_URL}/invoices`,
@@ -94,7 +88,7 @@ serve(async (req) => {
 
     // Test broker check
     if (test_type === 'broker_check' || test_type === 'both') {
-      const testMc = broker_mc || '635576'; // Default test MC
+      const testMc = broker_mc || '635576';
       console.log(`\n[test-otr-api] Testing broker check with MC: ${testMc}`);
       
       results.broker_check = await testOtrBrokerCheck(
@@ -103,38 +97,79 @@ serve(async (req) => {
       );
     }
 
-    // Test invoice submission
-    if (test_type === 'invoice' || test_type === 'both') {
-      // Use provided payload or default test payload
-      const testPayload = payload || {
+    // Test invoice submission with exact payload from OTR email
+    if (test_type === 'invoice_exact' || test_type === 'both') {
+      // EXACT payload matching OTR email specification:
+      // - InvoiceNo: numeric-only string
+      // - PoNumber: numeric-only string
+      // - InvoiceDate: YYYY-MM-DD format
+      const exactPayload: OtrInvoicePayload = {
         BrokerMC: 635576,
         ClientDOT: "2391750",
         FromCity: "FAIRLESS HILLS",
         FromState: "PA",
         ToCity: "FRAMINGHAM",
         ToState: "MA",
-        PoNumber: "TEST-1144695",
-        InvoiceNo: `TEST-${Date.now()}`, // Unique invoice number for each test
-        InvoiceDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        PoNumber: "1144695",       // Numeric-only per OTR spec
+        InvoiceNo: "1000002",       // Numeric-only per OTR spec
+        InvoiceDate: "2026-01-19",  // YYYY-MM-DD format
         InvoiceAmount: 800,
       };
       
-      console.log(`\n[test-otr-api] Testing invoice submission`);
+      console.log(`\n[test-otr-api] Testing invoice submission with EXACT OTR payload`);
+      
+      // Validate before submission
+      const validation = validateOtrPayload(exactPayload);
+      console.log(`[test-otr-api] Pre-validation result:`, JSON.stringify(validation, null, 2));
       
       results.invoice_submit = await testOtrInvoiceSubmit(
         credentials.subscriptionKey,
-        testPayload
+        exactPayload
       );
     }
 
-    console.log('\n' + '='.repeat(60));
+    // Test invoice submission with ISO date format
+    if (test_type === 'invoice_iso') {
+      const isoPayload: OtrInvoicePayload = {
+        BrokerMC: 635576,
+        ClientDOT: "2391750",
+        FromCity: "FAIRLESS HILLS",
+        FromState: "PA",
+        ToCity: "FRAMINGHAM",
+        ToState: "MA",
+        PoNumber: "1144695",
+        InvoiceNo: "1000003",  // Different invoice number to avoid duplicate
+        InvoiceDate: "2026-01-19T00:00:00Z",  // ISO format with time
+        InvoiceAmount: 800,
+      };
+      
+      console.log(`\n[test-otr-api] Testing invoice submission with ISO DATE FORMAT`);
+      
+      results.invoice_submit = await testOtrInvoiceSubmit(
+        credentials.subscriptionKey,
+        isoPayload
+      );
+    }
+
+    // Test with custom payload
+    if (test_type === 'invoice' && payload) {
+      console.log(`\n[test-otr-api] Testing invoice submission with custom payload`);
+      
+      results.invoice_submit = await testOtrInvoiceSubmit(
+        credentials.subscriptionKey,
+        payload as OtrInvoicePayload
+      );
+    }
+
+    console.log('\n' + '='.repeat(70));
     console.log('[test-otr-api] Test Complete');
-    console.log('='.repeat(60));
-    console.log('[test-otr-api] Results:', JSON.stringify(results, null, 2));
+    console.log('='.repeat(70));
+    console.log('[test-otr-api] Full Results:', JSON.stringify(results, null, 2));
 
     return new Response(
       JSON.stringify({
         success: true,
+        test_type,
         results,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

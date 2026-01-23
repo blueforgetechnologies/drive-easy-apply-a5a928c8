@@ -32,6 +32,30 @@ export interface OtrTokenResponse {
   expires_in?: number;
 }
 
+export interface OtrInvoicePayload {
+  BrokerMC: number;          // Broker MC number (numeric)
+  ClientDOT: string;         // Your carrier DOT number (digits only)
+  FromCity: string;          // Pickup city
+  FromState: string;         // Pickup state (2-letter)
+  ToCity: string;            // Delivery city
+  ToState: string;           // Delivery state (2-letter)
+  PoNumber: string;          // PO/Reference number (numeric-only string)
+  InvoiceNo: string;         // Invoice number (numeric-only string)
+  InvoiceDate: string;       // YYYY-MM-DD or YYYY-MM-DDT00:00:00Z
+  InvoiceAmount: number;     // Invoice amount (> 0)
+  
+  // Optional fields
+  TermPkey?: number;
+  Weight?: number;
+  Miles?: number;
+  Notes?: string;
+}
+
+export interface PayloadValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -50,6 +74,16 @@ export function maskSubscriptionKey(key: string): string {
  */
 export function isTokenAuthEnabled(): boolean {
   const flag = Deno.env.get('OTR_USE_TOKEN_AUTH');
+  return flag === 'true' || flag === '1';
+}
+
+/**
+ * Check if ISO datetime format should be used for InvoiceDate
+ * Default: false (YYYY-MM-DD format)
+ * Set OTR_USE_ISO_DATE=true for YYYY-MM-DDT00:00:00Z format
+ */
+export function useIsoDateFormat(): boolean {
+  const flag = Deno.env.get('OTR_USE_ISO_DATE');
   return flag === 'true' || flag === '1';
 }
 
@@ -73,6 +107,80 @@ export function getOtrHeadersWithToken(subscriptionKey: string, accessToken: str
     'Content-Type': 'application/json',
     'ocp-apim-subscription-key': subscriptionKey,
     'Authorization': `Bearer ${accessToken}`,
+  };
+}
+
+// =============================================================================
+// PAYLOAD VALIDATION
+// =============================================================================
+
+/**
+ * Validate OTR invoice payload before submission
+ * Checks required fields exist and are correct type/format
+ */
+export function validateOtrPayload(payload: OtrInvoicePayload): PayloadValidationResult {
+  const errors: string[] = [];
+
+  // BrokerMC: must be a positive integer
+  if (typeof payload.BrokerMC !== 'number' || !Number.isInteger(payload.BrokerMC) || payload.BrokerMC <= 0) {
+    errors.push(`BrokerMC must be a positive integer, got: ${JSON.stringify(payload.BrokerMC)} (type: ${typeof payload.BrokerMC})`);
+  }
+
+  // ClientDOT: must be string with digits only
+  if (typeof payload.ClientDOT !== 'string') {
+    errors.push(`ClientDOT must be a string, got: ${typeof payload.ClientDOT}`);
+  } else if (!/^\d+$/.test(payload.ClientDOT)) {
+    errors.push(`ClientDOT must contain digits only, got: "${payload.ClientDOT}"`);
+  }
+
+  // FromCity/ToCity: must be non-empty strings
+  if (typeof payload.FromCity !== 'string' || payload.FromCity.trim().length === 0) {
+    errors.push(`FromCity must be a non-empty string, got: "${payload.FromCity}"`);
+  }
+  if (typeof payload.ToCity !== 'string' || payload.ToCity.trim().length === 0) {
+    errors.push(`ToCity must be a non-empty string, got: "${payload.ToCity}"`);
+  }
+
+  // FromState/ToState: must be exactly 2 letters
+  if (typeof payload.FromState !== 'string' || !/^[A-Z]{2}$/.test(payload.FromState)) {
+    errors.push(`FromState must be exactly 2 uppercase letters, got: "${payload.FromState}"`);
+  }
+  if (typeof payload.ToState !== 'string' || !/^[A-Z]{2}$/.test(payload.ToState)) {
+    errors.push(`ToState must be exactly 2 uppercase letters, got: "${payload.ToState}"`);
+  }
+
+  // PoNumber: must be numeric-only string
+  if (typeof payload.PoNumber !== 'string') {
+    errors.push(`PoNumber must be a string, got: ${typeof payload.PoNumber}`);
+  } else if (!/^\d+$/.test(payload.PoNumber)) {
+    errors.push(`PoNumber must be numeric-only (digits), got: "${payload.PoNumber}"`);
+  }
+
+  // InvoiceNo: must be numeric-only string
+  if (typeof payload.InvoiceNo !== 'string') {
+    errors.push(`InvoiceNo must be a string, got: ${typeof payload.InvoiceNo}`);
+  } else if (!/^\d+$/.test(payload.InvoiceNo)) {
+    errors.push(`InvoiceNo must be numeric-only (digits), got: "${payload.InvoiceNo}"`);
+  }
+
+  // InvoiceDate: must be YYYY-MM-DD or YYYY-MM-DDT00:00:00Z format
+  if (typeof payload.InvoiceDate !== 'string') {
+    errors.push(`InvoiceDate must be a string, got: ${typeof payload.InvoiceDate}`);
+  } else {
+    const datePattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$/;
+    if (!datePattern.test(payload.InvoiceDate)) {
+      errors.push(`InvoiceDate must be YYYY-MM-DD or YYYY-MM-DDT00:00:00Z format, got: "${payload.InvoiceDate}"`);
+    }
+  }
+
+  // InvoiceAmount: must be positive number
+  if (typeof payload.InvoiceAmount !== 'number' || payload.InvoiceAmount <= 0) {
+    errors.push(`InvoiceAmount must be a positive number, got: ${JSON.stringify(payload.InvoiceAmount)} (type: ${typeof payload.InvoiceAmount})`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
   };
 }
 
@@ -204,6 +312,7 @@ export async function testOtrBrokerCheck(
   success: boolean;
   request_url: string;
   response_status: number;
+  response_headers: Record<string, string>;
   response_body: unknown;
   error?: string;
 }> {
@@ -220,6 +329,12 @@ export async function testOtrBrokerCheck(
       headers: getOtrHeaders(subscriptionKey),
     });
     
+    // Capture response headers
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    
     const responseText = await response.text();
     let responseBody: unknown;
     try {
@@ -229,12 +344,14 @@ export async function testOtrBrokerCheck(
     }
     
     console.log(`[otr-test] Response status: ${response.status}`);
+    console.log(`[otr-test] Response headers:`, JSON.stringify(responseHeaders, null, 2));
     console.log(`[otr-test] Response body:`, JSON.stringify(responseBody, null, 2));
     
     return {
       success: response.ok,
       request_url: requestUrl,
       response_status: response.status,
+      response_headers: responseHeaders,
       response_body: responseBody,
       error: response.ok ? undefined : `HTTP ${response.status}`,
     };
@@ -244,6 +361,7 @@ export async function testOtrBrokerCheck(
       success: false,
       request_url: requestUrl,
       response_status: 0,
+      response_headers: {},
       response_body: null,
       error: error instanceof Error ? error.message : 'Network error',
     };
@@ -256,38 +374,49 @@ export async function testOtrBrokerCheck(
  */
 export async function testOtrInvoiceSubmit(
   subscriptionKey: string,
-  payload: {
-    BrokerMC: number;
-    ClientDOT: string;
-    FromCity: string;
-    FromState: string;
-    ToCity: string;
-    ToState: string;
-    PoNumber: string;
-    InvoiceNo: string;
-    InvoiceDate: string;
-    InvoiceAmount: number;
-  }
+  payload: OtrInvoicePayload
 ): Promise<{
   success: boolean;
+  validation: PayloadValidationResult;
   request_url: string;
-  request_payload: unknown;
+  request_headers: Record<string, string>;
+  request_payload: OtrInvoicePayload;
   response_status: number;
+  response_headers: Record<string, string>;
   response_body: unknown;
   error?: string;
 }> {
   const requestUrl = `${OTR_API_BASE_URL}/invoices`;
+  const requestHeaders = getOtrHeaders(subscriptionKey);
+  
+  // Validate payload first
+  const validation = validateOtrPayload(payload);
   
   console.log(`[otr-test] Testing invoice submission...`);
   console.log(`[otr-test] POST ${requestUrl}`);
   console.log(`[otr-test] Subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
+  console.log(`[otr-test] Request headers:`, JSON.stringify({
+    ...requestHeaders,
+    'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
+  }, null, 2));
   console.log(`[otr-test] Payload:`, JSON.stringify(payload, null, 2));
+  console.log(`[otr-test] Payload validation:`, JSON.stringify(validation, null, 2));
+  
+  if (!validation.valid) {
+    console.error(`[otr-test] Payload validation failed:`, validation.errors);
+  }
   
   try {
     const response = await fetch(requestUrl, {
       method: 'POST',
-      headers: getOtrHeaders(subscriptionKey),
+      headers: requestHeaders,
       body: JSON.stringify(payload),
+    });
+    
+    // Capture response headers
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
     });
     
     const responseText = await response.text();
@@ -299,13 +428,37 @@ export async function testOtrInvoiceSubmit(
     }
     
     console.log(`[otr-test] Response status: ${response.status}`);
+    console.log(`[otr-test] Response headers:`, JSON.stringify(responseHeaders, null, 2));
     console.log(`[otr-test] Response body:`, JSON.stringify(responseBody, null, 2));
+    
+    // Enhanced 400 error logging
+    if (response.status === 400) {
+      console.error(`[otr-test] ======== 400 ERROR DETAILS ========`);
+      console.error(`[otr-test] Request URL: ${requestUrl}`);
+      console.error(`[otr-test] Request Method: POST`);
+      console.error(`[otr-test] Request Headers:`, JSON.stringify({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
+      }, null, 2));
+      console.error(`[otr-test] Request Payload:`, JSON.stringify(payload, null, 2));
+      console.error(`[otr-test] Response Status: ${response.status}`);
+      console.error(`[otr-test] Response Headers:`, JSON.stringify(responseHeaders, null, 2));
+      console.error(`[otr-test] Response Body:`, JSON.stringify(responseBody, null, 2));
+      console.error(`[otr-test] ====================================`);
+    }
     
     return {
       success: response.ok,
+      validation,
       request_url: requestUrl,
+      request_headers: {
+        ...requestHeaders,
+        'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
+      },
       request_payload: payload,
       response_status: response.status,
+      response_headers: responseHeaders,
       response_body: responseBody,
       error: response.ok ? undefined : `HTTP ${response.status}`,
     };
@@ -313,9 +466,15 @@ export async function testOtrInvoiceSubmit(
     console.error(`[otr-test] Error:`, error);
     return {
       success: false,
+      validation,
       request_url: requestUrl,
+      request_headers: {
+        ...requestHeaders,
+        'ocp-apim-subscription-key': maskSubscriptionKey(subscriptionKey),
+      },
       request_payload: payload,
       response_status: 0,
+      response_headers: {},
       response_body: null,
       error: error instanceof Error ? error.message : 'Network error',
     };
