@@ -714,22 +714,6 @@ export function ApplicationsManager() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handlePreviewPDF(app.id)}>
-                                <FileSearch className="h-4 w-4 mr-2" />
-                                Preview PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDownloadPDF(app.id)}
-                                disabled={downloadingId === app.id}
-                              >
-                                {downloadingId === app.id ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4 mr-2" />
-                                )}
-                                Download PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View Full Details
