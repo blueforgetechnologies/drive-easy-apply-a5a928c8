@@ -664,11 +664,18 @@ class DriverApplicationPDF {
       const tableEndY = this.yPos;
       this.addGridTableBorder(accidentColumns, tableStartY, tableEndY);
     } else {
+      // No accidents - show in a light bordered box
+      this.doc.setDrawColor(200, 200, 200);
+      this.doc.setFillColor(248, 250, 252);
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.margin, this.yPos - 4, this.contentWidth, 12, 'FD');
+      
       this.doc.setFontSize(8);
       this.doc.setTextColor(0, 0, 0);
       this.doc.setFont(undefined, 'normal');
-      this.addCheckboxField('No accidents to report in the past 3 years', true, this.margin + 5, 80);
-      this.yPos += 8;
+      this.drawCheckbox(this.margin + 5, this.yPos, true, 3.5);
+      this.doc.text('No accidents to report in the past 3 years', this.margin + 12, this.yPos);
+      this.yPos += 12;
     }
     
     this.yPos += 5;
@@ -703,11 +710,18 @@ class DriverApplicationPDF {
       const tableEndY = this.yPos;
       this.addGridTableBorder(violationColumns, tableStartY, tableEndY);
     } else {
+      // No violations - show in a light bordered box
+      this.doc.setDrawColor(200, 200, 200);
+      this.doc.setFillColor(248, 250, 252);
+      this.doc.setLineWidth(0.3);
+      this.doc.rect(this.margin, this.yPos - 4, this.contentWidth, 12, 'FD');
+      
       this.doc.setFontSize(8);
       this.doc.setTextColor(0, 0, 0);
       this.doc.setFont(undefined, 'normal');
-      this.addCheckboxField('No violations to report in the past 3 years', true, this.margin + 5, 80);
-      this.yPos += 8;
+      this.drawCheckbox(this.margin + 5, this.yPos, true, 3.5);
+      this.doc.text('No violations to report in the past 3 years', this.margin + 12, this.yPos);
+      this.yPos += 12;
     }
     
     this.yPos += 5;
@@ -795,16 +809,16 @@ class DriverApplicationPDF {
   }
 
   private generateDocumentsChecklist(docs: any): void {
-    this.checkPageBreak(50);
+    this.checkPageBreak(80);
     this.addSectionTitle('Section 7: Required Documents Checklist');
     
     this.doc.setFontSize(8);
     this.doc.setTextColor(60, 60, 60);
     this.doc.setFont(undefined, 'italic');
     this.doc.text('The following documents are required for employment. Please ensure all items are provided.', this.margin, this.yPos);
-    this.yPos += 8;
+    this.yPos += 10;
     
-    // Document checklist
+    // Document checklist with bordered container
     const requiredDocs = [
       { label: "Valid Driver's License (front & back)", key: 'driversLicense' },
       { label: 'Social Security Card', key: 'socialSecurity' },
@@ -812,28 +826,66 @@ class DriverApplicationPDF {
       { label: 'Motor Vehicle Record (MVR)', key: 'mvr' },
     ];
     
+    const otherDocs = docs.other || [];
+    const totalItems = requiredDocs.length + (otherDocs.length > 0 ? 1 + otherDocs.length : 0);
+    const boxHeight = totalItems * 8 + 16;
+    
+    // Draw checklist container box
+    this.doc.setDrawColor(180, 180, 180);
+    this.doc.setFillColor(252, 252, 252);
+    this.doc.setLineWidth(0.5);
+    this.doc.rect(this.margin, this.yPos - 3, this.contentWidth, boxHeight, 'FD');
+    
+    // Header inside box
+    this.doc.setFontSize(9);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.setTextColor(30, 60, 120);
+    this.doc.text('REQUIRED DOCUMENTS', this.margin + 5, this.yPos + 4);
+    this.yPos += 12;
+    
+    // Required documents
     requiredDocs.forEach((doc) => {
       const hasDoc = !!docs[doc.key];
-      this.addCheckboxField(doc.label, hasDoc, this.margin + 5, 100);
-      this.yPos += 6;
+      this.drawCheckbox(this.margin + 8, this.yPos, hasDoc, 3.5);
+      
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(0, 0, 0);
+      this.doc.setFont(undefined, 'normal');
+      this.doc.text(doc.label, this.margin + 15, this.yPos);
+      
+      // Status indicator
+      if (hasDoc) {
+        this.doc.setTextColor(0, 120, 0);
+        this.doc.text('✓ Provided', this.margin + 120, this.yPos);
+      } else {
+        this.doc.setTextColor(180, 0, 0);
+        this.doc.text('○ Missing', this.margin + 120, this.yPos);
+      }
+      this.yPos += 7;
     });
     
-    // Other documents
-    const otherDocs = docs.other || [];
+    // Other documents section
     if (otherDocs.length > 0) {
       this.yPos += 3;
       this.doc.setFontSize(8);
       this.doc.setFont(undefined, 'bold');
-      this.doc.text(`Other Documents (${otherDocs.length}):`, this.margin + 5, this.yPos);
-      this.yPos += 5;
+      this.doc.setTextColor(30, 60, 120);
+      this.doc.text(`ADDITIONAL DOCUMENTS (${otherDocs.length})`, this.margin + 5, this.yPos);
+      this.yPos += 7;
       
       otherDocs.forEach((docPath: string, index: number) => {
         const docName = typeof docPath === 'string' ? docPath.split('/').pop() || `Document ${index + 1}` : `Document ${index + 1}`;
-        this.addCheckboxField(docName, true, this.margin + 10, 100);
-        this.yPos += 5;
+        this.drawCheckbox(this.margin + 8, this.yPos, true, 3.5);
+        
+        this.doc.setFontSize(8);
+        this.doc.setTextColor(0, 0, 0);
+        this.doc.setFont(undefined, 'normal');
+        this.doc.text(docName, this.margin + 15, this.yPos);
+        this.yPos += 6;
       });
     }
     
+    this.yPos += 8;
     this.yPos += 5;
   }
 
