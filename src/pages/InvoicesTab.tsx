@@ -44,12 +44,18 @@ interface Invoice {
 
 interface LoadDocStatus {
   load_id: string;
+  load_number: string;
   hasRc: boolean;
   hasBol: boolean;
 }
 
+interface LoadInfo {
+  id: string;
+  load_number: string;
+}
+
 interface InvoiceWithDeliveryInfo extends Invoice {
-  delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed';
+  delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'sending';
   missing_info: string[];
   load_doc_status: LoadDocStatus[];
   rc_coverage: { have: number; total: number };
@@ -60,6 +66,7 @@ interface InvoiceWithDeliveryInfo extends Invoice {
   last_attempt_status: string | null;
   last_attempt_error: string | null;
   credit_approval_status: 'approved' | 'denied' | 'pending' | 'unknown';
+  credit_approval_source: 'otr' | 'factoring' | null;
 }
 
 interface Customer {
@@ -110,6 +117,7 @@ export default function InvoicesTab() {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
   const [invoiceLoads, setInvoiceLoads] = useState<{ invoice_id: string; load_id: string }[]>([]);
+  const [loadInfoMap, setLoadInfoMap] = useState<Map<string, LoadInfo>>(new Map());
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [accountingEmail, setAccountingEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -189,72 +197,101 @@ export default function InvoicesTab() {
         return;
       }
 
-      // Step 2: Load invoice_loads for these invoices (chunked if needed)
-      let allInvoiceLoads: { invoice_id: string; load_id: string }[] = [];
+      // Step 2: Load invoice_loads for these invoices (parallelized chunks)
       const invoiceChunks = chunkArray(invoiceIds, 200);
       
-      for (const chunk of invoiceChunks) {
-        let ilQuery = supabase
-          .from("invoice_loads" as any)
-          .select("invoice_id, load_id")
-          .in("invoice_id", chunk);
+      const invoiceLoadsResults = await Promise.all(
+        invoiceChunks.map(async (chunk) => {
+          let ilQuery = supabase
+            .from("invoice_loads" as any)
+            .select("invoice_id, load_id")
+            .in("invoice_id", chunk);
 
-        if (shouldFilter && tenantId) {
-          ilQuery = ilQuery.eq("tenant_id", tenantId);
-        }
+          if (shouldFilter && tenantId) {
+            ilQuery = ilQuery.eq("tenant_id", tenantId);
+          }
 
-        const ilResult = await ilQuery;
-        if (ilResult.data) {
-          allInvoiceLoads = allInvoiceLoads.concat(ilResult.data as any);
-        }
-      }
+          const ilResult = await ilQuery;
+          return (ilResult.data as any) || [];
+        })
+      );
+      const allInvoiceLoads = invoiceLoadsResults.flat();
       
       const loadIds = [...new Set(allInvoiceLoads.map(il => il.load_id))];
 
-      // Step 3: Load email logs for these invoices (chunked)
-      let allEmailLogs: EmailLog[] = [];
-      for (const chunk of invoiceChunks) {
-        let elQuery = supabase
-          .from("invoice_email_log" as any)
-          .select("id, invoice_id, status, created_at, error")
-          .in("invoice_id", chunk)
-          .order("created_at", { ascending: false });
+      // Step 3: Parallel fetch - email logs AND load info
+      const [emailLogsResults, loadInfoResults] = await Promise.all([
+        // Email logs (parallelized chunks)
+        Promise.all(
+          invoiceChunks.map(async (chunk) => {
+            let elQuery = supabase
+              .from("invoice_email_log" as any)
+              .select("id, invoice_id, status, created_at, error")
+              .in("invoice_id", chunk)
+              .order("created_at", { ascending: false });
 
-        if (shouldFilter && tenantId) {
-          elQuery = elQuery.eq("tenant_id", tenantId);
-        }
+            if (shouldFilter && tenantId) {
+              elQuery = elQuery.eq("tenant_id", tenantId);
+            }
 
-        const elResult = await elQuery;
-        if (elResult.data) {
-          allEmailLogs = allEmailLogs.concat(elResult.data as any);
-        }
+            const elResult = await elQuery;
+            return (elResult.data as any) || [];
+          })
+        ),
+        // Load info for load_number (parallelized chunks)
+        loadIds.length > 0 ? Promise.all(
+          chunkArray(loadIds, 200).map(async (chunk) => {
+            let loadQuery = supabase
+              .from("loads" as any)
+              .select("id, load_number")
+              .in("id", chunk);
+
+            if (shouldFilter && tenantId) {
+              loadQuery = loadQuery.eq("tenant_id", tenantId);
+            }
+
+            const loadResult = await loadQuery;
+            return (loadResult.data as any) || [];
+          })
+        ) : Promise.resolve([])
+      ]);
+      
+      const allEmailLogs: EmailLog[] = emailLogsResults.flat();
+      const allLoadInfo: LoadInfo[] = loadInfoResults.flat();
+      
+      // Build load info map
+      const loadInfoMapData = new Map<string, LoadInfo>();
+      for (const load of allLoadInfo) {
+        loadInfoMapData.set(load.id, load);
       }
 
-      // Step 4: Load load_documents for these loads (chunked)
+      // Step 4: Load load_documents for these loads (parallelized chunks)
       let allLoadDocs: LoadDocument[] = [];
       if (loadIds.length > 0) {
         const loadChunks = chunkArray(loadIds, 200);
-        for (const chunk of loadChunks) {
-          let ldQuery = supabase
-            .from("load_documents" as any)
-            .select("id, load_id, document_type, uploaded_at")
-            .in("load_id", chunk)
-            .order("uploaded_at", { ascending: false });
+        const loadDocsResults = await Promise.all(
+          loadChunks.map(async (chunk) => {
+            let ldQuery = supabase
+              .from("load_documents" as any)
+              .select("id, load_id, document_type, uploaded_at")
+              .in("load_id", chunk)
+              .order("uploaded_at", { ascending: false });
 
-          if (shouldFilter && tenantId) {
-            ldQuery = ldQuery.eq("tenant_id", tenantId);
-          }
+            if (shouldFilter && tenantId) {
+              ldQuery = ldQuery.eq("tenant_id", tenantId);
+            }
 
-          const ldResult = await ldQuery;
-          if (ldResult.data) {
-            allLoadDocs = allLoadDocs.concat(ldResult.data as any);
-          }
-        }
+            const ldResult = await ldQuery;
+            return (ldResult.data as any) || [];
+          })
+        );
+        allLoadDocs = loadDocsResults.flat();
       }
 
       setAllInvoices(invoices);
       setEmailLogs(allEmailLogs);
       setInvoiceLoads(allInvoiceLoads);
+      setLoadInfoMap(loadInfoMapData);
       setLoadDocuments(allLoadDocs);
     } catch (error) {
       toast.error("Error loading data");
@@ -310,15 +347,25 @@ export default function InvoicesTab() {
     return map;
   }, [invoiceLoads]);
 
-  // Normalize approval status
-  const normalizeCreditApproval = (otrStatus: string | null, factoringStatus: string | null): 'approved' | 'denied' | 'pending' | 'unknown' => {
-    const status = otrStatus || factoringStatus;
-    if (!status) return 'unknown';
-    const normalized = status.toLowerCase().trim();
-    if (normalized === 'approved') return 'approved';
-    if (normalized === 'denied' || normalized === 'rejected') return 'denied';
-    if (normalized === 'pending') return 'pending';
-    return 'unknown';
+  // Normalize approval status with source tracking
+  const normalizeCreditApproval = (otrStatus: string | null, factoringStatus: string | null): { status: 'approved' | 'denied' | 'pending' | 'unknown'; source: 'otr' | 'factoring' | null } => {
+    // Prefer OTR status if present
+    if (otrStatus) {
+      const normalized = otrStatus.toLowerCase().trim();
+      if (normalized === 'approved') return { status: 'approved', source: 'otr' };
+      if (normalized === 'denied' || normalized === 'rejected') return { status: 'denied', source: 'otr' };
+      if (normalized === 'pending') return { status: 'pending', source: 'otr' };
+      return { status: 'unknown', source: 'otr' };
+    }
+    // Fall back to factoring status
+    if (factoringStatus) {
+      const normalized = factoringStatus.toLowerCase().trim();
+      if (normalized === 'approved') return { status: 'approved', source: 'factoring' };
+      if (normalized === 'denied' || normalized === 'rejected') return { status: 'denied', source: 'factoring' };
+      if (normalized === 'pending') return { status: 'pending', source: 'factoring' };
+      return { status: 'unknown', source: 'factoring' };
+    }
+    return { status: 'unknown', source: null };
   };
 
   // Compute delivery info for each invoice
@@ -344,12 +391,20 @@ export default function InvoicesTab() {
         missing.push('cc_email');
       }
       
-      // Get load IDs and compute per-load doc status
+      // Get load IDs and compute per-load doc status with load_number
       const loadIds = loadsByInvoice.get(invoice.id) || [];
+      
+      // Check for no loads
+      if (loadIds.length === 0) {
+        missing.push('no_loads');
+      }
+      
       const loadDocStatus: LoadDocStatus[] = loadIds.map(load_id => {
         const docs = docsPerLoad.get(load_id);
+        const loadInfo = loadInfoMap.get(load_id);
         return {
           load_id,
+          load_number: loadInfo?.load_number || load_id.slice(0, 8),
           hasRc: docs?.hasRc || false,
           hasBol: docs?.hasBol || false,
         };
@@ -363,23 +418,24 @@ export default function InvoicesTab() {
       const allLoadsHaveRc = totalLoads > 0 && rcHave === totalLoads;
       const allLoadsHaveBol = totalLoads > 0 && bolHave === totalLoads;
       
-      if (!allLoadsHaveRc) missing.push('rate_confirmation');
-      if (!allLoadsHaveBol) missing.push('bol_pod');
+      // Only mark missing if we have loads
+      if (totalLoads > 0 && !allLoadsHaveRc) missing.push('rate_confirmation');
+      if (totalLoads > 0 && !allLoadsHaveBol) missing.push('bol_pod');
       
       // Get latest email log for this invoice
       const latestLog = latestLogByInvoice.get(invoice.id) || null;
       
       // Credit approval status from customer record
-      const creditApprovalStatus = normalizeCreditApproval(
+      const creditApproval = normalizeCreditApproval(
         invoice.customers?.otr_approval_status || null,
         invoice.customers?.factoring_approval || null
       );
       
       // Determine delivery status
-      let delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed' = 'needs_setup';
+      let delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'sending' = 'needs_setup';
       
-      // If no valid billing method, always needs_setup
-      if (!hasValidBillingMethod) {
+      // If no valid billing method OR no loads, always needs_setup
+      if (!hasValidBillingMethod || loadIds.length === 0) {
         delivery_status = 'needs_setup';
       } else if (invoice.billing_method === 'otr') {
         // OTR: delivered if otr_submitted_at exists
@@ -388,21 +444,38 @@ export default function InvoicesTab() {
         } else if (invoice.otr_status === 'failed') {
           delivery_status = 'failed';
         } else {
-          // OTR doesn't require RC/BOL for submission - only check email fields
-          const otrMissing = missing.filter(m => m !== 'rate_confirmation' && m !== 'bol_pod');
-          if (otrMissing.length === 0) {
-            delivery_status = 'ready';
-          } else {
+          // OTR requires credit approval
+          if (creditApproval.status !== 'approved') {
+            missing.push('credit_not_approved');
             delivery_status = 'needs_setup';
+          } else {
+            // OTR doesn't require RC/BOL for submission - only check email fields + credit
+            const otrMissing = missing.filter(m => !['rate_confirmation', 'bol_pod', 'no_loads'].includes(m));
+            if (otrMissing.length === 0) {
+              delivery_status = 'ready';
+            } else {
+              delivery_status = 'needs_setup';
+            }
           }
         }
       } else if (invoice.billing_method === 'direct_email') {
-        // Direct email: check email logs
-        if (latestLog?.status === 'sent') {
+        // Direct email: check email logs with robust status mapping
+        const logStatus = latestLog?.status?.toLowerCase() || '';
+        
+        // Delivered statuses
+        if (logStatus === 'sent' || logStatus === 'delivered') {
           delivery_status = 'delivered';
-        } else if (latestLog?.status === 'failed') {
+        } 
+        // Failed statuses
+        else if (['failed', 'bounced', 'rejected', 'error'].includes(logStatus)) {
           delivery_status = 'failed';
-        } else if (missing.length === 0) {
+        }
+        // In-progress statuses
+        else if (['queued', 'sending', 'retrying', 'pending'].includes(logStatus)) {
+          delivery_status = 'sending';
+        }
+        // No logs or passed all checks
+        else if (missing.length === 0) {
           // All checks pass including per-load RC/BOL
           delivery_status = 'ready';
         } else {
@@ -422,10 +495,11 @@ export default function InvoicesTab() {
         last_attempt_at: latestLog?.created_at || null,
         last_attempt_status: latestLog?.status || null,
         last_attempt_error: latestLog?.error || null,
-        credit_approval_status: creditApprovalStatus,
+        credit_approval_status: creditApproval.status,
+        credit_approval_source: creditApproval.source,
       };
     });
-  }, [allInvoices, latestLogByInvoice, loadsByInvoice, docsPerLoad, accountingEmail]);
+  }, [allInvoices, latestLogByInvoice, loadsByInvoice, docsPerLoad, accountingEmail, loadInfoMap]);
 
   // Categorize invoices into tabs
   const categorizedInvoices = useMemo(() => {
@@ -433,6 +507,7 @@ export default function InvoicesTab() {
     const ready: InvoiceWithDeliveryInfo[] = [];
     const delivered: InvoiceWithDeliveryInfo[] = [];
     const failed: InvoiceWithDeliveryInfo[] = [];
+    const sending: InvoiceWithDeliveryInfo[] = [];
     const paid: InvoiceWithDeliveryInfo[] = [];
     const overdue: InvoiceWithDeliveryInfo[] = [];
 
@@ -462,10 +537,14 @@ export default function InvoicesTab() {
         case 'failed':
           failed.push(inv);
           break;
+        case 'sending':
+          // Show 'sending' invoices in ready tab with a different badge
+          ready.push(inv);
+          break;
       }
     }
 
-    return { needs_setup, ready, delivered, failed, paid, overdue };
+    return { needs_setup, ready, delivered, failed, sending, paid, overdue };
   }, [invoicesWithDeliveryInfo]);
 
   // Get filtered invoices based on current tab
@@ -610,6 +689,8 @@ export default function InvoicesTab() {
         return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Delivered</Badge>;
       case 'failed':
         return <Badge variant="destructive" className="text-xs">Failed</Badge>;
+      case 'sending':
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs">Sending</Badge>;
       case 'ready':
         return <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-xs">Ready</Badge>;
       case 'needs_setup':
@@ -630,13 +711,29 @@ export default function InvoicesTab() {
   };
 
   const getCreditApprovalBadge = (inv: InvoiceWithDeliveryInfo) => {
+    const sourceLabel = inv.credit_approval_source === 'otr' ? 'OTR' : inv.credit_approval_source === 'factoring' ? 'Factoring' : null;
+    
+    const wrapWithSource = (badge: React.ReactNode) => {
+      if (!sourceLabel) return badge;
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{badge}</span>
+            </TooltipTrigger>
+            <TooltipContent>Source: {sourceLabel}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    };
+    
     switch (inv.credit_approval_status) {
       case 'approved':
-        return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>;
+        return wrapWithSource(<Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>);
       case 'denied':
-        return <Badge variant="destructive" className="text-xs">Denied</Badge>;
+        return wrapWithSource(<Badge variant="destructive" className="text-xs">Denied</Badge>);
       case 'pending':
-        return <Badge variant="secondary" className="text-xs">Pending</Badge>;
+        return wrapWithSource(<Badge variant="secondary" className="text-xs">Pending</Badge>);
       case 'unknown':
       default:
         return (
@@ -657,9 +754,23 @@ export default function InvoicesTab() {
   const getDocsChecklist = (inv: InvoiceWithDeliveryInfo) => {
     const { rc_coverage, bol_coverage, load_doc_status } = inv;
     
-    // Find missing loads for tooltip
-    const missingRcLoads = load_doc_status.filter(x => !x.hasRc).map(x => x.load_id.slice(0, 8));
-    const missingBolLoads = load_doc_status.filter(x => !x.hasBol).map(x => x.load_id.slice(0, 8));
+    // Handle no loads case
+    if (load_doc_status.length === 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-red-500 text-xs">No loads</span>
+            </TooltipTrigger>
+            <TooltipContent>No loads attached to this invoice</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    // Find missing loads for tooltip - use load_number
+    const missingRcLoads = load_doc_status.filter(x => !x.hasRc).map(x => x.load_number);
+    const missingBolLoads = load_doc_status.filter(x => !x.hasBol).map(x => x.load_number);
     
     const rcComplete = rc_coverage.have === rc_coverage.total && rc_coverage.total > 0;
     const bolComplete = bol_coverage.have === bol_coverage.total && bol_coverage.total > 0;
@@ -686,7 +797,7 @@ export default function InvoicesTab() {
               <div className="text-xs">
                 <p>Rate Confirmation: {rc_coverage.have}/{rc_coverage.total} loads</p>
                 {missingRcLoads.length > 0 && (
-                  <p className="text-red-400 mt-1">Missing: {missingRcLoads.join(', ')}</p>
+                  <p className="text-red-400 mt-1">Missing RC: {missingRcLoads.join(', ')}</p>
                 )}
               </div>
             </TooltipContent>
@@ -704,7 +815,7 @@ export default function InvoicesTab() {
               <div className="text-xs">
                 <p>BOL/POD: {bol_coverage.have}/{bol_coverage.total} loads</p>
                 {missingBolLoads.length > 0 && (
-                  <p className="text-red-400 mt-1">Missing: {missingBolLoads.join(', ')}</p>
+                  <p className="text-red-400 mt-1">Missing BOL: {missingBolLoads.join(', ')}</p>
                 )}
               </div>
             </TooltipContent>
@@ -772,6 +883,8 @@ export default function InvoicesTab() {
       cc_email: 'Accounting email missing',
       rate_confirmation: 'Rate Confirmation missing on some loads',
       bol_pod: 'BOL/POD missing on some loads',
+      no_loads: 'No loads attached to invoice',
+      credit_not_approved: 'Credit not approved (required for OTR)',
     };
     
     return (
