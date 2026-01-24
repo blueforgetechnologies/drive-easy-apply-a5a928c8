@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface Invoice {
@@ -38,18 +38,28 @@ interface Invoice {
     email: string | null; 
     billing_email: string | null;
     otr_approval_status: string | null;
+    factoring_approval: string | null;
   } | null;
+}
+
+interface LoadDocStatus {
+  load_id: string;
+  hasRc: boolean;
+  hasBol: boolean;
 }
 
 interface InvoiceWithDeliveryInfo extends Invoice {
   delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed';
   missing_info: string[];
-  has_rc: boolean;
-  has_bol: boolean;
+  load_doc_status: LoadDocStatus[];
+  rc_coverage: { have: number; total: number };
+  bol_coverage: { have: number; total: number };
+  all_loads_have_rc: boolean;
+  all_loads_have_bol: boolean;
   last_attempt_at: string | null;
   last_attempt_status: string | null;
   last_attempt_error: string | null;
-  broker_approved: boolean;
+  credit_approval_status: 'approved' | 'denied' | 'pending' | 'unknown';
 }
 
 interface Customer {
@@ -81,6 +91,15 @@ interface LoadDocument {
 }
 
 type OperationalTab = 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'paid' | 'overdue';
+
+// Helper to chunk arrays for IN queries
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export default function InvoicesTab() {
   const navigate = useNavigate();
@@ -145,60 +164,98 @@ export default function InvoicesTab() {
     
     setLoading(true);
     try {
-      // Load ALL invoices (only invoices, not loads)
+      // Step 1: Load ALL invoices first
       let invoicesQuery = supabase
         .from("invoices" as any)
-        .select("*, customers(mc_number, email, billing_email, otr_approval_status)")
+        .select("*, customers(mc_number, email, billing_email, otr_approval_status, factoring_approval)")
         .order("created_at", { ascending: false });
       
       if (shouldFilter && tenantId) {
         invoicesQuery = invoicesQuery.eq("tenant_id", tenantId);
       }
 
-      // Load email logs - LIMIT to last 2000 rows for performance, ordered by created_at DESC
-      let emailLogsQuery = supabase
-        .from("invoice_email_log" as any)
-        .select("id, invoice_id, status, created_at, error")
-        .order("created_at", { ascending: false })
-        .limit(2000);
-
-      if (shouldFilter && tenantId) {
-        emailLogsQuery = emailLogsQuery.eq("tenant_id", tenantId);
-      }
-
-      // Load invoice_loads for document lookup
-      let invoiceLoadsQuery = supabase
-        .from("invoice_loads" as any)
-        .select("invoice_id, load_id");
-
-      if (shouldFilter && tenantId) {
-        invoiceLoadsQuery = invoiceLoadsQuery.eq("tenant_id", tenantId);
-      }
-
-      // Load load_documents - LIMIT to 2000 rows for performance, ordered by uploaded_at DESC
-      let loadDocsQuery = supabase
-        .from("load_documents" as any)
-        .select("id, load_id, document_type, uploaded_at")
-        .order("uploaded_at", { ascending: false })
-        .limit(2000);
-
-      if (shouldFilter && tenantId) {
-        loadDocsQuery = loadDocsQuery.eq("tenant_id", tenantId);
-      }
-
-      const [invoicesResult, emailLogsResult, invoiceLoadsResult, loadDocsResult] = await Promise.all([
-        invoicesQuery,
-        emailLogsQuery,
-        invoiceLoadsQuery,
-        loadDocsQuery,
-      ]);
-
+      const invoicesResult = await invoicesQuery;
       if (invoicesResult.error) throw invoicesResult.error;
+      
+      const invoices = (invoicesResult.data as any) || [];
+      const invoiceIds = invoices.map((inv: any) => inv.id);
+      
+      if (invoiceIds.length === 0) {
+        setAllInvoices([]);
+        setEmailLogs([]);
+        setInvoiceLoads([]);
+        setLoadDocuments([]);
+        setLoading(false);
+        return;
+      }
 
-      setAllInvoices((invoicesResult.data as any) || []);
-      setEmailLogs((emailLogsResult.data as any) || []);
-      setInvoiceLoads((invoiceLoadsResult.data as any) || []);
-      setLoadDocuments((loadDocsResult.data as any) || []);
+      // Step 2: Load invoice_loads for these invoices (chunked if needed)
+      let allInvoiceLoads: { invoice_id: string; load_id: string }[] = [];
+      const invoiceChunks = chunkArray(invoiceIds, 200);
+      
+      for (const chunk of invoiceChunks) {
+        let ilQuery = supabase
+          .from("invoice_loads" as any)
+          .select("invoice_id, load_id")
+          .in("invoice_id", chunk);
+
+        if (shouldFilter && tenantId) {
+          ilQuery = ilQuery.eq("tenant_id", tenantId);
+        }
+
+        const ilResult = await ilQuery;
+        if (ilResult.data) {
+          allInvoiceLoads = allInvoiceLoads.concat(ilResult.data as any);
+        }
+      }
+      
+      const loadIds = [...new Set(allInvoiceLoads.map(il => il.load_id))];
+
+      // Step 3: Load email logs for these invoices (chunked)
+      let allEmailLogs: EmailLog[] = [];
+      for (const chunk of invoiceChunks) {
+        let elQuery = supabase
+          .from("invoice_email_log" as any)
+          .select("id, invoice_id, status, created_at, error")
+          .in("invoice_id", chunk)
+          .order("created_at", { ascending: false });
+
+        if (shouldFilter && tenantId) {
+          elQuery = elQuery.eq("tenant_id", tenantId);
+        }
+
+        const elResult = await elQuery;
+        if (elResult.data) {
+          allEmailLogs = allEmailLogs.concat(elResult.data as any);
+        }
+      }
+
+      // Step 4: Load load_documents for these loads (chunked)
+      let allLoadDocs: LoadDocument[] = [];
+      if (loadIds.length > 0) {
+        const loadChunks = chunkArray(loadIds, 200);
+        for (const chunk of loadChunks) {
+          let ldQuery = supabase
+            .from("load_documents" as any)
+            .select("id, load_id, document_type, uploaded_at")
+            .in("load_id", chunk)
+            .order("uploaded_at", { ascending: false });
+
+          if (shouldFilter && tenantId) {
+            ldQuery = ldQuery.eq("tenant_id", tenantId);
+          }
+
+          const ldResult = await ldQuery;
+          if (ldResult.data) {
+            allLoadDocs = allLoadDocs.concat(ldResult.data as any);
+          }
+        }
+      }
+
+      setAllInvoices(invoices);
+      setEmailLogs(allEmailLogs);
+      setInvoiceLoads(allInvoiceLoads);
+      setLoadDocuments(allLoadDocs);
     } catch (error) {
       toast.error("Error loading data");
       console.error(error);
@@ -220,22 +277,22 @@ export default function InvoicesTab() {
 
   // Build deduplicated docs per load (newest RC and newest BOL/POD per load)
   const docsPerLoad = useMemo(() => {
-    const map = new Map<string, { newestRc: LoadDocument | null; newestBol: LoadDocument | null }>();
+    const map = new Map<string, { hasRc: boolean; hasBol: boolean }>();
     
     // Documents are already sorted by uploaded_at DESC
     for (const doc of loadDocuments) {
       if (!map.has(doc.load_id)) {
-        map.set(doc.load_id, { newestRc: null, newestBol: null });
+        map.set(doc.load_id, { hasRc: false, hasBol: false });
       }
       const entry = map.get(doc.load_id)!;
       
       // Check for RC (only set if not already set - first one is newest)
-      if (doc.document_type === 'rate_confirmation' && !entry.newestRc) {
-        entry.newestRc = doc;
+      if (doc.document_type === 'rate_confirmation' && !entry.hasRc) {
+        entry.hasRc = true;
       }
-      // Check for BOL/POD (bill_of_lading or pod)
-      if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod') && !entry.newestBol) {
-        entry.newestBol = doc;
+      // Check for BOL/POD - accept both 'pod' and 'proof_of_delivery'
+      if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') && !entry.hasBol) {
+        entry.hasBol = true;
       }
     }
     return map;
@@ -253,12 +310,23 @@ export default function InvoicesTab() {
     return map;
   }, [invoiceLoads]);
 
+  // Normalize approval status
+  const normalizeCreditApproval = (otrStatus: string | null, factoringStatus: string | null): 'approved' | 'denied' | 'pending' | 'unknown' => {
+    const status = otrStatus || factoringStatus;
+    if (!status) return 'unknown';
+    const normalized = status.toLowerCase().trim();
+    if (normalized === 'approved') return 'approved';
+    if (normalized === 'denied' || normalized === 'rejected') return 'denied';
+    if (normalized === 'pending') return 'pending';
+    return 'unknown';
+  };
+
   // Compute delivery info for each invoice
   const invoicesWithDeliveryInfo = useMemo((): InvoiceWithDeliveryInfo[] => {
     return allInvoices.map(invoice => {
       const missing: string[] = [];
       
-      // RULE: If billing_method is null/unknown => ALWAYS needs_setup
+      // Check billing method
       const hasValidBillingMethod = invoice.billing_method === 'otr' || invoice.billing_method === 'direct_email';
       
       if (!hasValidBillingMethod) {
@@ -276,27 +344,36 @@ export default function InvoicesTab() {
         missing.push('cc_email');
       }
       
-      // Get load IDs for this invoice and check documents (deduplicated)
+      // Get load IDs and compute per-load doc status
       const loadIds = loadsByInvoice.get(invoice.id) || [];
+      const loadDocStatus: LoadDocStatus[] = loadIds.map(load_id => {
+        const docs = docsPerLoad.get(load_id);
+        return {
+          load_id,
+          hasRc: docs?.hasRc || false,
+          hasBol: docs?.hasBol || false,
+        };
+      });
       
-      // Check for RC and BOL/POD using deduplicated docs
-      let hasRc = false;
-      let hasBol = false;
-      for (const loadId of loadIds) {
-        const docs = docsPerLoad.get(loadId);
-        if (docs?.newestRc) hasRc = true;
-        if (docs?.newestBol) hasBol = true;
-      }
+      // Compute coverage
+      const rcHave = loadDocStatus.filter(x => x.hasRc).length;
+      const bolHave = loadDocStatus.filter(x => x.hasBol).length;
+      const totalLoads = loadDocStatus.length;
       
-      if (!hasRc) missing.push('rate_confirmation');
-      if (!hasBol) missing.push('bol_pod');
+      const allLoadsHaveRc = totalLoads > 0 && rcHave === totalLoads;
+      const allLoadsHaveBol = totalLoads > 0 && bolHave === totalLoads;
+      
+      if (!allLoadsHaveRc) missing.push('rate_confirmation');
+      if (!allLoadsHaveBol) missing.push('bol_pod');
       
       // Get latest email log for this invoice
       const latestLog = latestLogByInvoice.get(invoice.id) || null;
       
-      // Broker approved is TRUE if and only if billing_method = 'otr'
-      // This ensures consistency: OTR method means broker was approved
-      const brokerApproved = invoice.billing_method === 'otr';
+      // Credit approval status from customer record
+      const creditApprovalStatus = normalizeCreditApproval(
+        invoice.customers?.otr_approval_status || null,
+        invoice.customers?.factoring_approval || null
+      );
       
       // Determine delivery status
       let delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed' = 'needs_setup';
@@ -326,7 +403,7 @@ export default function InvoicesTab() {
         } else if (latestLog?.status === 'failed') {
           delivery_status = 'failed';
         } else if (missing.length === 0) {
-          // All checks pass (including RC/BOL for direct email)
+          // All checks pass including per-load RC/BOL
           delivery_status = 'ready';
         } else {
           delivery_status = 'needs_setup';
@@ -337,12 +414,15 @@ export default function InvoicesTab() {
         ...invoice,
         delivery_status,
         missing_info: missing,
-        has_rc: hasRc,
-        has_bol: hasBol,
+        load_doc_status: loadDocStatus,
+        rc_coverage: { have: rcHave, total: totalLoads },
+        bol_coverage: { have: bolHave, total: totalLoads },
+        all_loads_have_rc: allLoadsHaveRc,
+        all_loads_have_bol: allLoadsHaveBol,
         last_attempt_at: latestLog?.created_at || null,
         last_attempt_status: latestLog?.status || null,
         last_attempt_error: latestLog?.error || null,
-        broker_approved: brokerApproved,
+        credit_approval_status: creditApprovalStatus,
       };
     });
   }, [allInvoices, latestLogByInvoice, loadsByInvoice, docsPerLoad, accountingEmail]);
@@ -357,7 +437,6 @@ export default function InvoicesTab() {
     const overdue: InvoiceWithDeliveryInfo[] = [];
 
     for (const inv of invoicesWithDeliveryInfo) {
-      // Paid and overdue are based on invoice.status (lifecycle)
       if (inv.status === 'paid') {
         paid.push(inv);
         continue;
@@ -367,10 +446,9 @@ export default function InvoicesTab() {
         continue;
       }
       if (inv.status === 'cancelled') {
-        continue; // Skip cancelled
+        continue;
       }
 
-      // Categorize by delivery status
       switch (inv.delivery_status) {
         case 'needs_setup':
           needs_setup.push(inv);
@@ -551,18 +629,41 @@ export default function InvoicesTab() {
     }
   };
 
-  const getBrokerApprovedBadge = (inv: InvoiceWithDeliveryInfo) => {
-    if (inv.broker_approved) {
-      return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Yes</Badge>;
+  const getCreditApprovalBadge = (inv: InvoiceWithDeliveryInfo) => {
+    switch (inv.credit_approval_status) {
+      case 'approved':
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>;
+      case 'denied':
+        return <Badge variant="destructive" className="text-xs">Denied</Badge>;
+      case 'pending':
+        return <Badge variant="secondary" className="text-xs">Pending</Badge>;
+      case 'unknown':
+      default:
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground text-xs flex items-center gap-1">
+                  — <HelpCircle className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Not checked yet</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
     }
-    // Not approved or unknown
-    if (inv.billing_method === 'direct_email') {
-      return <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>;
-    }
-    return <span className="text-muted-foreground text-xs">—</span>;
   };
 
   const getDocsChecklist = (inv: InvoiceWithDeliveryInfo) => {
+    const { rc_coverage, bol_coverage, load_doc_status } = inv;
+    
+    // Find missing loads for tooltip
+    const missingRcLoads = load_doc_status.filter(x => !x.hasRc).map(x => x.load_id.slice(0, 8));
+    const missingBolLoads = load_doc_status.filter(x => !x.hasBol).map(x => x.load_id.slice(0, 8));
+    
+    const rcComplete = rc_coverage.have === rc_coverage.total && rc_coverage.total > 0;
+    const bolComplete = bol_coverage.have === bol_coverage.total && bol_coverage.total > 0;
+    
     return (
       <div className="flex items-center gap-1 text-xs">
         <TooltipProvider>
@@ -577,22 +678,36 @@ export default function InvoicesTab() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={inv.has_rc ? "text-green-500" : "text-red-500"}>
-                {inv.has_rc ? "✓" : "✗"} RC
+              <span className={rcComplete ? "text-green-500" : "text-red-500"}>
+                RC: {rc_coverage.have}/{rc_coverage.total}
               </span>
             </TooltipTrigger>
-            <TooltipContent>Rate Confirmation</TooltipContent>
+            <TooltipContent>
+              <div className="text-xs">
+                <p>Rate Confirmation: {rc_coverage.have}/{rc_coverage.total} loads</p>
+                {missingRcLoads.length > 0 && (
+                  <p className="text-red-400 mt-1">Missing: {missingRcLoads.join(', ')}</p>
+                )}
+              </div>
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
         <span className="text-muted-foreground">/</span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={inv.has_bol ? "text-green-500" : "text-red-500"}>
-                {inv.has_bol ? "✓" : "✗"} BOL
+              <span className={bolComplete ? "text-green-500" : "text-red-500"}>
+                BOL: {bol_coverage.have}/{bol_coverage.total}
               </span>
             </TooltipTrigger>
-            <TooltipContent>Bill of Lading / POD</TooltipContent>
+            <TooltipContent>
+              <div className="text-xs">
+                <p>BOL/POD: {bol_coverage.have}/{bol_coverage.total} loads</p>
+                {missingBolLoads.length > 0 && (
+                  <p className="text-red-400 mt-1">Missing: {missingBolLoads.join(', ')}</p>
+                )}
+              </div>
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
@@ -655,8 +770,8 @@ export default function InvoicesTab() {
       billing_method: 'Billing method not set',
       to_email: 'Customer email missing',
       cc_email: 'Accounting email missing',
-      rate_confirmation: 'Rate Confirmation missing',
-      bol_pod: 'BOL/POD missing',
+      rate_confirmation: 'Rate Confirmation missing on some loads',
+      bol_pod: 'BOL/POD missing on some loads',
     };
     
     return (
@@ -823,7 +938,7 @@ export default function InvoicesTab() {
               <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Broker Approved</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Credit Approved</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">CC (Acct)</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Docs</TableHead>
@@ -880,7 +995,7 @@ export default function InvoicesTab() {
                       )}
                     </TableCell>
                     <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
-                    <TableCell>{getBrokerApprovedBadge(invoice)}</TableCell>
+                    <TableCell>{getCreditApprovalBadge(invoice)}</TableCell>
                     <TableCell className="text-xs max-w-[120px] truncate" title={customerEmail || ""}>
                       {customerEmail || <span className="text-red-500">Missing</span>}
                     </TableCell>
