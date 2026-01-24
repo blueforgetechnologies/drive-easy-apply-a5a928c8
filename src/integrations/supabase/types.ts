@@ -5693,6 +5693,33 @@ export type Database = {
         }
         Relationships: []
       }
+      unroutable_email_stats_daily: {
+        Row: {
+          count: number
+          created_at: string
+          day: string
+          failure_reason: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          day: string
+          failure_reason: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          day?: string
+          failure_reason?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       unroutable_emails: {
         Row: {
           delivered_to_header: string | null
@@ -6758,6 +6785,7 @@ export type Database = {
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
+      cleanup_unroutable_emails: { Args: never; Returns: number }
       cleanup_vehicle_location_history: { Args: never; Returns: number }
       complete_email_queue_item: {
         Args: { p_id: string; p_status?: string }
