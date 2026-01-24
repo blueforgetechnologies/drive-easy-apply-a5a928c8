@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2, RefreshCw, Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -28,6 +28,7 @@ export default function InvoiceDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submittingToOtr, setSubmittingToOtr] = useState(false);
+  const [sendingDirectEmail, setSendingDirectEmail] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
   const [invoiceLoads, setInvoiceLoads] = useState<InvoiceLoad[]>([]);
   const [availableLoads, setAvailableLoads] = useState<any[]>([]);
@@ -258,6 +259,49 @@ export default function InvoiceDetail() {
     }
   };
 
+  const handleSendDirectEmail = async () => {
+    if (!tenantId) {
+      toast.error("No tenant selected");
+      return;
+    }
+
+    setSendingDirectEmail(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke('send-invoice-email', {
+        body: {
+          tenant_id: tenantId,
+          invoice_id: id,
+        },
+        headers: {
+          Authorization: `Bearer ${session?.session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to send invoice email');
+      }
+
+      const result = response.data;
+      if (result.success) {
+        toast.success(`Invoice sent to ${result.to_email}`);
+        if (result.warnings && result.warnings.length > 0) {
+          result.warnings.forEach((warning: string) => {
+            toast.warning(warning);
+          });
+        }
+        loadData();
+      } else {
+        toast.error(result.error || 'Failed to send invoice email');
+      }
+    } catch (error: any) {
+      console.error('Direct email error:', error);
+      toast.error("Failed to send invoice: " + error.message);
+    } finally {
+      setSendingDirectEmail(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
@@ -363,6 +407,21 @@ export default function InvoiceDetail() {
                   <DollarSign className="h-4 w-4 mr-2" />
                 )}
                 Submit to OTR (Staging)
+              </Button>
+            )}
+            {/* Direct Email - only for direct_email billing method when not yet sent */}
+            {invoice.billing_method === 'direct_email' && invoice.status !== 'sent' && invoice.status !== 'paid' && (
+              <Button 
+                onClick={handleSendDirectEmail} 
+                disabled={sendingDirectEmail}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {sendingDirectEmail ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Send Direct Email
               </Button>
             )}
             {invoice.otr_submitted_at && getOtrStatusBadge()}

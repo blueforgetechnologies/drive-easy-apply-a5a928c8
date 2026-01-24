@@ -236,3 +236,6 @@ verify_jwt = true
 
 [functions.mark-overdue-invoices]
 verify_jwt = false
+
+[functions.send-invoice-email]
+verify_jwt = false

@@ -2200,6 +2200,66 @@ export type Database = {
           },
         ]
       }
+      invoice_email_log: {
+        Row: {
+          attachments: Json | null
+          cc: string | null
+          created_at: string
+          error: string | null
+          id: string
+          invoice_id: string
+          resend_message_id: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          to_email: string
+          warnings: string[] | null
+        }
+        Insert: {
+          attachments?: Json | null
+          cc?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          invoice_id: string
+          resend_message_id?: string | null
+          status?: string
+          subject: string
+          tenant_id: string
+          to_email: string
+          warnings?: string[] | null
+        }
+        Update: {
+          attachments?: Json | null
+          cc?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string
+          resend_message_id?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          to_email?: string
+          warnings?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_email_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_email_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_loads: {
         Row: {
           amount: number | null
