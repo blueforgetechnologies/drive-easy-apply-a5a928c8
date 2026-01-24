@@ -128,10 +128,23 @@ serve(async (req: Request) => {
       .in("status", ["pending", "processing"])
       .lt("queued_at", staleThresholdTime);
 
-    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale(>2min)=${staleCount}`);
+    // Query 5: LIGHTWEIGHT - Oldest pending item (single row, uses idx_email_queue_queued_at)
+    const { data: oldestPending } = await supabase
+      .from("email_queue")
+      .select("queued_at")
+      .in("status", ["pending", "processing"])
+      .order("queued_at", { ascending: true })
+      .limit(1)
+      .single();
+
+    const oldestPendingAge = oldestPending?.queued_at
+      ? Math.floor((now.getTime() - new Date(oldestPending.queued_at).getTime()) / 60000)
+      : null;
+
+    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale(>2min)=${staleCount}, oldest_age=${oldestPendingAge}min`);
 
     // ============================================================
-    // QUEUE BACKLOG ALERT (NEW)
+    // QUEUE BACKLOG ALERT (ALERT-ONLY, NO AUTO-DISABLE)
     // ============================================================
     const hasBacklog = (staleCount && staleCount > 0) || (pendingCount && pendingCount > QUEUE_BACKLOG_COUNT_THRESHOLD);
     
@@ -146,9 +159,10 @@ serve(async (req: Request) => {
         .limit(1);
 
       if (!existingBacklogAlert?.length) {
+        const ageInfo = oldestPendingAge !== null ? ` (oldest: ${oldestPendingAge}min)` : "";
         const backlogMessage = staleCount && staleCount > 0
-          ? `Queue backlog: ${staleCount} emails pending/processing for >2 minutes (total pending: ${pendingCount})`
-          : `Queue backlog: ${pendingCount} emails pending (threshold: ${QUEUE_BACKLOG_COUNT_THRESHOLD})`;
+          ? `Queue backlog: ${staleCount} emails pending/processing for >2 minutes${ageInfo}, total pending: ${pendingCount}`
+          : `Queue backlog: ${pendingCount} emails pending (threshold: ${QUEUE_BACKLOG_COUNT_THRESHOLD})${ageInfo}`;
         
         alerts.push({
           type: "queue_backlog",
@@ -261,10 +275,8 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // PER-TENANT INACTIVITY CHECK (uses cached last_email_received_at)
+    // PER-TENANT INACTIVITY CHECK (ALERT-ONLY, NO AUTO-DISABLE)
     // ============================================================
-    const tenantsToDisable: string[] = [];
-
     for (const tenant of tenants || []) {
       // Skip paused tenants or those without a configured gmail alias
       if (tenant.is_paused || !tenant.gmail_alias) {
@@ -302,11 +314,6 @@ serve(async (req: Request) => {
               : `${tenant.name}: No emails ever received. Email source not connected.`,
             minutesSinceLastEmail: minutesSince,
           });
-
-          // Auto-disable hunt plans for tenants inactive > 2x threshold
-          if (minutesSince && minutesSince > thresholdMinutes * 2) {
-            tenantsToDisable.push(tenant.id);
-          }
         }
       } else {
         // Resolve any existing tenant alerts
@@ -327,7 +334,7 @@ serve(async (req: Request) => {
     // This removes ~52K row scans/day from the 5-minute cron
     // ============================================================
 
-    // Insert new alerts
+    // Insert new alerts (ALERT-ONLY - no mutations to hunt_plans or other tables)
     if (alerts.length > 0) {
       const alertRecords = alerts.map((a) => ({
         tenant_id: a.tenantId,
@@ -343,7 +350,7 @@ serve(async (req: Request) => {
 
       await supabase.from("email_health_alerts").insert(alertRecords);
 
-      // Send email alert
+      // Send email alert (notification only)
       if (resend && adminEmail) {
         const criticalAlerts = alerts.filter((a) => a.level === "critical");
         const warningAlerts = alerts.filter((a) => a.level === "warning");
@@ -367,11 +374,6 @@ serve(async (req: Request) => {
               ${warningAlerts.map((a) => `<li>${a.message}</li>`).join("")}
             </ul>
           ` : ""}
-          
-          ${tenantsToDisable.length > 0 ? `
-            <h2 style="color: red;">⚠️ Hunt Plans Auto-Disabled</h2>
-            <p>Hunt plans have been automatically disabled for ${tenantsToDisable.length} tenant(s) due to prolonged email inactivity.</p>
-          ` : ""}
         `;
 
         try {
@@ -388,20 +390,6 @@ serve(async (req: Request) => {
       }
     }
 
-    // Auto-disable hunt plans for critically inactive tenants
-    if (tenantsToDisable.length > 0) {
-      const { error: disableError } = await supabase
-        .from("hunt_plans")
-        .update({ enabled: false })
-        .in("tenant_id", tenantsToDisable);
-
-      if (disableError) {
-        console.error(`[check-email-health] Failed to disable hunt plans:`, disableError);
-      } else {
-        console.log(`[check-email-health] Disabled hunt plans for ${tenantsToDisable.length} tenants`);
-      }
-    }
-
     // Build health summary for dashboard
     const healthSummary = {
       checked_at: now.toISOString(),
@@ -411,9 +399,9 @@ serve(async (req: Request) => {
       system_last_email: systemLastEmail?.toISOString() || null,
       queue_pending: pendingCount || 0,
       queue_stale: staleCount || 0,
+      queue_oldest_age_minutes: oldestPendingAge,
       tenants_checked: tenants?.length || 0,
       alerts_generated: alerts.length,
-      hunt_plans_disabled: tenantsToDisable.length,
     };
 
     console.log(`[check-email-health] Complete:`, healthSummary);
