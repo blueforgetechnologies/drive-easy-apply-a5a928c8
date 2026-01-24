@@ -51,15 +51,17 @@ class DriverApplicationPDF {
   private readonly lineHeight: number = 5;
   private readonly boxPadding: number = 3;
   private company: CompanyProfile | null;
+  private logoBase64: string | null;
   private generatedTimestamp: string;
   private applicantName: string = '';
 
-  constructor(company: CompanyProfile | null) {
+  constructor(company: CompanyProfile | null, logoBase64: string | null = null) {
     this.doc = new jsPDF();
     this.pageHeight = this.doc.internal.pageSize.height;
     this.pageWidth = this.doc.internal.pageSize.width;
     this.contentWidth = this.pageWidth - 2 * this.margin;
     this.company = company;
+    this.logoBase64 = logoBase64;
     this.generatedTimestamp = new Date().toLocaleString('en-US', {
       year: 'numeric',
       month: '2-digit',
@@ -105,14 +107,23 @@ class DriverApplicationPDF {
     return this.doc.splitTextToSize(text, maxWidth);
   }
 
+  /**
+   * Unified method for starting a new page.
+   * Adds footer to current page, creates new page, increments page number,
+   * and adds watermark + header to the new page.
+   */
+  private newPage(): void {
+    this.addFooter();
+    this.doc.addPage();
+    this.pageNumber++;
+    this.yPos = 25;
+    this.addWatermark();
+    this.addPageHeader();
+  }
+
   private checkPageBreak(requiredSpace: number = 30): void {
     if (this.yPos + requiredSpace > this.pageHeight - 25) {
-      this.addFooter();
-      this.doc.addPage();
-      this.pageNumber++;
-      this.yPos = 25;
-      this.addWatermark();
-      this.addPageHeader();
+      this.newPage();
     }
   }
 
@@ -172,13 +183,28 @@ class DriverApplicationPDF {
 
   private addLetterhead(): void {
     this.addWatermark();
+    this.addPageHeader(); // Page 1 now also gets header line + page number
+    this.yPos = 22;
+
+    // Company logo + name
+    let logoXEnd = this.margin;
+    
+    if (this.logoBase64) {
+      try {
+        this.doc.addImage(this.logoBase64, 'PNG', this.margin, this.yPos - 3, 18, 18);
+        logoXEnd = this.margin + 22;
+      } catch (e) {
+        console.error("Failed to add logo image:", e);
+        // Fallback: no logo, just name
+      }
+    }
     
     // Company name (large)
     this.doc.setFontSize(20);
     this.doc.setTextColor(20, 60, 140);
     this.doc.setFont(undefined, 'bold');
-    this.doc.text(this.company?.company_name || 'TRUCKING COMPANY', this.margin, this.yPos);
-    this.yPos += 7;
+    this.doc.text(this.company?.company_name || 'TRUCKING COMPANY', logoXEnd, this.yPos + 5);
+    this.yPos += 12;
 
     // Company address line
     if (this.company?.address) {
@@ -190,8 +216,10 @@ class DriverApplicationPDF {
         [this.company.city, this.company.state, this.company.zip].filter(Boolean).join(', '),
         this.company.phone ? `Tel: ${this.company.phone}` : '',
       ].filter(Boolean);
-      this.doc.text(addressParts.join('  •  '), this.margin, this.yPos);
+      this.doc.text(addressParts.join('  •  '), logoXEnd, this.yPos);
       this.yPos += 6;
+    } else {
+      this.yPos += 3;
     }
 
     // Double line separator
@@ -233,7 +261,11 @@ class DriverApplicationPDF {
     this.doc.setTextColor(0, 0, 0);
   }
 
-  private addFormField(label: string, value: string | null | undefined, width: number, x?: number): number {
+  /**
+   * Add a form field with proper text wrapping instead of truncation.
+   * Returns the new X position after the field.
+   */
+  private addFormField(label: string, value: string | null | undefined, width: number, x?: number): { nextX: number; linesUsed: number } {
     const startX = x ?? this.margin;
     const displayValue = value || '';
     
@@ -242,35 +274,54 @@ class DriverApplicationPDF {
     this.doc.setFont(undefined, 'normal');
     this.doc.text(label, startX, this.yPos);
     
-    // Underline for value
-    const labelWidth = Math.min(this.doc.getTextWidth(label) + 2, width * 0.4);
-    const valueWidth = width - labelWidth - 2;
+    // Calculate space for value
+    const labelWidth = Math.min(this.doc.getTextWidth(label) + 2, width * 0.35);
+    const valueWidth = width - labelWidth - 4;
     const valueX = startX + labelWidth;
     
+    // Underline for value
     this.doc.setDrawColor(150, 150, 150);
     this.doc.setLineWidth(0.3);
     this.doc.line(valueX, this.yPos + 1, valueX + valueWidth, this.yPos + 1);
     
-    // Value text
+    // Wrap value text if needed
     this.doc.setFontSize(9);
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFont(undefined, 'normal');
     
-    const truncatedValue = displayValue.length > 35 ? displayValue.substring(0, 32) + '...' : displayValue;
-    this.doc.text(truncatedValue, valueX + 1, this.yPos);
+    const lines = this.wrapText(displayValue, valueWidth - 2);
+    const linesUsed = Math.min(lines.length, 2); // Max 2 lines per field
     
-    return startX + width;
+    for (let i = 0; i < linesUsed; i++) {
+      this.doc.text(lines[i], valueX + 1, this.yPos + (i * 4));
+    }
+    
+    return { nextX: startX + width, linesUsed };
   }
 
   private addFormFieldRow(fields: Array<{ label: string; value: string | null | undefined; width: number }>): void {
-    this.checkPageBreak(10);
+    this.checkPageBreak(12);
     
     let currentX = this.margin;
+    let maxLines = 1;
+    
+    // First pass: calculate max lines needed
     for (const field of fields) {
-      currentX = this.addFormField(field.label, field.value, field.width, currentX) + 3;
+      const displayValue = field.value || '';
+      const labelWidth = Math.min(this.doc.getTextWidth(field.label) + 2, field.width * 0.35);
+      const valueWidth = field.width - labelWidth - 4;
+      const lines = this.wrapText(displayValue, valueWidth - 2);
+      maxLines = Math.max(maxLines, Math.min(lines.length, 2));
     }
     
-    this.yPos += 8;
+    // Second pass: render fields
+    for (const field of fields) {
+      const result = this.addFormField(field.label, field.value, field.width, currentX);
+      currentX = result.nextX + 3;
+    }
+    
+    // Adjust yPos based on lines used
+    this.yPos += 6 + (maxLines - 1) * 4;
   }
 
   private addCheckboxField(label: string, checked: boolean | string, x: number, width: number): number {
@@ -358,7 +409,11 @@ class DriverApplicationPDF {
     this.yPos = endY + 5;
   }
 
-  private addTableHeader(columns: Array<{ label: string; width: number }>): void {
+  /**
+   * Add a full grid table with outer border and vertical column lines.
+   */
+  private addGridTableHeader(columns: Array<{ label: string; width: number }>, tableStartY: number): void {
+    // Header background
     this.doc.setFillColor(240, 240, 240);
     this.doc.rect(this.margin, this.yPos - 4, this.contentWidth, 7, 'F');
     
@@ -373,30 +428,69 @@ class DriverApplicationPDF {
     }
     
     this.yPos += 5;
+    
+    // Horizontal line under header
     this.doc.setDrawColor(180, 180, 180);
+    this.doc.setLineWidth(0.4);
     this.doc.line(this.margin, this.yPos, this.pageWidth - this.margin, this.yPos);
     this.yPos += 3;
   }
 
-  private addTableRow(columns: Array<{ value: string; width: number }>): void {
-    this.checkPageBreak(10);
+  private addGridTableRow(columns: Array<{ value: string; width: number }>, isLast: boolean = false): void {
+    this.checkPageBreak(12);
     
     this.doc.setFontSize(8);
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFont(undefined, 'normal');
     
+    // Calculate max lines needed for this row
+    let maxLines = 1;
+    const cellLines: string[][] = [];
+    
     let x = this.margin + 2;
     for (const col of columns) {
-      const truncated = col.value.length > 30 ? col.value.substring(0, 27) + '...' : col.value;
-      this.doc.text(truncated, x, this.yPos);
-      x += col.width;
+      const lines = this.wrapText(col.value, col.width - 4);
+      const truncatedLines = lines.slice(0, 2); // Max 2 lines per cell
+      cellLines.push(truncatedLines);
+      maxLines = Math.max(maxLines, truncatedLines.length);
     }
     
-    this.yPos += 5;
+    // Render each cell
+    x = this.margin + 2;
+    for (let i = 0; i < columns.length; i++) {
+      const lines = cellLines[i];
+      for (let j = 0; j < lines.length; j++) {
+        this.doc.text(lines[j], x, this.yPos + (j * 4));
+      }
+      x += columns[i].width;
+    }
+    
+    const rowHeight = 5 + (maxLines - 1) * 4;
+    this.yPos += rowHeight;
+    
+    // Horizontal row divider
     this.doc.setDrawColor(220, 220, 220);
     this.doc.setLineWidth(0.2);
     this.doc.line(this.margin, this.yPos, this.pageWidth - this.margin, this.yPos);
     this.yPos += 2;
+  }
+
+  /**
+   * Draw the outer border and vertical lines for the table.
+   */
+  private addGridTableBorder(columns: Array<{ width: number }>, startY: number, endY: number): void {
+    // Outer border
+    this.doc.setDrawColor(180, 180, 180);
+    this.doc.setLineWidth(0.5);
+    this.doc.rect(this.margin, startY, this.contentWidth, endY - startY);
+    
+    // Vertical column lines
+    this.doc.setLineWidth(0.3);
+    let x = this.margin;
+    for (let i = 0; i < columns.length - 1; i++) {
+      x += columns[i].width;
+      this.doc.line(x, startY, x, endY);
+    }
   }
 
   // === SECTION GENERATORS ===
@@ -541,22 +635,28 @@ class DriverApplicationPDF {
     this.doc.text('ACCIDENTS (Past 3 Years)', this.margin + 2, this.yPos);
     this.yPos += 6;
     
+    const accidentColumns = [
+      { label: 'Date', width: 25 },
+      { label: 'Location', width: 45 },
+      { label: 'Description', width: 70 },
+      { label: 'Preventable', width: 25 },
+    ];
+    
     if (dh.accidents && dh.accidents.length > 0) {
-      this.addTableHeader([
-        { label: 'Date', width: 25 },
-        { label: 'Location', width: 45 },
-        { label: 'Description', width: 70 },
-        { label: 'Preventable', width: 25 },
-      ]);
+      const tableStartY = this.yPos - 4;
+      this.addGridTableHeader(accidentColumns, tableStartY);
       
-      dh.accidents.forEach((acc: any) => {
-        this.addTableRow([
+      dh.accidents.forEach((acc: any, idx: number) => {
+        this.addGridTableRow([
           { value: this.formatDate(acc.date), width: 25 },
           { value: acc.location || '', width: 45 },
           { value: acc.description || '', width: 70 },
           { value: acc.preventable === 'yes' || acc.preventable === true ? 'Yes' : 'No', width: 25 },
-        ]);
+        ], idx === dh.accidents.length - 1);
       });
+      
+      const tableEndY = this.yPos;
+      this.addGridTableBorder(accidentColumns, tableStartY, tableEndY);
     } else {
       this.doc.setFontSize(8);
       this.doc.setTextColor(0, 0, 0);
@@ -574,22 +674,28 @@ class DriverApplicationPDF {
     this.doc.text('TRAFFIC VIOLATIONS (Past 3 Years)', this.margin + 2, this.yPos);
     this.yPos += 6;
     
+    const violationColumns = [
+      { label: 'Date', width: 25 },
+      { label: 'Location', width: 40 },
+      { label: 'Violation', width: 60 },
+      { label: 'Penalty', width: 40 },
+    ];
+    
     if (dh.violations && dh.violations.length > 0) {
-      this.addTableHeader([
-        { label: 'Date', width: 25 },
-        { label: 'Location', width: 40 },
-        { label: 'Violation', width: 60 },
-        { label: 'Penalty', width: 40 },
-      ]);
+      const tableStartY = this.yPos - 4;
+      this.addGridTableHeader(violationColumns, tableStartY);
       
-      dh.violations.forEach((vio: any) => {
-        this.addTableRow([
+      dh.violations.forEach((vio: any, idx: number) => {
+        this.addGridTableRow([
           { value: this.formatDate(vio.date), width: 25 },
           { value: vio.location || '', width: 40 },
           { value: vio.violation || '', width: 60 },
           { value: vio.penalty || '', width: 40 },
-        ]);
+        ], idx === dh.violations.length - 1);
       });
+      
+      const tableEndY = this.yPos;
+      this.addGridTableBorder(violationColumns, tableStartY, tableEndY);
     } else {
       this.doc.setFontSize(8);
       this.doc.setTextColor(0, 0, 0);
@@ -759,11 +865,7 @@ class DriverApplicationPDF {
   }
 
   private generateAttestationPage(): void {
-    this.doc.addPage();
-    this.pageNumber++;
-    this.yPos = 25;
-    this.addWatermark();
-    this.addPageHeader();
+    this.newPage(); // Uses unified newPage() method
     
     this.addSectionTitle('Attestation & Authorization');
     
@@ -860,24 +962,14 @@ I understand that any employment relationship with this company is "at-will" mea
     this.generateLicenseInfo(applicationData.licenseInfo || {});
     
     // Page 2+: Employment History
-    this.addFooter();
-    this.doc.addPage();
-    this.pageNumber++;
-    this.yPos = 25;
-    this.addWatermark();
-    this.addPageHeader();
+    this.newPage();
     this.generateEmploymentHistory(applicationData.employmentHistory || []);
     
     // Driving History
     this.generateDrivingHistory(applicationData.drivingHistory || {});
     
     // Emergency Contacts
-    this.addFooter();
-    this.doc.addPage();
-    this.pageNumber++;
-    this.yPos = 25;
-    this.addWatermark();
-    this.addPageHeader();
+    this.newPage();
     this.generateEmergencyContacts(applicationData.emergencyContacts || []);
     
     // Direct Deposit
@@ -889,14 +981,40 @@ I understand that any employment relationship with this company is "at-will" mea
     // Why Hire You
     this.generateWhyHireYou(applicationData.whyHireYou);
     
-    // Attestation Page (always last)
-    this.addFooter();
+    // Attestation Page (always last, uses newPage() internally)
     this.generateAttestationPage();
     
-    // Final footer
+    // Final footer only once
     this.addFooter();
 
     return this.doc.output('arraybuffer');
+  }
+}
+
+/**
+ * Fetch logo from URL and convert to base64.
+ * Returns null on failure (graceful fallback).
+ */
+async function fetchLogoAsBase64(logoUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(logoUrl, { 
+      headers: { 'Accept': 'image/*' },
+    });
+    
+    if (!response.ok) {
+      console.warn(`Logo fetch failed: ${response.status}`);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Return as data URL
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.warn("Error fetching logo:", error);
+    return null;
   }
 }
 
@@ -981,6 +1099,12 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('tenant_id', application.tenant_id)
       .maybeSingle();
 
+    // Fetch logo as base64 if available
+    let logoBase64: string | null = null;
+    if (profile?.logo_url) {
+      logoBase64 = await fetchLogoAsBase64(profile.logo_url);
+    }
+
     // Build application data
     const employmentArray = Array.isArray(application.employment_history) 
       ? application.employment_history 
@@ -999,8 +1123,8 @@ const handler = async (req: Request): Promise<Response> => {
         : (application.emergency_contacts as any)?.contacts || [],
     };
 
-    // Generate PDF
-    const pdfGenerator = new DriverApplicationPDF(profile);
+    // Generate PDF with logo
+    const pdfGenerator = new DriverApplicationPDF(profile, logoBase64);
     const pdfBuffer = pdfGenerator.generate(applicationData);
     const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
