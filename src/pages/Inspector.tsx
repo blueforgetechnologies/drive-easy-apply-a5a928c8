@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ReleaseControlTab } from "@/components/inspector/ReleaseControlTab";
 import EmailRoutingHealthTab from "@/pages/EmailRoutingHealthTab";
+import UnroutableEmailsTab from "@/pages/UnroutableEmailsTab";
 
 interface TenantMetrics {
   tenant_id: string;
@@ -593,6 +594,10 @@ export default function Inspector() {
           <TabsTrigger value="email-routing" className="flex items-center gap-2">
             <Inbox className="w-4 h-4" />
             Email Routing
+          </TabsTrigger>
+          <TabsTrigger value="unroutable" className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Unroutable
           </TabsTrigger>
         </TabsList>
 
@@ -1352,6 +1357,11 @@ export default function Inspector() {
         {/* Email Routing Health Tab */}
         <TabsContent value="email-routing">
           <EmailRoutingHealthTab />
+        </TabsContent>
+
+        {/* Unroutable Emails Tab */}
+        <TabsContent value="unroutable">
+          <UnroutableEmailsTab />
         </TabsContent>
       </Tabs>
     </div>
