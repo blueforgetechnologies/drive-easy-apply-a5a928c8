@@ -15,6 +15,7 @@ const corsHeaders = {
  */
 function buildSampleApplicationData(tenantId: string) {
   const now = new Date().toISOString();
+  const today = now.split('T')[0];
   
   return {
     // INVITE DATA
@@ -32,236 +33,199 @@ function buildSampleApplicationData(tenantId: string) {
       current_step: 9, // All steps complete
       submitted_at: now,
       updated_at: now,
+      application_date: today,
       
       // === PERSONAL INFO (Step 1) ===
       personal_info: {
         firstName: "John",
-        middleName: "William",
+        middleName: "A",
         lastName: "Smith",
+        dob: "1988-04-12",
         ssn: "000-00-1234", // Clearly fake SSN (000 prefix is invalid)
-        dob: "1988-06-15",
         phone: "(555) 212-4455",
         email: "john.smith@example.com",
-        address: "1234 Trucker Lane",
-        city: "Dallas",
-        state: "TX",
-        zip: "75201",
+        address: "742 Evergreen Terrace",
+        city: "Columbus",
+        state: "OH",
+        zip: "43215",
         legallyAuthorized: "yes",
         felonyConviction: "no",
         felonyDetails: "",
+        hasTwicCard: "yes",
+        twicExpiration: "2028-08-31",
+        hasPassport: "yes",
+        passportExpiration: "2030-05-20",
+        canCrossBorder: "yes",
+        preferredContact: "phone",
+        emergencyMedicalInfo: "No known allergies",
       },
       // Mirror flattened columns
       cell_phone: "(555) 212-4455",
-      home_phone: "(555) 212-4400",
-      driver_address: "1234 Trucker Lane, Dallas, TX 75201",
+      home_phone: "",
+      driver_address: "742 Evergreen Terrace, Columbus, OH, 43215",
       
       // === LICENSE INFO (Step 2) ===
       license_info: {
-        licenseNumber: "TX-12345678",
-        licenseState: "TX",
+        licenseNumber: "SMI1234567",
+        licenseState: "OH",
         licenseClass: "A",
-        endorsements: ["H", "N", "T", "X"],
-        expirationDate: "2027-06-15",
-        issuedDate: "2015-06-15",
-        yearsExperience: 9,
+        endorsements: ["T", "N"],
+        expirationDate: "2027-11-30",
+        yearsExperience: 7,
         deniedLicense: "no",
-        deniedLicenseDetails: "",
+        deniedDetails: "",
         suspendedRevoked: "no",
-        suspendedRevokedDetails: "",
-        restrictions: "None",
+        suspendedDetails: "",
+        medicalCardExpiration: "2026-09-15",
+        equipmentExperience: ["Dry Van", "Reefer", "Flatbed"],
+        shifts: ["day", "night"],
+        teamDriving: "yes",
+        hazmatTraining: "no",
       },
       // Mirror flattened
-      medical_card_expiry: "2025-12-15",
-      driver_record_expiry: "2026-06-15",
-      green_card_expiry: null, // US Citizen
+      driver_record_expiry: "2027-11-30",
+      medical_card_expiry: "2026-09-15",
+      green_card_expiry: null,
       work_permit_expiry: null,
-      national_registry: "Y",
-      restrictions: "None",
+      national_registry: null,
+      restrictions: null,
       
-      // === EMPLOYMENT HISTORY (Step 3) - 3 employers, 3 years ===
+      // === EMPLOYMENT HISTORY (Step 3) - 3 employers covering 3+ years ===
       employment_history: [
         {
-          companyName: "Swift Transportation LLC",
-          position: "OTR Driver - Team Lead",
-          address: "2200 S 75th Ave, Phoenix, AZ 85043",
-          phone: "(800) 800-2200",
-          supervisor: "Michael Rodriguez",
-          supervisorTitle: "Fleet Manager",
-          startDate: "2022-03-01",
-          endDate: "2024-12-15",
-          reasonForLeaving: "Seeking local opportunities to be closer to family",
-          wasTerminated: false,
-          terminationReason: "",
-          salaryStart: "$0.52/mile",
-          salaryEnd: "$0.58/mile",
-          verified: false,
+          companyName: "Buckeye Freight Lines",
+          position: "OTR Driver",
+          address: "1250 Industrial Pkwy, Dayton, OH 45402",
+          phone: "(555) 410-2201",
+          supervisor: "Mark Reynolds",
+          startDate: "2023-02-01",
+          endDate: "2026-01-10",
+          reasonForLeaving: "Seeking a more consistent lane and home time",
+          equipmentDriven: "Dry Van",
+          milesPerWeek: 2800,
+          payType: "cpm",
         },
         {
-          companyName: "Werner Enterprises",
+          companyName: "Midwest Logistics Group",
           position: "Regional Driver",
-          address: "14507 Frontier Rd, Omaha, NE 68138",
-          phone: "(800) 346-2818",
-          supervisor: "Sarah Johnson",
-          supervisorTitle: "Dispatch Supervisor",
-          startDate: "2020-06-15",
-          endDate: "2022-02-28",
-          reasonForLeaving: "Offered better pay at Swift Transportation",
-          wasTerminated: false,
-          terminationReason: "",
-          salaryStart: "$0.45/mile",
-          salaryEnd: "$0.52/mile",
-          verified: false,
+          address: "9800 Logistics Dr, Indianapolis, IN 46241",
+          phone: "(555) 338-9022",
+          supervisor: "Tanya Brooks",
+          startDate: "2021-03-15",
+          endDate: "2023-01-20",
+          reasonForLeaving: "Company restructuring / route changes",
+          equipmentDriven: "Reefer",
+          milesPerWeek: 2400,
+          payType: "hourly",
         },
         {
-          companyName: "Schneider National",
-          position: "Dedicated Driver",
-          address: "3101 Packerland Dr, Green Bay, WI 54313",
-          phone: "(800) 558-6767",
-          supervisor: "David Chen",
-          supervisorTitle: "Operations Manager",
-          startDate: "2018-01-10",
-          endDate: "2020-06-01",
-          reasonForLeaving: "Relocating to Texas region",
-          wasTerminated: false,
-          terminationReason: "",
-          salaryStart: "$0.42/mile",
-          salaryEnd: "$0.46/mile",
-          verified: false,
+          companyName: "River City Transport",
+          position: "Local Driver",
+          address: "450 Riverfront Ave, Louisville, KY 40202",
+          phone: "(555) 772-1188",
+          supervisor: "Chris Alvarez",
+          startDate: "2020-01-05",
+          endDate: "2021-03-01",
+          reasonForLeaving: "Moved to pursue regional/OTR opportunities",
+          equipmentDriven: "Flatbed",
+          milesPerWeek: 1800,
+          payType: "hourly",
         },
       ],
       
       // === DRIVING HISTORY (Step 4) - 1 accident, 1 violation ===
       driving_history: {
-        hasAccidents: true,
         accidents: [
           {
-            date: "2021-03-22",
-            location: "I-40 near Amarillo, TX",
-            description: "Minor rear-end collision in stop-and-go traffic. No injuries. Other driver cited for following too close.",
+            date: "2024-06-18",
+            location: "I-70 near Richmond, IN",
+            description: "Minor rear-end incident in stop-and-go traffic; no injuries; property damage only",
             fatalities: 0,
             injuries: 0,
-            hazmat: false,
-            preventable: false,
-            policeReport: true,
-            policeReportNumber: "APD-2021-0322-4455",
+            preventable: "no",
+            vehicleTowed: "no",
           },
         ],
-        hasViolations: true,
         violations: [
           {
-            date: "2019-08-15",
-            state: "OK",
-            violation: "Speeding - 72 in 65 zone",
-            description: "7 mph over limit on I-44",
-            penalty: "Fine $150, no points (traffic school completed)",
-            resolved: true,
+            date: "2023-09-03",
+            location: "Springfield, OH",
+            violation: "Speeding 9 mph over limit (non-CMV)",
+            penalty: "Fine paid; no suspension",
           },
         ],
-        hasDUI: false,
-        duiDetails: "",
-        hasRecklessConviction: false,
-        recklessDetails: "",
-        cdlEveryInvalid: false,
-        cdlEveryInvalidDetails: "",
+        dui: "no",
+        failedDrugTest: "no",
+        licenseSuspension: "no",
+        safetyAwards: "2022 Safe Driver Recognition (Midwest Logistics Group)",
       },
       
-      // === EMERGENCY CONTACTS (Step 5) - 2 contacts ===
+      // === EMERGENCY CONTACTS (Step 5) - 2 contacts with full addresses ===
       emergency_contacts: [
         {
-          firstName: "Mary",
+          firstName: "Emily",
           lastName: "Smith",
           relationship: "Spouse",
-          phone: "(555) 212-4456",
-          phoneSecondary: "(555) 212-4457",
-          email: "mary.smith@example.com",
-          address: "1234 Trucker Lane",
-          city: "Dallas",
-          state: "TX",
-          zip: "75201",
-          isPrimary: true,
+          phone: "(555) 333-9012",
+          address: "742 Evergreen Terrace",
+          city: "Columbus",
+          state: "OH",
+          zip: "43215",
         },
         {
           firstName: "Robert",
           lastName: "Smith",
-          relationship: "Brother",
-          phone: "(555) 333-7788",
-          phoneSecondary: "",
-          email: "robert.smith@example.com",
-          address: "5678 Oak Street",
-          city: "Houston",
-          state: "TX",
-          zip: "77001",
-          isPrimary: false,
+          relationship: "Father",
+          phone: "(555) 441-7788",
+          address: "18 Maple Ridge Rd",
+          city: "Dublin",
+          state: "OH",
+          zip: "43017",
         },
       ],
       
       // === DOCUMENT UPLOAD (Step 6) - All required + 2 extras ===
       document_upload: {
-        driversLicense: true,
-        driversLicenseUrl: "sample-docs/john-smith-cdl-front.jpg",
-        driversLicenseBack: true,
-        driversLicenseBackUrl: "sample-docs/john-smith-cdl-back.jpg",
-        socialSecurity: true,
-        socialSecurityUrl: "sample-docs/john-smith-ssn-card.jpg",
-        medicalCard: true,
-        medicalCardUrl: "sample-docs/john-smith-medical-card.jpg",
-        mvr: true,
-        mvrUrl: "sample-docs/john-smith-mvr-report.pdf",
-        otherDocuments: [
-          {
-            name: "Hazmat Endorsement Certificate",
-            url: "sample-docs/john-smith-hazmat-cert.pdf",
-            uploadedAt: now,
-          },
-          {
-            name: "TSA Background Check Approval",
-            url: "sample-docs/john-smith-tsa-approval.pdf",
-            uploadedAt: now,
-          },
+        driversLicense: "storage://driver-documents/john-smith/drivers-license.jpg",
+        socialSecurity: "storage://driver-documents/john-smith/ss-card.jpg",
+        medicalCard: "storage://driver-documents/john-smith/medical-card.jpg",
+        other: [
+          "storage://driver-documents/john-smith/twic-card.jpg",
+          "storage://driver-documents/john-smith/resume.pdf",
         ],
-        allRequiredUploaded: true,
       },
       
       // === DIRECT DEPOSIT (Step 7) - Full banking + CashApp ===
       direct_deposit: {
-        paymentMethod: "direct_deposit",
         firstName: "John",
-        middleName: "William",
         lastName: "Smith",
+        businessName: "",
         email: "john.smith@example.com",
-        bankName: "Chase Bank",
-        routingNumber: "021000021", // Fake but valid format (JPMorgan Chase)
+        bankName: "First National Test Bank",
+        routingNumber: "021000021", // Fake but valid format
         accountNumber: "000123456789", // Clearly fake (starts with 000)
         checkingNumber: "000123456789",
         accountType: "checking",
-        accountHolderName: "John William Smith",
-        confirmAccountNumber: "000123456789",
-        // CashApp as backup
-        hasCashApp: true,
-        cashAppTag: "$JohnSmithDriver",
-        cashAppEmail: "john.smith@example.com",
-        // W-9 acknowledgment
-        w9Acknowledged: true,
-        taxId: "000-00-1234", // Same fake SSN
+        cashAppCashtag: "$JohnSmithDriver",
       },
       // Mirror flattened columns
-      bank_name: "Chase Bank",
+      bank_name: "First National Test Bank",
       routing_number: "021000021",
       checking_number: "000123456789",
-      account_name: "John William Smith",
+      account_name: "John Smith",
       account_type: "checking",
       
       // === POLICIES (Steps 8a-8e) ===
       payroll_policy: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
       },
       drug_alcohol_policy: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
         understandsTesting: true,
         agreesToComply: true,
@@ -269,26 +233,26 @@ function buildSampleApplicationData(tenantId: string) {
       no_rider_policy: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
       },
       safe_driving_policy: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
         understandsExpectations: true,
       },
       driver_dispatch_sheet: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
       },
       contractor_agreement: {
         acknowledged: true,
         acknowledgedAt: now,
-        signature: "John W. Smith",
+        signature: "John A. Smith",
         signedAt: now,
         understandsTerms: true,
         agreesToArbitration: true,
@@ -296,27 +260,10 @@ function buildSampleApplicationData(tenantId: string) {
       
       // === WHY HIRE YOU (Step 9) ===
       why_hire_you: {
-        statement: `I am a dedicated professional CDL driver with over 9 years of experience in OTR, regional, and dedicated freight operations. Throughout my career, I have maintained an excellent safety record with only one minor, non-preventable incident. 
-
-I take pride in my work and understand that timely, safe deliveries are the backbone of this industry. My experience includes hazmat, tanker, and doubles/triples endorsements, making me versatile for any load type.
-
-I am looking for a company that values driver wellbeing and offers stable, consistent work. I am committed to being a reliable team member and representing your company professionally on the road.
-
-Key strengths: 
-- 9+ years CDL-A experience
-- Clean MVR with excellent safety rating
-- H/N/T/X endorsements
-- Team lead experience at Swift
-- Excellent customer service skills
-- Flexible availability for OTR or regional routes`,
-        additionalSkills: ["Forklift certified", "Basic truck maintenance", "ELD proficient", "Bilingual English/Spanish"],
-        preferredRoutes: "Regional preferred, but open to OTR",
-        availableStartDate: "2025-02-01",
-        referralSource: "Company website",
+        statement: "I'm a safety-first CDL-A driver with 7 years of experience across OTR and regional lanes. I communicate clearly, keep clean logs, and take pride in being reliable and on-time. I'm looking for a long-term home where I can run consistent freight and contribute to a strong safety culture.",
       },
       
       // === ADDITIONAL FLATTENED FIELDS ===
-      application_date: now.split('T')[0],
       hired_date: null,
       termination_date: null,
       vehicle_note: "",
