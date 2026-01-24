@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2 } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
 interface Invoice {
   id: string;
@@ -124,6 +125,8 @@ export default function InvoicesTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -1072,12 +1075,15 @@ export default function InvoicesTab() {
               <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
+              {filter === 'needs_setup' && (
+                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="py-12 text-center">
+                <TableCell colSpan={filter === 'needs_setup' ? 13 : 12} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1155,6 +1161,32 @@ export default function InvoicesTab() {
                     <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
                     <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
                     <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
+                    {filter === 'needs_setup' && (
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInvoiceToReturn(invoice);
+                                  setReturnDialogOpen(true);
+                                }}
+                              >
+                                <Undo2 className="h-3.5 w-3.5" />
+                                Return
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Return invoice to Ready for Audit
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })
@@ -1162,6 +1194,26 @@ export default function InvoicesTab() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Return to Audit Dialog */}
+      <ReturnToAuditDialog
+        open={returnDialogOpen}
+        onOpenChange={(open) => {
+          setReturnDialogOpen(open);
+          if (!open) setInvoiceToReturn(null);
+        }}
+        invoice={invoiceToReturn ? {
+          id: invoiceToReturn.id,
+          invoice_number: invoiceToReturn.invoice_number,
+          customer_name: invoiceToReturn.customer_name,
+          status: invoiceToReturn.status,
+          billing_method: invoiceToReturn.billing_method,
+          otr_submitted_at: invoiceToReturn.otr_submitted_at,
+          otr_status: invoiceToReturn.otr_status,
+          amount_paid: invoiceToReturn.amount_paid,
+        } : null}
+        lastEmailStatus={invoiceToReturn?.last_attempt_status || null}
+      />
     </div>
   );
 }
