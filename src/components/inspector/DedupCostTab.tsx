@@ -47,39 +47,57 @@ interface DedupCostData {
   generated_at: string;
   metrics: TimeWindowMetrics[];
   health_status: {
-    overall: 'healthy' | 'warning' | 'critical';
-    unroutable_15m: 'healthy' | 'warning' | 'critical';
-    payload_url_pct: 'healthy' | 'warning' | 'critical';
-    queue_collisions: 'healthy' | 'warning' | 'critical';
+    overall: "healthy" | "warning" | "critical";
+    unroutable_15m: "healthy" | "warning" | "critical";
+    payload_url_pct: "healthy" | "warning" | "critical";
+    queue_collisions: "healthy" | "warning" | "critical";
   };
   recent_content_examples: RecentContentExample[];
   recent_unroutable_examples: RecentUnroutableExample[];
 }
 
-function getStatusIcon(status: 'healthy' | 'warning' | 'critical') {
+type HealthStatus = "healthy" | "warning" | "critical";
+
+function getStatusIcon(status: HealthStatus): React.ReactNode {
   switch (status) {
-    case 'healthy':
+    case "healthy":
       return <CheckCircle className="w-4 h-4 text-green-500" />;
-    case 'warning':
+    case "warning":
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-    case 'critical':
+    case "critical":
       return <XCircle className="w-4 h-4 text-red-500" />;
+    default:
+      return <CheckCircle className="w-4 h-4 text-muted-foreground" />;
   }
 }
 
-function getStatusBadge(status: 'healthy' | 'warning' | 'critical') {
+function getStatusBadge(status: HealthStatus): React.ReactNode {
   switch (status) {
-    case 'healthy':
-      return <Badge variant="default" className="bg-green-500/20 text-green-700 border-green-500/30">✅ Healthy</Badge>;
-    case 'warning':
-      return <Badge variant="default" className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">⚠️ Warning</Badge>;
-    case 'critical':
+    case "healthy":
+      return (
+        <Badge variant="default" className="bg-green-500/20 text-green-700 border-green-500/30">
+          ✅ Healthy
+        </Badge>
+      );
+    case "warning":
+      return (
+        <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">
+          ⚠️ Warning
+        </Badge>
+      );
+    case "critical":
       return <Badge variant="destructive">🔴 Critical</Badge>;
+    default:
+      return <Badge variant="secondary">Unknown</Badge>;
   }
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString();
+function formatDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleString();
+  } catch {
+    return dateStr;
+  }
 }
 
 export default function DedupCostTab() {
@@ -90,7 +108,7 @@ export default function DedupCostTab() {
   async function fetchData() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -152,7 +170,7 @@ export default function DedupCostTab() {
       {!data && !loading && !error && (
         <Card>
           <CardContent className="pt-6 text-center text-muted-foreground">
-            Click "Load Metrics" to fetch dedup and cost data
+            Click &quot;Load Metrics&quot; to fetch dedup and cost data
           </CardContent>
         </Card>
       )}
@@ -179,8 +197,8 @@ export default function DedupCostTab() {
                   <div>
                     <p className="text-sm font-medium">Unroutable (15m)</p>
                     <p className="text-xs text-muted-foreground">
-                      {data.metrics[0]?.unroutable_count || 0} emails
-                      {data.health_status.unroutable_15m !== 'healthy' && (
+                      {data.metrics[0]?.unroutable_count ?? 0} emails
+                      {data.health_status.unroutable_15m !== "healthy" && (
                         <span className="ml-1">(threshold: ⚠️≥50, 🔴≥200)</span>
                       )}
                     </p>
@@ -191,8 +209,8 @@ export default function DedupCostTab() {
                   <div>
                     <p className="text-sm font-medium">Payload URL %</p>
                     <p className="text-xs text-muted-foreground">
-                      {data.metrics[2]?.email_content_payload_url_populated_pct || 0}%
-                      {data.health_status.payload_url_pct !== 'healthy' && (
+                      {data.metrics[2]?.email_content_payload_url_populated_pct ?? 0}%
+                      {data.health_status.payload_url_pct !== "healthy" && (
                         <span className="ml-1">(threshold: ⚠️&lt;95%, 🔴&lt;80%)</span>
                       )}
                     </p>
@@ -203,8 +221,8 @@ export default function DedupCostTab() {
                   <div>
                     <p className="text-sm font-medium">Queue Collisions (15m)</p>
                     <p className="text-xs text-muted-foreground">
-                      {data.metrics[0]?.email_queue_dedup_collision_count || 0} collisions
-                      {data.health_status.queue_collisions !== 'healthy' && (
+                      {data.metrics[0]?.email_queue_dedup_collision_count ?? 0} collisions
+                      {data.health_status.queue_collisions !== "healthy" && (
                         <span className="ml-1">(threshold: ⚠️&gt;0, 🔴&gt;10)</span>
                       )}
                     </p>
@@ -248,9 +266,14 @@ export default function DedupCostTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge 
-                          variant={m.email_content_payload_url_populated_pct >= 95 ? "default" : 
-                                   m.email_content_payload_url_populated_pct >= 80 ? "secondary" : "destructive"}
+                        <Badge
+                          variant={
+                            m.email_content_payload_url_populated_pct >= 95
+                              ? "default"
+                              : m.email_content_payload_url_populated_pct >= 80
+                              ? "secondary"
+                              : "destructive"
+                          }
                         >
                           {m.email_content_payload_url_populated_pct}%
                         </Badge>
@@ -265,7 +288,9 @@ export default function DedupCostTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         {m.unroutable_count > 0 ? (
-                          <span>{m.unroutable_count} ({m.unroutable_pct}%)</span>
+                          <span>
+                            {m.unroutable_count} ({m.unroutable_pct}%)
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">0</span>
                         )}
@@ -364,11 +389,11 @@ export default function DedupCostTab() {
                         <TableCell className="text-xs">{formatDate(ex.received_at)}</TableCell>
                         <TableCell>
                           <Badge variant="destructive" className="text-xs">
-                            {ex.failure_reason || 'Unknown'}
+                            {ex.failure_reason || "Unknown"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {ex.extracted_alias || <span className="text-muted-foreground">none</span>}
+                          {ex.extracted_alias || <span className="text-muted-foreground italic">none</span>}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">
                           {ex.delivered_to_header || <span className="italic">none</span>}
