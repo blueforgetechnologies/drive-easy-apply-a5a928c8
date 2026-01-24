@@ -74,6 +74,10 @@ serve(async (req: Request) => {
     console.log(`[check-email-health] Running at ${now.toISOString()}`);
     console.log(`[check-email-health] Business hours: ${isBizHours}, Threshold: ${thresholdMinutes} minutes`);
 
+    // Unroutable spike thresholds
+    const UNROUTABLE_WARNING_THRESHOLD = 50;
+    const UNROUTABLE_CRITICAL_THRESHOLD = 200;
+
     const alerts: Array<{
       type: string;
       level: string;
@@ -81,6 +85,7 @@ serve(async (req: Request) => {
       tenantName: string | null;
       message: string;
       minutesSinceLastEmail: number | null;
+      escalatedFromWarning?: boolean;
     }> = [];
 
     // ============================================================
@@ -151,10 +156,22 @@ serve(async (req: Request) => {
       .select("*", { count: "exact", head: true })
       .gte("received_at", fifteenMinutesAgo);
 
-    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale=${staleCount}, oldest_age=${oldestPendingAgeSeconds}s, processing_stale=${processingStaleCount}, unroutable_15m=${unroutableCount15m}`);
+    // Query 9: Email queue count last 15min for context (uses idx_email_queue_queued_at)
+    const { count: emailQueueCount15m } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .gte("queued_at", fifteenMinutesAgo);
+
+    // Compute unroutable percentage
+    const totalEmails15m = (emailQueueCount15m || 0) + (unroutableCount15m || 0);
+    const unroutablePct15m = totalEmails15m > 0 
+      ? Math.round(((unroutableCount15m || 0) / totalEmails15m) * 10000) / 100 
+      : 0;
+
+    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale=${staleCount}, oldest_age=${oldestPendingAgeSeconds}s, processing_stale=${processingStaleCount}, unroutable_15m=${unroutableCount15m}, queue_15m=${emailQueueCount15m}, unroutable_pct=${unroutablePct15m}%`);
 
     // ============================================================
-    // QUEUE BACKLOG ALERT (MORE SENSITIVE THRESHOLDS)
+    // QUEUE BACKLOG ALERT (MORE SENSITIVE THRESHOLDS + ESCALATION BYPASS)
     // ============================================================
     // WARNING: oldest_age >= 60s OR pending > 100
     // CRITICAL: oldest_age >= 120s OR stale_count >= 10
@@ -169,29 +186,51 @@ serve(async (req: Request) => {
     const hasBacklog = hasWarningBacklog || hasCriticalBacklog;
     
     if (hasBacklog) {
-      // Rate limit: 1/hour
+      // Check for existing unresolved alert
       const { data: existingBacklogAlert } = await supabase
         .from("email_health_alerts")
-        .select("id")
+        .select("id, alert_level, sent_at")
         .eq("alert_type", "queue_backlog")
         .is("resolved_at", null)
-        .gte("sent_at", oneHourAgo)
+        .order("sent_at", { ascending: false })
         .limit(1);
 
-      if (!existingBacklogAlert?.length) {
-        const ageInfo = oldestPendingAgeSeconds !== null ? `oldest: ${oldestPendingAgeSeconds}s` : "oldest: unknown";
-        const stuckInfo = processingStaleCount && processingStaleCount > 0 ? `, stuck_workers: ${processingStaleCount}` : "";
-        const unroutableInfo = unroutableCount15m && unroutableCount15m > 0 ? `, unroutable_15m: ${unroutableCount15m}` : "";
-        
-        const backlogMessage = `Queue backlog: pending=${pendingCount}, stale(>2min)=${staleCount}, ${ageInfo}${stuckInfo}${unroutableInfo}`;
+      const existingAlert = existingBacklogAlert?.[0];
+      const isRateLimited = existingAlert && new Date(existingAlert.sent_at) >= new Date(oneHourAgo);
+      const isEscalation = isRateLimited && existingAlert.alert_level === "warning" && hasCriticalBacklog;
+
+      // Build alert message with context metrics
+      const ageInfo = oldestPendingAgeSeconds !== null ? `oldest: ${oldestPendingAgeSeconds}s` : "oldest: unknown";
+      const stuckInfo = processingStaleCount && processingStaleCount > 0 ? `, stuck_workers: ${processingStaleCount}` : "";
+      const unroutableInfo = unroutableCount15m && unroutableCount15m > 0 ? `, unroutable_15m: ${unroutableCount15m} (${unroutablePct15m}%)` : "";
+      const contextInfo = `, queue_15m: ${emailQueueCount15m || 0}`;
+      
+      const backlogMessage = `Queue backlog: pending=${pendingCount}, stale(>2min)=${staleCount}, ${ageInfo}${stuckInfo}${unroutableInfo}${contextInfo}`;
+
+      // Allow alert if: not rate-limited OR escalating from warning->critical
+      if (!isRateLimited || isEscalation) {
+        if (isEscalation) {
+          // Update existing alert to critical level
+          await supabase
+            .from("email_health_alerts")
+            .update({ 
+              alert_level: "critical", 
+              message: `[ESCALATED] ${backlogMessage}`,
+              sent_at: now.toISOString() 
+            })
+            .eq("id", existingAlert.id);
+          
+          console.log(`[check-email-health] Escalated queue_backlog from warning to critical`);
+        }
         
         alerts.push({
           type: "queue_backlog",
           level: hasCriticalBacklog ? "critical" : "warning",
           tenantId: null,
           tenantName: null,
-          message: backlogMessage,
+          message: isEscalation ? `[ESCALATED] ${backlogMessage}` : backlogMessage,
           minutesSinceLastEmail: null,
+          escalatedFromWarning: isEscalation,
         });
       }
     } else {
@@ -200,6 +239,65 @@ serve(async (req: Request) => {
         .from("email_health_alerts")
         .update({ resolved_at: now.toISOString() })
         .eq("alert_type", "queue_backlog")
+        .is("resolved_at", null);
+    }
+
+    // ============================================================
+    // UNROUTABLE SPIKE ALERT (SEPARATE FROM QUEUE BACKLOG)
+    // ============================================================
+    // WARNING: >= 50 unroutable in 15min
+    // CRITICAL: >= 200 unroutable in 15min
+    const unroutableVal = unroutableCount15m || 0;
+    const hasUnroutableWarning = unroutableVal >= UNROUTABLE_WARNING_THRESHOLD;
+    const hasUnroutableCritical = unroutableVal >= UNROUTABLE_CRITICAL_THRESHOLD;
+    const hasUnroutableSpike = hasUnroutableWarning || hasUnroutableCritical;
+
+    if (hasUnroutableSpike) {
+      // Check for existing unresolved alert with escalation logic
+      const { data: existingUnroutableAlert } = await supabase
+        .from("email_health_alerts")
+        .select("id, alert_level, sent_at")
+        .eq("alert_type", "unroutable_spike")
+        .is("resolved_at", null)
+        .order("sent_at", { ascending: false })
+        .limit(1);
+
+      const existingAlert = existingUnroutableAlert?.[0];
+      const isRateLimited = existingAlert && new Date(existingAlert.sent_at) >= new Date(oneHourAgo);
+      const isEscalation = isRateLimited && existingAlert.alert_level === "warning" && hasUnroutableCritical;
+
+      const unroutableMessage = `Unroutable spike: ${unroutableVal} emails in last 15min (${unroutablePct15m}% of ${totalEmails15m} total)`;
+
+      if (!isRateLimited || isEscalation) {
+        if (isEscalation) {
+          await supabase
+            .from("email_health_alerts")
+            .update({ 
+              alert_level: "critical", 
+              message: `[ESCALATED] ${unroutableMessage}`,
+              sent_at: now.toISOString() 
+            })
+            .eq("id", existingAlert.id);
+          
+          console.log(`[check-email-health] Escalated unroutable_spike from warning to critical`);
+        }
+        
+        alerts.push({
+          type: "unroutable_spike",
+          level: hasUnroutableCritical ? "critical" : "warning",
+          tenantId: null,
+          tenantName: null,
+          message: isEscalation ? `[ESCALATED] ${unroutableMessage}` : unroutableMessage,
+          minutesSinceLastEmail: null,
+          escalatedFromWarning: isEscalation,
+        });
+      }
+    } else {
+      // Resolve any existing unroutable_spike alerts
+      await supabase
+        .from("email_health_alerts")
+        .update({ resolved_at: now.toISOString() })
+        .eq("alert_type", "unroutable_spike")
         .is("resolved_at", null);
     }
 
@@ -397,7 +495,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Build health summary with all metrics
+    // Build health summary with all metrics including context
     const healthSummary = {
       checked_at: now.toISOString(),
       is_business_hours: isBizHours,
@@ -408,9 +506,12 @@ serve(async (req: Request) => {
       queue_stale_count: staleCount || 0,
       queue_oldest_age_seconds: oldestPendingAgeSeconds,
       queue_processing_stale_count: processingStaleCount || 0,
+      email_queue_count_last_15m: emailQueueCount15m || 0,
       unroutable_count_last_15m: unroutableCount15m || 0,
+      unroutable_pct_last_15m: unroutablePct15m,
       tenants_checked: tenants?.length || 0,
       alerts_generated: alerts.length,
+      escalations_triggered: alerts.filter(a => a.escalatedFromWarning).length,
     };
 
     console.log(`[check-email-health] Complete:`, healthSummary);
