@@ -1209,6 +1209,7 @@ export type Database = {
           invited_by: string
           name: string | null
           opened_at: string | null
+          public_token: string
           tenant_id: string
         }
         Insert: {
@@ -1219,6 +1220,7 @@ export type Database = {
           invited_by: string
           name?: string | null
           opened_at?: string | null
+          public_token?: string
           tenant_id: string
         }
         Update: {
@@ -1229,6 +1231,7 @@ export type Database = {
           invited_by?: string
           name?: string | null
           opened_at?: string | null
+          public_token?: string
           tenant_id?: string
         }
         Relationships: [

@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface LoadApplicationRequest {
-  invite_id: string;
+  public_token: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -16,12 +16,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { invite_id }: LoadApplicationRequest = await req.json();
+    const { public_token }: LoadApplicationRequest = await req.json();
 
-    if (!invite_id) {
+    // FAIL CLOSED: Token is required
+    if (!public_token || typeof public_token !== 'string' || public_token.length < 32) {
+      console.error("Invalid or missing public_token (fail-closed)");
       return new Response(
-        JSON.stringify({ error: "invite_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid invitation token. Access denied." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -31,11 +33,11 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Validate invite exists (server-side token validation - fail closed)
+    // Validate invite exists by public_token (server-side token validation - fail closed)
     const { data: invite, error: inviteError } = await supabaseService
       .from('driver_invites')
-      .select('id, tenant_id, email, name, application_started_at')
-      .eq('id', invite_id)
+      .select('id, tenant_id, email, name, application_started_at, public_token')
+      .eq('public_token', public_token)
       .maybeSingle();
 
     if (inviteError) {
@@ -48,7 +50,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // FAIL CLOSED: Unknown/invalid token = deny
     if (!invite) {
-      console.error("Invalid invite_id (fail-closed):", invite_id);
+      console.error("Invalid public_token (fail-closed):", public_token.substring(0, 8) + "...");
       return new Response(
         JSON.stringify({ error: "Invalid invitation token. Access denied." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -74,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
         submitted_at,
         updated_at
       `)
-      .eq('invite_id', invite_id)
+      .eq('invite_id', invite.id)
       .maybeSingle();
 
     if (appError) {
@@ -115,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('tenant_id', application.tenant_id)
       .maybeSingle();
 
-    console.log(`Loaded application ${application.id} for invite ${invite_id}, step ${application.current_step}`);
+    console.log(`Loaded application ${application.id} for invite (token validated), step ${application.current_step}`);
 
     return new Response(
       JSON.stringify({

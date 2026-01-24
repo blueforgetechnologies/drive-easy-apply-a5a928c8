@@ -10,6 +10,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface SubmitApplicationRequest {
+  public_token: string;
+}
+
 interface ApplicationData {
   personalInfo: any;
   licenseInfo: any;
@@ -127,7 +131,7 @@ class DriverApplicationPDF {
     this.yPos += 15;
   }
 
-  private addSectionHeader(title: string, icon?: string): void {
+  private addSectionHeader(title: string): void {
     this.checkPageBreak(20);
     
     // Section background
@@ -432,46 +436,171 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const applicationData: ApplicationData = await req.json();
-    
-    console.log("Received application data for PDF generation");
+    const { public_token }: SubmitApplicationRequest = await req.json();
+
+    // FAIL CLOSED: Token is required
+    if (!public_token || typeof public_token !== 'string' || public_token.length < 32) {
+      console.error("Invalid or missing public_token (fail-closed)");
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid invitation token. Access denied." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Validate invite exists by public_token (server-side - fail closed)
+    const { data: invite, error: inviteError } = await supabaseService
+      .from('driver_invites')
+      .select('id, tenant_id, email, name')
+      .eq('public_token', public_token)
+      .maybeSingle();
+
+    if (inviteError) {
+      console.error("Error validating invite:", inviteError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to validate invitation" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // FAIL CLOSED: Unknown token = deny
+    if (!invite) {
+      console.error("Invalid public_token (fail-closed):", public_token.substring(0, 8) + "...");
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid invitation token. Access denied." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Load application from DB (not from client payload)
+    const { data: application, error: appError } = await supabaseService
+      .from('applications')
+      .select(`
+        id,
+        tenant_id,
+        status,
+        personal_info,
+        license_info,
+        employment_history,
+        driving_history,
+        emergency_contacts,
+        document_upload,
+        direct_deposit,
+        why_hire_you
+      `)
+      .eq('invite_id', invite.id)
+      .maybeSingle();
+
+    if (appError) {
+      console.error("Error loading application:", appError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to load application" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!application) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Application not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Prevent double submission
+    if (application.status === 'submitted' || application.status === 'approved' || application.status === 'rejected') {
+      return new Response(
+        JSON.stringify({ success: false, error: "Application already submitted" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build application data from DB
+    const employmentArray = Array.isArray(application.employment_history) 
+      ? application.employment_history 
+      : (application.employment_history as any)?.employers || [];
+
+    const applicationData: ApplicationData = {
+      personalInfo: application.personal_info || {},
+      licenseInfo: application.license_info || {},
+      employmentHistory: employmentArray,
+      drivingHistory: application.driving_history || {},
+      documents: application.document_upload || {},
+      directDeposit: application.direct_deposit || {},
+      whyHireYou: application.why_hire_you,
+      emergencyContacts: Array.isArray(application.emergency_contacts) 
+        ? application.emergency_contacts 
+        : (application.emergency_contacts as any)?.contacts || [],
+      tenantId: application.tenant_id,
+    };
+
+    console.log("Generating PDF from DB data for application:", application.id);
 
     // Fetch company profile for branding
     let companyProfile: CompanyProfile | null = null;
     let driverTrainerEmails: string[] = [];
     
-    if (applicationData.tenantId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-      const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-      const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const { data: profile } = await supabaseService
+      .from('company_profile')
+      .select('company_name, logo_url, address, city, state, zip, phone, email')
+      .eq('tenant_id', application.tenant_id)
+      .maybeSingle();
 
-      const { data: profile } = await supabaseService
-        .from('company_profile')
-        .select('company_name, logo_url, address, city, state, zip, phone, email')
-        .eq('tenant_id', applicationData.tenantId)
-        .maybeSingle();
+    if (profile) {
+      companyProfile = profile;
+    }
 
-      if (profile) {
-        companyProfile = profile;
-      }
+    // Get Driver Trainer emails for this tenant
+    const { data: driverTrainers } = await supabaseService
+      .from('user_custom_roles')
+      .select(`
+        user_id,
+        custom_roles!inner (name),
+        profiles!inner (email)
+      `)
+      .eq('tenant_id', application.tenant_id)
+      .ilike('custom_roles.name', '%driver trainer%');
 
-      // Get Driver Trainer emails
-      const { data: driverTrainers } = await supabaseService
+    if (driverTrainers && driverTrainers.length > 0) {
+      driverTrainerEmails = driverTrainers
+        .map((t: any) => t.profiles?.email)
+        .filter((email: string | null) => email);
+      console.log("Found Driver Trainer emails:", driverTrainerEmails);
+    }
+
+    // FAIL CLOSED: No fallback email - must have recipients
+    if (driverTrainerEmails.length === 0) {
+      // Try to get tenant admin emails as fallback
+      const { data: tenantAdmins } = await supabaseService
         .from('user_custom_roles')
         .select(`
           user_id,
           custom_roles!inner (name),
           profiles!inner (email)
         `)
-        .eq('tenant_id', applicationData.tenantId)
-        .ilike('custom_roles.name', '%driver trainer%');
+        .eq('tenant_id', application.tenant_id)
+        .ilike('custom_roles.name', '%admin%');
 
-      if (driverTrainers && driverTrainers.length > 0) {
-        driverTrainerEmails = driverTrainers
+      if (tenantAdmins && tenantAdmins.length > 0) {
+        driverTrainerEmails = tenantAdmins
           .map((t: any) => t.profiles?.email)
           .filter((email: string | null) => email);
-        console.log("Found Driver Trainer emails:", driverTrainerEmails);
+        console.log("Using tenant admin emails as fallback:", driverTrainerEmails);
       }
+    }
+
+    // Still no recipients? Fail closed
+    if (driverTrainerEmails.length === 0) {
+      console.error("FAIL CLOSED: No recipients found for tenant:", application.tenant_id);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "No recipient configured for this organization. Please contact the company administrator." 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Generate professional PDF
@@ -484,6 +613,21 @@ const handler = async (req: Request): Promise<Response> => {
     const applicantEmail = applicationData.personalInfo?.email;
     const filename = `Driver_Application_${applicantName}_${new Date().toISOString().split('T')[0]}.pdf`;
     const companyName = companyProfile?.company_name || 'Our Company';
+
+    // Mark application as submitted BEFORE sending emails
+    const { error: updateError } = await supabaseService
+      .from('applications')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        driver_status: 'pending',
+      })
+      .eq('id', application.id);
+
+    if (updateError) {
+      console.error("Error marking application as submitted:", updateError);
+      // Continue anyway - emails are more important
+    }
 
     // Send confirmation email to the driver/applicant
     if (applicantEmail) {
@@ -539,14 +683,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Send PDF to Driver Trainers
-    const trainerRecipients = driverTrainerEmails && driverTrainerEmails.length > 0 
-      ? driverTrainerEmails 
-      : ["ben@nexustechsolution.com"];
-
+    // Send PDF to Driver Trainers (no fallback - recipients are verified above)
     const emailResponse = await resend.emails.send({
       from: "Driver Application <noreply@blueforgetechnologies.org>",
-      to: trainerRecipients,
+      to: driverTrainerEmails,
       subject: `📋 New Driver Application - ${applicantFullName}`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f8fafc;">
@@ -595,6 +735,15 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Email sent to Driver Trainers:", emailResponse);
+
+    // Track email send
+    await supabaseService
+      .from('email_send_tracking')
+      .insert({
+        email_type: 'driver_application_pdf',
+        recipient_email: driverTrainerEmails[0],
+        success: !emailResponse.error,
+      });
 
     return new Response(JSON.stringify({ success: true, data: emailResponse }), {
       status: 200,
