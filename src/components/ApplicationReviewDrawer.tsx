@@ -20,7 +20,6 @@ import {
   Briefcase,
   AlertTriangle,
   FileCheck,
-  Download,
   FileSearch,
   CheckCircle2,
   XCircle,
@@ -64,9 +63,7 @@ interface ApplicationReviewDrawerProps {
   onOpenChange: (open: boolean) => void;
   application: ApplicationData | null;
   onPreviewPDF: (id: string) => void;
-  onDownloadPDF: (id: string) => void;
   onStatusChange: () => void;
-  isDownloading: boolean;
 }
 
 export function ApplicationReviewDrawer({
@@ -74,9 +71,7 @@ export function ApplicationReviewDrawer({
   onOpenChange,
   application,
   onPreviewPDF,
-  onDownloadPDF,
   onStatusChange,
-  isDownloading,
 }: ApplicationReviewDrawerProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -433,65 +428,43 @@ export function ApplicationReviewDrawer({
 
               {/* Actions */}
               <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Actions</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Document Actions</p>
                 
-                {/* PDF Actions */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPreviewPDF(application.id)}
-                    className="gap-2"
-                  >
-                    <FileSearch className="h-4 w-4" />
-                    Preview PDF
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onDownloadPDF(application.id)}
-                    disabled={isDownloading}
-                    className="gap-2"
-                  >
-                    {isDownloading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                    Download
-                  </Button>
-                </div>
+                {/* PDF Preview Only - Download is in the row's More menu */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPreviewPDF(application.id)}
+                  className="gap-2 w-full"
+                >
+                  <FileSearch className="h-4 w-4" />
+                  Preview PDF (in-app)
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  💡 Use the row's (...) menu to download PDF
+                </p>
 
-                {/* Workflow Actions */}
+                {/* Workflow Actions - Reject only (Approve is row-level) */}
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Workflow</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleApprove}
-                    disabled={isApproving || application.driver_status === "active" || application.status === "approved"}
-                    className="gap-2 bg-green-600 hover:bg-green-700"
-                  >
-                    {isApproving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowRejectDialog(true)}
-                    disabled={isRejecting || application.status === "rejected"}
-                    className="gap-2"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Reject
-                  </Button>
-                </div>
+                
+                {(application.status === "submitted" || application.status === "pending") && (
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
+                    ✓ Use the green <strong>Approve</strong> button in the table row for 1-click approval
+                  </p>
+                )}
+                
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={isRejecting || application.status === "rejected" || application.status === "approved"}
+                  className="gap-2 w-full"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject Application...
+                </Button>
 
-                {/* Archive button - full width */}
+                {/* Archive button */}
                 <Button
                   variant="outline"
                   size="sm"
