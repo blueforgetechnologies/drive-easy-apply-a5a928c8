@@ -1,19 +1,12 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PersonalInfo } from "./application-steps/PersonalInfo";
-import PayrollPolicy from "./application-steps/PayrollPolicy";
 import { LicenseInfo } from "./application-steps/LicenseInfo";
 import { EmploymentHistory } from "./application-steps/EmploymentHistory";
 import { DrivingHistory } from "./application-steps/DrivingHistory";
 import { DocumentUpload } from "./application-steps/DocumentUpload";
-import { DrugAlcoholPolicy } from "./application-steps/DrugAlcoholPolicy";
 import { DirectDeposit } from "./application-steps/DirectDeposit";
-import { DriverDispatchSheet } from "./application-steps/DriverDispatchSheet";
-import { NoRiderPolicy } from "./application-steps/NoRiderPolicy";
-import SafeDrivingPolicy from "./application-steps/SafeDrivingPolicy";
-import { ContractorAgreement } from "./application-steps/ContractorAgreement";
 import { WhyHireYou } from "./application-steps/WhyHireYou";
 import { EmergencyContact } from "./application-steps/EmergencyContact";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
@@ -141,20 +134,14 @@ export interface ApplicationData {
 
 const steps = [
   { id: 1, name: "Personal Info", component: PersonalInfo },
-  { id: 2, name: "Payroll Policy", component: PayrollPolicy },
-  { id: 3, name: "License Info", component: LicenseInfo },
-  { id: 4, name: "Employment History", component: EmploymentHistory },
-  { id: 5, name: "Driving History", component: DrivingHistory },
-  { id: 6, name: "Emergency Contacts", component: EmergencyContact },
-  { id: 7, name: "Documents", component: DocumentUpload },
-  { id: 8, name: "Drug & Alcohol Policy", component: DrugAlcoholPolicy },
-  { id: 9, name: "Direct Deposit", component: DirectDeposit },
-  { id: 10, name: "Dispatch Sheet", component: DriverDispatchSheet },
-  { id: 11, name: "No Rider Policy", component: NoRiderPolicy },
-  { id: 12, name: "Safe Driving", component: SafeDrivingPolicy },
-  { id: 13, name: "Contractor Agreement", component: ContractorAgreement },
-  { id: 14, name: "Why Hire You", component: WhyHireYou },
-  { id: 15, name: "Review & Submit", component: ReviewSubmit },
+  { id: 2, name: "License Info", component: LicenseInfo },
+  { id: 3, name: "Employment History", component: EmploymentHistory },
+  { id: 4, name: "Driving History", component: DrivingHistory },
+  { id: 5, name: "Emergency Contacts", component: EmergencyContact },
+  { id: 6, name: "Documents", component: DocumentUpload },
+  { id: 7, name: "Direct Deposit", component: DirectDeposit },
+  { id: 8, name: "Why Hire You", component: WhyHireYou },
+  { id: 9, name: "Review & Submit", component: ReviewSubmit },
 ];
 
 interface ApplicationFormProps {

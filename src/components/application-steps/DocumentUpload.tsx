@@ -80,6 +80,15 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that driver's license is uploaded (mandatory)
+    if (!documents.driversLicense) {
+      toast.error("Driver's License is required", {
+        description: "Please upload a copy of your driver's license to continue.",
+      });
+      return;
+    }
+    
     onNext({ documents });
   };
 
@@ -88,7 +97,7 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
     description,
     file,
     field,
-    required = true,
+    required = false,
   }: {
     title: string;
     description: string;
@@ -96,11 +105,11 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
     field: string;
     required?: boolean;
   }) => (
-    <Card className="p-6">
+    <Card className={`p-6 ${required && !file ? 'border-destructive' : ''}`}>
       <div className="space-y-4">
         <div>
           <h4 className="font-semibold text-foreground mb-1">
-            {title} {required && <span className="text-destructive">*</span>}
+            {title} {required && <span className="text-destructive">* (Required)</span>}
           </h4>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
@@ -108,7 +117,11 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
         <div className="space-y-2">
           <Label
             htmlFor={field}
-            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80 transition-colors"
+            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              required && !file 
+                ? 'border-destructive bg-destructive/5 hover:bg-destructive/10' 
+                : 'bg-muted hover:bg-muted/80'
+            }`}
           >
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               {file ? (
@@ -121,8 +134,8 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
                 </>
               ) : (
                 <>
-                  <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
+                  <Upload className={`w-8 h-8 mb-2 ${required ? 'text-destructive' : 'text-muted-foreground'}`} />
+                  <p className={`text-sm ${required ? 'text-destructive' : 'text-muted-foreground'}`}>
                     Click to upload or drag and drop
                   </p>
                   <p className="text-xs text-muted-foreground">PDF, JPG, or PNG (Max 10MB)</p>
@@ -159,24 +172,26 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
       <div>
         <h3 className="text-xl font-semibold mb-4 text-foreground">Document Upload</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Please upload clear, legible copies of the following documents. All required documents must
-          be uploaded to proceed.
+          Please upload clear, legible copies of the following documents. 
+          <span className="text-destructive font-medium"> Driver's License is required.</span>
         </p>
       </div>
 
       <div className="space-y-4">
         <FileUploadCard
-          title="Social Security Card"
-          description="Upload a copy of your Social Security card (both sides if applicable)"
-          file={documents.socialSecurity}
-          field="socialSecurity"
-        />
-
-        <FileUploadCard
           title="Driver's License"
           description="Upload a copy of your current driver's license (front and back)"
           file={documents.driversLicense}
           field="driversLicense"
+          required={true}
+        />
+
+        <FileUploadCard
+          title="Social Security Card"
+          description="Upload a copy of your Social Security card (both sides if applicable)"
+          file={documents.socialSecurity}
+          field="socialSecurity"
+          required={false}
         />
 
         <FileUploadCard
@@ -184,6 +199,7 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
           description="Upload your current DOT medical examiner's certificate"
           file={documents.medicalCard}
           field="medicalCard"
+          required={false}
         />
 
         <Card className="p-6">

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, Check } from "lucide-react";
+import { ChevronLeft, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -67,18 +67,19 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         .from('applications')
         .update({
           personal_info: data.personalInfo,
-          payroll_policy: data.payrollPolicy || {},
+          payroll_policy: {},
           license_info: licenseInfo,
           driving_history: data.drivingHistory || {},
           employment_history: data.employmentHistory || {},
           document_upload: data.documents || {},
-          drug_alcohol_policy: data.policyAcknowledgment || {},
-          driver_dispatch_sheet: data.driverDispatchSheet || {},
-          no_rider_policy: data.noRiderPolicy || {},
-          safe_driving_policy: data.safeDrivingPolicy || {},
-          contractor_agreement: data.contractorAgreement || {},
+          drug_alcohol_policy: {},
+          driver_dispatch_sheet: {},
+          no_rider_policy: {},
+          safe_driving_policy: {},
+          contractor_agreement: {},
           direct_deposit: directDeposit,
           why_hire_you: data.whyHireYou || {},
+          emergency_contacts: data.emergencyContacts || [],
           status: 'pending',
           driver_status: 'pending',
           submitted_at: new Date().toISOString(),
@@ -106,9 +107,12 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         return;
       }
 
-      // Then send email notification
+      // Send email notification with PDF to driver and Driver Trainers
       const { error: emailError } = await supabase.functions.invoke('send-application', {
-        body: data
+        body: {
+          ...data,
+          tenantId,
+        }
       });
 
       if (emailError) {
@@ -120,7 +124,7 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       } else {
         console.log("Application sent successfully");
         toast.success("Application submitted successfully!", {
-          description: "We will review your application and contact you soon.",
+          description: "We will review your application and contact you soon. A confirmation email has been sent.",
         });
       }
     } catch (error) {
@@ -132,6 +136,8 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       setIsSubmitting(false);
     }
   };
+
+  const hasDocument = (doc: any) => doc !== null && doc !== undefined;
 
   return (
     <div className="space-y-6">
@@ -186,43 +192,35 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
               <p className="font-medium text-sm">{data?.personalInfo?.felonyDetails}</p>
             </div>
           )}
-          <div className="md:col-span-2 pt-2 border-t">
-            <p className="text-muted-foreground font-medium mb-2">Emergency Contact</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Name</p>
-                <p className="font-medium">{data?.personalInfo?.emergencyContactName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Relationship</p>
-                <p className="font-medium">{data?.personalInfo?.emergencyContactRelationship}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="font-medium">{data?.personalInfo?.emergencyContactPhone}</p>
-              </div>
-            </div>
-          </div>
         </div>
       </Card>
 
-      {/* Payroll Policy */}
-      {data?.payrollPolicy && (
+      {/* Emergency Contacts */}
+      {data?.emergencyContacts && data.emergencyContacts.length > 0 && (
         <Card className="p-4 sm:p-6">
-          <h4 className="font-semibold mb-4 text-foreground">Payroll Policy Acknowledgment</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Name</p>
-              <p className="font-medium">{data?.payrollPolicy?.agreedName}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Signature</p>
-              <p className="font-medium">{data?.payrollPolicy?.signature}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Date</p>
-              <p className="font-medium">{data?.payrollPolicy?.date ? new Date(data.payrollPolicy.date).toLocaleDateString() : "N/A"}</p>
-            </div>
+          <h4 className="font-semibold mb-4 text-foreground">Emergency Contacts</h4>
+          <div className="space-y-4">
+            {data.emergencyContacts.map((contact: any, index: number) => (
+              contact.firstName && (
+                <div key={index} className="border-b pb-3 last:border-0">
+                  <p className="font-medium text-sm mb-2">Contact {index + 1}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Name</p>
+                      <p className="font-medium">{contact.firstName} {contact.lastName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Relationship</p>
+                      <p className="font-medium">{contact.relationship}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="font-medium">{contact.phone}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            ))}
           </div>
         </Card>
       )}
@@ -298,15 +296,27 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         <h4 className="font-semibold mb-4 text-foreground">Documents Uploaded</h4>
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-success" />
+            {hasDocument(data?.documents?.driversLicense) ? (
+              <Check className="w-4 h-4 text-success" />
+            ) : (
+              <X className="w-4 h-4 text-destructive" />
+            )}
+            <span>Driver's License {!hasDocument(data?.documents?.driversLicense) && "(Required)"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasDocument(data?.documents?.socialSecurity) ? (
+              <Check className="w-4 h-4 text-success" />
+            ) : (
+              <X className="w-4 h-4 text-muted-foreground" />
+            )}
             <span>Social Security Card</span>
           </div>
           <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-success" />
-            <span>Driver's License</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-success" />
+            {hasDocument(data?.documents?.medicalCard) ? (
+              <Check className="w-4 h-4 text-success" />
+            ) : (
+              <X className="w-4 h-4 text-muted-foreground" />
+            )}
             <span>Medical Card</span>
           </div>
           {data?.documents?.other?.length > 0 && (
@@ -333,75 +343,6 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           <div>
             <p className="text-muted-foreground">Account Type</p>
             <p className="font-medium capitalize">{data?.directDeposit?.accountType?.replace('-', ' ')}</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Policy Acknowledgments */}
-      <Card className="p-4 sm:p-6 bg-success/10 border-success">
-        <h4 className="font-semibold mb-4 text-foreground">Policies & Agreements Acknowledged</h4>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-foreground">Drug & Alcohol Policy</p>
-              <p className="text-xs text-muted-foreground">
-                Signed by {data?.policyAcknowledgment?.signature} on{" "}
-                {data?.policyAcknowledgment?.dateSigned
-                  ? new Date(data.policyAcknowledgment.dateSigned).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-foreground">Driver Dispatch Sheet</p>
-              <p className="text-xs text-muted-foreground">
-                Signed by {data?.driverDispatchSheet?.signature} on{" "}
-                {data?.driverDispatchSheet?.date
-                  ? new Date(data.driverDispatchSheet.date).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-foreground">No Ryder Policy</p>
-              <p className="text-xs text-muted-foreground">
-                Signed by {data?.noRyderPolicy?.signature} on{" "}
-                {data?.noRyderPolicy?.date
-                  ? new Date(data.noRyderPolicy.date).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-          {data?.safeDrivingPolicy && (
-            <div className="flex items-start gap-3">
-              <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium text-foreground">Safe Driving Policy</p>
-                <p className="text-xs text-muted-foreground">
-                  Signed by {data?.safeDrivingPolicy?.signature} on{" "}
-                  {data?.safeDrivingPolicy?.date
-                    ? new Date(data.safeDrivingPolicy.date).toLocaleDateString()
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-foreground">Contractor Agreement</p>
-              <p className="text-xs text-muted-foreground">
-                Signed by {data?.contractorAgreement?.signature} (Initials: {data?.contractorAgreement?.initials}) on{" "}
-                {data?.contractorAgreement?.date
-                  ? new Date(data.contractorAgreement.date).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
           </div>
         </div>
       </Card>
