@@ -11,6 +11,10 @@ const corsHeaders = {
 const BUSINESS_HOURS_THRESHOLD = 30;
 const OFF_HOURS_THRESHOLD = 300; // 5 hours
 
+// Queue backlog thresholds
+const QUEUE_STALE_THRESHOLD_SECONDS = 120; // 2 minutes
+const QUEUE_BACKLOG_COUNT_THRESHOLD = 100; // pending count alert threshold
+
 // Business hours: 8 AM - 7 PM Eastern, Monday-Friday
 const BUSINESS_START_HOUR = 8;
 const BUSINESS_END_HOUR = 19;
@@ -69,11 +73,25 @@ serve(async (req: Request) => {
     const isBizHours = isBusinessHours(now);
     const thresholdMinutes = getThresholdMinutes(now);
     const thresholdTime = new Date(now.getTime() - thresholdMinutes * 60 * 1000);
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
     console.log(`[check-email-health] Running at ${now.toISOString()}`);
     console.log(`[check-email-health] Business hours: ${isBizHours}, Threshold: ${thresholdMinutes} minutes`);
 
-    // Get all active tenants with their email health status
+    const alerts: Array<{
+      type: string;
+      level: string;
+      tenantId: string | null;
+      tenantName: string | null;
+      message: string;
+      minutesSinceLastEmail: number | null;
+    }> = [];
+
+    // ============================================================
+    // LIGHTWEIGHT QUERIES ONLY - NO FULL ROW FETCHES
+    // ============================================================
+
+    // Query 1: Get tenants (small table, needed for iteration)
     const { data: tenants, error: tenantsError } = await supabase
       .from("tenants")
       .select("id, name, gmail_alias, last_email_received_at, is_paused")
@@ -83,13 +101,76 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch tenants: ${tenantsError.message}`);
     }
 
-    // ============================================================
-    // GMAIL TOKEN HEALTH CHECK (NEW)
-    // ============================================================
+    // Query 2: Gmail tokens (small table, needed for auth health)
     const { data: gmailTokens } = await supabase
       .from("gmail_tokens")
       .select("id, user_email, tenant_id, token_expiry, needs_reauth, reauth_reason, updated_at");
 
+    // Query 3: LIGHTWEIGHT - MAX(received_at) from load_emails (uses idx_load_emails_received_at)
+    const { data: latestEmail } = await supabase
+      .from("load_emails")
+      .select("received_at")
+      .order("received_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    // Query 4: LIGHTWEIGHT - Queue backlog check (uses idx_email_queue_status + idx_email_queue_queued_at)
+    const staleThresholdTime = new Date(now.getTime() - QUEUE_STALE_THRESHOLD_SECONDS * 1000).toISOString();
+    
+    const { count: pendingCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["pending", "processing"]);
+
+    const { count: staleCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["pending", "processing"])
+      .lt("queued_at", staleThresholdTime);
+
+    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale(>2min)=${staleCount}`);
+
+    // ============================================================
+    // QUEUE BACKLOG ALERT (NEW)
+    // ============================================================
+    const hasBacklog = (staleCount && staleCount > 0) || (pendingCount && pendingCount > QUEUE_BACKLOG_COUNT_THRESHOLD);
+    
+    if (hasBacklog) {
+      // Check for existing unresolved queue_backlog alert (rate limit: 1/hour)
+      const { data: existingBacklogAlert } = await supabase
+        .from("email_health_alerts")
+        .select("id")
+        .eq("alert_type", "queue_backlog")
+        .is("resolved_at", null)
+        .gte("sent_at", oneHourAgo)
+        .limit(1);
+
+      if (!existingBacklogAlert?.length) {
+        const backlogMessage = staleCount && staleCount > 0
+          ? `Queue backlog: ${staleCount} emails pending/processing for >2 minutes (total pending: ${pendingCount})`
+          : `Queue backlog: ${pendingCount} emails pending (threshold: ${QUEUE_BACKLOG_COUNT_THRESHOLD})`;
+        
+        alerts.push({
+          type: "queue_backlog",
+          level: staleCount && staleCount >= 10 ? "critical" : "warning",
+          tenantId: null,
+          tenantName: null,
+          message: backlogMessage,
+          minutesSinceLastEmail: null,
+        });
+      }
+    } else {
+      // Resolve any existing queue_backlog alerts
+      await supabase
+        .from("email_health_alerts")
+        .update({ resolved_at: now.toISOString() })
+        .eq("alert_type", "queue_backlog")
+        .is("resolved_at", null);
+    }
+
+    // ============================================================
+    // GMAIL TOKEN HEALTH CHECK
+    // ============================================================
     const tokenAlerts: typeof alerts = [];
     const nowTime = now.getTime();
 
@@ -110,7 +191,7 @@ serve(async (req: Request) => {
           .eq("alert_type", "gmail_token_expired")
           .eq("tenant_id", token.tenant_id)
           .is("resolved_at", null)
-          .gte("sent_at", new Date(nowTime - 60 * 60 * 1000).toISOString())
+          .gte("sent_at", oneHourAgo)
           .limit(1);
         
         if (!existingTokenAlert?.length) {
@@ -138,93 +219,12 @@ serve(async (req: Request) => {
       }
     }
 
-    // Check system-wide health (any email from any source)
-    const { data: latestEmail } = await supabase
-      .from("load_emails")
-      .select("received_at")
-      .order("received_at", { ascending: false })
-      .limit(1)
-      .single();
-
+    // ============================================================
+    // SYSTEM-WIDE INACTIVITY CHECK (using lightweight MAX query result)
+    // ============================================================
     const systemLastEmail = latestEmail?.received_at ? new Date(latestEmail.received_at) : null;
     const systemInactive = !systemLastEmail || systemLastEmail < thresholdTime;
 
-    const alerts: Array<{
-      type: string;
-      level: string;
-      tenantId: string | null;
-      tenantName: string | null;
-      message: string;
-      minutesSinceLastEmail: number | null;
-    }> = [];
-
-    // ============================================================
-    // DEDUP REGRESSION CHECK (rate-based + minimum volume)
-    // ============================================================
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-    
-    // Query 1-hour dedup metrics
-    const { data: dedupMetrics } = await supabase
-      .from("load_emails")
-      .select("id, dedup_eligible, load_content_fingerprint, parsed_load_fingerprint")
-      .gte("received_at", oneHourAgo);
-
-    const eligible1h = dedupMetrics?.filter(r => r.dedup_eligible === true).length || 0;
-    const missingFk1h = dedupMetrics?.filter(r => r.dedup_eligible === true && !r.load_content_fingerprint).length || 0;
-    const missingParsedFp1h = dedupMetrics?.filter(r => r.dedup_eligible === true && !r.parsed_load_fingerprint).length || 0;
-
-    console.log(`[check-email-health] Dedup metrics (1h): eligible=${eligible1h}, missing_fk=${missingFk1h}, missing_parsed_fp=${missingParsedFp1h}`);
-
-    // Determine dedup regression alert level
-    let dedupAlertLevel: "critical" | "warning" | null = null;
-    
-    // CRITICAL if: (eligible >= 20 AND any missing) OR hard thresholds >= 3
-    if (
-      (eligible1h >= 20 && (missingFk1h > 0 || missingParsedFp1h > 0)) ||
-      missingFk1h >= 3 ||
-      missingParsedFp1h >= 3
-    ) {
-      dedupAlertLevel = "critical";
-    }
-    // WARNING if: (eligible 5-19 AND any missing) OR hard thresholds 1-2
-    else if (
-      (eligible1h >= 5 && eligible1h < 20 && (missingFk1h > 0 || missingParsedFp1h > 0)) ||
-      (missingFk1h >= 1 && missingFk1h < 3) ||
-      (missingParsedFp1h >= 1 && missingParsedFp1h < 3)
-    ) {
-      dedupAlertLevel = "warning";
-    }
-
-    if (dedupAlertLevel) {
-      // Check for existing unresolved dedup_regression alert (spam prevention)
-      const { data: existingDedupAlert } = await supabase
-        .from("email_health_alerts")
-        .select("id")
-        .eq("alert_type", "dedup_regression")
-        .is("resolved_at", null)
-        .gte("sent_at", oneHourAgo)
-        .limit(1);
-
-      if (!existingDedupAlert?.length) {
-        alerts.push({
-          type: "dedup_regression",
-          level: dedupAlertLevel,
-          tenantId: null,
-          tenantName: null,
-          message: `Dedup regression: ${missingFk1h} eligible rows missing load_content_fingerprint, ${missingParsedFp1h} missing parsed_load_fingerprint (last 1h, eligible=${eligible1h})`,
-          minutesSinceLastEmail: null,
-        });
-      }
-    } else {
-      // Resolve any existing dedup_regression alerts
-      await supabase
-        .from("email_health_alerts")
-        .update({ resolved_at: now.toISOString() })
-        .eq("alert_type", "dedup_regression")
-        .is("resolved_at", null);
-    }
-
-    // Check for system-wide inactivity
     if (systemInactive) {
       const minutesSince = systemLastEmail 
         ? Math.floor((now.getTime() - systemLastEmail.getTime()) / 60000)
@@ -236,7 +236,7 @@ serve(async (req: Request) => {
         .select("id")
         .eq("alert_type", "system_wide")
         .is("resolved_at", null)
-        .gte("sent_at", new Date(now.getTime() - 60 * 60 * 1000).toISOString()) // Within last hour
+        .gte("sent_at", oneHourAgo)
         .limit(1);
 
       if (!existingAlert?.length) {
@@ -260,7 +260,9 @@ serve(async (req: Request) => {
         .is("resolved_at", null);
     }
 
-    // Check per-tenant health
+    // ============================================================
+    // PER-TENANT INACTIVITY CHECK (uses cached last_email_received_at)
+    // ============================================================
     const tenantsToDisable: string[] = [];
 
     for (const tenant of tenants || []) {
@@ -286,7 +288,7 @@ serve(async (req: Request) => {
           .eq("alert_type", "tenant_inactive")
           .eq("tenant_id", tenant.id)
           .is("resolved_at", null)
-          .gte("sent_at", new Date(now.getTime() - 60 * 60 * 1000).toISOString())
+          .gte("sent_at", oneHourAgo)
           .limit(1);
 
         if (!existingAlert?.length) {
@@ -319,6 +321,11 @@ serve(async (req: Request) => {
 
     // Merge token alerts into main alerts array
     alerts.push(...tokenAlerts);
+
+    // ============================================================
+    // NOTE: Dedup metrics moved to inspector-dedup-health (manual/daily only)
+    // This removes ~52K row scans/day from the 5-minute cron
+    // ============================================================
 
     // Insert new alerts
     if (alerts.length > 0) {
@@ -402,6 +409,8 @@ serve(async (req: Request) => {
       threshold_minutes: thresholdMinutes,
       system_status: systemInactive ? "inactive" : "healthy",
       system_last_email: systemLastEmail?.toISOString() || null,
+      queue_pending: pendingCount || 0,
+      queue_stale: staleCount || 0,
       tenants_checked: tenants?.length || 0,
       alerts_generated: alerts.length,
       hunt_plans_disabled: tenantsToDisable.length,
