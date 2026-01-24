@@ -145,10 +145,47 @@ serve(async (req) => {
       supabase.rpc('get_dedup_cost_metrics', { p_window_minutes: 1440 }),
     ]);
 
+    // Strict error handling for ALL RPC calls
     if (rpc15m.error) {
       console.error('[inspector-dedup-cost] RPC 15m error:', rpc15m.error);
-      throw new Error(`RPC error: ${rpc15m.error.message}`);
+      throw new Error(`RPC 15m error: ${rpc15m.error.message}`);
     }
+    if (rpc60m.error) {
+      console.error('[inspector-dedup-cost] RPC 60m error:', rpc60m.error);
+      throw new Error(`RPC 60m error: ${rpc60m.error.message}`);
+    }
+    if (rpc24h.error) {
+      console.error('[inspector-dedup-cost] RPC 24h error:', rpc24h.error);
+      throw new Error(`RPC 24h error: ${rpc24h.error.message}`);
+    }
+
+    // Sanity checks with logging
+    const sanityCheck = (label: string, rpc: RpcMetrics) => {
+      const warnings: string[] = [];
+      
+      // Queue total must be >= unique dedupe keys
+      if (rpc.queue_total < rpc.queue_unique_dedupe) {
+        warnings.push(`queue_total (${rpc.queue_total}) < queue_unique_dedupe (${rpc.queue_unique_dedupe})`);
+      }
+      
+      // Receipts count must be >= unique content count (can't have more unique than total)
+      if (rpc.receipts_count < rpc.unique_content_count) {
+        warnings.push(`receipts_count (${rpc.receipts_count}) < unique_content_count (${rpc.unique_content_count})`);
+      }
+      
+      // Payload URL count can't exceed unique content count
+      if (rpc.payload_url_present_count > rpc.unique_content_count) {
+        warnings.push(`payload_url_present_count (${rpc.payload_url_present_count}) > unique_content_count (${rpc.unique_content_count})`);
+      }
+      
+      if (warnings.length > 0) {
+        console.warn(`[inspector-dedup-cost] SANITY CHECK FAILED (${label}):`, warnings, 'Raw RPC:', rpc);
+      }
+    };
+
+    sanityCheck('15m', rpc15m.data as RpcMetrics);
+    sanityCheck('60m', rpc60m.data as RpcMetrics);
+    sanityCheck('24h', rpc24h.data as RpcMetrics);
 
     const metrics15m = computeMetrics(rpc15m.data as RpcMetrics, 'Last 15 min');
     const metrics60m = computeMetrics(rpc60m.data as RpcMetrics, 'Last 60 min');
