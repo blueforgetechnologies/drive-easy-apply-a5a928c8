@@ -7,13 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Thresholds in minutes
+// Thresholds
 const BUSINESS_HOURS_THRESHOLD = 30;
 const OFF_HOURS_THRESHOLD = 300; // 5 hours
 
-// Queue backlog thresholds
+// Queue backlog thresholds (in seconds)
 const QUEUE_STALE_THRESHOLD_SECONDS = 120; // 2 minutes
-const QUEUE_BACKLOG_COUNT_THRESHOLD = 100; // pending count alert threshold
+const QUEUE_WARNING_AGE_SECONDS = 60; // 1 minute - trigger warning
+const QUEUE_CRITICAL_AGE_SECONDS = 120; // 2 minutes - trigger critical
+const QUEUE_PENDING_COUNT_THRESHOLD = 100;
+const QUEUE_STALE_COUNT_CRITICAL = 10;
+const QUEUE_PROCESSING_STALE_SECONDS = 600; // 10 minutes - stuck worker detection
 
 // Business hours: 8 AM - 7 PM Eastern, Monday-Friday
 const BUSINESS_START_HOUR = 8;
@@ -28,17 +32,10 @@ interface TenantHealth {
 }
 
 function isBusinessHours(date: Date): boolean {
-  // Convert to Eastern Time
   const easternTime = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const dayOfWeek = easternTime.getDay(); // 0 = Sunday, 6 = Saturday
+  const dayOfWeek = easternTime.getDay();
   const hour = easternTime.getHours();
-  
-  // Check if weekday (Monday-Friday)
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    return false;
-  }
-  
-  // Check if within business hours
+  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
   return hour >= BUSINESS_START_HOUR && hour < BUSINESS_END_HOUR;
 }
 
@@ -47,9 +44,7 @@ function getThresholdMinutes(now: Date): number {
 }
 
 function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes} minutes`;
-  }
+  if (minutes < 60) return `${minutes} minutes`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours} hours`;
@@ -64,7 +59,7 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const adminEmail = "admin@talbilogistics.com"; // Configure this
+    const adminEmail = "admin@talbilogistics.com";
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -74,6 +69,7 @@ serve(async (req: Request) => {
     const thresholdMinutes = getThresholdMinutes(now);
     const thresholdTime = new Date(now.getTime() - thresholdMinutes * 60 * 1000);
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
 
     console.log(`[check-email-health] Running at ${now.toISOString()}`);
     console.log(`[check-email-health] Business hours: ${isBizHours}, Threshold: ${thresholdMinutes} minutes`);
@@ -88,10 +84,10 @@ serve(async (req: Request) => {
     }> = [];
 
     // ============================================================
-    // LIGHTWEIGHT QUERIES ONLY - NO FULL ROW FETCHES
+    // LIGHTWEIGHT QUERIES ONLY - COUNT/MIN/MAX, NO FULL ROW FETCHES
     // ============================================================
 
-    // Query 1: Get tenants (small table, needed for iteration)
+    // Query 1: Get tenants (small table)
     const { data: tenants, error: tenantsError } = await supabase
       .from("tenants")
       .select("id, name, gmail_alias, last_email_received_at, is_paused")
@@ -101,12 +97,12 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch tenants: ${tenantsError.message}`);
     }
 
-    // Query 2: Gmail tokens (small table, needed for auth health)
+    // Query 2: Gmail tokens (small table)
     const { data: gmailTokens } = await supabase
       .from("gmail_tokens")
       .select("id, user_email, tenant_id, token_expiry, needs_reauth, reauth_reason, updated_at");
 
-    // Query 3: LIGHTWEIGHT - MAX(received_at) from load_emails (uses idx_load_emails_received_at)
+    // Query 3: MAX(received_at) from load_emails (uses idx_load_emails_received_at)
     const { data: latestEmail } = await supabase
       .from("load_emails")
       .select("received_at")
@@ -114,21 +110,21 @@ serve(async (req: Request) => {
       .limit(1)
       .single();
 
-    // Query 4: LIGHTWEIGHT - Queue backlog check (uses idx_email_queue_status + idx_email_queue_queued_at)
-    const staleThresholdTime = new Date(now.getTime() - QUEUE_STALE_THRESHOLD_SECONDS * 1000).toISOString();
-    
+    // Query 4: Queue pending count (uses idx_email_queue_status partial index)
     const { count: pendingCount } = await supabase
       .from("email_queue")
       .select("*", { count: "exact", head: true })
       .in("status", ["pending", "processing"]);
 
+    // Query 5: Queue stale count >120s (uses idx_email_queue_queued_at)
+    const staleThresholdTime = new Date(now.getTime() - QUEUE_STALE_THRESHOLD_SECONDS * 1000).toISOString();
     const { count: staleCount } = await supabase
       .from("email_queue")
       .select("*", { count: "exact", head: true })
       .in("status", ["pending", "processing"])
       .lt("queued_at", staleThresholdTime);
 
-    // Query 5: LIGHTWEIGHT - Oldest pending item (single row, uses idx_email_queue_queued_at)
+    // Query 6: Oldest pending item - single row (uses idx_email_queue_queued_at)
     const { data: oldestPending } = await supabase
       .from("email_queue")
       .select("queued_at")
@@ -137,19 +133,43 @@ serve(async (req: Request) => {
       .limit(1)
       .single();
 
-    const oldestPendingAge = oldestPending?.queued_at
-      ? Math.floor((now.getTime() - new Date(oldestPending.queued_at).getTime()) / 60000)
+    const oldestPendingAgeSeconds = oldestPending?.queued_at
+      ? Math.floor((now.getTime() - new Date(oldestPending.queued_at).getTime()) / 1000)
       : null;
 
-    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale(>2min)=${staleCount}, oldest_age=${oldestPendingAge}min`);
+    // Query 7: Processing stale count >10min (uses idx_email_queue_stale partial index)
+    const processingStaleTime = new Date(now.getTime() - QUEUE_PROCESSING_STALE_SECONDS * 1000).toISOString();
+    const { count: processingStaleCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "processing")
+      .lt("processing_started_at", processingStaleTime);
+
+    // Query 8: Unroutable count last 15min (uses idx_unroutable_emails_received)
+    const { count: unroutableCount15m } = await supabase
+      .from("unroutable_emails")
+      .select("*", { count: "exact", head: true })
+      .gte("received_at", fifteenMinutesAgo);
+
+    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale=${staleCount}, oldest_age=${oldestPendingAgeSeconds}s, processing_stale=${processingStaleCount}, unroutable_15m=${unroutableCount15m}`);
 
     // ============================================================
-    // QUEUE BACKLOG ALERT (ALERT-ONLY, NO AUTO-DISABLE)
+    // QUEUE BACKLOG ALERT (MORE SENSITIVE THRESHOLDS)
     // ============================================================
-    const hasBacklog = (staleCount && staleCount > 0) || (pendingCount && pendingCount > QUEUE_BACKLOG_COUNT_THRESHOLD);
+    // WARNING: oldest_age >= 60s OR pending > 100
+    // CRITICAL: oldest_age >= 120s OR stale_count >= 10
+    const hasWarningBacklog = 
+      (oldestPendingAgeSeconds !== null && oldestPendingAgeSeconds >= QUEUE_WARNING_AGE_SECONDS) ||
+      (pendingCount !== null && pendingCount > QUEUE_PENDING_COUNT_THRESHOLD);
+    
+    const hasCriticalBacklog = 
+      (oldestPendingAgeSeconds !== null && oldestPendingAgeSeconds >= QUEUE_CRITICAL_AGE_SECONDS) ||
+      (staleCount !== null && staleCount >= QUEUE_STALE_COUNT_CRITICAL);
+
+    const hasBacklog = hasWarningBacklog || hasCriticalBacklog;
     
     if (hasBacklog) {
-      // Check for existing unresolved queue_backlog alert (rate limit: 1/hour)
+      // Rate limit: 1/hour
       const { data: existingBacklogAlert } = await supabase
         .from("email_health_alerts")
         .select("id")
@@ -159,14 +179,15 @@ serve(async (req: Request) => {
         .limit(1);
 
       if (!existingBacklogAlert?.length) {
-        const ageInfo = oldestPendingAge !== null ? ` (oldest: ${oldestPendingAge}min)` : "";
-        const backlogMessage = staleCount && staleCount > 0
-          ? `Queue backlog: ${staleCount} emails pending/processing for >2 minutes${ageInfo}, total pending: ${pendingCount}`
-          : `Queue backlog: ${pendingCount} emails pending (threshold: ${QUEUE_BACKLOG_COUNT_THRESHOLD})${ageInfo}`;
+        const ageInfo = oldestPendingAgeSeconds !== null ? `oldest: ${oldestPendingAgeSeconds}s` : "oldest: unknown";
+        const stuckInfo = processingStaleCount && processingStaleCount > 0 ? `, stuck_workers: ${processingStaleCount}` : "";
+        const unroutableInfo = unroutableCount15m && unroutableCount15m > 0 ? `, unroutable_15m: ${unroutableCount15m}` : "";
+        
+        const backlogMessage = `Queue backlog: pending=${pendingCount}, stale(>2min)=${staleCount}, ${ageInfo}${stuckInfo}${unroutableInfo}`;
         
         alerts.push({
           type: "queue_backlog",
-          level: staleCount && staleCount >= 10 ? "critical" : "warning",
+          level: hasCriticalBacklog ? "critical" : "warning",
           tenantId: null,
           tenantName: null,
           message: backlogMessage,
@@ -193,12 +214,10 @@ serve(async (req: Request) => {
       const isExpired = tokenExpiry ? tokenExpiry.getTime() < nowTime : true;
       const needsReauth = token.needs_reauth === true;
       
-      // Get tenant name for alert message
       const tenant = tenants?.find(t => t.id === token.tenant_id);
       const tenantName = tenant?.name || 'Unknown';
       
       if (needsReauth || isExpired) {
-        // Check for existing unresolved gmail_token_expired alert (spam prevention - 1 per hour per token)
         const { data: existingTokenAlert } = await supabase
           .from("email_health_alerts")
           .select("id")
@@ -223,7 +242,6 @@ serve(async (req: Request) => {
           });
         }
       } else {
-        // Token is healthy - resolve any existing alerts
         await supabase
           .from("email_health_alerts")
           .update({ resolved_at: now.toISOString() })
@@ -234,7 +252,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // SYSTEM-WIDE INACTIVITY CHECK (using lightweight MAX query result)
+    // SYSTEM-WIDE INACTIVITY CHECK
     // ============================================================
     const systemLastEmail = latestEmail?.received_at ? new Date(latestEmail.received_at) : null;
     const systemInactive = !systemLastEmail || systemLastEmail < thresholdTime;
@@ -244,7 +262,6 @@ serve(async (req: Request) => {
         ? Math.floor((now.getTime() - systemLastEmail.getTime()) / 60000)
         : null;
 
-      // Check if we already have an unresolved system alert
       const { data: existingAlert } = await supabase
         .from("email_health_alerts")
         .select("id")
@@ -266,7 +283,6 @@ serve(async (req: Request) => {
         });
       }
     } else {
-      // Resolve any existing system-wide alerts
       await supabase
         .from("email_health_alerts")
         .update({ resolved_at: now.toISOString() })
@@ -275,13 +291,10 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // PER-TENANT INACTIVITY CHECK (ALERT-ONLY, NO AUTO-DISABLE)
+    // PER-TENANT INACTIVITY CHECK (ALERT-ONLY)
     // ============================================================
     for (const tenant of tenants || []) {
-      // Skip paused tenants or those without a configured gmail alias
-      if (tenant.is_paused || !tenant.gmail_alias) {
-        continue;
-      }
+      if (tenant.is_paused || !tenant.gmail_alias) continue;
 
       const tenantLastEmail = tenant.last_email_received_at 
         ? new Date(tenant.last_email_received_at) 
@@ -293,7 +306,6 @@ serve(async (req: Request) => {
           ? Math.floor((now.getTime() - tenantLastEmail.getTime()) / 60000)
           : null;
 
-        // Check if we already have an unresolved tenant alert
         const { data: existingAlert } = await supabase
           .from("email_health_alerts")
           .select("id")
@@ -316,7 +328,6 @@ serve(async (req: Request) => {
           });
         }
       } else {
-        // Resolve any existing tenant alerts
         await supabase
           .from("email_health_alerts")
           .update({ resolved_at: now.toISOString() })
@@ -326,15 +337,12 @@ serve(async (req: Request) => {
       }
     }
 
-    // Merge token alerts into main alerts array
+    // Merge token alerts
     alerts.push(...tokenAlerts);
 
     // ============================================================
-    // NOTE: Dedup metrics moved to inspector-dedup-health (manual/daily only)
-    // This removes ~52K row scans/day from the 5-minute cron
+    // INSERT ALERTS (ALERT-ONLY, NO MUTATIONS TO OPERATIONAL TABLES)
     // ============================================================
-
-    // Insert new alerts (ALERT-ONLY - no mutations to hunt_plans or other tables)
     if (alerts.length > 0) {
       const alertRecords = alerts.map((a) => ({
         tenant_id: a.tenantId,
@@ -350,7 +358,6 @@ serve(async (req: Request) => {
 
       await supabase.from("email_health_alerts").insert(alertRecords);
 
-      // Send email alert (notification only)
       if (resend && adminEmail) {
         const criticalAlerts = alerts.filter((a) => a.level === "critical");
         const warningAlerts = alerts.filter((a) => a.level === "warning");
@@ -390,16 +397,18 @@ serve(async (req: Request) => {
       }
     }
 
-    // Build health summary for dashboard
+    // Build health summary with all metrics
     const healthSummary = {
       checked_at: now.toISOString(),
       is_business_hours: isBizHours,
       threshold_minutes: thresholdMinutes,
       system_status: systemInactive ? "inactive" : "healthy",
       system_last_email: systemLastEmail?.toISOString() || null,
-      queue_pending: pendingCount || 0,
-      queue_stale: staleCount || 0,
-      queue_oldest_age_minutes: oldestPendingAge,
+      queue_pending_count: pendingCount || 0,
+      queue_stale_count: staleCount || 0,
+      queue_oldest_age_seconds: oldestPendingAgeSeconds,
+      queue_processing_stale_count: processingStaleCount || 0,
+      unroutable_count_last_15m: unroutableCount15m || 0,
       tenants_checked: tenants?.length || 0,
       alerts_generated: alerts.length,
     };
