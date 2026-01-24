@@ -680,7 +680,6 @@ export default function CarriersTab() {
                       </TableHead>
                     )}
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[90px]">Status</TableHead>
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Carrier Name</div>
                       <div className="text-xs font-normal text-muted-foreground">USDOT #</div>
