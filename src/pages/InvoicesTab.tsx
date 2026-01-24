@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, Fragment, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { Search, Plus, FileText, Send, CheckCircle, Clock, Undo2, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail } from "lucide-react";
 import InvoicePreview from "@/components/InvoicePreview";
 import { OtrVerificationDialog } from "@/components/OtrVerificationDialog";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
-import { useAccountingCounts } from "@/hooks/useAccountingCounts";
 
 interface Invoice {
   id: string;
@@ -37,8 +37,25 @@ interface Invoice {
   otr_status: string | null;
   otr_submitted_at: string | null;
   otr_invoice_id: string | null;
-  billing_method: 'unknown' | 'otr' | 'direct_email';
-  customers?: { mc_number: string | null; email: string | null; billing_email: string | null } | null;
+  billing_method: 'unknown' | 'otr' | 'direct_email' | null;
+  customers?: { 
+    mc_number: string | null; 
+    email: string | null; 
+    billing_email: string | null;
+    otr_approval_status: string | null;
+  } | null;
+}
+
+interface InvoiceWithDeliveryInfo extends Invoice {
+  // Computed delivery info
+  delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed';
+  missing_info: string[];
+  has_rc: boolean;
+  has_bol: boolean;
+  last_attempt_at: string | null;
+  last_attempt_status: string | null;
+  last_attempt_error: string | null;
+  broker_approved: boolean | null;
 }
 
 interface Customer {
@@ -75,17 +92,32 @@ interface PendingLoad {
   carriers: { name: string } | null;
 }
 
-interface FactoringCompany {
-  factoring_company_name: string | null;
+interface EmailLog {
+  id: string;
+  invoice_id: string;
+  status: string;
+  created_at: string;
+  error: string | null;
 }
+
+interface LoadDocument {
+  id: string;
+  load_id: string;
+  document_type: string;
+  uploaded_at: string;
+}
+
+type OperationalTab = 'pending' | 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'paid' | 'overdue';
 
 export default function InvoicesTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId, shouldFilter } = useTenantFilter();
-  const { invoicesByStatus } = useAccountingCounts();
-  const filter = searchParams.get("filter") || "pending";
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const filter = (searchParams.get("filter") || "pending") as OperationalTab;
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
+  const [invoiceLoads, setInvoiceLoads] = useState<{ invoice_id: string; load_id: string }[]>([]);
   const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [factoringCompany, setFactoringCompany] = useState<string | null>(null);
@@ -99,7 +131,6 @@ export default function InvoicesTab() {
   const [selectedLoadForOtr, setSelectedLoadForOtr] = useState<PendingLoad | null>(null);
   const [verifiedLoadIds, setVerifiedLoadIds] = useState<Set<string>>(new Set());
   const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
-  const [billingMethodFilter, setBillingMethodFilter] = useState<'all' | 'otr' | 'direct_email'>('all');
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -111,7 +142,7 @@ export default function InvoicesTab() {
     loadData();
     loadCustomers();
     loadFactoringCompany();
-  }, [filter, tenantId, shouldFilter]);
+  }, [tenantId, shouldFilter]);
 
   const setInvoiceFilter = (nextFilter: string) => {
     const next = new URLSearchParams(searchParams);
@@ -149,59 +180,90 @@ export default function InvoicesTab() {
     
     setLoading(true);
     try {
-      if (filter === "pending") {
-        // Load pending invoices from loads table
-        let query = supabase
-          .from("loads")
-          .select(`
-            id,
-            load_number,
-            invoice_number,
-            reference_number,
-            rate,
-            pickup_date,
-            delivery_date,
-            pickup_city,
-            pickup_state,
-            delivery_city,
-            delivery_state,
-            completed_at,
-            notes,
-            broker_name,
-            customer_id,
-            customers(name, factoring_approval, mc_number),
-            carriers(name)
-          `)
-          .eq("financial_status", "pending_invoice")
-          .order("completed_at", { ascending: false });
-        
-        if (shouldFilter && tenantId) {
-          query = query.eq("tenant_id", tenantId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        setPendingLoads((data as PendingLoad[]) || []);
-        setInvoices([]);
-      } else {
-        // Load regular invoices with customer MC number
-        let query = supabase
-          .from("invoices" as any)
-          .select("*, customers(mc_number, email, billing_email)")
-          .eq("status", filter)
-          .order("created_at", { ascending: false });
-        
-        if (shouldFilter && tenantId) {
-          query = query.eq("tenant_id", tenantId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        setInvoices((data as any) || []);
-        setPendingLoads([]);
+      // Load ALL invoices at once for categorization
+      let invoicesQuery = supabase
+        .from("invoices" as any)
+        .select("*, customers(mc_number, email, billing_email, otr_approval_status)")
+        .order("created_at", { ascending: false });
+      
+      if (shouldFilter && tenantId) {
+        invoicesQuery = invoicesQuery.eq("tenant_id", tenantId);
       }
+
+      // Load pending loads for "Pending" tab
+      let loadsQuery = supabase
+        .from("loads")
+        .select(`
+          id,
+          load_number,
+          invoice_number,
+          reference_number,
+          rate,
+          pickup_date,
+          delivery_date,
+          pickup_city,
+          pickup_state,
+          delivery_city,
+          delivery_state,
+          completed_at,
+          notes,
+          broker_name,
+          customer_id,
+          customers(name, factoring_approval, mc_number),
+          carriers(name)
+        `)
+        .eq("financial_status", "pending_invoice")
+        .order("completed_at", { ascending: false });
+      
+      if (shouldFilter && tenantId) {
+        loadsQuery = loadsQuery.eq("tenant_id", tenantId);
+      }
+
+      // Load email logs for delivery status
+      let emailLogsQuery = supabase
+        .from("invoice_email_log" as any)
+        .select("id, invoice_id, status, created_at, error")
+        .order("created_at", { ascending: false });
+
+      if (shouldFilter && tenantId) {
+        emailLogsQuery = emailLogsQuery.eq("tenant_id", tenantId);
+      }
+
+      // Load invoice_loads for document lookup
+      let invoiceLoadsQuery = supabase
+        .from("invoice_loads" as any)
+        .select("invoice_id, load_id");
+
+      if (shouldFilter && tenantId) {
+        invoiceLoadsQuery = invoiceLoadsQuery.eq("tenant_id", tenantId);
+      }
+
+      // Load load_documents for RC/BOL check
+      let loadDocsQuery = supabase
+        .from("load_documents" as any)
+        .select("id, load_id, document_type, uploaded_at")
+        .order("uploaded_at", { ascending: false });
+
+      if (shouldFilter && tenantId) {
+        loadDocsQuery = loadDocsQuery.eq("tenant_id", tenantId);
+      }
+
+      const [invoicesResult, loadsResult, emailLogsResult, invoiceLoadsResult, loadDocsResult] = await Promise.all([
+        invoicesQuery,
+        loadsQuery,
+        emailLogsQuery,
+        invoiceLoadsQuery,
+        loadDocsQuery,
+      ]);
+
+      if (invoicesResult.error) throw invoicesResult.error;
+      if (loadsResult.error) throw loadsResult.error;
+
+      setAllInvoices((invoicesResult.data as any) || []);
+      setPendingLoads((loadsResult.data as PendingLoad[]) || []);
+      setEmailLogs((emailLogsResult.data as any) || []);
+      setInvoiceLoads((invoiceLoadsResult.data as any) || []);
+      setLoadDocuments((loadDocsResult.data as any) || []);
     } catch (error) {
       toast.error("Error loading data");
       console.error(error);
@@ -209,6 +271,164 @@ export default function InvoicesTab() {
       setLoading(false);
     }
   };
+
+  // Compute delivery info for each invoice
+  const invoicesWithDeliveryInfo = useMemo((): InvoiceWithDeliveryInfo[] => {
+    return allInvoices.map(invoice => {
+      const missing: string[] = [];
+      
+      // Check billing method
+      if (!invoice.billing_method || invoice.billing_method === 'unknown') {
+        missing.push('billing_method');
+      }
+      
+      // Check customer email
+      const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
+      if (!customerEmail) {
+        missing.push('to_email');
+      }
+      
+      // Check accounting email (CC)
+      if (!accountingEmail) {
+        missing.push('cc_email');
+      }
+      
+      // Check documents - get load IDs for this invoice
+      const invoiceLoadIds = invoiceLoads
+        .filter(il => il.invoice_id === invoice.id)
+        .map(il => il.load_id);
+      
+      // Check for RC and BOL/POD - only newest per load
+      const hasRc = invoiceLoadIds.some(loadId => {
+        const rcs = loadDocuments.filter(d => d.load_id === loadId && d.document_type === 'rate_confirmation');
+        return rcs.length > 0;
+      });
+      
+      const hasBol = invoiceLoadIds.some(loadId => {
+        const bols = loadDocuments.filter(d => d.load_id === loadId && 
+          (d.document_type === 'bill_of_lading' || d.document_type === 'proof_of_delivery'));
+        return bols.length > 0;
+      });
+      
+      if (!hasRc) missing.push('rate_confirmation');
+      if (!hasBol) missing.push('bol_pod');
+      
+      // Get latest email log
+      const logs = emailLogs.filter(l => l.invoice_id === invoice.id);
+      const latestLog = logs[0] || null;
+      
+      // Determine broker approved status
+      const brokerApproved = invoice.customers?.otr_approval_status?.toLowerCase() === 'approved';
+      
+      // Determine delivery status
+      let delivery_status: 'needs_setup' | 'ready' | 'delivered' | 'failed' = 'needs_setup';
+      
+      if (invoice.billing_method === 'otr') {
+        // OTR: delivered if otr_submitted_at exists
+        if (invoice.otr_submitted_at) {
+          delivery_status = 'delivered';
+        } else if (invoice.otr_status === 'failed') {
+          delivery_status = 'failed';
+        } else if (missing.length === 0 || (missing.length === 2 && missing.includes('rate_confirmation') && missing.includes('bol_pod'))) {
+          // OTR doesn't require RC/BOL attachments for submission
+          delivery_status = 'ready';
+        }
+      } else if (invoice.billing_method === 'direct_email') {
+        // Direct email: check email logs
+        if (latestLog?.status === 'sent') {
+          delivery_status = 'delivered';
+        } else if (latestLog?.status === 'failed') {
+          delivery_status = 'failed';
+        } else if (missing.length === 0) {
+          delivery_status = 'ready';
+        }
+      }
+      
+      return {
+        ...invoice,
+        delivery_status,
+        missing_info: missing,
+        has_rc: hasRc,
+        has_bol: hasBol,
+        last_attempt_at: latestLog?.created_at || null,
+        last_attempt_status: latestLog?.status || null,
+        last_attempt_error: latestLog?.error || null,
+        broker_approved: brokerApproved,
+      };
+    });
+  }, [allInvoices, emailLogs, invoiceLoads, loadDocuments, accountingEmail]);
+
+  // Categorize invoices into tabs
+  const categorizedInvoices = useMemo(() => {
+    const needs_setup: InvoiceWithDeliveryInfo[] = [];
+    const ready: InvoiceWithDeliveryInfo[] = [];
+    const delivered: InvoiceWithDeliveryInfo[] = [];
+    const failed: InvoiceWithDeliveryInfo[] = [];
+    const paid: InvoiceWithDeliveryInfo[] = [];
+    const overdue: InvoiceWithDeliveryInfo[] = [];
+
+    for (const inv of invoicesWithDeliveryInfo) {
+      // Paid and overdue are based on invoice.status
+      if (inv.status === 'paid') {
+        paid.push(inv);
+        continue;
+      }
+      if (inv.status === 'overdue') {
+        overdue.push(inv);
+        continue;
+      }
+      if (inv.status === 'cancelled') {
+        continue; // Skip cancelled
+      }
+
+      // Categorize by delivery status
+      if (inv.delivery_status === 'needs_setup') {
+        needs_setup.push(inv);
+      } else if (inv.delivery_status === 'ready') {
+        ready.push(inv);
+      } else if (inv.delivery_status === 'delivered') {
+        delivered.push(inv);
+      } else if (inv.delivery_status === 'failed') {
+        failed.push(inv);
+      }
+    }
+
+    return { needs_setup, ready, delivered, failed, paid, overdue };
+  }, [invoicesWithDeliveryInfo]);
+
+  // Get filtered invoices based on current tab
+  const filteredInvoices = useMemo(() => {
+    let list: InvoiceWithDeliveryInfo[] = [];
+    
+    switch (filter) {
+      case 'needs_setup':
+        list = categorizedInvoices.needs_setup;
+        break;
+      case 'ready':
+        list = categorizedInvoices.ready;
+        break;
+      case 'delivered':
+        list = categorizedInvoices.delivered;
+        break;
+      case 'failed':
+        list = categorizedInvoices.failed;
+        break;
+      case 'paid':
+        list = categorizedInvoices.paid;
+        break;
+      case 'overdue':
+        list = categorizedInvoices.overdue;
+        break;
+    }
+
+    if (!searchQuery) return list;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return list.filter(inv => 
+      inv.invoice_number.toLowerCase().includes(searchLower) ||
+      (inv.customer_name || "").toLowerCase().includes(searchLower)
+    );
+  }, [filter, categorizedInvoices, searchQuery]);
 
   const sendBackToAudit = async (loadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -234,7 +454,6 @@ export default function InvoicesTab() {
 
   const openOtrVerification = (load: PendingLoad, e: React.MouseEvent) => {
     e.stopPropagation();
-    // If already verified, go straight to send
     if (verifiedLoadIds.has(load.id)) {
       setSelectedLoadForOtr(load);
       confirmSendToOtr(load);
@@ -258,7 +477,6 @@ export default function InvoicesTab() {
     setSendingOtrLoadId(load.id);
 
     try {
-      // Step 1: Check broker credit status first
       let billingMethod: 'otr' | 'direct_email' = 'direct_email';
       let otrApproved = false;
       
@@ -278,19 +496,14 @@ export default function InvoicesTab() {
         if (creditError) {
           console.warn("Broker credit check failed:", creditError);
         } else {
-          // Normalize to lower-case for comparison
           const normalizedStatus = creditResult?.approval_status?.toLowerCase();
           if (normalizedStatus === 'approved') {
             billingMethod = 'otr';
             otrApproved = true;
-            console.log(`[InvoicesTab] Broker ${load.customers?.name} is OTR approved`);
-          } else {
-            console.log(`[InvoicesTab] Broker ${load.customers?.name} not OTR approved (status: ${creditResult?.approval_status})`);
           }
         }
       }
 
-      // Step 2: Get next invoice number atomically via DB function
       const { data: invoiceNumberResult, error: invoiceNumberError } = await supabase
         .rpc('next_invoice_number', { p_tenant_id: tenantId });
 
@@ -300,9 +513,6 @@ export default function InvoicesTab() {
 
       const nextNumber = invoiceNumberResult as string;
 
-      // Step 3: Create invoice with billing_method
-      // For OTR: start as 'draft', only set 'sent' after successful OTR submission
-      // For direct_email: keep as 'draft' (no actual email sending yet)
       const invoiceData = {
         tenant_id: tenantId,
         invoice_number: nextNumber,
@@ -312,7 +522,7 @@ export default function InvoicesTab() {
         invoice_date: format(new Date(), "yyyy-MM-dd"),
         due_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
         payment_terms: "Net 30",
-        status: "draft", // Start as draft, update to sent only on OTR success
+        status: "draft",
         billing_method: billingMethod,
         subtotal: load.rate || 0,
         tax: 0,
@@ -331,7 +541,6 @@ export default function InvoicesTab() {
         throw new Error("Failed to create invoice");
       }
 
-      // Link load to invoice
       await supabase
         .from("invoice_loads" as any)
         .insert({
@@ -342,7 +551,6 @@ export default function InvoicesTab() {
           amount: load.rate || 0,
         });
 
-      // Step 4: If OTR approved, submit to OTR and update status + load on success
       if (otrApproved) {
         const { data: otrResult, error: otrError } = await supabase.functions.invoke(
           "submit-otr-invoice",
@@ -360,7 +568,6 @@ export default function InvoicesTab() {
           console.error("OTR submission error:", otrError);
           toast.error(`Invoice created but OTR submission failed: ${otrError.message}`);
         } else if (otrResult?.success) {
-          // Only set status='sent' and financial_status='invoiced' after successful OTR submission
           await supabase
             .from("invoices" as any)
             .update({
@@ -369,7 +576,6 @@ export default function InvoicesTab() {
             })
             .eq("id", (newInvoice as any).id);
           
-          // Update load financial_status only on OTR success
           await supabase
             .from("loads")
             .update({
@@ -379,17 +585,17 @@ export default function InvoicesTab() {
             .eq("id", load.id);
           
           toast.success(`Invoice ${nextNumber} submitted to OTR Solutions`);
-          setInvoiceFilter("sent");
+          setInvoiceFilter("delivered");
         } else {
           toast.warning(`Invoice created but OTR returned: ${otrResult?.error || 'Unknown error'}`);
-          setInvoiceFilter("draft");
+          setInvoiceFilter("failed");
         }
       } else {
-        // Direct email billing - invoice stays as draft, load stays as pending_invoice
-        // Do NOT set financial_status to 'invoiced' until email is actually sent
         toast.success(`Invoice ${nextNumber} created (direct billing - awaiting email send)`);
-        setInvoiceFilter("draft");
+        setInvoiceFilter("ready");
       }
+      
+      loadData();
     } catch (error) {
       console.error("Error submitting to OTR:", error);
       toast.error(`Failed to submit: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -431,7 +637,6 @@ export default function InvoicesTab() {
         return;
       }
 
-      // Get the highest invoice number and increment
       const { data: lastInvoice } = await supabase
         .from("invoices" as any)
         .select("invoice_number")
@@ -439,7 +644,7 @@ export default function InvoicesTab() {
         .limit(1)
         .single();
 
-      let nextNumber = 1000001; // Start from 1000001
+      let nextNumber = 1000001;
       const invoiceRecord = lastInvoice as { invoice_number?: string } | null;
       if (invoiceRecord?.invoice_number) {
         const lastNum = parseInt(invoiceRecord.invoice_number, 10);
@@ -481,52 +686,6 @@ export default function InvoicesTab() {
     }
   };
 
-  const handleSendInvoice = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("invoices" as any)
-        .update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-        })
-        .eq("id", id);
-
-      if (error) throw error;
-      toast.success("Invoice sent successfully");
-      loadData();
-    } catch (error: any) {
-      toast.error("Failed to send invoice: " + error.message);
-    }
-  };
-
-  const handleMarkPaid = async (id: string) => {
-    try {
-      const invoice = invoices.find(inv => inv.id === id);
-      if (!invoice) return;
-
-      const { error } = await supabase
-        .from("invoices" as any)
-        .update({
-          status: "paid",
-          amount_paid: invoice.total_amount,
-          balance_due: 0,
-          paid_at: new Date().toISOString(),
-          payment_date: format(new Date(), "yyyy-MM-dd"),
-        })
-        .eq("id", id);
-
-      if (error) throw error;
-      toast.success("Invoice marked as paid");
-      loadData();
-    } catch (error: any) {
-      toast.error("Failed to mark as paid: " + error.message);
-    }
-  };
-
-  const viewInvoiceDetail = (id: string) => {
-    navigate(`/dashboard/invoice/${id}`);
-  };
-
   const retryOtrSubmission = async (invoice: Invoice, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!tenantId) {
@@ -565,20 +724,77 @@ export default function InvoicesTab() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const configs: Record<string, { label: string; className: string }> = {
-      draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
-      sent: { label: "Billed", className: "bg-amber-500 hover:bg-amber-600" },
-      paid: { label: "Paid", className: "bg-green-500 hover:bg-green-600" },
-      overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
-      cancelled: { label: "Cancelled", className: "bg-gray-700 hover:bg-gray-800" },
-      failed: { label: "Failed", className: "bg-red-600 hover:bg-red-700" },
-    };
-    const config = configs[status] || configs.draft;
-    return <Badge className={`${config.className} text-white`}>{config.label}</Badge>;
+  const viewInvoiceDetail = (id: string) => {
+    navigate(`/dashboard/invoice/${id}`);
   };
 
-  const getOtrStatusBadge = (invoice: Invoice) => {
+  const getDeliveryStatusBadge = (inv: InvoiceWithDeliveryInfo) => {
+    switch (inv.delivery_status) {
+      case 'delivered':
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Delivered</Badge>;
+      case 'failed':
+        return <Badge variant="destructive" className="text-xs">Failed</Badge>;
+      case 'ready':
+        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-xs">Ready</Badge>;
+      case 'needs_setup':
+      default:
+        return <Badge variant="outline" className="text-xs">Needs Setup</Badge>;
+    }
+  };
+  
+  const getBillingMethodBadge = (method: string | null) => {
+    switch (method) {
+      case 'otr':
+        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR</Badge>;
+      case 'direct_email':
+        return <Badge variant="secondary" className="text-xs">Direct Email</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs text-muted-foreground">Not Set</Badge>;
+    }
+  };
+
+  const getBrokerApprovedBadge = (inv: InvoiceWithDeliveryInfo) => {
+    if (inv.billing_method === 'otr' && inv.broker_approved) {
+      return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Yes</Badge>;
+    } else if (inv.broker_approved === false || inv.broker_approved === null) {
+      return <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>;
+    }
+    return <span className="text-muted-foreground text-xs">—</span>;
+  };
+
+  const getDocsChecklist = (inv: InvoiceWithDeliveryInfo) => {
+    return (
+      <div className="flex items-center gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={inv.has_rc ? "text-green-500" : "text-muted-foreground"}>
+                {inv.has_rc ? "✓" : "✗"} RC
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Rate Confirmation</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span className="text-muted-foreground">/</span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={inv.has_bol ? "text-green-500" : "text-muted-foreground"}>
+                {inv.has_bol ? "✓" : "✗"} BOL
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Bill of Lading / POD</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  };
+
+  const getOtrStatusBadge = (invoice: InvoiceWithDeliveryInfo) => {
+    if (invoice.billing_method !== 'otr') {
+      return <span className="text-muted-foreground text-xs">—</span>;
+    }
+    
     if (!invoice.otr_status) {
       return <span className="text-muted-foreground text-xs">—</span>;
     }
@@ -630,25 +846,41 @@ export default function InvoicesTab() {
     }
   };
 
-  const filteredInvoices = invoices.filter((invoice) => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = (
-      invoice.invoice_number.toLowerCase().includes(searchLower) ||
-      (invoice.customer_name || "").toLowerCase().includes(searchLower)
+  const getMissingInfoTooltip = (inv: InvoiceWithDeliveryInfo) => {
+    if (inv.missing_info.length === 0) return null;
+    
+    const labels: Record<string, string> = {
+      billing_method: 'Billing method not set',
+      to_email: 'Customer email missing',
+      cc_email: 'Accounting email missing',
+      rate_confirmation: 'Rate Confirmation missing',
+      bol_pod: 'BOL/POD missing',
+    };
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <ul className="text-xs space-y-1">
+              {inv.missing_info.map(m => (
+                <li key={m}>• {labels[m] || m}</li>
+              ))}
+            </ul>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
-    const matchesBillingMethod = billingMethodFilter === 'all' || invoice.billing_method === billingMethodFilter;
-    return matchesSearch && matchesBillingMethod;
-  });
-  
-  const getBillingMethodBadge = (method: string) => {
-    switch (method) {
-      case 'otr':
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR</Badge>;
-      case 'direct_email':
-        return <Badge variant="secondary" className="text-xs">Direct</Badge>;
-      default:
-        return <Badge variant="outline" className="text-xs">Unknown</Badge>;
-    }
+  };
+
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return "$0.00";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
   };
 
   const filteredPendingLoads = pendingLoads.filter((load) => {
@@ -660,17 +892,14 @@ export default function InvoicesTab() {
     );
   });
 
-  const formatDate = (date: string | null) => {
-    if (!date) return "—";
-    return format(new Date(date), "MMM d, yyyy");
-  };
-
-  const formatCurrency = (amount: number | null) => {
-    if (!amount) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const tabCounts = {
+    pending: pendingLoads.length,
+    needs_setup: categorizedInvoices.needs_setup.length,
+    ready: categorizedInvoices.ready.length,
+    delivered: categorizedInvoices.delivered.length,
+    failed: categorizedInvoices.failed.length,
+    paid: categorizedInvoices.paid.length,
+    overdue: categorizedInvoices.overdue.length,
   };
 
   if (loading) {
@@ -680,7 +909,7 @@ export default function InvoicesTab() {
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <div /> {/* Spacer for alignment */}
+        <div />
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -750,11 +979,13 @@ export default function InvoicesTab() {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-0">
+        <div className="flex items-center gap-0 flex-wrap">
           {[
             { key: "pending", label: "Pending", icon: Clock, activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy-dark", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset" },
-            { key: "sent", label: "Sent", icon: null, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "needs_setup", label: "Needs Setup", icon: Settings, activeClass: "btn-glossy-dark", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset" },
+            { key: "ready", label: "Ready to Send", icon: Mail, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "delivered", label: "Delivered", icon: CheckCircle2, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "failed", label: "Failed", icon: XCircle, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
             { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
           ].map((status) => (
@@ -772,26 +1003,13 @@ export default function InvoicesTab() {
               {status.icon && <status.icon className="h-3 w-3" />}
               {status.label}
               <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
-                {invoicesByStatus[status.key as keyof typeof invoicesByStatus]}
+                {tabCounts[status.key as keyof typeof tabCounts]}
               </span>
             </Button>
           ))}
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Billing Method Filter - only show when not on pending tab */}
-          {filter !== "pending" && (
-            <Select value={billingMethodFilter} onValueChange={(value) => setBillingMethodFilter(value as 'all' | 'otr' | 'direct_email')}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="Billing Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="otr">OTR Only</SelectItem>
-                <SelectItem value="direct_email">Direct Only</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
           <Badge variant="secondary" className="text-xs">
             {filter === "pending" ? filteredPendingLoads.length : filteredInvoices.length} {filter === "pending" ? "loads" : "invoices"}
           </Badge>
@@ -809,7 +1027,7 @@ export default function InvoicesTab() {
 
       <div className="overflow-x-auto">
         {filter === "pending" ? (
-          // Pending loads table - always show header
+          // Pending loads table
           <Table>
             <TableHeader>
               <TableRow className="border-l-4 border-l-amber-500 border-b-0 bg-background">
@@ -902,7 +1120,6 @@ export default function InvoicesTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {/* Show factoring company as billing party for approved customers */}
                           {load.customers?.factoring_approval === 'approved' && factoringCompany
                             ? factoringCompany
                             : (load.customers?.name || load.broker_name || "—")}
@@ -972,47 +1189,53 @@ export default function InvoicesTab() {
             </TableBody>
           </Table>
         ) : (
-          // Regular invoices table - always show header
+          // Invoices table with new columns
           <Table>
             <TableHeader>
               <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
                 <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Broker Approved</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">CC</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">CC (Acct)</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Docs</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Delivery</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Last Attempt</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">OTR</TableHead>
+                {filter !== 'needs_setup' && filter !== 'ready' && (
+                  <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-12 text-center">
+                  <TableCell colSpan={12} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FileText className="h-10 w-10 mb-3 opacity-50" />
-                      <p className="text-base font-medium">No {filter} invoices</p>
-                      <p className="text-sm">{searchQuery ? "No invoices match your search" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} invoices will appear here`}</p>
+                      <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
+                      <p className="text-sm">{searchQuery ? "No invoices match your search" : `${filter.replace('_', ' ').charAt(0).toUpperCase() + filter.slice(1).replace('_', ' ')} invoices will appear here`}</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredInvoices.map((invoice) => {
-                  // Calculate days since sent (if sent) or since invoice date
-                  const referenceDate = invoice.sent_at || invoice.invoice_date;
-                  const daysSince = referenceDate 
-                    ? Math.floor((Date.now() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24))
-                    : 0;
-                  
-                  // Get customer email for display
                   const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
                   
                   return (
-                    <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
-                      <TableCell className="font-medium text-primary">{invoice.invoice_number}</TableCell>
+                    <TableRow 
+                      key={invoice.id} 
+                      className="cursor-pointer hover:bg-muted/50" 
+                      onClick={() => viewInvoiceDetail(invoice.id)}
+                    >
+                      <TableCell className="font-medium text-primary">
+                        <div className="flex items-center gap-2">
+                          {invoice.invoice_number}
+                          {getMissingInfoTooltip(invoice)}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {invoice.customer_id ? (
                           <div
@@ -1032,29 +1255,43 @@ export default function InvoicesTab() {
                         )}
                       </TableCell>
                       <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
+                      <TableCell>{getBrokerApprovedBadge(invoice)}</TableCell>
                       <TableCell className="text-xs max-w-[120px] truncate" title={customerEmail || ""}>
-                        {customerEmail || <span className="text-muted-foreground">—</span>}
+                        {customerEmail || <span className="text-red-500">Missing</span>}
                       </TableCell>
                       <TableCell className="text-xs max-w-[120px] truncate" title={accountingEmail || ""}>
-                        {invoice.billing_method === 'direct_email' ? (
-                          accountingEmail || <span className="text-muted-foreground">—</span>
+                        {accountingEmail || <span className="text-red-500">Missing</span>}
+                      </TableCell>
+                      <TableCell>{getDocsChecklist(invoice)}</TableCell>
+                      <TableCell>{getDeliveryStatusBadge(invoice)}</TableCell>
+                      <TableCell className="text-xs">
+                        {invoice.last_attempt_at ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={invoice.last_attempt_status === 'failed' ? 'text-red-500' : ''}>
+                                  {formatDistanceToNow(new Date(invoice.last_attempt_at), { addSuffix: true })}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs">
+                                  <p>{format(new Date(invoice.last_attempt_at), "MMM d, yyyy h:mm a")}</p>
+                                  {invoice.last_attempt_error && (
+                                    <p className="text-red-400 mt-1">{invoice.last_attempt_error}</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                      <TableCell className={daysSince > 30 ? "text-destructive font-medium" : ""}>
-                        {invoice.sent_at ? (
-                          <span title={`Sent ${format(new Date(invoice.sent_at), "M/d/yyyy")}`}>
-                            {daysSince}d
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">{daysSince}</span>
-                        )}
-                      </TableCell>
                       <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
                       <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
-                      <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
+                      {filter !== 'needs_setup' && filter !== 'ready' && (
+                        <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
+                      )}
                     </TableRow>
                   );
                 })
