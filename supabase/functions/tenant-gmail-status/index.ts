@@ -104,7 +104,7 @@ serve(async (req) => {
     // Get Gmail tokens for this tenant (safe fields only - no actual tokens!)
     const { data: tokens, error: tokensError } = await supabaseAdmin
       .from('gmail_tokens')
-      .select('id, user_email, tenant_id, token_expiry, updated_at')
+      .select('id, user_email, tenant_id, token_expiry, updated_at, needs_reauth, reauth_reason')
       .eq('tenant_id', tenantId);
 
     if (tokensError) {
