@@ -51,6 +51,7 @@ class DriverApplicationPDF {
   private readonly lineHeight: number = 5;
   private readonly boxPadding: number = 3;
   private company: CompanyProfile | null;
+  private companyName: string = '';
   private logoBase64: string | null;
   private generatedTimestamp: string;
   private applicantName: string = '';
@@ -61,6 +62,7 @@ class DriverApplicationPDF {
     this.pageWidth = this.doc.internal.pageSize.width;
     this.contentWidth = this.pageWidth - 2 * this.margin;
     this.company = company;
+    this.companyName = company?.company_name || 'the Company';
     this.logoBase64 = logoBase64;
     this.generatedTimestamp = new Date().toLocaleString('en-US', {
       year: 'numeric',
@@ -864,19 +866,114 @@ class DriverApplicationPDF {
     this.yPos += 10;
   }
 
+  private generateMvrConsentSection(): void {
+    this.checkPageBreak(100);
+    
+    // Section title bar
+    this.doc.setFillColor(90, 90, 90);
+    this.doc.rect(this.margin, this.yPos, this.contentWidth, 7, 'F');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text('MVR / DRIVING RECORD AUTHORIZATION (REQUIRED)', this.margin + 3, this.yPos + 5);
+    this.yPos += 12;
+    
+    // Gray box for consent text
+    const consentText = `By signing below, I authorize ${this.companyName} to obtain my Motor Vehicle Record (MVR) from any state agency and any other driving-related records necessary to evaluate my qualifications for employment. I further authorize, where applicable, the Company to request my FMCSA Pre-Employment Screening Program (PSP) report and to conduct CDLIS queries. I understand this authorization is valid during the hiring process and, if hired, may be used periodically thereafter as permitted by law.`;
+    
+    const consentLines = this.wrapText(consentText, this.contentWidth - 16);
+    const boxHeight = consentLines.length * 5 + 40;
+    
+    // Draw box
+    this.doc.setDrawColor(180, 180, 180);
+    this.doc.setFillColor(250, 250, 250);
+    this.doc.setLineWidth(0.5);
+    this.doc.rect(this.margin, this.yPos - 3, this.contentWidth, boxHeight, 'FD');
+    
+    // Consent paragraph
+    this.doc.setFontSize(8);
+    this.doc.setTextColor(40, 40, 40);
+    this.doc.setFont(undefined, 'normal');
+    
+    const startY = this.yPos + 2;
+    consentLines.forEach((line: string, idx: number) => {
+      this.doc.text(line, this.margin + 5, startY + (idx * 5));
+    });
+    
+    this.yPos = startY + (consentLines.length * 5) + 8;
+    
+    // Checkbox with authorization
+    this.doc.setFillColor(255, 255, 255);
+    this.doc.setDrawColor(100, 100, 100);
+    this.doc.rect(this.margin + 5, this.yPos - 3.5, 4, 4, 'FD');
+    
+    // Checkmark (authorization granted by default since this is generated from submitted app)
+    this.doc.setTextColor(0, 120, 0);
+    this.doc.setFontSize(10);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text('✓', this.margin + 5.3, this.yPos + 0.5);
+    
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFontSize(8);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text('I AUTHORIZE the Company to obtain my MVR/PSP/CDLIS records for employment purposes.', this.margin + 12, this.yPos);
+    this.yPos += 12;
+    
+    // Signature line
+    this.doc.setFontSize(7);
+    this.doc.setTextColor(80, 80, 80);
+    this.doc.setFont(undefined, 'normal');
+    this.doc.text('Applicant Signature:', this.margin + 5, this.yPos);
+    
+    this.doc.setDrawColor(0, 0, 0);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(this.margin + 35, this.yPos, this.margin + 95, this.yPos);
+    
+    // Pre-fill with typed name
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFont(undefined, 'italic');
+    this.doc.text(this.applicantName, this.margin + 37, this.yPos - 1);
+    
+    // Date
+    this.doc.setFontSize(7);
+    this.doc.setTextColor(80, 80, 80);
+    this.doc.setFont(undefined, 'normal');
+    this.doc.text('Date:', this.margin + 100, this.yPos);
+    this.doc.line(this.margin + 110, this.yPos, this.margin + 145, this.yPos);
+    
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.text(this.formatDate(new Date().toISOString()), this.margin + 112, this.yPos - 1);
+    
+    this.yPos += 8;
+    
+    // Printed name line
+    this.doc.setFontSize(7);
+    this.doc.setTextColor(80, 80, 80);
+    this.doc.setFont(undefined, 'normal');
+    this.doc.text('Printed Name:', this.margin + 5, this.yPos);
+    this.doc.line(this.margin + 35, this.yPos, this.margin + 95, this.yPos);
+    
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text(this.applicantName.toUpperCase(), this.margin + 37, this.yPos - 1);
+    
+    this.yPos += boxHeight - (consentLines.length * 5) - 28;
+  }
+
   private generateAttestationPage(): void {
     this.newPage(); // Uses unified newPage() method
     
     this.addSectionTitle('Attestation & Authorization');
     
-    // Attestation text
+    // Attestation text (removed MVR paragraph since we have dedicated section)
     const attestationText = `I certify that the information provided in this application is true and complete to the best of my knowledge. I understand that any false or misleading information or omissions may disqualify me from further consideration for employment and may result in my dismissal if discovered at a later date.
 
 I authorize investigation of all statements contained in this application and release any person, school, company, or organization from any liability for any damage whatsoever that may result from providing such information.
 
 I understand that this application does not constitute an offer or guarantee of employment. I acknowledge that if employed, I will be required to provide documentation proving my identity and legal authorization to work in the United States.
-
-I authorize the company to obtain my motor vehicle driving record and to make any investigation of my driving and employment history deemed necessary. I release the company and all providers of such information from any liability arising from such investigation.
 
 I have read and understand the company's policies regarding drug and alcohol testing, and I agree to submit to any required testing as a condition of employment and continued employment.
 
@@ -894,6 +991,11 @@ I understand that any employment relationship with this company is "at-will" mea
       this.yPos += 5;
     });
     
+    this.yPos += 10;
+    
+    // MVR Consent Section (before main signature block)
+    this.generateMvrConsentSection();
+    
     this.yPos += 15;
     
     // Signature block
@@ -905,7 +1007,7 @@ I understand that any employment relationship with this company is "at-will" mea
     this.doc.setTextColor(60, 60, 60);
     this.doc.text('APPLICANT SIGNATURE:', this.margin, this.yPos);
     this.yPos += 8;
-    
+
     // Signature line
     this.doc.line(this.margin, this.yPos, this.margin + 90, this.yPos);
     this.doc.setFontSize(9);
