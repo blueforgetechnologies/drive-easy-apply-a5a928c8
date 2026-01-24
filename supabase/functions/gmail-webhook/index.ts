@@ -625,8 +625,26 @@ serve(async (req) => {
     // Check if token needs refresh
     let accessToken = tokenData.access_token;
     if (new Date(tokenData.token_expiry) <= new Date()) {
+      console.log(`[gmail-webhook] Token expired for ${tokenData.user_email}, attempting refresh...`);
+      
       const clientId = Deno.env.get('GMAIL_CLIENT_ID');
       const clientSecret = Deno.env.get('GMAIL_CLIENT_SECRET');
+      
+      if (!tokenData.refresh_token) {
+        console.error(`[gmail-webhook] No refresh_token for ${tokenData.user_email} - marking for re-auth`);
+        // Mark token as needing re-auth
+        await supabase
+          .from('gmail_tokens')
+          .update({ needs_reauth: true, reauth_reason: 'missing_refresh_token' })
+          .eq('user_email', tokenData.user_email);
+        return new Response(JSON.stringify({ 
+          error: 'Token expired and no refresh token available',
+          needs_reauth: true 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       
       const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -639,18 +657,64 @@ serve(async (req) => {
         }),
       });
 
-      if (refreshResponse.ok) {
-        const tokens = await refreshResponse.json();
-        accessToken = tokens.access_token;
+      const refreshData = await refreshResponse.json();
+
+      if (refreshResponse.ok && refreshData.access_token) {
+        accessToken = refreshData.access_token;
+        const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
         
-        supabase
+        // CRITICAL: Await the update to ensure persistence before proceeding
+        const { error: updateError } = await supabase
           .from('gmail_tokens')
           .update({
-            access_token: tokens.access_token,
-            token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+            access_token: refreshData.access_token,
+            token_expiry: newExpiry,
+            needs_reauth: false,
+            reauth_reason: null,
+            updated_at: new Date().toISOString(),
           })
-          .eq('user_email', tokenData.user_email)
-          .then(() => console.log('Token refreshed'));
+          .eq('user_email', tokenData.user_email);
+        
+        if (updateError) {
+          console.error(`[gmail-webhook] Failed to persist refreshed token:`, updateError);
+          // Continue with the refreshed token even if persist failed - better than stopping
+        } else {
+          console.log(`[gmail-webhook] ✅ Token refreshed for ${tokenData.user_email}, new expiry: ${newExpiry}`);
+        }
+      } else {
+        // Handle refresh failure
+        const errorCode = refreshData.error || 'unknown_error';
+        const errorDesc = refreshData.error_description || 'Token refresh failed';
+        
+        console.error(`[gmail-webhook] Token refresh failed for ${tokenData.user_email}:`, {
+          error: errorCode,
+          description: errorDesc,
+        });
+        
+        // Mark token as needing re-auth for UI visibility
+        await supabase
+          .from('gmail_tokens')
+          .update({ 
+            needs_reauth: true, 
+            reauth_reason: errorCode === 'invalid_grant' ? 'refresh_token_revoked' : errorCode 
+          })
+          .eq('user_email', tokenData.user_email);
+        
+        // For invalid_grant (revoked/expired refresh token), we must stop - no way to recover without user re-auth
+        if (errorCode === 'invalid_grant') {
+          console.error(`[gmail-webhook] 🚨 Refresh token revoked/expired for ${tokenData.user_email} - user must re-authenticate`);
+          return new Response(JSON.stringify({ 
+            error: 'Refresh token revoked or expired - user must reconnect Gmail',
+            needs_reauth: true,
+            error_code: errorCode 
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // For other transient errors, continue with old token (might still work briefly)
+        console.warn(`[gmail-webhook] Continuing with potentially expired token for ${tokenData.user_email}`);
       }
     }
 
