@@ -33,11 +33,12 @@ interface Invoice {
   status: string;
   notes: string | null;
   created_at: string;
+  sent_at: string | null;
   otr_status: string | null;
   otr_submitted_at: string | null;
   otr_invoice_id: string | null;
   billing_method: 'unknown' | 'otr' | 'direct_email';
-  customers?: { mc_number: string | null } | null;
+  customers?: { mc_number: string | null; email: string | null; billing_email: string | null } | null;
 }
 
 interface Customer {
@@ -185,7 +186,7 @@ export default function InvoicesTab() {
         // Load regular invoices with customer MC number
         let query = supabase
           .from("invoices" as any)
-          .select("*, customers(mc_number)")
+          .select("*, customers(mc_number, email, billing_email)")
           .eq("status", filter)
           .order("created_at", { ascending: false });
         
@@ -569,6 +570,7 @@ export default function InvoicesTab() {
       paid: { label: "Paid", className: "bg-green-500 hover:bg-green-600" },
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
       cancelled: { label: "Cancelled", className: "bg-gray-700 hover:bg-gray-800" },
+      failed: { label: "Failed", className: "bg-red-600 hover:bg-red-700" },
     };
     const config = configs[status] || configs.draft;
     return <Badge className={`${config.className} text-white`}>{config.label}</Badge>;
@@ -972,25 +974,21 @@ export default function InvoicesTab() {
           <Table>
             <TableHeader>
               <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Number</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Billing Party</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Billing Date</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Amount</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Advance Issued</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Expected Deposit</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Invoice Status</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
-                <TableHead className="text-primary font-medium uppercase text-xs">Notes</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">OTR</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="py-12 text-center">
+                  <TableCell colSpan={9} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FileText className="h-10 w-10 mb-3 opacity-50" />
                       <p className="text-base font-medium">No {filter} invoices</p>
@@ -1000,10 +998,14 @@ export default function InvoicesTab() {
                 </TableRow>
               ) : (
                 filteredInvoices.map((invoice) => {
-                  const daysSinceBilling = invoice.invoice_date 
-                    ? Math.floor((Date.now() - new Date(invoice.invoice_date).getTime()) / (1000 * 60 * 60 * 24))
+                  // Calculate days since sent (if sent) or since invoice date
+                  const referenceDate = invoice.sent_at || invoice.invoice_date;
+                  const daysSince = referenceDate 
+                    ? Math.floor((Date.now() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24))
                     : 0;
-                  const advanceIssued = invoice.advance_issued || 0;
+                  
+                  // Get customer email for display
+                  const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
                   
                   return (
                     <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50" onClick={() => viewInvoiceDetail(invoice.id)}>
@@ -1017,32 +1019,32 @@ export default function InvoicesTab() {
                               navigate(`/dashboard/customer/${invoice.customer_id}`);
                             }}
                           >
-                            <div className="text-primary">{invoice.customer_name || "—"}</div>
+                            <div className="text-primary text-sm">{invoice.customer_name || "—"}</div>
                             {invoice.customers?.mc_number && (
                               <div className="text-xs text-muted-foreground">MC-{invoice.customers.mc_number}</div>
                             )}
                           </div>
                         ) : (
-                          <div>{invoice.customer_name || "—"}</div>
+                          <div className="text-sm">{invoice.customer_name || "—"}</div>
                         )}
                       </TableCell>
                       <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
-                      <TableCell>{invoice.billing_party || "—"}</TableCell>
-                      <TableCell>{invoice.invoice_date ? format(new Date(invoice.invoice_date), "M/d/yyyy") : "—"}</TableCell>
-                      <TableCell className={daysSinceBilling > 30 ? "text-destructive font-medium" : ""}>
-                        {daysSinceBilling}
+                      <TableCell className="text-xs max-w-[120px] truncate" title={customerEmail || ""}>
+                        {customerEmail || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                      <TableCell className={daysSince > 30 ? "text-destructive font-medium" : ""}>
+                        {invoice.sent_at ? (
+                          <span title={`Sent ${format(new Date(invoice.sent_at), "M/d/yyyy")}`}>
+                            {daysSince}d
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{daysSince}</span>
+                        )}
                       </TableCell>
                       <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
-                      <TableCell className={advanceIssued > 0 ? "text-destructive" : ""}>
-                        {advanceIssued > 0 ? `(${formatCurrency(advanceIssued)})` : formatCurrency(0)}
-                      </TableCell>
-                      <TableCell>{formatCurrency(invoice.expected_deposit)}</TableCell>
                       <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
-                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                       <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={invoice.notes || ""}>
-                        {invoice.notes || "—"}
-                      </TableCell>
                     </TableRow>
                   );
                 })

@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTenantId } from "@/hooks/useTenantId";
+import { InvoiceDeliveryPanel } from "@/components/InvoiceDeliveryPanel";
 interface InvoiceLoad {
   id: string;
   load_id: string;
@@ -308,6 +309,7 @@ export default function InvoiceDetail() {
       sent: { label: "Sent", className: "bg-blue-500 hover:bg-blue-600" },
       paid: { label: "Paid", className: "bg-green-600 hover:bg-green-700" },
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
+      failed: { label: "Failed", className: "bg-red-600 hover:bg-red-700" },
     };
     const config = configs[status] || configs.draft;
     return <Badge className={config.className}>{config.label}</Badge>;
@@ -384,46 +386,10 @@ export default function InvoiceDetail() {
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
-            {invoice.status === "draft" && (
-              <Button onClick={handleSendInvoice}>
-                <Send className="h-4 w-4 mr-2" />
-                Send Invoice
-              </Button>
-            )}
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
-            {/* OTR Factoring Submission - only for OTR billing method when not yet submitted */}
-            {invoice.billing_method === 'otr' && !invoice.otr_submitted_at && (
-              <Button 
-                onClick={() => handleSubmitToOtr(false)} 
-                disabled={submittingToOtr}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                {submittingToOtr ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <DollarSign className="h-4 w-4 mr-2" />
-                )}
-                Submit to OTR (Staging)
-              </Button>
-            )}
-            {/* Direct Email - only for direct_email billing method when not yet sent */}
-            {invoice.billing_method === 'direct_email' && invoice.status !== 'sent' && invoice.status !== 'paid' && (
-              <Button 
-                onClick={handleSendDirectEmail} 
-                disabled={sendingDirectEmail}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {sendingDirectEmail ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Send Direct Email
-              </Button>
-            )}
             {invoice.otr_submitted_at && getOtrStatusBadge()}
           </div>
         </div>
@@ -556,6 +522,22 @@ export default function InvoiceDetail() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Delivery Panel */}
+            <InvoiceDeliveryPanel
+              invoiceId={id!}
+              invoice={{
+                id: invoice.id,
+                invoice_number: invoice.invoice_number,
+                status: invoice.status,
+                billing_method: invoice.billing_method,
+                customer_id: invoice.customer_id,
+                sent_at: invoice.sent_at,
+                otr_submitted_at: invoice.otr_submitted_at,
+                tenant_id: tenantId || undefined,
+              }}
+              onRefresh={loadData}
+            />
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Invoice Summary</CardTitle>
