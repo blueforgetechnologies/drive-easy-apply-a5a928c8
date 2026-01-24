@@ -95,7 +95,8 @@ serve(async (req) => {
       { name: 'pubsub_tracking_cleanup', rpc: 'cleanup_pubsub_tracking', batched: false },
       { name: 'vehicle_location_cleanup', rpc: 'cleanup_vehicle_location_history', batched: false },
       { name: 'email_archive', rpc: 'archive_old_load_emails_batched', batched: true },
-      { name: 'rate_limit_cleanup', rpc: 'cleanup_tenant_rate_limits', batched: false }
+      { name: 'rate_limit_cleanup', rpc: 'cleanup_tenant_rate_limits', batched: false },
+      { name: 'unroutable_emails_cleanup', rpc: 'cleanup_unroutable_emails', batched: false }
     ];
 
     // Filter jobs if specific ones requested
