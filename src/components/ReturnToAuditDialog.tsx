@@ -57,8 +57,8 @@ export default function ReturnToAuditDialog({
     if (!invoice) return;
     setLoadingEmailStatus(true);
     try {
-      const query = supabase
-        .from("invoice_email_logs" as any)
+      let query = supabase
+        .from("invoice_email_log")
         .select("status, created_at")
         .eq("invoice_id", invoice.id)
         .order("created_at", { ascending: false })
@@ -66,7 +66,7 @@ export default function ReturnToAuditDialog({
 
       // Add tenant_id filter if available
       if (tenantId) {
-        query.eq("tenant_id", tenantId);
+        query = query.eq("tenant_id", tenantId);
       }
 
       const { data, error } = await query;
@@ -75,7 +75,7 @@ export default function ReturnToAuditDialog({
         console.error("Error fetching email log status:", error);
         setLastEmailStatus(null);
       } else if (data && data.length > 0) {
-        setLastEmailStatus((data[0] as any).status);
+        setLastEmailStatus(data[0].status);
       } else {
         setLastEmailStatus(null);
       }
@@ -127,32 +127,49 @@ export default function ReturnToAuditDialog({
   };
 
   // Compute if return is allowed based on guardrails
-  const canReturn = (): { allowed: boolean; reason?: string } => {
+  // Returns: allowed, reason, and whether invoice has "left the system" (requires void/credit memo)
+  const canReturn = (): { allowed: boolean; reason?: string; requiresVoidOrCreditMemo?: boolean } => {
     if (!invoice) return { allowed: false, reason: "No invoice selected" };
 
-    // Check status
+    // Check status - paid/overdue/cancelled are terminal states
     const blockedStatuses = ["paid", "overdue", "cancelled"];
     if (invoice.status && blockedStatuses.includes(invoice.status)) {
-      return { allowed: false, reason: `Invoice is ${invoice.status}` };
+      const isPaid = invoice.status === "paid";
+      const isOverdue = invoice.status === "overdue";
+      return { 
+        allowed: false, 
+        reason: `Invoice is ${invoice.status}`,
+        requiresVoidOrCreditMemo: isPaid || isOverdue
+      };
     }
 
-    // Check OTR submission
+    // Check OTR submission - invoice has left the system
     if (invoice.otr_submitted_at) {
-      return { allowed: false, reason: "Invoice already submitted to OTR" };
+      return { 
+        allowed: false, 
+        reason: "Invoice already submitted to OTR",
+        requiresVoidOrCreditMemo: true
+      };
     }
 
-    // Check if direct_email and already delivered
-    if (invoice.billing_method === "direct_email") {
-      const deliveredStatuses = ["sent", "delivered"];
-      if (lastEmailStatus && deliveredStatuses.includes(lastEmailStatus)) {
-        return { allowed: false, reason: "Invoice already sent via email" };
-      }
+    // Check if email was sent/delivered - invoice has left the system
+    const deliveredStatuses = ["sent", "delivered"];
+    if (lastEmailStatus && deliveredStatuses.includes(lastEmailStatus)) {
+      return { 
+        allowed: false, 
+        reason: "Invoice already sent via email",
+        requiresVoidOrCreditMemo: true
+      };
     }
 
-    // Check amount_paid
+    // Check amount_paid - any payment means invoice has been processed
     const amountPaid = invoice.amount_paid ?? 0;
     if (amountPaid > 0) {
-      return { allowed: false, reason: "Invoice has payments recorded" };
+      return { 
+        allowed: false, 
+        reason: "Invoice has payments recorded",
+        requiresVoidOrCreditMemo: true
+      };
     }
 
     return { allowed: true };
@@ -258,7 +275,7 @@ export default function ReturnToAuditDialog({
     returnToAuditMutation.mutate();
   };
 
-  const { allowed, reason } = canReturn();
+  const { allowed, reason, requiresVoidOrCreditMemo } = canReturn();
   const isLoading = loadingLoads || loadingEmailStatus;
 
   if (!invoice) return null;
@@ -317,12 +334,20 @@ export default function ReturnToAuditDialog({
 
           {/* Warning if not allowed */}
           {!allowed && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-red-700 dark:text-red-400">
-                <span className="font-medium">Cannot return this invoice:</span>{" "}
-                {reason}
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-700 dark:text-red-400">
+                  <span className="font-medium">Cannot return this invoice:</span>{" "}
+                  {reason}
+                </div>
               </div>
+              {requiresVoidOrCreditMemo && (
+                <div className="text-sm text-muted-foreground pl-6">
+                  This invoice was already sent. Use <span className="font-medium">Void</span> or{" "}
+                  <span className="font-medium">Credit Memo</span> instead.
+                </div>
+              )}
             </div>
           )}
 
