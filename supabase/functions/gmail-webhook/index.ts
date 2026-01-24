@@ -380,32 +380,34 @@ async function storeRawMimeContent(
   contentHash: string,
   rawBytes: Uint8Array
 ): Promise<string | null> {
+  const hashPrefix = contentHash.substring(0, 4);
+  const filePath = `${provider}/${hashPrefix}/${contentHash}.eml`;
+  const contentType = 'application/octet-stream'; // message/rfc822 not supported by Supabase Storage
+  
   try {
-    // Content-addressed path: provider/prefix/full_hash.eml
-    const hashPrefix = contentHash.substring(0, 4);
-    const filePath = `${provider}/${hashPrefix}/${contentHash}.eml`;
-    
     const { error } = await supabase.storage
       .from('email-content')
       .upload(filePath, rawBytes, {
-        contentType: 'message/rfc822',
+        contentType,
         upsert: false, // Don't overwrite - content is immutable by definition
       });
     
     if (error) {
-      // If already exists, that's expected for reuse - not an error
-      if (!error.message?.includes('already exists') && !error.message?.includes('Duplicate')) {
-        console.error(`[storage] Failed to store raw MIME:`, error);
-        return null;
+      // If already exists, that's expected for content-addressed storage
+      if (error.message?.includes('already exists') || error.message?.includes('Duplicate')) {
+        console.log(`[storage] ✅ Already exists: ${filePath} (hash: ${hashPrefix}..., type: ${contentType})`);
+        return filePath;
       }
-      console.log(`📦 Raw MIME already exists: ${filePath}`);
-      return filePath;
+      // Real error - log but don't break ingestion
+      console.error(`[storage] ❌ Upload failed: ${filePath} (hash: ${hashPrefix}..., type: ${contentType}) - ${error.message?.substring(0, 100)}`);
+      return null;
     }
     
-    console.log(`📦 Stored NEW raw MIME: ${filePath} (${rawBytes.length} bytes)`);
+    console.log(`[storage] ✅ NEW upload: ${filePath} (${rawBytes.length} bytes, hash: ${hashPrefix}..., type: ${contentType})`);
     return filePath;
   } catch (err) {
-    console.error(`[storage] Raw MIME storage error:`, err);
+    const errMsg = err instanceof Error ? err.message.substring(0, 100) : 'Unknown error';
+    console.error(`[storage] ❌ Exception: ${filePath} (hash: ${hashPrefix}...) - ${errMsg}`);
     return null;
   }
 }
