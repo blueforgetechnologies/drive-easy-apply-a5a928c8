@@ -30,8 +30,11 @@ interface HeaderExtractionResult {
   source: string | null;
   deliveredTo: string | null;
   xOriginalTo: string | null;
+  xGmOriginalTo: string | null;
+  xForwardedTo: string | null;
   envelopeTo: string | null;
   to: string | null;
+  cc: string | null;
 }
 
 // Content dedup result
@@ -61,19 +64,25 @@ function extractGmailAlias(email: string | null): string | null {
   return null;
 }
 
-// Extract alias from headers with priority order:
-// 1. Delivered-To (most reliable for Gmail)
+// Extract alias from headers with priority order (expanded for robust routing):
+// 1. Delivered-To (most reliable for Gmail plus-addressing)
 // 2. X-Original-To (commonly used by mail servers)
-// 3. Envelope-To (sometimes available)
-// 4. To (fallback - least reliable for routing)
+// 3. X-Gm-Original-To (Gmail specific - sometimes present)
+// 4. X-Forwarded-To (used when forwarding)
+// 5. Envelope-To (sometimes available)
+// 6. To (standard recipient - may have multiple)
+// 7. Cc (fallback - rarely has the alias but worth checking)
 function extractAliasFromHeaders(headers: { name: string; value: string }[]): HeaderExtractionResult {
   const result: HeaderExtractionResult = {
     alias: null,
     source: null,
     deliveredTo: null,
     xOriginalTo: null,
+    xGmOriginalTo: null,
+    xForwardedTo: null,
     envelopeTo: null,
     to: null,
+    cc: null,
   };
   
   // Build header map (case-insensitive)
@@ -82,18 +91,24 @@ function extractAliasFromHeaders(headers: { name: string; value: string }[]): He
     headerMap.set(h.name.toLowerCase(), h.value);
   }
   
-  // Extract header values
+  // Extract all header values for debugging and routing
   result.deliveredTo = headerMap.get('delivered-to') || null;
   result.xOriginalTo = headerMap.get('x-original-to') || null;
+  result.xGmOriginalTo = headerMap.get('x-gm-original-to') || null;
+  result.xForwardedTo = headerMap.get('x-forwarded-to') || null;
   result.envelopeTo = headerMap.get('envelope-to') || null;
   result.to = headerMap.get('to') || null;
+  result.cc = headerMap.get('cc') || null;
   
-  // Priority order extraction
+  // Priority order extraction - check ALL routing headers
   const priorityOrder: Array<{ header: string | null; source: string }> = [
     { header: result.deliveredTo, source: 'Delivered-To' },
     { header: result.xOriginalTo, source: 'X-Original-To' },
+    { header: result.xGmOriginalTo, source: 'X-Gm-Original-To' },
+    { header: result.xForwardedTo, source: 'X-Forwarded-To' },
     { header: result.envelopeTo, source: 'Envelope-To' },
     { header: result.to, source: 'To' },
+    { header: result.cc, source: 'Cc' },
   ];
   
   for (const { header, source } of priorityOrder) {
@@ -212,7 +227,15 @@ async function quarantineEmail(
     if (error) {
       console.error(`[gmail-webhook] Failed to quarantine email ${messageId}:`, error);
     } else {
-      console.log(`[gmail-webhook] 🔒 Quarantined email ${messageId}: ${failureReason}`);
+      // Enhanced logging for debugging header extraction issues
+      const headerSummary = {
+        deliveredTo: headers.deliveredTo?.substring(0, 50) || 'NULL',
+        xOriginalTo: headers.xOriginalTo?.substring(0, 50) || 'NULL',
+        xGmOriginalTo: headers.xGmOriginalTo?.substring(0, 50) || 'NULL',
+        to: headers.to?.substring(0, 50) || 'NULL',
+        rawHeaderCount: rawHeaders.length,
+      };
+      console.log(`[gmail-webhook] 🔒 Quarantined ${messageId}: ${failureReason}`, headerSummary);
     }
   } catch (err) {
     console.error(`[gmail-webhook] Quarantine error:`, err);
@@ -763,22 +786,67 @@ serve(async (req) => {
 
     console.log(`📧 Processing ${messages.length} messages for tenant routing`);
 
-    // Fetch full metadata for each message to get all routing headers
+    // Headers needed for routing - Gmail format=full may not include these consistently
+    // We fetch metadata first with explicit header list, then full for body
+    const ROUTING_HEADERS = [
+      'Delivered-To',
+      'X-Original-To', 
+      'X-Gm-Original-To',
+      'X-Forwarded-To',
+      'Envelope-To',
+      'To',
+      'Cc',
+      'From',
+      'Subject',
+      'Return-Path',
+      'Received',
+    ];
+
+    // Fetch message details with explicit header request
     const messageDetailsPromises = messages.map(async (m: any) => {
       try {
-        // Request FULL message (format=full) to get body for VPS worker parsing
-        const detailResponse = await fetch(
+        // Phase 1: Fetch with format=metadata + explicit metadataHeaders for routing
+        // This ensures we get Delivered-To and other routing headers
+        const metadataHeadersParam = encodeURIComponent(ROUTING_HEADERS.join(','));
+        const metadataResponse = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=${metadataHeadersParam}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        
+        let headers: { name: string; value: string }[] = [];
+        
+        if (metadataResponse.ok) {
+          const metadataMessage = await metadataResponse.json();
+          headers = metadataMessage.payload?.headers || [];
+          console.log(`[gmail-webhook] Fetched ${headers.length} headers for ${m.id}: ${headers.map(h => h.name).join(', ')}`);
+        } else {
+          console.warn(`Failed to fetch metadata for message ${m.id}: ${metadataResponse.status}`);
+        }
+        
+        // Phase 2: Fetch full message for body content (worker parsing)
+        const fullResponse = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
-        if (!detailResponse.ok) {
-          console.warn(`Failed to fetch details for message ${m.id}`);
-          return { message: m, fullMessage: null, headers: [], fromEmail: null, subject: null };
+        let fullMessage = null;
+        if (fullResponse.ok) {
+          fullMessage = await fullResponse.json();
+          
+          // Merge headers from metadata fetch into full message if missing
+          // This ensures we have routing headers even if format=full didn't include them
+          const fullHeaders = fullMessage.payload?.headers || [];
+          const fullHeaderNames = new Set(fullHeaders.map((h: any) => h.name.toLowerCase()));
+          
+          for (const h of headers) {
+            if (!fullHeaderNames.has(h.name.toLowerCase())) {
+              fullHeaders.push(h);
+            }
+          }
+          
+          // Use merged headers for extraction
+          headers = fullHeaders;
         }
-        
-        const fullMessage = await detailResponse.json();
-        const headers = fullMessage.payload?.headers || [];
         
         // Extract From and Subject for logging
         const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
