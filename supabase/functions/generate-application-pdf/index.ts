@@ -298,6 +298,16 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // SECURITY: Validate auth header FIRST before any processing
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("generate-application-pdf: Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", reason: "missing_auth" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { application_id }: GeneratePDFRequest = await req.json();
 
     if (!application_id) {
@@ -311,7 +321,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Load application from DB
+    // Load application from DB (includes tenant_id for access check)
     const { data: application, error: appError } = await supabaseService
       .from('applications')
       .select(`
@@ -344,8 +354,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify tenant access (authenticated user must have access to this tenant)
-    const authHeader = req.headers.get("Authorization");
+    // SECURITY: Verify tenant access using tenant_id FROM THE DATABASE, not from client
+    // This prevents users from accessing applications belonging to other tenants
     const accessResult = await assertTenantAccess(authHeader, application.tenant_id);
     
     if (!accessResult.allowed) {

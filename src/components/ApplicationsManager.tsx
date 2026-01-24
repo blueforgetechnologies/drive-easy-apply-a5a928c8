@@ -169,7 +169,8 @@ export function ApplicationsManager() {
       return;
     }
 
-    const url = `${window.location.origin}/?token=${invite.public_token}`;
+    // Use /apply?token= path, NOT just /?token=
+    const url = `${window.location.origin}/apply?token=${invite.public_token}`;
     window.open(url, "_blank");
   };
 
@@ -179,22 +180,12 @@ export function ApplicationsManager() {
       return;
     }
 
-    const invite = invites.get(application.invite_id);
-    if (!invite) {
-      toast.error("Invitation not found");
-      return;
-    }
-
     setResendingId(application.id);
     try {
-      // Resend using existing invite email (does not create new application)
-      const { error } = await supabase.functions.invoke("send-driver-invite", {
+      // Use resend-driver-invite which does NOT create new invite/application rows
+      const { error } = await supabase.functions.invoke("resend-driver-invite", {
         body: {
-          email: invite.email,
-          name: application.personal_info?.firstName 
-            ? `${application.personal_info.firstName} ${application.personal_info.lastName || ""}`
-            : null,
-          tenant_id: tenantId,
+          invite_id: application.invite_id,
         },
       });
 
