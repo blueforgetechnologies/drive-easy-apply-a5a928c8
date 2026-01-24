@@ -679,7 +679,7 @@ export default function CarriersTab() {
                         />
                       </TableHead>
                     )}
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">ID</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[90px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[70px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Carrier Name</div>
@@ -716,19 +716,6 @@ export default function CarriersTab() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="py-1 px-2">
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-xs text-muted-foreground">{carrier.id.slice(0, 8)}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={(e) => { e.stopPropagation(); handleCopyId(carrier.id); }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
                       <TableCell 
                         className="py-1 px-2"
                         onClick={(e) => e.stopPropagation()}
