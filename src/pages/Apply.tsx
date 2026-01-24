@@ -1,10 +1,10 @@
 import { ApplicationForm } from "@/components/ApplicationForm";
 import heroImage from "@/assets/driver-hero.jpg";
-import { Link, useSearchParams, Navigate } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Apply = () => {
@@ -13,41 +13,56 @@ const Apply = () => {
   const [isValidating, setIsValidating] = useState(true);
   const [isValidInvite, setIsValidInvite] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
 
   useEffect(() => {
     const validateInvite = async () => {
+      // FAIL CLOSED: No token = immediate deny
       if (!inviteId) {
         setIsValidating(false);
-        setInviteError("No invitation token provided. You need a valid invite link to apply.");
+        setInviteError("No invitation token provided. A valid invite link is required to apply.");
         return;
       }
 
       try {
-        // Track that the invite link was opened
-        await supabase.functions.invoke("track-invite-open", {
+        // Track that the invite link was opened (fire and forget)
+        supabase.functions.invoke("track-invite-open", {
           body: { inviteId },
-        });
+        }).catch(() => {}); // Ignore tracking errors
 
-        // Validate the invite exists and hasn't been used
-        const { data: invite, error } = await supabase
-          .from("driver_invites")
-          .select("id, application_started_at")
-          .eq("id", inviteId)
-          .maybeSingle();
+        // SERVER-SIDE VALIDATION: Use edge function to validate token
+        // This ensures tenant_id mapping is done server-side, not trusting client
+        const { data, error } = await supabase.functions.invoke("load-application", {
+          body: { invite_id: inviteId },
+        });
 
         if (error) {
           console.error("Error validating invite:", error);
           setInviteError("Failed to validate invitation. Please try again.");
-        } else if (!invite) {
-          setInviteError("Invalid invitation link. Please contact us to request a new invite.");
-        } else if (invite.application_started_at) {
-          setInviteError("This invitation has already been used. Please contact us if you need to submit another application.");
-        } else {
-          setIsValidInvite(true);
+          return;
         }
+
+        // Check for explicit denial from server
+        if (!data.success) {
+          setInviteError(data.error || "Invalid invitation link.");
+          return;
+        }
+
+        // Check if already submitted
+        if (!data.can_edit && data.application?.status === 'submitted') {
+          setInviteError("This application has already been submitted. Please contact us if you need to make changes.");
+          return;
+        }
+
+        // Set company branding if available
+        if (data.company?.name) {
+          setCompanyName(data.company.name);
+        }
+
+        setIsValidInvite(true);
       } catch (err) {
-        console.error("Error:", err);
-        setInviteError("An error occurred. Please try again later.");
+        console.error("Validation error:", err);
+        setInviteError("An error occurred while validating your invitation. Please try again.");
       } finally {
         setIsValidating(false);
       }
@@ -59,30 +74,37 @@ const Apply = () => {
   // Show loading state while validating
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-4 text-muted-foreground">Validating your invitation...</p>
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <Shield className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
+          </div>
+          <p className="mt-6 text-lg font-medium text-foreground">Validating your invitation...</p>
+          <p className="mt-2 text-sm text-muted-foreground">Please wait while we verify your access</p>
         </div>
       </div>
     );
   }
 
-  // Show error if invite is invalid
+  // Show error if invite is invalid (FAIL CLOSED)
   if (inviteError) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-xl border-0">
+          <CardHeader className="text-center pb-4">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
             </div>
-            <CardTitle>Invalid Invitation</CardTitle>
-            <CardDescription>{inviteError}</CardDescription>
+            <CardTitle className="text-2xl">Access Denied</CardTitle>
+            <CardDescription className="text-base mt-2">{inviteError}</CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              If you believe this is an error, please contact the company that sent you the invitation link.
+            </p>
             <Link to="/">
-              <Button>Back to Home</Button>
+              <Button className="w-full">Return to Home</Button>
             </Link>
           </CardContent>
         </Card>
@@ -110,37 +132,41 @@ const Apply = () => {
       </div>
 
       {/* Hero Section */}
-      <header className="relative h-[400px] overflow-hidden">
+      <header className="relative h-[350px] md:h-[400px] overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={heroImage}
             alt="Professional truck driver"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/80 to-primary/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/85 via-primary/70 to-primary/50" />
         </div>
         <div className="relative h-full flex items-center justify-center text-center px-4">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
+            {companyName && (
+              <p className="text-primary-foreground/80 text-lg mb-2">
+                {companyName}
+              </p>
+            )}
+            <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4">
               Driver Employment Application
             </h1>
-            <p className="text-lg md:text-xl text-primary-foreground/90">
-              Join our professional team of drivers. Complete your application online in just a few
-              steps.
+            <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl mx-auto">
+              Join our professional team of drivers. Complete your application online — your progress is saved automatically.
             </p>
           </div>
         </div>
       </header>
 
       {/* Application Form */}
-      <main>
+      <main className="-mt-16 relative z-10">
         <ApplicationForm inviteId={inviteId!} />
       </main>
 
       {/* Footer */}
       <footer className="bg-card border-t mt-16 py-8">
         <div className="max-w-4xl mx-auto px-4 text-center text-muted-foreground text-sm">
-          <p>© {new Date().getFullYear()} NexusTech Solution. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {companyName || 'NexusTech Solution'}. All rights reserved.</p>
           <p className="mt-2">
             Questions? Contact us at{" "}
             <a href="mailto:hr@nexustechsolution.com" className="text-primary hover:underline">

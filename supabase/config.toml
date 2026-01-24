@@ -239,3 +239,9 @@ verify_jwt = false
 
 [functions.send-invoice-email]
 verify_jwt = false
+
+[functions.save-application-step]
+verify_jwt = false
+
+[functions.load-application]
+verify_jwt = false
