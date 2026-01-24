@@ -886,12 +886,10 @@ export function ApplicationsManager() {
         onOpenChange={setDrawerOpen}
         application={selectedApplication}
         onPreviewPDF={handlePreviewPDF}
-        onDownloadPDF={handleDownloadPDF}
         onStatusChange={() => {
           loadApplications();
           setDrawerOpen(false);
         }}
-        isDownloading={downloadingId === selectedApplication?.id}
       />
     </Card>
   );
