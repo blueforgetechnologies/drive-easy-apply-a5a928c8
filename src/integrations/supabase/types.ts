@@ -6815,6 +6815,10 @@ export type Database = {
         Returns: string
       }
       get_current_tenant_id: { Args: never; Returns: string }
+      get_dedup_cost_metrics: {
+        Args: { p_window_minutes: number }
+        Returns: Json
+      }
       get_default_tenant_id: { Args: never; Returns: string }
       get_email_queue_pending_count: { Args: never; Returns: number }
       get_multi_match_fingerprints: {

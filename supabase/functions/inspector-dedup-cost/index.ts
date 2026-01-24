@@ -10,22 +10,26 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+interface RpcMetrics {
+  window_minutes: number;
+  receipts_count: number;
+  unique_content_count: number;
+  payload_url_present_count: number;
+  queue_total: number;
+  queue_unique_dedupe: number;
+  unroutable_count: number;
+}
+
 interface TimeWindowMetrics {
   window_label: string;
   window_minutes: number;
-  
-  // email_content metrics
   email_content_unique_count: number;
   email_content_total_receipts: number;
   email_content_dup_savings_pct: number;
   email_content_payload_url_populated_pct: number;
-  
-  // email_queue metrics
   email_queue_total_count: number;
   email_queue_unique_dedupe_keys: number;
   email_queue_dedup_collision_count: number;
-  
-  // unroutable metrics
   unroutable_count: number;
   unroutable_pct: number;
 }
@@ -58,63 +62,38 @@ interface DedupCostResponse {
   recent_unroutable_examples: RecentUnroutableExample[];
 }
 
-async function getMetricsForWindow(windowMinutes: number, windowLabel: string): Promise<TimeWindowMetrics> {
-  const cutoff = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
-  
-  // email_content metrics - unique count and receipt_count sum
-  const { data: contentData } = await supabase
-    .from('email_content')
-    .select('id, receipt_count, payload_url')
-    .gte('first_seen_at', cutoff);
-  
-  const uniqueCount = contentData?.length || 0;
-  const totalReceipts = contentData?.reduce((sum, row) => sum + (row.receipt_count || 1), 0) || 0;
-  const withPayloadUrl = contentData?.filter(row => row.payload_url != null).length || 0;
-  
-  const dupSavingsPct = totalReceipts > 0 
-    ? Math.round(((totalReceipts - uniqueCount) / totalReceipts) * 10000) / 100 
+function computeMetrics(rpc: RpcMetrics, windowLabel: string): TimeWindowMetrics {
+  const receiptsCount = rpc.receipts_count || 0;
+  const uniqueCount = rpc.unique_content_count || 0;
+  const payloadUrlCount = rpc.payload_url_present_count || 0;
+  const queueTotal = rpc.queue_total || 0;
+  const queueUnique = rpc.queue_unique_dedupe || 0;
+  const unroutableCount = rpc.unroutable_count || 0;
+
+  const dupSavingsPct = receiptsCount > 0
+    ? Math.round(((receiptsCount - uniqueCount) / receiptsCount) * 10000) / 100
     : 0;
-  const payloadUrlPct = uniqueCount > 0 
-    ? Math.round((withPayloadUrl / uniqueCount) * 10000) / 100 
+
+  const payloadUrlPct = uniqueCount > 0
+    ? Math.round((payloadUrlCount / uniqueCount) * 10000) / 100
     : 100;
-  
-  // email_queue metrics
-  const { count: queueTotalCount } = await supabase
-    .from('email_queue')
-    .select('id', { count: 'exact', head: true })
-    .gte('queued_at', cutoff);
-  
-  const { data: queueDedupeData } = await supabase
-    .from('email_queue')
-    .select('dedupe_key')
-    .gte('queued_at', cutoff);
-  
-  const uniqueDedupeKeys = new Set(queueDedupeData?.map(row => row.dedupe_key).filter(Boolean)).size;
-  const queueTotal = queueTotalCount || 0;
-  const collisionCount = queueTotal - uniqueDedupeKeys;
-  
-  // unroutable metrics
-  const { count: unroutableCount } = await supabase
-    .from('unroutable_emails')
-    .select('id', { count: 'exact', head: true })
-    .gte('received_at', cutoff);
-  
-  const totalInWindow = queueTotal + (unroutableCount || 0);
-  const unroutablePct = totalInWindow > 0 
-    ? Math.round(((unroutableCount || 0) / totalInWindow) * 10000) / 100 
+
+  const totalInWindow = queueTotal + unroutableCount;
+  const unroutablePct = totalInWindow > 0
+    ? Math.round((unroutableCount / totalInWindow) * 10000) / 100
     : 0;
-  
+
   return {
     window_label: windowLabel,
-    window_minutes: windowMinutes,
+    window_minutes: rpc.window_minutes,
     email_content_unique_count: uniqueCount,
-    email_content_total_receipts: totalReceipts,
+    email_content_total_receipts: receiptsCount,
     email_content_dup_savings_pct: dupSavingsPct,
     email_content_payload_url_populated_pct: payloadUrlPct,
     email_queue_total_count: queueTotal,
-    email_queue_unique_dedupe_keys: uniqueDedupeKeys,
-    email_queue_dedup_collision_count: collisionCount,
-    unroutable_count: unroutableCount || 0,
+    email_queue_unique_dedupe_keys: queueUnique,
+    email_queue_dedup_collision_count: queueTotal - queueUnique,
+    unroutable_count: unroutableCount,
     unroutable_pct: unroutablePct,
   };
 }
@@ -159,14 +138,23 @@ serve(async (req) => {
 
     console.log(`[inspector-dedup-cost] Fetching metrics for platform admin ${user.id}`);
 
-    // Fetch metrics for all time windows in parallel
-    const [metrics15m, metrics60m, metrics24h] = await Promise.all([
-      getMetricsForWindow(15, 'Last 15 min'),
-      getMetricsForWindow(60, 'Last 60 min'),
-      getMetricsForWindow(1440, 'Last 24 hours'),
+    // Fetch metrics using efficient RPC (no full-row scans)
+    const [rpc15m, rpc60m, rpc24h] = await Promise.all([
+      supabase.rpc('get_dedup_cost_metrics', { p_window_minutes: 15 }),
+      supabase.rpc('get_dedup_cost_metrics', { p_window_minutes: 60 }),
+      supabase.rpc('get_dedup_cost_metrics', { p_window_minutes: 1440 }),
     ]);
 
-    // Fetch recent examples
+    if (rpc15m.error) {
+      console.error('[inspector-dedup-cost] RPC 15m error:', rpc15m.error);
+      throw new Error(`RPC error: ${rpc15m.error.message}`);
+    }
+
+    const metrics15m = computeMetrics(rpc15m.data as RpcMetrics, 'Last 15 min');
+    const metrics60m = computeMetrics(rpc60m.data as RpcMetrics, 'Last 60 min');
+    const metrics24h = computeMetrics(rpc24h.data as RpcMetrics, 'Last 24 hours');
+
+    // Fetch recent examples (small limit, cheap)
     const { data: recentContent } = await supabase
       .from('email_content')
       .select('provider, content_hash, receipt_count, payload_url, last_seen_at')
@@ -195,19 +183,19 @@ serve(async (req) => {
     }));
 
     // Compute health status
-    const unroutable15mStatus: 'healthy' | 'warning' | 'critical' = 
+    const unroutable15mStatus: 'healthy' | 'warning' | 'critical' =
       metrics15m.unroutable_count >= 200 ? 'critical' :
       metrics15m.unroutable_count >= 50 ? 'warning' : 'healthy';
 
-    const payloadUrlStatus: 'healthy' | 'warning' | 'critical' = 
+    const payloadUrlStatus: 'healthy' | 'warning' | 'critical' =
       metrics24h.email_content_payload_url_populated_pct < 80 ? 'critical' :
       metrics24h.email_content_payload_url_populated_pct < 95 ? 'warning' : 'healthy';
 
-    const queueCollisionStatus: 'healthy' | 'warning' | 'critical' = 
+    const queueCollisionStatus: 'healthy' | 'warning' | 'critical' =
       metrics15m.email_queue_dedup_collision_count > 10 ? 'critical' :
       metrics15m.email_queue_dedup_collision_count > 0 ? 'warning' : 'healthy';
 
-    const overallStatus: 'healthy' | 'warning' | 'critical' = 
+    const overallStatus: 'healthy' | 'warning' | 'critical' =
       unroutable15mStatus === 'critical' || payloadUrlStatus === 'critical' || queueCollisionStatus === 'critical' ? 'critical' :
       unroutable15mStatus === 'warning' || payloadUrlStatus === 'warning' || queueCollisionStatus === 'warning' ? 'warning' : 'healthy';
 
@@ -232,8 +220,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error(`[inspector-dedup-cost] Error:`, error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
