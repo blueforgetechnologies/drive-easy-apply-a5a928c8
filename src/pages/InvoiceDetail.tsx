@@ -305,7 +305,8 @@ export default function InvoiceDetail() {
 
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string }> = {
-      draft: { label: "Draft", className: "bg-gray-500 hover:bg-gray-600" },
+      // "draft" maps to "Open" (not exposed as "Draft" to users)
+      draft: { label: "Open", className: "bg-gray-500 hover:bg-gray-600" },
       sent: { label: "Sent", className: "bg-blue-500 hover:bg-blue-600" },
       paid: { label: "Paid", className: "bg-green-600 hover:bg-green-700" },
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
@@ -447,7 +448,7 @@ export default function InvoiceDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Line Items</CardTitle>
-                  {invoice.status === "draft" && (
+                  {(invoice.status === "draft" || invoice.status === "sent") && invoice.status !== "paid" && (
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                       <DialogTrigger asChild>
                         <Button size="sm" className="gap-2">
