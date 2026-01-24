@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useTenantId } from "@/hooks/useTenantId";
-import { Undo2, AlertTriangle, Loader2 } from "lucide-react";
+import { Undo2, AlertTriangle, Loader2, Ban, Info } from "lucide-react";
 
 interface InvoiceForReturn {
   id: string;
@@ -49,10 +49,11 @@ export default function ReturnToAuditDialog({
     } else {
       // Reset state when dialog closes
       setLastEmailStatus(null);
+      setLinkedLoads([]);
     }
   }, [open, invoice?.id]);
 
-  // Fetch latest invoice_email_log status for this invoice
+  // Fetch latest invoice_email_log status for this invoice (tenant scoped)
   const fetchLatestEmailStatus = async () => {
     if (!invoice) return;
     setLoadingEmailStatus(true);
@@ -87,25 +88,39 @@ export default function ReturnToAuditDialog({
     }
   };
 
+  // Fetch linked loads via invoice_loads -> loads (tenant scoped)
   const fetchLinkedLoads = async () => {
     if (!invoice) return;
     setLoadingLoads(true);
     try {
-      // Get invoice_loads
-      const { data: invoiceLoads, error: ilError } = await supabase
+      // Get invoice_loads with tenant scoping
+      let ilQuery = supabase
         .from("invoice_loads" as any)
         .select("load_id")
         .eq("invoice_id", invoice.id);
+
+      if (tenantId) {
+        ilQuery = ilQuery.eq("tenant_id", tenantId);
+      }
+
+      const { data: invoiceLoads, error: ilError } = await ilQuery;
 
       if (ilError) throw ilError;
 
       const loadIds = ((invoiceLoads as any[]) || []).map((il: any) => il.load_id).filter(Boolean);
 
       if (loadIds.length > 0) {
-        const { data: loads, error: loadsError } = await supabase
+        // Get load details with tenant scoping
+        let loadsQuery = supabase
           .from("loads")
           .select("id, load_number")
           .in("id", loadIds);
+
+        if (tenantId) {
+          loadsQuery = loadsQuery.eq("tenant_id", tenantId);
+        }
+
+        const { data: loads, error: loadsError } = await loadsQuery;
 
         if (loadsError) throw loadsError;
 
@@ -127,7 +142,7 @@ export default function ReturnToAuditDialog({
   };
 
   // Compute if return is allowed based on guardrails
-  // Returns: allowed, reason, and whether invoice has "left the system" (requires void/credit memo)
+  // Industry-standard accounting rules: only allow return while invoice is internal
   const canReturn = (): { allowed: boolean; reason?: string; requiresVoidOrCreditMemo?: boolean } => {
     if (!invoice) return { allowed: false, reason: "No invoice selected" };
 
@@ -138,27 +153,8 @@ export default function ReturnToAuditDialog({
       const isOverdue = invoice.status === "overdue";
       return { 
         allowed: false, 
-        reason: `Invoice is ${invoice.status}`,
+        reason: `Invoice status is "${invoice.status}"`,
         requiresVoidOrCreditMemo: isPaid || isOverdue
-      };
-    }
-
-    // Check OTR submission - invoice has left the system
-    if (invoice.otr_submitted_at) {
-      return { 
-        allowed: false, 
-        reason: "Invoice already submitted to OTR",
-        requiresVoidOrCreditMemo: true
-      };
-    }
-
-    // Check if email was sent/delivered - invoice has left the system
-    const deliveredStatuses = ["sent", "delivered"];
-    if (lastEmailStatus && deliveredStatuses.includes(lastEmailStatus)) {
-      return { 
-        allowed: false, 
-        reason: "Invoice already sent via email",
-        requiresVoidOrCreditMemo: true
       };
     }
 
@@ -167,7 +163,26 @@ export default function ReturnToAuditDialog({
     if (amountPaid > 0) {
       return { 
         allowed: false, 
-        reason: "Invoice has payments recorded",
+        reason: `Invoice has payments recorded ($${amountPaid.toFixed(2)})`,
+        requiresVoidOrCreditMemo: true
+      };
+    }
+
+    // Check OTR submission - invoice has left the system
+    if (invoice.otr_submitted_at) {
+      return { 
+        allowed: false, 
+        reason: "Invoice was submitted to OTR",
+        requiresVoidOrCreditMemo: true
+      };
+    }
+
+    // Check if email was sent/delivered - invoice has left the system
+    const deliveredStatuses = ["sent", "delivered"];
+    if (lastEmailStatus && deliveredStatuses.includes(lastEmailStatus.toLowerCase())) {
+      return { 
+        allowed: false, 
+        reason: `Invoice was sent via email (status: ${lastEmailStatus})`,
         requiresVoidOrCreditMemo: true
       };
     }
@@ -183,49 +198,44 @@ export default function ReturnToAuditDialog({
 
       const loadIds = linkedLoads.map((l) => l.load_id);
 
-      // Operations ordered for data integrity:
-      // (1) Block checks already done in canReturn()
-      
-      // (2) Delete invoice_loads linkage first (with tenant scoping)
-      const deleteQuery = supabase
+      // ============================================================
+      // MUTATION ORDERING FOR DATA INTEGRITY
+      // ============================================================
+
+      // (1) Delete invoice_loads rows for this invoice (tenant scoped)
+      const { error: deleteError } = await supabase
         .from("invoice_loads" as any)
         .delete()
-        .eq("invoice_id", invoice.id);
+        .eq("invoice_id", invoice.id)
+        .eq("tenant_id", tenantId);
       
-      // Add tenant_id filter if the table supports it
-      if (tenantId) {
-        deleteQuery.eq("tenant_id", tenantId);
-      }
-      
-      const { error: deleteError } = await deleteQuery;
       if (deleteError) throw deleteError;
 
-      // (3) Update loads: ONLY set financial_status to 'pending_invoice'
-      // Do NOT mutate loads.status - that's lifecycle truth
+      // (2) Update loads: set financial_status = 'pending_invoice' AND status = 'ready_for_audit'
+      // This restores loads to the Ready for Audit queue
       if (loadIds.length > 0) {
-        const loadsQuery = supabase
+        const { error: loadsError } = await supabase
           .from("loads")
-          .update({ financial_status: "pending_invoice" })
-          .in("id", loadIds);
+          .update({ 
+            financial_status: "pending_invoice",
+            status: "ready_for_audit"
+          })
+          .in("id", loadIds)
+          .eq("tenant_id", tenantId);
         
-        // Add tenant scoping
-        if (tenantId) {
-          loadsQuery.eq("tenant_id", tenantId);
-        }
-        
-        const { error: loadsError } = await loadsQuery;
         if (loadsError) throw loadsError;
       }
 
-      // (4) Update invoice status to 'cancelled'
+      // (3) Update invoice status to 'cancelled'
       const { error: invoiceError } = await supabase
         .from("invoices" as any)
         .update({ status: "cancelled" })
-        .eq("id", invoice.id);
+        .eq("id", invoice.id)
+        .eq("tenant_id", tenantId);
 
       if (invoiceError) throw invoiceError;
 
-      // (5) Insert audit log
+      // (4) Insert audit_logs entry with details
       const { error: auditLogError } = await supabase
         .from("audit_logs")
         .insert({
@@ -236,18 +246,20 @@ export default function ReturnToAuditDialog({
           new_value: JSON.stringify({
             invoice_number: invoice.invoice_number,
             load_ids: loadIds,
+            load_count: loadIds.length,
           }),
           notes: `Invoice ${invoice.invoice_number} returned to audit. ${loadIds.length} load(s) moved back to Ready for Audit.`,
         });
 
       if (auditLogError) {
         console.error("Audit log error (non-fatal):", auditLogError);
+        // Non-fatal - continue
       }
 
       return { invoice_number: invoice.invoice_number, load_count: loadIds.length };
     },
     onSuccess: ({ invoice_number, load_count }) => {
-      // E) Refresh UI
+      // (5) Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["loads"] });
@@ -286,10 +298,10 @@ export default function ReturnToAuditDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Undo2 className="h-5 w-5 text-amber-500" />
-            Return Invoice to Audit?
+            Return Invoice to Audit
           </DialogTitle>
           <DialogDescription>
-            This will cancel the invoice and move its loads back to Ready for Audit.
+            This will cancel the invoice and return its loads to Ready for Audit.
           </DialogDescription>
         </DialogHeader>
 
@@ -297,8 +309,8 @@ export default function ReturnToAuditDialog({
           {/* Invoice Info */}
           <div className="bg-muted/50 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Invoice</span>
-              <span className="text-sm font-mono">{invoice.invoice_number}</span>
+              <span className="text-sm font-medium">Invoice Number</span>
+              <span className="text-sm font-mono font-semibold">{invoice.invoice_number}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Customer</span>
@@ -309,7 +321,7 @@ export default function ReturnToAuditDialog({
           {/* Linked Loads */}
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="text-sm font-medium mb-2">
-              Loads to Return ({linkedLoads.length})
+              Linked Loads ({linkedLoads.length})
             </div>
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -319,11 +331,11 @@ export default function ReturnToAuditDialog({
             ) : linkedLoads.length === 0 ? (
               <span className="text-sm text-muted-foreground">No loads linked</span>
             ) : (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {linkedLoads.map((load) => (
                   <span
                     key={load.load_id}
-                    className="px-2 py-0.5 bg-background rounded text-xs font-mono"
+                    className="px-2 py-0.5 bg-background border rounded text-xs font-mono"
                   >
                     {load.load_number}
                   </span>
@@ -332,31 +344,35 @@ export default function ReturnToAuditDialog({
             )}
           </div>
 
-          {/* Warning if not allowed */}
+          {/* Blocked Warning - Invoice has left the system */}
           {!allowed && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <Ban className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-red-700 dark:text-red-400">
-                  <span className="font-medium">Cannot return this invoice:</span>{" "}
-                  {reason}
+                  <span className="font-semibold">Cannot return this invoice</span>
+                  <p className="mt-0.5">{reason}</p>
                 </div>
               </div>
               {requiresVoidOrCreditMemo && (
-                <div className="text-sm text-muted-foreground pl-6">
-                  This invoice was already sent. Use <span className="font-medium">Void</span> or{" "}
-                  <span className="font-medium">Credit Memo</span> instead.
+                <div className="flex items-start gap-2 pt-2 border-t border-red-200 dark:border-red-700">
+                  <Info className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-600 dark:text-red-300">
+                    <span className="font-medium">Accounting best practice:</span>{" "}
+                    Use <span className="font-semibold">Void</span> (if not paid) or{" "}
+                    <span className="font-semibold">Credit Memo</span> (if paid/posted) instead.
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Warning box */}
+          {/* Standard Warning - Allowed but destructive */}
           {allowed && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-amber-700 dark:text-amber-400">
-                This action cannot be undone. The invoice will be marked as cancelled.
+                <span className="font-semibold">Warning:</span> This will cancel the invoice and return its loads to audit. This action cannot be undone.
               </div>
             </div>
           )}
