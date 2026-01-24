@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
+import { useTenantContext } from "@/contexts/TenantContext";
 import { 
   FileText, 
   Download, 
@@ -18,7 +19,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Loader2,
-  Eye
+  Eye,
+  UserPlus
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
 
@@ -48,8 +50,13 @@ export function ApplicationsManager() {
   const [currentPage, setCurrentPage] = useState(1);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [creatingSample, setCreatingSample] = useState(false);
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
+  const { isPlatformAdmin, effectiveTenant } = useTenantContext();
+  
+  // Internal gating for sample creation button
+  const isInternal = isPlatformAdmin && effectiveTenant?.release_channel === "internal";
 
   useEffect(() => {
     if (tenantId || !shouldFilter) {
@@ -198,6 +205,40 @@ export function ApplicationsManager() {
     }
   };
 
+  const handleCreateSampleApplication = async () => {
+    if (!tenantId) {
+      toast.error("No tenant context available");
+      return;
+    }
+    
+    setCreatingSample(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-sample-application", {
+        body: { tenant_id: tenantId },
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to create sample application");
+      }
+
+      toast.success(
+        data.updated 
+          ? "Sample application updated (John Smith)" 
+          : "Sample application created for John Smith"
+      );
+      
+      // Refresh the list
+      await loadApplications();
+    } catch (error: any) {
+      console.error("Error creating sample application:", error);
+      toast.error("Failed to create sample: " + (error.message || "Unknown error"));
+    } finally {
+      setCreatingSample(false);
+    }
+  };
+
   const getStatusBadge = (app: ApplicationRow) => {
     if (app.status === "submitted") {
       return <Badge className="bg-green-600">Submitted</Badge>;
@@ -267,7 +308,25 @@ export function ApplicationsManager() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {/* Internal Preview Button - rendered by parent if user is internal */}
+            {/* INTERNAL ONLY: Create Sample Application Button */}
+            {isInternal && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateSampleApplication}
+                disabled={creatingSample}
+                className="gap-2"
+              >
+                {creatingSample ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="h-4 w-4" />
+                )}
+                Create Sample
+                <Badge variant="secondary" className="ml-1 text-xs">INTERNAL</Badge>
+              </Button>
+            )}
+            {/* Internal Preview Button */}
             <InternalApplicationPreview />
           </div>
         </div>
