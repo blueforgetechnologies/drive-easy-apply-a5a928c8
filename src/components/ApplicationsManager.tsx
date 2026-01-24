@@ -24,7 +24,7 @@ import {
   FileSearch
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
-import { PDFPreviewDialog } from "./PDFPreviewDialog";
+
 
 interface ApplicationRow {
   id: string;
@@ -54,17 +54,12 @@ export function ApplicationsManager() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
   
-  // PDF Preview state
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewPdf, setPreviewPdf] = useState<string | null>(null);
-  const [previewFilename, setPreviewFilename] = useState("");
-  const [previewLoading, setPreviewLoading] = useState(false);
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
   const { isPlatformAdmin, effectiveTenant } = useTenantContext();
   
-  // Internal gating for sample creation button
-  const isInternal = isPlatformAdmin && effectiveTenant?.release_channel === "internal";
+  // Internal gating for sample creation button (platform admin OR internal channel)
+  const canCreateSample = isPlatformAdmin || effectiveTenant?.release_channel === "internal";
 
   useEffect(() => {
     if (tenantId || !shouldFilter) {
@@ -178,16 +173,13 @@ export function ApplicationsManager() {
   };
 
   const handlePreviewPDF = async (applicationId: string) => {
-    setPreviewOpen(true);
-    setPreviewLoading(true);
-    setPreviewPdf(null);
-    setPreviewFilename("");
+    // Open PDF in new tab to avoid Chrome iframe blocking
+    toast.info("Generating PDF preview...");
     
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
         toast.error("You must be logged in to preview");
-        setPreviewOpen(false);
         return;
       }
 
@@ -203,14 +195,26 @@ export function ApplicationsManager() {
         throw new Error(data.error || "Failed to generate PDF");
       }
 
-      setPreviewPdf(data.pdf_base64);
-      setPreviewFilename(data.filename);
+      // Convert base64 to blob and open in new tab
+      const byteCharacters = atob(data.pdf_base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Open in new tab - this bypasses Chrome's iframe PDF blocking
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      
+      // Revoke after a delay to allow the new tab to load
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      
+      toast.success("PDF opened in new tab");
     } catch (error: any) {
       console.error("Error generating PDF preview:", error);
       toast.error("Failed to preview PDF: " + (error.message || "Unknown error"));
-      setPreviewOpen(false);
-    } finally {
-      setPreviewLoading(false);
     }
   };
 
@@ -262,10 +266,17 @@ export function ApplicationsManager() {
         body: { tenant_id: tenantId },
       });
 
-      if (error) throw error;
+      // Surface full error details
+      if (error) {
+        console.error("Edge function error:", error);
+        toast.error(`Edge function error: ${JSON.stringify(error)}`);
+        return;
+      }
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to create sample application");
+      if (!data?.success) {
+        console.error("Create sample failed:", data);
+        toast.error(`Failed: ${JSON.stringify(data)}`);
+        return;
       }
 
       toast.success(
@@ -274,8 +285,9 @@ export function ApplicationsManager() {
           : "Sample application created for John Smith"
       );
       
-      // Refresh the list
+      // Refresh the list and auto-search for John
       await loadApplications();
+      setSearchQuery("john");
     } catch (error: any) {
       console.error("Error creating sample application:", error);
       toast.error("Failed to create sample: " + (error.message || "Unknown error"));
@@ -354,7 +366,7 @@ export function ApplicationsManager() {
           </div>
           <div className="flex items-center gap-2">
             {/* INTERNAL ONLY: Create Sample Application Button */}
-            {isInternal && (
+            {canCreateSample && (
               <Button
                 variant="outline"
                 size="sm"
@@ -550,15 +562,6 @@ export function ApplicationsManager() {
           </>
         )}
       </CardContent>
-      
-      {/* PDF Preview Dialog */}
-      <PDFPreviewDialog
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        pdfBase64={previewPdf}
-        filename={previewFilename}
-        isLoading={previewLoading}
-      />
     </Card>
   );
 }
