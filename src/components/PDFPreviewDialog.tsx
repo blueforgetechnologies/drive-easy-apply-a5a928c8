@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Download, Loader2, ZoomIn, ZoomOut, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 // Configure pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -40,6 +41,7 @@ export function PDFPreviewDialog({
   
   const cancelledRef = useRef(false);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const prevBase64Ref = useRef<string | null>(null);
 
   const renderPDF = useCallback(async (base64: string, scale: number) => {
     cancelledRef.current = false;
@@ -105,10 +107,16 @@ export function PDFPreviewDialog({
     }
   }, []);
 
-  // Re-render when zoom changes (only if we have a PDF)
+  // Re-render when zoom changes (only if we have a PDF and it's the same PDF)
   useEffect(() => {
     if (open && pdfBase64 && !isLoading) {
-      renderPDF(pdfBase64, zoom);
+      // Only re-render if zoom changed on the same PDF
+      if (prevBase64Ref.current === pdfBase64) {
+        renderPDF(pdfBase64, zoom);
+      } else {
+        prevBase64Ref.current = pdfBase64;
+        renderPDF(pdfBase64, zoom);
+      }
     }
   }, [open, pdfBase64, isLoading, zoom, renderPDF]);
 
@@ -120,6 +128,8 @@ export function PDFPreviewDialog({
       setTotalPages(0);
       setCurrentRenderPage(0);
       setError(null);
+      setZoom(1.2); // Reset zoom on close
+      prevBase64Ref.current = null;
       if (pdfDocRef.current) {
         pdfDocRef.current.destroy();
         pdfDocRef.current = null;
@@ -157,6 +167,10 @@ export function PDFPreviewDialog({
     setZoom((prev) => Math.max(prev - 0.2, 0.5));
   };
 
+  const handleResetZoom = () => {
+    setZoom(1.2);
+  };
+
   const showLoading = isLoading || (isRendering && pageImages.length === 0);
 
   return (
@@ -174,22 +188,32 @@ export function PDFPreviewDialog({
                 size="sm"
                 onClick={handleZoomOut}
                 disabled={zoom <= 0.5 || isRendering}
-                title="Zoom out"
+                title="Zoom out (0.5x min)"
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <span className="text-sm text-muted-foreground w-12 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetZoom}
+                disabled={isRendering}
+                className="w-14 text-xs font-mono"
+                title="Reset zoom"
+              >
                 {Math.round(zoom * 100)}%
-              </span>
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleZoomIn}
                 disabled={zoom >= 3 || isRendering}
-                title="Zoom in"
+                title="Zoom in (3x max)"
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
+              
+              {/* Separator */}
+              <div className="w-px h-6 bg-border mx-1" />
               
               {/* Download button */}
               <Button
