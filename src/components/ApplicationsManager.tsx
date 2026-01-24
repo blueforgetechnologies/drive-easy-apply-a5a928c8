@@ -274,7 +274,7 @@ export function ApplicationsManager() {
 
       if (!data?.success) {
         console.error("Create sample failed:", data);
-        toast.error(`Failed: ${JSON.stringify(data)}`);
+        toast.error(`Failed: ${data?.error || 'Unknown error'} - ${JSON.stringify(data?.details || {})}`);
         return;
       }
 
@@ -284,9 +284,15 @@ export function ApplicationsManager() {
           : "Sample application created for John Smith"
       );
       
-      // Refresh the list and auto-search for John
+      // Refresh the list, auto-search for John, and reset to page 1
       await loadApplications();
       setSearchQuery("john");
+      setCurrentPage(1);
+      
+      // Log the application ID for debugging
+      if (data.application_id) {
+        console.log(`Sample application ID: ${data.application_id}`);
+      }
     } catch (error: any) {
       console.error("Error creating sample application:", error);
       toast.error("Failed to create sample: " + (error.message || "Unknown error"));
