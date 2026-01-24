@@ -173,13 +173,21 @@ export function ApplicationsManager() {
   };
 
   const handlePreviewPDF = async (applicationId: string) => {
-    // Open PDF in new tab to avoid Chrome iframe blocking
+    // IMPORTANT: pre-open the tab synchronously so Chrome doesn't treat this as a blocked popup
+    const previewTab = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (!previewTab) {
+      toast.error("Popup blocked. Allow popups for this site.");
+      return;
+    }
+
+    previewTab.document.title = "Generating PDF...";
     toast.info("Generating PDF preview...");
-    
+
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
         toast.error("You must be logged in to preview");
+        previewTab.close();
         return;
       }
 
@@ -204,17 +212,22 @@ export function ApplicationsManager() {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: "application/pdf" });
       const blobUrl = URL.createObjectURL(blob);
-      
-      // Open in new tab - this bypasses Chrome's iframe PDF blocking
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
-      
-      // Revoke after a delay to allow the new tab to load
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+      // Navigate the already-opened tab to the blob URL
+      previewTab.location.href = blobUrl;
+
+      // Revoke after a longer delay to avoid breaking slow loads
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
       
       toast.success("PDF opened in new tab");
     } catch (error: any) {
       console.error("Error generating PDF preview:", error);
       toast.error("Failed to preview PDF: " + (error.message || "Unknown error"));
+      try {
+        previewTab.close();
+      } catch {
+        // ignore
+      }
     }
   };
 
