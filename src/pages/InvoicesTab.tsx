@@ -220,6 +220,8 @@ export default function InvoicesTab() {
       const loadIds = [...new Set(allInvoiceLoads.map(il => il.load_id))];
 
       // Step 3: Parallel fetch - email logs AND load info
+      const loadChunks = loadIds.length > 0 ? chunkArray(loadIds, 200) : [];
+      
       const [emailLogsResults, loadInfoResults] = await Promise.all([
         // Email logs (parallelized chunks)
         Promise.all(
@@ -235,12 +237,12 @@ export default function InvoicesTab() {
             }
 
             const elResult = await elQuery;
-            return (elResult.data as any) || [];
+            return (elResult.data as any[]) || [];
           })
         ),
-        // Load info for load_number (parallelized chunks)
-        loadIds.length > 0 ? Promise.all(
-          chunkArray(loadIds, 200).map(async (chunk) => {
+        // Load info for load_number (parallelized chunks) - always return array of arrays
+        Promise.all(
+          loadChunks.map(async (chunk) => {
             let loadQuery = supabase
               .from("loads" as any)
               .select("id, load_number")
@@ -251,9 +253,9 @@ export default function InvoicesTab() {
             }
 
             const loadResult = await loadQuery;
-            return (loadResult.data as any) || [];
+            return (loadResult.data as any[]) || [];
           })
-        ) : Promise.resolve([])
+        )
       ]);
       
       const allEmailLogs: EmailLog[] = emailLogsResults.flat();
@@ -312,23 +314,23 @@ export default function InvoicesTab() {
     return map;
   }, [emailLogs]);
 
-  // Build deduplicated docs per load (newest RC and newest BOL/POD per load)
+  // Build docs-per-load map (checks existence of each doc type per load)
   const docsPerLoad = useMemo(() => {
     const map = new Map<string, { hasRc: boolean; hasBol: boolean }>();
     
-    // Documents are already sorted by uploaded_at DESC
+    // Check existence of each document type per load
     for (const doc of loadDocuments) {
       if (!map.has(doc.load_id)) {
         map.set(doc.load_id, { hasRc: false, hasBol: false });
       }
       const entry = map.get(doc.load_id)!;
       
-      // Check for RC (only set if not already set - first one is newest)
-      if (doc.document_type === 'rate_confirmation' && !entry.hasRc) {
+      // Check for RC existence
+      if (doc.document_type === 'rate_confirmation') {
         entry.hasRc = true;
       }
-      // Check for BOL/POD - accept both 'pod' and 'proof_of_delivery'
-      if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') && !entry.hasBol) {
+      // Check for BOL/POD existence - accept both 'pod' and 'proof_of_delivery'
+      if (doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') {
         entry.hasBol = true;
       }
     }
@@ -418,7 +420,7 @@ export default function InvoicesTab() {
       const allLoadsHaveRc = totalLoads > 0 && rcHave === totalLoads;
       const allLoadsHaveBol = totalLoads > 0 && bolHave === totalLoads;
       
-      // Only mark missing if we have loads
+      // Only mark missing docs if we have loads
       if (totalLoads > 0 && !allLoadsHaveRc) missing.push('rate_confirmation');
       if (totalLoads > 0 && !allLoadsHaveBol) missing.push('bol_pod');
       
@@ -444,39 +446,41 @@ export default function InvoicesTab() {
         } else if (invoice.otr_status === 'failed') {
           delivery_status = 'failed';
         } else {
-          // OTR requires credit approval
-          if (creditApproval.status !== 'approved') {
+          // Check email fields first before credit check (to reduce tooltip noise)
+          const emailChecksMissing = missing.filter(m => ['to_email', 'cc_email'].includes(m));
+          if (emailChecksMissing.length > 0) {
+            delivery_status = 'needs_setup';
+          } else if (creditApproval.status !== 'approved') {
+            // OTR requires credit approval - only add if email checks pass
             missing.push('credit_not_approved');
             delivery_status = 'needs_setup';
           } else {
-            // OTR doesn't require RC/BOL for submission - only check email fields + credit
-            const otrMissing = missing.filter(m => !['rate_confirmation', 'bol_pod', 'no_loads'].includes(m));
-            if (otrMissing.length === 0) {
-              delivery_status = 'ready';
-            } else {
-              delivery_status = 'needs_setup';
-            }
+            // OTR doesn't require RC/BOL for submission
+            delivery_status = 'ready';
           }
         }
       } else if (invoice.billing_method === 'direct_email') {
         // Direct email: check email logs with robust status mapping
         const logStatus = latestLog?.status?.toLowerCase() || '';
         
-        // Delivered statuses
+        // Known delivered statuses
         if (logStatus === 'sent' || logStatus === 'delivered') {
           delivery_status = 'delivered';
         } 
-        // Failed statuses
+        // Known failed statuses
         else if (['failed', 'bounced', 'rejected', 'error'].includes(logStatus)) {
           delivery_status = 'failed';
         }
-        // In-progress statuses
+        // Known in-progress statuses
         else if (['queued', 'sending', 'retrying', 'pending'].includes(logStatus)) {
           delivery_status = 'sending';
         }
-        // No logs or passed all checks
+        // Unknown non-empty status - treat as in-progress (show raw status in tooltip)
+        else if (logStatus && logStatus.length > 0) {
+          delivery_status = 'sending';
+        }
+        // No logs - check if ready
         else if (missing.length === 0) {
-          // All checks pass including per-load RC/BOL
           delivery_status = 'ready';
         } else {
           delivery_status = 'needs_setup';
@@ -501,13 +505,12 @@ export default function InvoicesTab() {
     });
   }, [allInvoices, latestLogByInvoice, loadsByInvoice, docsPerLoad, accountingEmail, loadInfoMap]);
 
-  // Categorize invoices into tabs
+  // Categorize invoices into tabs (sending invoices go to Ready tab with different badge)
   const categorizedInvoices = useMemo(() => {
     const needs_setup: InvoiceWithDeliveryInfo[] = [];
     const ready: InvoiceWithDeliveryInfo[] = [];
     const delivered: InvoiceWithDeliveryInfo[] = [];
     const failed: InvoiceWithDeliveryInfo[] = [];
-    const sending: InvoiceWithDeliveryInfo[] = [];
     const paid: InvoiceWithDeliveryInfo[] = [];
     const overdue: InvoiceWithDeliveryInfo[] = [];
 
@@ -529,6 +532,8 @@ export default function InvoicesTab() {
           needs_setup.push(inv);
           break;
         case 'ready':
+        case 'sending':
+          // Both ready and sending go to the Ready tab
           ready.push(inv);
           break;
         case 'delivered':
@@ -537,14 +542,10 @@ export default function InvoicesTab() {
         case 'failed':
           failed.push(inv);
           break;
-        case 'sending':
-          // Show 'sending' invoices in ready tab with a different badge
-          ready.push(inv);
-          break;
       }
     }
 
-    return { needs_setup, ready, delivered, failed, sending, paid, overdue };
+    return { needs_setup, ready, delivered, failed, paid, overdue };
   }, [invoicesWithDeliveryInfo]);
 
   // Get filtered invoices based on current tab
@@ -690,7 +691,18 @@ export default function InvoicesTab() {
       case 'failed':
         return <Badge variant="destructive" className="text-xs">Failed</Badge>;
       case 'sending':
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs">Sending</Badge>;
+        // Show raw status in tooltip for sending state
+        const rawStatus = inv.last_attempt_status || 'sending';
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs">Sending</Badge>
+              </TooltipTrigger>
+              <TooltipContent>Status: {rawStatus}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
       case 'ready':
         return <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-xs">Ready</Badge>;
       case 'needs_setup':
