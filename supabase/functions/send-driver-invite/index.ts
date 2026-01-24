@@ -164,9 +164,9 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Created pending driver record:', applicationData.id);
     }
 
-    // Use the production app URL
+    // Use the production app URL with public_token (not raw id)
     const appUrl = "https://drive-easy-apply.lovable.app";
-    const applicationUrl = `${appUrl}/?invite=${inviteData.id}`;
+    const applicationUrl = `${appUrl}/?token=${inviteData.public_token}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
 

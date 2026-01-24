@@ -148,7 +148,7 @@ const steps = [
 ];
 
 interface ApplicationFormProps {
-  inviteId: string;
+  publicToken: string;
 }
 
 interface CompanyBranding {
@@ -156,11 +156,9 @@ interface CompanyBranding {
   logo_url: string | null;
 }
 
-export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
+export const ApplicationForm = ({ publicToken }: ApplicationFormProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [applicationData, setApplicationData] = useState<Partial<ApplicationData>>({
-    inviteId,
-  });
+  const [applicationData, setApplicationData] = useState<Partial<ApplicationData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -177,7 +175,7 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
         setLoadError(null);
 
         const { data, error } = await supabase.functions.invoke('load-application', {
-          body: { invite_id: inviteId },
+          body: { public_token: publicToken },
         });
 
         if (error) {
@@ -201,7 +199,6 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
           const app = data.application;
           setCurrentStep(app.current_step || 1);
           setApplicationData({
-            inviteId,
             personalInfo: app.personal_info || {},
             licenseInfo: app.license_info || {},
             employmentHistory: Array.isArray(app.employment_history) ? app.employment_history : [],
@@ -218,7 +215,6 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
         } else if (data.invite) {
           // Pre-fill from invite
           setApplicationData({
-            inviteId,
             personalInfo: {
               email: data.invite.email || '',
               firstName: data.invite.name?.split(' ')[0] || '',
@@ -235,7 +231,7 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
     };
 
     loadApplication();
-  }, [inviteId]);
+  }, [publicToken]);
 
   // Autosave function
   const saveStep = useCallback(async (stepKey: string, payload: any, step: number) => {
@@ -245,7 +241,7 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
       setIsSaving(true);
       const { data, error } = await supabase.functions.invoke('save-application-step', {
         body: {
-          invite_id: inviteId,
+          public_token: publicToken,
           step_key: stepKey,
           current_step: step,
           payload,
@@ -266,7 +262,7 @@ export const ApplicationForm = ({ inviteId }: ApplicationFormProps) => {
     } finally {
       setIsSaving(false);
     }
-  }, [inviteId, canEdit]);
+  }, [publicToken, canEdit]);
 
   // Debounced autosave
   const debouncedSave = useCallback((stepKey: string, payload: any, step: number) => {

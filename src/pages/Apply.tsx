@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const Apply = () => {
   const [searchParams] = useSearchParams();
-  const inviteId = searchParams.get("invite");
+  // Support both token param (new) and invite param (legacy fallback)
+  const publicToken = searchParams.get("token") || searchParams.get("invite");
   const [isValidating, setIsValidating] = useState(true);
   const [isValidInvite, setIsValidInvite] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -18,22 +19,29 @@ const Apply = () => {
   useEffect(() => {
     const validateInvite = async () => {
       // FAIL CLOSED: No token = immediate deny
-      if (!inviteId) {
+      if (!publicToken) {
         setIsValidating(false);
         setInviteError("No invitation token provided. A valid invite link is required to apply.");
         return;
       }
 
+      // Basic client-side validation (server does the real check)
+      if (publicToken.length < 32) {
+        setIsValidating(false);
+        setInviteError("Invalid invitation token format.");
+        return;
+      }
+
       try {
-        // Track that the invite link was opened (fire and forget)
+        // Track that the invite link was opened (fire and forget - uses legacy id if needed)
         supabase.functions.invoke("track-invite-open", {
-          body: { inviteId },
+          body: { publicToken },
         }).catch(() => {}); // Ignore tracking errors
 
         // SERVER-SIDE VALIDATION: Use edge function to validate token
         // This ensures tenant_id mapping is done server-side, not trusting client
         const { data, error } = await supabase.functions.invoke("load-application", {
-          body: { invite_id: inviteId },
+          body: { public_token: publicToken },
         });
 
         if (error) {
@@ -69,7 +77,7 @@ const Apply = () => {
     };
 
     validateInvite();
-  }, [inviteId]);
+  }, [publicToken]);
 
   // Show loading state while validating
   if (isValidating) {
@@ -160,7 +168,7 @@ const Apply = () => {
 
       {/* Application Form */}
       <main className="-mt-16 relative z-10">
-        <ApplicationForm inviteId={inviteId!} />
+        <ApplicationForm publicToken={publicToken!} />
       </main>
 
       {/* Footer */}

@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface SaveStepRequest {
-  invite_id: string;
+  public_token: string;
   step_key: string;
   current_step: number;
   payload: Record<string, unknown>;
@@ -30,13 +30,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { invite_id, step_key, current_step, payload }: SaveStepRequest = await req.json();
+    const { public_token, step_key, current_step, payload }: SaveStepRequest = await req.json();
 
-    // Validate required fields
-    if (!invite_id) {
+    // FAIL CLOSED: Token is required
+    if (!public_token || typeof public_token !== 'string' || public_token.length < 32) {
+      console.error("Invalid or missing public_token (fail-closed)");
       return new Response(
-        JSON.stringify({ error: "invite_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid invitation token. Access denied." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -60,11 +61,11 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Validate invite exists and get tenant_id (server-side token validation)
+    // Validate invite exists by public_token (server-side token validation - fail closed)
     const { data: invite, error: inviteError } = await supabaseService
       .from('driver_invites')
       .select('id, tenant_id, email, application_started_at')
-      .eq('id', invite_id)
+      .eq('public_token', public_token)
       .maybeSingle();
 
     if (inviteError) {
@@ -75,8 +76,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // FAIL CLOSED: Unknown/invalid token = deny
     if (!invite) {
-      console.error("Invalid invite_id:", invite_id);
+      console.error("Invalid public_token (fail-closed):", public_token.substring(0, 8) + "...");
       return new Response(
         JSON.stringify({ error: "Invalid invitation token. Access denied." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -87,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: existingApp, error: appError } = await supabaseService
       .from('applications')
       .select('id, tenant_id, status')
-      .eq('invite_id', invite_id)
+      .eq('invite_id', invite.id)
       .maybeSingle();
 
     if (appError) {
@@ -99,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!existingApp) {
-      console.error("No application found for invite:", invite_id);
+      console.error("No application found for invite (token validated)");
       return new Response(
         JSON.stringify({ error: "Application not found for this invitation" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -165,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
       await supabaseService
         .from('driver_invites')
         .update({ application_started_at: new Date().toISOString() })
-        .eq('id', invite_id);
+        .eq('id', invite.id);
     }
 
     // Update the application
@@ -184,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Saved step ${step_key} (step ${current_step}) for application ${existingApp.id}`);
+    console.log(`Saved step ${step_key} (step ${current_step}) for application ${existingApp.id} (token validated)`);
 
     return new Response(
       JSON.stringify({ 
