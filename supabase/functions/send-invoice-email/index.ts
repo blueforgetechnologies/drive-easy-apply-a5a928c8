@@ -176,13 +176,13 @@ Deno.serve(async (req: Request) => {
 
     if (loadIds.length > 0) {
       // Use correct schema: file_url, file_name, document_type
-      // Order by created_at DESC to get newest first
+      // Order by uploaded_at DESC to get newest first
       const { data: documents } = await supabase
         .from("load_documents")
-        .select("id, load_id, document_type, file_name, file_url, created_at")
+        .select("id, load_id, document_type, file_name, file_url, uploaded_at")
         .in("load_id", loadIds)
         .in("document_type", ["rate_confirmation", "bill_of_lading", "pod"])
-        .order("created_at", { ascending: false });
+        .order("uploaded_at", { ascending: false });
 
       if (!documents || documents.length === 0) {
         warnings.push("No rate confirmation or BOL documents found for attached loads");

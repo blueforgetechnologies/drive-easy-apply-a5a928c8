@@ -5,20 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { 
   Mail, DollarSign, Loader2, CheckCircle2, XCircle, 
-  FileText, Package, AlertCircle, RefreshCw, Clock, Send
+  FileText, Package, AlertCircle, RefreshCw, Clock, Send, RotateCcw
 } from "lucide-react";
 import { useTenantId } from "@/hooks/useTenantId";
+
+interface DocumentInfo {
+  id: string;
+  load_id: string;
+  document_type: string;
+  file_name: string | null;
+  uploaded_at: string | null;
+}
 
 interface DeliveryInfo {
   billing_method: 'otr' | 'direct_email' | 'unknown';
   to_email: string | null;
   cc_email: string | null;
-  has_rate_confirmation: boolean;
-  has_bill_of_lading: boolean;
+  rate_confirmations: DocumentInfo[];
+  bills_of_lading: DocumentInfo[];
   customer_name: string | null;
 }
 
@@ -102,20 +111,36 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
 
       const loadIds = invoiceLoads?.map((il: any) => il.load_id) || [];
 
-      // Check for documents
-      let hasRc = false;
-      let hasBol = false;
+      // Load documents with deduplication matching edge function logic
+      // Order by created_at DESC to get newest first
+      const rateConfirmations: DocumentInfo[] = [];
+      const billsOfLading: DocumentInfo[] = [];
 
       if (loadIds.length > 0) {
         const { data: documents } = await supabase
           .from("load_documents")
-          .select("document_type")
+          .select("id, load_id, document_type, file_name, uploaded_at")
           .in("load_id", loadIds)
-          .in("document_type", ["rate_confirmation", "bill_of_lading", "pod"]);
+          .in("document_type", ["rate_confirmation", "bill_of_lading", "pod"])
+          .order("uploaded_at", { ascending: false });
 
         if (documents) {
-          hasRc = documents.some(d => d.document_type === "rate_confirmation");
-          hasBol = documents.some(d => d.document_type === "bill_of_lading" || d.document_type === "pod");
+          // Deduplicate: keep only newest RC and newest BOL/POD per load (matching edge function)
+          const seenRcByLoad = new Set<string>();
+          const seenBolByLoad = new Set<string>();
+
+          for (const doc of documents) {
+            const isRc = doc.document_type === "rate_confirmation";
+            const isBol = doc.document_type === "bill_of_lading" || doc.document_type === "pod";
+            
+            if (isRc && !seenRcByLoad.has(doc.load_id)) {
+              seenRcByLoad.add(doc.load_id);
+              rateConfirmations.push(doc as DocumentInfo);
+            } else if (isBol && !seenBolByLoad.has(doc.load_id)) {
+              seenBolByLoad.add(doc.load_id);
+              billsOfLading.push(doc as DocumentInfo);
+            }
+          }
         }
       }
 
@@ -131,8 +156,8 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
         billing_method: invoice.billing_method as 'otr' | 'direct_email' | 'unknown',
         to_email: customerBillingEmail || customerEmail,
         cc_email: company?.accounting_email || null,
-        has_rate_confirmation: hasRc,
-        has_bill_of_lading: hasBol,
+        rate_confirmations: rateConfirmations,
+        bills_of_lading: billsOfLading,
         customer_name: customerName,
       });
 
@@ -234,9 +259,14 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
     if (invoice.status === 'sent' || invoice.status === 'paid') return { can: false, reason: "Already sent" };
     if (!deliveryInfo.to_email) return { can: false, reason: "No customer email" };
     if (!deliveryInfo.cc_email) return { can: false, reason: "No accounting email in company profile" };
-    if (!deliveryInfo.has_rate_confirmation) return { can: false, reason: "Missing Rate Confirmation" };
-    if (!deliveryInfo.has_bill_of_lading) return { can: false, reason: "Missing BOL/POD" };
+    if (deliveryInfo.rate_confirmations.length === 0) return { can: false, reason: "Missing Rate Confirmation" };
+    if (deliveryInfo.bills_of_lading.length === 0) return { can: false, reason: "Missing BOL/POD" };
     return { can: true, reason: null };
+  };
+
+  const handleRetry = (logId: string) => {
+    // Retry is same as send - just trigger send again
+    handleSendDirectEmail();
   };
 
   const canSubmitOtr = () => {
@@ -306,31 +336,87 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
         )}
 
         {/* Attachments Checklist */}
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Attachments</span>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center gap-1.5 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span>Invoice</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              {deliveryInfo?.has_rate_confirmation ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <XCircle className="h-4 w-4 text-destructive" />
-              )}
-              <span>RC</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              {deliveryInfo?.has_bill_of_lading ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <XCircle className="h-4 w-4 text-destructive" />
-              )}
-              <span>BOL/POD</span>
+        <TooltipProvider>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Attachments</span>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Invoice - always generated by edge function */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 text-sm cursor-help">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span>Invoice</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Invoice HTML generated on send</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Rate Confirmation */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 text-sm cursor-help">
+                    {deliveryInfo && deliveryInfo.rate_confirmations.length > 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    )}
+                    <span>RC</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {deliveryInfo && deliveryInfo.rate_confirmations.length > 0 ? (
+                    <div className="space-y-1">
+                      {deliveryInfo.rate_confirmations.map((doc) => (
+                        <p key={doc.id} className="text-xs">
+                          {doc.file_name || 'rate_confirmation.pdf'}
+                          <br />
+                          <span className="text-muted-foreground">
+                            {doc.uploaded_at ? format(new Date(doc.uploaded_at), "M/d/yy h:mm a") : '—'}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs">No Rate Confirmation uploaded</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+
+              {/* BOL/POD */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 text-sm cursor-help">
+                    {deliveryInfo && deliveryInfo.bills_of_lading.length > 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    )}
+                    <span>BOL/POD</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {deliveryInfo && deliveryInfo.bills_of_lading.length > 0 ? (
+                    <div className="space-y-1">
+                      {deliveryInfo.bills_of_lading.map((doc) => (
+                        <p key={doc.id} className="text-xs">
+                          {doc.file_name || 'bol.pdf'}
+                          <br />
+                          <span className="text-muted-foreground">
+                            {doc.uploaded_at ? format(new Date(doc.uploaded_at), "M/d/yy h:mm a") : '—'}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs">No BOL/POD uploaded</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
-        </div>
+        </TooltipProvider>
 
         <Separator />
 
@@ -433,13 +519,14 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="max-h-[200px] overflow-y-auto">
+              <div className="max-h-[250px] overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs py-2">Time</TableHead>
                       <TableHead className="text-xs py-2">Status</TableHead>
-                      <TableHead className="text-xs py-2">To</TableHead>
+                      <TableHead className="text-xs py-2">Details</TableHead>
+                      <TableHead className="text-xs py-2"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -455,8 +542,38 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
                             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs py-1.5 truncate max-w-[100px]" title={log.to_email}>
-                          {log.to_email}
+                        <TableCell className="text-xs py-1.5 max-w-[140px]">
+                          {log.status === 'sent' && log.resend_message_id ? (
+                            <span 
+                              className="font-mono text-[10px] text-muted-foreground truncate block" 
+                              title={log.resend_message_id}
+                            >
+                              ID: {log.resend_message_id.slice(0, 10)}...
+                            </span>
+                          ) : log.error ? (
+                            <span 
+                              className="text-destructive text-[10px] truncate block" 
+                              title={log.error}
+                            >
+                              {log.error.slice(0, 30)}{log.error.length > 30 ? '...' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-[10px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-1.5">
+                          {log.status === 'failed' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => handleRetry(log.id)}
+                              disabled={sending}
+                            >
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                              Retry
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

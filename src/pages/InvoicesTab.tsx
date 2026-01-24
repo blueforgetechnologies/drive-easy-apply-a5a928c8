@@ -89,6 +89,7 @@ export default function InvoicesTab() {
   const [pendingLoads, setPendingLoads] = useState<PendingLoad[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [factoringCompany, setFactoringCompany] = useState<string | null>(null);
+  const [accountingEmail, setAccountingEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -126,7 +127,7 @@ export default function InvoicesTab() {
     try {
       let query = supabase
         .from("company_profile")
-        .select("factoring_company_name")
+        .select("factoring_company_name, accounting_email")
         .limit(1);
       
       if (shouldFilter && tenantId) {
@@ -136,6 +137,7 @@ export default function InvoicesTab() {
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
         setFactoringCompany((data[0] as any).factoring_company_name);
+        setAccountingEmail((data[0] as any).accounting_email || null);
       }
     } catch (error) {
       console.error("Error loading factoring company:", error);
@@ -978,6 +980,7 @@ export default function InvoicesTab() {
                 <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs">CC</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Status</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Days</TableHead>
                 <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
@@ -988,7 +991,7 @@ export default function InvoicesTab() {
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-12 text-center">
+                  <TableCell colSpan={10} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <FileText className="h-10 w-10 mb-3 opacity-50" />
                       <p className="text-base font-medium">No {filter} invoices</p>
@@ -1031,6 +1034,13 @@ export default function InvoicesTab() {
                       <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
                       <TableCell className="text-xs max-w-[120px] truncate" title={customerEmail || ""}>
                         {customerEmail || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[120px] truncate" title={accountingEmail || ""}>
+                        {invoice.billing_method === 'direct_email' ? (
+                          accountingEmail || <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                       <TableCell className={daysSince > 30 ? "text-destructive font-medium" : ""}>
