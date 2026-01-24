@@ -435,6 +435,7 @@ export function ApplicationReviewDrawer({
               <div className="space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Actions</p>
                 
+                {/* PDF Actions */}
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
@@ -461,6 +462,8 @@ export function ApplicationReviewDrawer({
                   </Button>
                 </div>
 
+                {/* Workflow Actions */}
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Workflow</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="default"
