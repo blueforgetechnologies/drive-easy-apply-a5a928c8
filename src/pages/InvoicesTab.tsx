@@ -753,7 +753,7 @@ export default function InvoicesTab() {
         <div className="flex items-center gap-0">
           {[
             { key: "pending", label: "Pending", icon: Clock, activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+            { key: "draft", label: "Draft", icon: null, activeClass: "btn-glossy-dark", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset" },
             { key: "sent", label: "Sent", icon: null, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue" },
             { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
