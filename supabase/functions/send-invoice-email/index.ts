@@ -312,6 +312,12 @@ Deno.serve(async (req: Request) => {
         warnings: warnings.length > 0 ? warnings : null,
       });
 
+      // Update invoice status to failed
+      await supabase
+        .from("invoices")
+        .update({ status: "failed" })
+        .eq("id", invoice_id);
+
       return new Response(
         JSON.stringify({ success: false, error: errorMessage }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
