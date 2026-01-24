@@ -13,6 +13,7 @@ import { format, differenceInYears } from "date-fns";
 import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
+import { ApplicationsManager } from "@/components/ApplicationsManager";
 import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { exportToExcel, mapExcelRowToEntity } from "@/lib/excel-utils";
@@ -84,6 +85,8 @@ export default function DriversTab() {
         await loadInvitations();
       } else if (filter === "inactive") {
         await loadInactiveDrivers();
+      } else if (filter === "applications") {
+        // Applications Manager handles its own loading
       }
     } finally {
       setLoading(false);
@@ -614,6 +617,7 @@ export default function DriversTab() {
             { key: "inactive", label: "Inactive", activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
             { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
             { key: "invitations", label: "Invitations", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "applications", label: "Applications", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
           ].map((status) => (
             <Button
               key={status.key}
@@ -984,6 +988,8 @@ export default function DriversTab() {
       )}
 
       {filter === "active" && <DraftApplications />}
+
+      {filter === "applications" && <ApplicationsManager />}
 
       {/* Import Dialog */}
       <ExcelImportDialog
