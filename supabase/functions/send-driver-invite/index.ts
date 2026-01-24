@@ -143,13 +143,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Use the production app URL
-    const appUrl = "https://nexustechsolution.com";
+    const appUrl = "https://drive-easy-apply.lovable.app";
     const applicationUrl = `${appUrl}/?invite=${inviteData.id}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <noreply@nexustechsolution.com>",
+      from: "Driver Application <noreply@blueforgetechnologies.org>",
       to: [email],
       subject: "Complete Your Driver Employment Application",
       html: `
