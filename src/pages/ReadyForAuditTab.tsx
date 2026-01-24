@@ -4,19 +4,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, FileCheck } from "lucide-react";
+import { Search, FileCheck, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import AuditDetailInline from "@/components/AuditDetailInline";
+import { useTenantQuery } from "@/hooks/useTenantQuery";
 
 export default function ReadyForAuditTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
+  const { tenantId, shouldFilter, isReady } = useTenantQuery();
 
   const { data: loads, isLoading } = useQuery({
-    queryKey: ["ready-for-audit-loads"],
+    queryKey: ["ready-for-audit-loads", tenantId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Query loads that are ready for audit OR have pending_invoice financial status (safety net)
+      // Exclude loads that are already invoiced
+      let query = supabase
         .from("loads")
         .select(`
           *,
@@ -27,12 +31,21 @@ export default function ReadyForAuditTab() {
           load_owner:load_owner_id(first_name, last_name),
           driver:assigned_driver_id(personal_info)
         `)
-        .in("status", ["ready_for_audit", "set_aside"])
+        // Include: ready_for_audit, set_aside, OR closed with pending_invoice (orphaned)
+        .or("status.in.(ready_for_audit,set_aside),and(status.eq.closed,financial_status.eq.pending_invoice)")
+        .neq("financial_status", "invoiced")
         .order("completed_at", { ascending: false });
 
+      // Apply tenant scoping
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: isReady,
   });
 
   const filteredLoads = loads?.filter((load) => {
@@ -152,17 +165,31 @@ export default function ReadyForAuditTab() {
                     : "";
                   const driverName = getDriverName(load.driver);
                   const isSetAside = load.status === "set_aside";
+                  // Orphaned load: status is closed but financial_status is pending_invoice
+                  const isOrphaned = load.status === "closed" && load.financial_status === "pending_invoice";
 
                   return (
                     <TableRow 
                       key={load.id} 
-                      className={`cursor-pointer hover:bg-muted/50 transition-colors ${isSetAside ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : "border-l-4 border-l-primary"}`}
+                      className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                        isOrphaned 
+                          ? "bg-red-50 dark:bg-red-950/20 border-l-4 border-l-red-500" 
+                          : isSetAside 
+                            ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" 
+                            : "border-l-4 border-l-primary"
+                      }`}
                       onClick={() => setSelectedLoadId(load.id)}
                     >
                       <TableCell className="py-2 px-3">
                         <div className="flex items-center gap-2">
                           <div className="font-medium text-sm">{load.load_number}</div>
-                          {isSetAside && (
+                          {isOrphaned && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-red-400 to-red-600 text-white shadow-sm flex items-center gap-1" title="Invoice creation failed - load returned to audit">
+                              <AlertTriangle className="h-3 w-3" />
+                              Audit Error
+                            </span>
+                          )}
+                          {isSetAside && !isOrphaned && (
                             <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
                               Set Aside
                             </span>
