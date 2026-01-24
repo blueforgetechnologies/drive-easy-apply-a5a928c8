@@ -86,7 +86,7 @@ export function useAccountingCounts(): AccountingCounts {
           .select("id", { count: "exact", head: true })
           .eq("financial_status", "pending_invoice"),
         query("invoices")
-          .select("id, status, billing_method, customer_id, otr_submitted_at, otr_status, customers(email, billing_email)"),
+          .select("id, status, billing_method, customer_id, otr_submitted_at, otr_status, customers(email, billing_email, otr_approval_status, factoring_approval)"),
         query("company_profile")
           .select("accounting_email")
           .limit(1),
@@ -122,47 +122,44 @@ export function useAccountingCounts(): AccountingCounts {
         };
       }
 
-      // Fetch invoice_loads for these invoices (chunked)
-      let allInvoiceLoads: { invoice_id: string; load_id: string }[] = [];
+      // Fetch invoice_loads for these invoices (parallelized chunks)
       const invoiceChunks = chunkArray(invoiceIds, 200);
       
-      for (const chunk of invoiceChunks) {
-        const ilResult = await query("invoice_loads")
-          .select("invoice_id, load_id")
-          .in("invoice_id", chunk);
-        if (ilResult.data) {
-          allInvoiceLoads = allInvoiceLoads.concat(ilResult.data as any);
-        }
-      }
+      const invoiceLoadsResults = await Promise.all(
+        invoiceChunks.map(chunk => 
+          query("invoice_loads")
+            .select("invoice_id, load_id")
+            .in("invoice_id", chunk)
+        )
+      );
+      const allInvoiceLoads = invoiceLoadsResults.flatMap(r => (r.data as any[]) || []);
       
       const loadIds = [...new Set(allInvoiceLoads.map(il => il.load_id))];
 
-      // Fetch email logs for these invoices (chunked)
-      let allEmailLogs: { invoice_id: string; status: string }[] = [];
-      for (const chunk of invoiceChunks) {
-        const elResult = await query("invoice_email_log")
-          .select("invoice_id, status")
-          .in("invoice_id", chunk)
-          .order("created_at", { ascending: false });
-        if (elResult.data) {
-          allEmailLogs = allEmailLogs.concat(elResult.data as any);
-        }
-      }
+      // Parallel fetch: email logs and load_documents
+      const [emailLogsResults, loadDocsResults] = await Promise.all([
+        // Email logs (parallelized chunks)
+        Promise.all(
+          invoiceChunks.map(chunk => 
+            query("invoice_email_log")
+              .select("invoice_id, status")
+              .in("invoice_id", chunk)
+              .order("created_at", { ascending: false })
+          )
+        ),
+        // Load documents (parallelized chunks)
+        loadIds.length > 0 ? Promise.all(
+          chunkArray(loadIds, 200).map(chunk => 
+            query("load_documents")
+              .select("load_id, document_type")
+              .in("load_id", chunk)
+              .order("uploaded_at", { ascending: false })
+          )
+        ) : Promise.resolve([])
+      ]);
 
-      // Fetch load_documents for these loads (chunked)
-      let allLoadDocs: { load_id: string; document_type: string }[] = [];
-      if (loadIds.length > 0) {
-        const loadChunks = chunkArray(loadIds, 200);
-        for (const chunk of loadChunks) {
-          const ldResult = await query("load_documents")
-            .select("load_id, document_type")
-            .in("load_id", chunk)
-            .order("uploaded_at", { ascending: false });
-          if (ldResult.data) {
-            allLoadDocs = allLoadDocs.concat(ldResult.data as any);
-          }
-        }
-      }
+      const allEmailLogs = emailLogsResults.flatMap(r => (r.data as any[]) || []);
+      const allLoadDocs = loadDocsResults.flatMap(r => (r.data as any[]) || []);
 
       // Build latest email log per invoice (first seen = latest due to DESC order)
       const latestLogByInvoice = new Map<string, string>();
@@ -206,6 +203,15 @@ export function useAccountingCounts(): AccountingCounts {
         overdue: 0 
       };
 
+      // Helper to normalize credit approval
+      const normalizeCreditApproval = (otrStatus: string | null, factoringStatus: string | null): string => {
+        const status = otrStatus || factoringStatus;
+        if (!status) return 'unknown';
+        const normalized = status.toLowerCase().trim();
+        if (normalized === 'approved') return 'approved';
+        return normalized;
+      };
+
       for (const inv of invoices) {
         if (inv.status === 'paid') {
           counts.paid++;
@@ -226,8 +232,9 @@ export function useAccountingCounts(): AccountingCounts {
 
         // Check per-load doc coverage
         const loadIdsForInv = loadsByInvoice.get(inv.id) || [];
-        let allLoadsHaveRc = loadIdsForInv.length > 0;
-        let allLoadsHaveBol = loadIdsForInv.length > 0;
+        const hasLoads = loadIdsForInv.length > 0;
+        let allLoadsHaveRc = hasLoads;
+        let allLoadsHaveBol = hasLoads;
         
         for (const lid of loadIdsForInv) {
           const docs = docsPerLoad.get(lid);
@@ -235,25 +242,39 @@ export function useAccountingCounts(): AccountingCounts {
           if (!docs?.hasBol) allLoadsHaveBol = false;
         }
 
-        const latestLogStatus = latestLogByInvoice.get(inv.id);
+        const latestLogStatus = (latestLogByInvoice.get(inv.id) || '').toLowerCase();
+        
+        // Credit approval check for OTR
+        const creditApproval = normalizeCreditApproval(
+          inv.customers?.otr_approval_status || null,
+          inv.customers?.factoring_approval || null
+        );
         
         let deliveryStatus: 'needs_setup' | 'ready' | 'delivered' | 'failed' = 'needs_setup';
         
-        if (!hasValidBillingMethod) {
+        // No billing method OR no loads => needs_setup
+        if (!hasValidBillingMethod || !hasLoads) {
           deliveryStatus = 'needs_setup';
         } else if (inv.billing_method === 'otr') {
           if (inv.otr_submitted_at) {
             deliveryStatus = 'delivered';
           } else if (inv.otr_status === 'failed') {
             deliveryStatus = 'failed';
+          } else if (creditApproval !== 'approved') {
+            // OTR requires credit approval
+            deliveryStatus = 'needs_setup';
           } else if (hasToEmail && hasCcEmail) {
             deliveryStatus = 'ready';
           }
         } else if (inv.billing_method === 'direct_email') {
-          if (latestLogStatus === 'sent') {
+          // Robust status mapping
+          if (latestLogStatus === 'sent' || latestLogStatus === 'delivered') {
             deliveryStatus = 'delivered';
-          } else if (latestLogStatus === 'failed') {
+          } else if (['failed', 'bounced', 'rejected', 'error'].includes(latestLogStatus)) {
             deliveryStatus = 'failed';
+          } else if (['queued', 'sending', 'retrying', 'pending'].includes(latestLogStatus)) {
+            // In-progress treated as ready (will show in Ready tab)
+            deliveryStatus = 'ready';
           } else if (hasToEmail && hasCcEmail && allLoadsHaveRc && allLoadsHaveBol) {
             deliveryStatus = 'ready';
           }
