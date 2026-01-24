@@ -241,17 +241,17 @@ export default function DedupCostTab() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Window</TableHead>
-                    <TableHead className="text-right">Content Unique</TableHead>
-                    <TableHead className="text-right">Total Receipts</TableHead>
-                    <TableHead className="text-right">Dedup Savings %</TableHead>
-                    <TableHead className="text-right">Payload URL %</TableHead>
-                    <TableHead className="text-right">Queue Total</TableHead>
-                    <TableHead className="text-right">Queue Collisions</TableHead>
-                    <TableHead className="text-right">Unroutable</TableHead>
+                    <TableHead className="w-[100px]">Window</TableHead>
+                    <TableHead className="w-[100px] text-right">Content Unique</TableHead>
+                    <TableHead className="w-[100px] text-right">Total Receipts</TableHead>
+                    <TableHead className="w-[110px] text-right">Dedup Savings %</TableHead>
+                    <TableHead className="w-[110px] text-right">Payload URL %</TableHead>
+                    <TableHead className="w-[90px] text-right">Queue Total</TableHead>
+                    <TableHead className="w-[110px] text-right">Queue Collisions</TableHead>
+                    <TableHead className="w-[110px] text-right">Unroutable</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
