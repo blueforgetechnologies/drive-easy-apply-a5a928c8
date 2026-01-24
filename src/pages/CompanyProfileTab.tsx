@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Building2, Upload, X, Image, Landmark, Truck } from "lucide-react";
+import { Building2, Upload, X, Image, Landmark, Truck, Calculator } from "lucide-react";
 // PDF.js removed to reduce bundle size - PDF upload converts to image on server
 
 export default function CompanyProfileTab() {
@@ -360,6 +360,45 @@ export default function CompanyProfileTab() {
                 onChange={(e) => updateField("website", e.target.value)}
                 placeholder="https://www.example.com"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Accounting Department Section */}
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-blue-600" />
+              Accounting Department
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label>Contact Name</Label>
+                <Input
+                  value={profile?.accounting_contact_name || ""}
+                  onChange={(e) => updateField("accounting_contact_name", e.target.value)}
+                  placeholder="Jane Smith"
+                />
+              </div>
+              <div>
+                <Label>Accounting Email</Label>
+                <Input
+                  type="email"
+                  value={profile?.accounting_email || ""}
+                  onChange={(e) => updateField("accounting_email", e.target.value)}
+                  placeholder="accounting@company.com"
+                />
+              </div>
+              <div>
+                <Label>Accounting Phone</Label>
+                <Input
+                  value={profile?.accounting_phone || ""}
+                  onChange={(e) => updateField("accounting_phone", e.target.value)}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

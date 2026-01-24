@@ -725,6 +725,9 @@ export type Database = {
       }
       company_profile: {
         Row: {
+          accounting_contact_name: string | null
+          accounting_email: string | null
+          accounting_phone: string | null
           address: string | null
           billing_terms: string | null
           city: string | null
@@ -759,6 +762,9 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          accounting_contact_name?: string | null
+          accounting_email?: string | null
+          accounting_phone?: string | null
           address?: string | null
           billing_terms?: string | null
           city?: string | null
@@ -793,6 +799,9 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          accounting_contact_name?: string | null
+          accounting_email?: string | null
+          accounting_phone?: string | null
           address?: string | null
           billing_terms?: string | null
           city?: string | null
