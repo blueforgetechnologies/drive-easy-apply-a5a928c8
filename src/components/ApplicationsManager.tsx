@@ -82,6 +82,7 @@ export function ApplicationsManager() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   
   // Review drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -342,6 +343,29 @@ export function ApplicationsManager() {
     }
   };
 
+  // Quick approve a single application (inline row action)
+  const handleQuickApprove = async (applicationId: string) => {
+    setApprovingId(applicationId);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: "approved", 
+          driver_status: "active",
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+      toast.success("Application approved - driver set to Active");
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Failed to approve: " + error.message);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   // Bulk actions
   const handleBulkApprove = async () => {
     if (selectedIds.size === 0) return;
@@ -579,16 +603,21 @@ export function ApplicationsManager() {
           </Button>
         </div>
 
-        {/* Search + Bulk Actions */}
+        {/* Search + Bulk Actions + Tip */}
         <div className="px-4 py-3 flex items-center justify-between gap-4">
-          <div className="relative w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search name, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search name, email, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground hidden md:inline">
+              💡 Click a row to review and approve
+            </span>
           </div>
 
           {/* Bulk Actions */}
@@ -647,99 +676,162 @@ export function ApplicationsManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedApplications.map((app) => (
-                    <TableRow key={app.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.has(app.id)}
-                          onCheckedChange={() => toggleSelect(app.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {getApplicantName(app.personal_info)}
-                          {needsReview(app) && (
-                            <AlertTriangle className="h-3 w-3 text-amber-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{app.personal_info?.email || "—"}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {app.personal_info?.phone || "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(app)}</TableCell>
-                      <TableCell>{getDriverStatusBadge(app.driver_status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{ width: `${((app.current_step || 1) / 9) * 100}%` }}
-                            />
+                  {paginatedApplications.map((app) => {
+                    const isSubmittedOrPending = app.status === "submitted" || app.status === "pending";
+                    const canApprove = isSubmittedOrPending && app.status !== "approved" && app.status !== "rejected";
+                    
+                    return (
+                      <TableRow 
+                        key={app.id} 
+                        className="hover:bg-muted/50 cursor-pointer group"
+                        onClick={(e) => {
+                          // Don't open drawer if clicking on interactive elements
+                          const target = e.target as HTMLElement;
+                          if (target.closest('button, [role="menuitem"], [role="checkbox"], a')) return;
+                          handleOpenDrawer(app);
+                        }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(app.id)}
+                            onCheckedChange={() => toggleSelect(app.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {getApplicantName(app.personal_info)}
+                            {needsReview(app) && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
+                            {isSubmittedOrPending && app.current_step === 9 && !needsReview(app) && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-green-500 text-green-600">
+                                Ready
+                              </Badge>
+                            )}
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {app.current_step || 1}/9
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {app.submitted_at
-                          ? format(new Date(app.submitted_at), "MM/dd/yy HH:mm")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {/* Primary action: Open Review Drawer */}
-                          <Button
-                            onClick={() => handleOpenDrawer(app)}
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title="Review Application"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          
-                          {/* More actions dropdown - contains all secondary actions */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{app.personal_info?.email || "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {app.personal_info?.phone || "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(app)}</TableCell>
+                        <TableCell>{getDriverStatusBadge(app.driver_status)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full transition-all"
+                                style={{ width: `${((app.current_step || 1) / 9) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {app.current_step || 1}/9
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {app.submitted_at
+                            ? format(new Date(app.submitted_at), "MM/dd/yy HH:mm")
+                            : "—"}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1 items-center">
+                            {/* Contextual Primary Action */}
+                            {canApprove ? (
                               <Button
+                                onClick={() => handleQuickApprove(app.id)}
+                                size="sm"
+                                className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white gap-1"
+                                disabled={approvingId === app.id}
+                              >
+                                {approvingId === app.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                )}
+                                Approve
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => handleOpenDrawer(app)}
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
+                                title="Review Application"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                View Full Details
-                              </DropdownMenuItem>
-                              {app.invite_id && invites.has(app.invite_id) && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleOpenPublicLink(app.invite_id!)}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    Open Public Link
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleResendInvite(app)}
-                                    disabled={resendingId === app.id}
-                                  >
-                                    <RotateCw className="h-4 w-4 mr-2" />
-                                    Resend Invite
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            )}
+                            
+                            {/* More actions dropdown */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenDrawer(app)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Review Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadPDF(app.id)} disabled={downloadingId === app.id}>
+                                  {downloadingId === app.id ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4 mr-2" />
+                                  )}
+                                  Download PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  View Full Details
+                                </DropdownMenuItem>
+                                {canApprove && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setSelectedApplication(app);
+                                        setDrawerOpen(true);
+                                      }}
+                                      className="text-destructive"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Reject...
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {app.invite_id && invites.has(app.invite_id) && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleOpenPublicLink(app.invite_id!)}>
+                                      <ExternalLink className="h-4 w-4 mr-2" />
+                                      Open Public Link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleResendInvite(app)}
+                                      disabled={resendingId === app.id}
+                                    >
+                                      <RotateCw className="h-4 w-4 mr-2" />
+                                      Resend Invite
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
