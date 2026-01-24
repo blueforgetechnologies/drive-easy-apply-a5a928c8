@@ -6,12 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { 
-  FileText, 
   Download, 
   ExternalLink, 
   RotateCw, 
@@ -21,15 +21,34 @@ import {
   Loader2,
   Eye,
   UserPlus,
-  FileSearch
+  FileSearch,
+  CheckCircle2,
+  XCircle,
+  Archive,
+  Filter,
+  AlertTriangle,
+  MoreHorizontal,
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
 import { PDFPreviewDialog } from "./PDFPreviewDialog";
+import { ApplicationReviewDrawer } from "./ApplicationReviewDrawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
-
+// Extended interface to include more fields for the drawer
 interface ApplicationRow {
   id: string;
   personal_info: any;
+  license_info?: any;
+  employment_history?: any;
+  driving_history?: any;
+  document_upload?: any;
+  emergency_contacts?: any;
   status: string;
   driver_status: string | null;
   current_step: number | null;
@@ -44,6 +63,8 @@ interface InviteWithToken {
   email: string;
 }
 
+type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved" | "rejected" | "archived";
+
 export function ApplicationsManager() {
   const navigate = useNavigate();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
@@ -54,6 +75,17 @@ export function ApplicationsManager() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
+  
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  
+  // Review drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationRow | null>(null);
   
   // PDF Preview state (in-app modal)
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -77,10 +109,14 @@ export function ApplicationsManager() {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      // Load all applications (including in-progress ones)
+      // Load all applications with extended fields for drawer
       let query = supabase
         .from("applications")
-        .select("id, personal_info, status, driver_status, current_step, updated_at, submitted_at, invite_id")
+        .select(`
+          id, personal_info, license_info, employment_history, driving_history, 
+          document_upload, emergency_contacts, status, driver_status, 
+          current_step, updated_at, submitted_at, invite_id
+        `)
         .order("updated_at", { ascending: false });
 
       if (shouldFilter && tenantId) {
@@ -129,6 +165,11 @@ export function ApplicationsManager() {
 
   const handleViewApplication = (id: string) => {
     navigate(`/dashboard/application/${id}`);
+  };
+
+  const handleOpenDrawer = (app: ApplicationRow) => {
+    setSelectedApplication(app);
+    setDrawerOpen(true);
   };
 
   const handleDownloadPDF = async (applicationId: string) => {
@@ -301,9 +342,84 @@ export function ApplicationsManager() {
     }
   };
 
+  // Bulk actions
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: "approved", 
+          driver_status: "active",
+          updated_at: new Date().toISOString() 
+        })
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} application(s) approved`);
+      setSelectedIds(new Set());
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Bulk approve failed: " + error.message);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: "archived",
+          updated_at: new Date().toISOString() 
+        })
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} application(s) archived`);
+      setSelectedIds(new Set());
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Bulk archive failed: " + error.message);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedApplications.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedApplications.map((a) => a.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
   const getStatusBadge = (app: ApplicationRow) => {
+    if (app.status === "approved") {
+      return <Badge className="bg-green-600">Approved</Badge>;
+    }
+    if (app.status === "rejected") {
+      return <Badge variant="destructive">Rejected</Badge>;
+    }
+    if (app.status === "archived") {
+      return <Badge variant="secondary">Archived</Badge>;
+    }
     if (app.status === "submitted") {
-      return <Badge className="bg-green-600">Submitted</Badge>;
+      return <Badge className="bg-blue-600">Submitted</Badge>;
     }
     if (app.status === "in_progress") {
       return <Badge variant="default">In Progress (Step {app.current_step || 1}/9)</Badge>;
@@ -321,8 +437,8 @@ export function ApplicationsManager() {
     if (status === "pending") {
       return <Badge className="bg-amber-500">Pending</Badge>;
     }
-    if (status === "inactive") {
-      return <Badge variant="secondary">Inactive</Badge>;
+    if (status === "inactive" || status === "rejected") {
+      return <Badge variant="secondary">{status}</Badge>;
     }
     return <Badge variant="outline">—</Badge>;
   };
@@ -334,7 +450,22 @@ export function ApplicationsManager() {
     return `${first} ${last}`.trim() || "Unknown";
   };
 
-  const filteredApplications = applications.filter((app) => {
+  const needsReview = (app: ApplicationRow) => {
+    const docs = app.document_upload || {};
+    const requiredDocs = ["driversLicense", "socialSecurity", "medicalCard", "mvr"];
+    const missingDocs = requiredDocs.filter((d) => !docs[d]);
+    return missingDocs.length > 0 || (app.current_step || 0) < 9;
+  };
+
+  // Filter applications by status
+  const statusFilteredApplications = applications.filter((app) => {
+    if (statusFilter === "all") return app.status !== "archived";
+    if (statusFilter === "archived") return app.status === "archived";
+    return app.status === statusFilter;
+  });
+
+  // Search filter
+  const filteredApplications = statusFilteredApplications.filter((app) => {
     const name = getApplicantName(app.personal_info).toLowerCase();
     const email = (app.personal_info?.email || "").toLowerCase();
     const query = searchQuery.toLowerCase();
@@ -349,7 +480,18 @@ export function ApplicationsManager() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, statusFilter]);
+
+  // Status filter counts
+  const statusCounts = {
+    all: applications.filter((a) => a.status !== "archived").length,
+    invited: applications.filter((a) => a.status === "invited").length,
+    in_progress: applications.filter((a) => a.status === "in_progress").length,
+    submitted: applications.filter((a) => a.status === "submitted").length,
+    approved: applications.filter((a) => a.status === "approved").length,
+    rejected: applications.filter((a) => a.status === "rejected").length,
+    archived: applications.filter((a) => a.status === "archived").length,
+  };
 
   if (loading) {
     return (
@@ -366,7 +508,7 @@ export function ApplicationsManager() {
           <div>
             <CardTitle>Applications Manager</CardTitle>
             <CardDescription>
-              View and manage all driver applications (submitted and in-progress)
+              Manage driver applications with workflow actions
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -393,9 +535,29 @@ export function ApplicationsManager() {
           </div>
         </div>
       </CardHeader>
+      
       <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
-        {/* Search */}
-        <div className="px-4 pb-3">
+        {/* Status Filter Toolbar */}
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          {(["all", "invited", "in_progress", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(status)}
+              className="h-7 text-xs gap-1"
+            >
+              {status === "all" ? "All" : status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
+                {statusCounts[status]}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+
+        {/* Search + Bulk Actions */}
+        <div className="px-4 py-3 flex items-center justify-between gap-4">
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -405,6 +567,35 @@ export function ApplicationsManager() {
               className="pl-8 h-8"
             />
           </div>
+
+          {/* Bulk Actions */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size} selected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkApprove}
+                disabled={isBulkProcessing}
+                className="gap-1 h-7"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkArchive}
+                disabled={isBulkProcessing}
+                className="gap-1 h-7"
+              >
+                <Archive className="h-3 w-3" />
+                Archive
+              </Button>
+            </div>
+          )}
         </div>
 
         {filteredApplications.length === 0 ? (
@@ -417,21 +608,37 @@ export function ApplicationsManager() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30">
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={selectedIds.size === paginatedApplications.length && paginatedApplications.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Applicant</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Email / Phone</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Status</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Driver Status</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Progress</TableHead>
-                    <TableHead className="font-bold text-blue-700 dark:text-blue-400">Last Updated</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Submitted</TableHead>
-                    <TableHead className="font-bold text-blue-700 dark:text-blue-400 w-[180px]">Actions</TableHead>
+                    <TableHead className="font-bold text-blue-700 dark:text-blue-400 w-[140px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedApplications.map((app) => (
                     <TableRow key={app.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(app.id)}
+                          onCheckedChange={() => toggleSelect(app.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
-                        {getApplicantName(app.personal_info)}
+                        <div className="flex items-center gap-2">
+                          {getApplicantName(app.personal_info)}
+                          {needsReview(app) && (
+                            <AlertTriangle className="h-3 w-3 text-amber-500" />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">{app.personal_info?.email || "—"}</div>
@@ -455,11 +662,6 @@ export function ApplicationsManager() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {app.updated_at
-                          ? format(new Date(app.updated_at), "MM/dd/yy HH:mm")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
                         {app.submitted_at
                           ? format(new Date(app.submitted_at), "MM/dd/yy HH:mm")
                           : "—"}
@@ -467,11 +669,11 @@ export function ApplicationsManager() {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button
-                            onClick={() => handleViewApplication(app.id)}
+                            onClick={() => handleOpenDrawer(app)}
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7"
-                            title="View Application"
+                            title="Review Application"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -498,33 +700,40 @@ export function ApplicationsManager() {
                               <Download className="h-4 w-4" />
                             )}
                           </Button>
-                          {app.invite_id && invites.has(app.invite_id) && (
-                            <>
+                          
+                          {/* More actions dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
-                                onClick={() => handleOpenPublicLink(app.invite_id!)}
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
-                                title="Open Public Link"
                               >
-                                <ExternalLink className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                              <Button
-                                onClick={() => handleResendInvite(app)}
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                disabled={resendingId === app.id}
-                                title="Resend Invite"
-                              >
-                                {resendingId === app.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RotateCw className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </>
-                          )}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
+                                View Full Details
+                              </DropdownMenuItem>
+                              {app.invite_id && invites.has(app.invite_id) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleOpenPublicLink(app.invite_id!)}>
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    Open Public Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleResendInvite(app)}
+                                    disabled={resendingId === app.id}
+                                  >
+                                    <RotateCw className="h-4 w-4 mr-2" />
+                                    Resend Invite
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -575,6 +784,20 @@ export function ApplicationsManager() {
         pdfBase64={previewPdf}
         filename={previewFilename}
         isLoading={previewLoading}
+      />
+
+      {/* Application Review Drawer */}
+      <ApplicationReviewDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        application={selectedApplication}
+        onPreviewPDF={handlePreviewPDF}
+        onDownloadPDF={handleDownloadPDF}
+        onStatusChange={() => {
+          loadApplications();
+          setDrawerOpen(false);
+        }}
+        isDownloading={downloadingId === selectedApplication?.id}
       />
     </Card>
   );
