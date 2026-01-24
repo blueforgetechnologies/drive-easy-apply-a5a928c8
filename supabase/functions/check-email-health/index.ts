@@ -115,48 +115,109 @@ serve(async (req: Request) => {
       .limit(1)
       .single();
 
-    // Query 4: Queue pending count (uses idx_email_queue_status partial index)
-    const { count: pendingCount } = await supabase
-      .from("email_queue")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["pending", "processing"]);
-
-    // Query 5: Queue stale count >120s (uses idx_email_queue_queued_at)
+    // ============================================================
+    // CANONICAL QUEUE METRICS - ALL FROM SAME POPULATION
+    // Queue scope: status IN ('pending', 'processing')
+    // Stale logic:
+    //   - pending: stale if now - queued_at >= 120s
+    //   - processing: stale if now - processing_started_at >= 120s
+    // ============================================================
     const staleThresholdTime = new Date(now.getTime() - QUEUE_STALE_THRESHOLD_SECONDS * 1000).toISOString();
-    const { count: staleCount } = await supabase
+    const processingStuckTime = new Date(now.getTime() - QUEUE_PROCESSING_STALE_SECONDS * 1000).toISOString();
+
+    // Query 4a: Pending-only count
+    const { count: pendingOnlyCount } = await supabase
       .from("email_queue")
       .select("*", { count: "exact", head: true })
-      .in("status", ["pending", "processing"])
+      .eq("status", "pending");
+
+    // Query 4b: Processing-only count
+    const { count: processingOnlyCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "processing");
+
+    // Query 5a: Stale pending count (queued_at < staleThreshold)
+    const { count: stalePendingCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
       .lt("queued_at", staleThresholdTime);
 
-    // Query 6: Oldest pending item - single row (uses idx_email_queue_queued_at)
-    const { data: oldestPending } = await supabase
-      .from("email_queue")
-      .select("queued_at")
-      .in("status", ["pending", "processing"])
-      .order("queued_at", { ascending: true })
-      .limit(1)
-      .single();
-
-    const oldestPendingAgeSeconds = oldestPending?.queued_at
-      ? Math.floor((now.getTime() - new Date(oldestPending.queued_at).getTime()) / 1000)
-      : null;
-
-    // Query 7: Processing stale count >10min (uses idx_email_queue_stale partial index)
-    const processingStaleTime = new Date(now.getTime() - QUEUE_PROCESSING_STALE_SECONDS * 1000).toISOString();
-    const { count: processingStaleCount } = await supabase
+    // Query 5b: Stale processing count (processing_started_at < staleThreshold)
+    const { count: staleProcessingCount } = await supabase
       .from("email_queue")
       .select("*", { count: "exact", head: true })
       .eq("status", "processing")
-      .lt("processing_started_at", processingStaleTime);
+      .lt("processing_started_at", staleThresholdTime);
 
-    // Query 8: Unroutable count last 15min (uses idx_unroutable_emails_received)
+    // Query 6a: Oldest pending item by queued_at
+    const { data: oldestPendingRow } = await supabase
+      .from("email_queue")
+      .select("queued_at")
+      .eq("status", "pending")
+      .order("queued_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // Query 6b: Oldest processing item by processing_started_at
+    const { data: oldestProcessingRow } = await supabase
+      .from("email_queue")
+      .select("processing_started_at")
+      .eq("status", "processing")
+      .order("processing_started_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // Query 7: Processing stuck count >10min (processing_started_at < processingStuckTime)
+    const { count: processingStuckCount } = await supabase
+      .from("email_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "processing")
+      .lt("processing_started_at", processingStuckTime);
+
+    // Compute canonical metrics from the same population
+    const queueTotalCount = (pendingOnlyCount || 0) + (processingOnlyCount || 0);
+    const queueStalePendingCount = stalePendingCount || 0;
+    const queueStaleProcessingCount = staleProcessingCount || 0;
+    const queueStaleTotal = queueStalePendingCount + queueStaleProcessingCount;
+
+    // Oldest age must come from the oldest of the two oldest rows
+    let queueOldestQueuedAt: string | null = null;
+    let queueOldestAgeSeconds: number | null = null;
+
+    const pendingAge = oldestPendingRow?.queued_at
+      ? Math.floor((now.getTime() - new Date(oldestPendingRow.queued_at).getTime()) / 1000)
+      : null;
+    const processingAge = oldestProcessingRow?.processing_started_at
+      ? Math.floor((now.getTime() - new Date(oldestProcessingRow.processing_started_at).getTime()) / 1000)
+      : null;
+
+    // Choose the older of the two
+    if (pendingAge !== null && processingAge !== null && oldestPendingRow && oldestProcessingRow) {
+      if (pendingAge >= processingAge) {
+        queueOldestAgeSeconds = pendingAge;
+        queueOldestQueuedAt = oldestPendingRow.queued_at;
+      } else {
+        queueOldestAgeSeconds = processingAge;
+        queueOldestQueuedAt = oldestProcessingRow.processing_started_at;
+      }
+    } else if (pendingAge !== null && oldestPendingRow) {
+      queueOldestAgeSeconds = pendingAge;
+      queueOldestQueuedAt = oldestPendingRow.queued_at;
+    } else if (processingAge !== null && oldestProcessingRow) {
+      queueOldestAgeSeconds = processingAge;
+      queueOldestQueuedAt = oldestProcessingRow.processing_started_at;
+    }
+    // If both null, oldest is null (queue empty)
+
+    // Query 8: Unroutable count last 15min
     const { count: unroutableCount15m } = await supabase
       .from("unroutable_emails")
       .select("*", { count: "exact", head: true })
       .gte("received_at", fifteenMinutesAgo);
 
-    // Query 9: Email queue count last 15min for context (uses idx_email_queue_queued_at)
+    // Query 9: Email queue count last 15min for context
     const { count: emailQueueCount15m } = await supabase
       .from("email_queue")
       .select("*", { count: "exact", head: true })
@@ -168,20 +229,24 @@ serve(async (req: Request) => {
       ? Math.round(((unroutableCount15m || 0) / totalEmails15m) * 10000) / 100 
       : 0;
 
-    console.log(`[check-email-health] Queue: pending=${pendingCount}, stale=${staleCount}, oldest_age=${oldestPendingAgeSeconds}s, processing_stale=${processingStaleCount}, unroutable_15m=${unroutableCount15m}, queue_15m=${emailQueueCount15m}, unroutable_pct=${unroutablePct15m}%`);
+    // Explainable backlog message for logging (always consistent)
+    const backlogExplain = `Queue backlog: total=${queueTotalCount}, pending=${pendingOnlyCount || 0}, processing=${processingOnlyCount || 0}, stale_pending=${queueStalePendingCount}, stale_processing=${queueStaleProcessingCount}, oldest_age=${queueOldestAgeSeconds ?? 'N/A'}s, stuck_processing_10m=${processingStuckCount || 0}`;
+
+    console.log(`[check-email-health] ${backlogExplain}`);
+    console.log(`[check-email-health] Unroutable: count_15m=${unroutableCount15m || 0}, queue_15m=${emailQueueCount15m || 0}, pct=${unroutablePct15m}%`);
 
     // ============================================================
     // QUEUE BACKLOG ALERT (MORE SENSITIVE THRESHOLDS + ESCALATION BYPASS)
     // ============================================================
-    // WARNING: oldest_age >= 60s OR pending > 100
-    // CRITICAL: oldest_age >= 120s OR stale_count >= 10
+    // WARNING: oldest_age >= 60s OR total pending > 100
+    // CRITICAL: oldest_age >= 120s OR total stale count >= 10
     const hasWarningBacklog = 
-      (oldestPendingAgeSeconds !== null && oldestPendingAgeSeconds >= QUEUE_WARNING_AGE_SECONDS) ||
-      (pendingCount !== null && pendingCount > QUEUE_PENDING_COUNT_THRESHOLD);
+      (queueOldestAgeSeconds !== null && queueOldestAgeSeconds >= QUEUE_WARNING_AGE_SECONDS) ||
+      queueTotalCount > QUEUE_PENDING_COUNT_THRESHOLD;
     
     const hasCriticalBacklog = 
-      (oldestPendingAgeSeconds !== null && oldestPendingAgeSeconds >= QUEUE_CRITICAL_AGE_SECONDS) ||
-      (staleCount !== null && staleCount >= QUEUE_STALE_COUNT_CRITICAL);
+      (queueOldestAgeSeconds !== null && queueOldestAgeSeconds >= QUEUE_CRITICAL_AGE_SECONDS) ||
+      queueStaleTotal >= QUEUE_STALE_COUNT_CRITICAL;
 
     const hasBacklog = hasWarningBacklog || hasCriticalBacklog;
     
@@ -199,13 +264,12 @@ serve(async (req: Request) => {
       const isRateLimited = existingAlert && new Date(existingAlert.sent_at) >= new Date(oneHourAgo);
       const isEscalation = isRateLimited && existingAlert.alert_level === "warning" && hasCriticalBacklog;
 
-      // Build alert message with context metrics
-      const ageInfo = oldestPendingAgeSeconds !== null ? `oldest: ${oldestPendingAgeSeconds}s` : "oldest: unknown";
-      const stuckInfo = processingStaleCount && processingStaleCount > 0 ? `, stuck_workers: ${processingStaleCount}` : "";
+      // Build alert message with context metrics - using explainable backlog message
+      const stuckInfo = processingStuckCount && processingStuckCount > 0 ? `, stuck_workers_10m: ${processingStuckCount}` : "";
       const unroutableInfo = unroutableCount15m && unroutableCount15m > 0 ? `, unroutable_15m: ${unroutableCount15m} (${unroutablePct15m}%)` : "";
       const contextInfo = `, queue_15m: ${emailQueueCount15m || 0}`;
       
-      const backlogMessage = `Queue backlog: pending=${pendingCount}, stale(>2min)=${staleCount}, ${ageInfo}${stuckInfo}${unroutableInfo}${contextInfo}`;
+      const backlogMessage = `Queue backlog: total=${queueTotalCount}, pending=${pendingOnlyCount || 0}, processing=${processingOnlyCount || 0}, stale_pending=${queueStalePendingCount}, stale_processing=${queueStaleProcessingCount}, oldest_age=${queueOldestAgeSeconds ?? 'N/A'}s${stuckInfo}${unroutableInfo}${contextInfo}`;
 
       // Allow alert if: not rate-limited OR escalating from warning->critical
       if (!isRateLimited || isEscalation) {
@@ -496,16 +560,23 @@ serve(async (req: Request) => {
     }
 
     // Build health summary with all metrics including context
+    // All queue metrics derived from same canonical population
     const healthSummary = {
       checked_at: now.toISOString(),
       is_business_hours: isBizHours,
       threshold_minutes: thresholdMinutes,
       system_status: systemInactive ? "inactive" : "healthy",
       system_last_email: systemLastEmail?.toISOString() || null,
-      queue_pending_count: pendingCount || 0,
-      queue_stale_count: staleCount || 0,
-      queue_oldest_age_seconds: oldestPendingAgeSeconds,
-      queue_processing_stale_count: processingStaleCount || 0,
+      // New canonical queue metrics
+      queue_total_count: queueTotalCount,
+      queue_pending_only_count: pendingOnlyCount || 0,
+      queue_processing_only_count: processingOnlyCount || 0,
+      queue_stale_pending_count: queueStalePendingCount,
+      queue_stale_processing_count: queueStaleProcessingCount,
+      queue_oldest_age_seconds: queueOldestAgeSeconds,
+      queue_oldest_queued_at: queueOldestQueuedAt,
+      queue_processing_stuck_count: processingStuckCount || 0,
+      // Context metrics
       email_queue_count_last_15m: emailQueueCount15m || 0,
       unroutable_count_last_15m: unroutableCount15m || 0,
       unroutable_pct_last_15m: unroutablePct15m,
