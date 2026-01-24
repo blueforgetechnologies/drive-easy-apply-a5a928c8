@@ -83,6 +83,61 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch tenants: ${tenantsError.message}`);
     }
 
+    // ============================================================
+    // GMAIL TOKEN HEALTH CHECK (NEW)
+    // ============================================================
+    const { data: gmailTokens } = await supabase
+      .from("gmail_tokens")
+      .select("id, user_email, tenant_id, token_expiry, needs_reauth, reauth_reason, updated_at");
+
+    const tokenAlerts: typeof alerts = [];
+    const nowTime = now.getTime();
+
+    for (const token of gmailTokens || []) {
+      const tokenExpiry = token.token_expiry ? new Date(token.token_expiry) : null;
+      const isExpired = tokenExpiry ? tokenExpiry.getTime() < nowTime : true;
+      const needsReauth = token.needs_reauth === true;
+      
+      // Get tenant name for alert message
+      const tenant = tenants?.find(t => t.id === token.tenant_id);
+      const tenantName = tenant?.name || 'Unknown';
+      
+      if (needsReauth || isExpired) {
+        // Check for existing unresolved gmail_token_expired alert (spam prevention - 1 per hour per token)
+        const { data: existingTokenAlert } = await supabase
+          .from("email_health_alerts")
+          .select("id")
+          .eq("alert_type", "gmail_token_expired")
+          .eq("tenant_id", token.tenant_id)
+          .is("resolved_at", null)
+          .gte("sent_at", new Date(nowTime - 60 * 60 * 1000).toISOString())
+          .limit(1);
+        
+        if (!existingTokenAlert?.length) {
+          const reason = needsReauth 
+            ? `Gmail token needs re-auth: ${token.reauth_reason || 'unknown reason'}` 
+            : `Gmail token expired at ${tokenExpiry?.toISOString() || 'unknown'}`;
+          
+          tokenAlerts.push({
+            type: "gmail_token_expired",
+            level: "critical",
+            tenantId: token.tenant_id,
+            tenantName,
+            message: `${tenantName}: ${reason}. User must reconnect Gmail at ${token.user_email}`,
+            minutesSinceLastEmail: null,
+          });
+        }
+      } else {
+        // Token is healthy - resolve any existing alerts
+        await supabase
+          .from("email_health_alerts")
+          .update({ resolved_at: now.toISOString() })
+          .eq("alert_type", "gmail_token_expired")
+          .eq("tenant_id", token.tenant_id)
+          .is("resolved_at", null);
+      }
+    }
+
     // Check system-wide health (any email from any source)
     const { data: latestEmail } = await supabase
       .from("load_emails")
@@ -261,6 +316,9 @@ serve(async (req: Request) => {
           .is("resolved_at", null);
       }
     }
+
+    // Merge token alerts into main alerts array
+    alerts.push(...tokenAlerts);
 
     // Insert new alerts
     if (alerts.length > 0) {

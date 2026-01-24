@@ -33,6 +33,8 @@ interface GmailToken {
   tenant_id: string | null;
   token_expiry: string;
   updated_at: string;
+  needs_reauth?: boolean;
+  reauth_reason?: string;
 }
 
 interface EmailSourceStats {
@@ -162,24 +164,32 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
     }
   };
 
-  const handleRefreshToken = async (tokenId: string) => {
+  const handleRefreshToken = async (tokenId: string, userEmail: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('gmail-auth', {
-        body: { action: 'refresh', tenantId, tokenId }
+        body: { action: 'setup-push', tenantId }
       });
 
       if (error) throw error;
+      
+      // Check for specific error codes
+      if (data?.code === 'RECONNECT_REQUIRED') {
+        toast.error("Refresh token expired - please reconnect Gmail");
+        return;
+      }
+      
       if (data?.error) throw new Error(data.error);
 
       toast.success("Token refreshed successfully");
       loadData();
     } catch (error: any) {
       console.error("Refresh error:", error);
-      toast.error(error.message || "Failed to refresh token - try reconnecting");
+      toast.error(error.message || "Failed to refresh token - please reconnect Gmail");
     }
   };
 
   const isTokenExpired = (expiry: string) => new Date(expiry) < new Date();
+  const needsReconnect = (token: GmailToken) => token.needs_reauth === true || isTokenExpired(token.token_expiry);
 
   // Group stats by provider
   const providerStats = emailSourceStats.reduce((acc, stat) => {
@@ -227,21 +237,30 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
               Connected Accounts ({connectedTokens.length})
             </h4>
             {connectedTokens.map((token) => {
-              const expired = isTokenExpired(token.token_expiry);
+              const hasIssue = needsReconnect(token);
+              const needsFullReconnect = token.needs_reauth === true;
               return (
                 <div 
                   key={token.id} 
                   className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
-                    expired ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/20' : 'border-green-300 bg-green-50 dark:bg-green-950/20'
+                    hasIssue 
+                      ? needsFullReconnect 
+                        ? 'border-red-400 bg-red-50 dark:bg-red-950/20' 
+                        : 'border-amber-300 bg-amber-50 dark:bg-amber-950/20' 
+                      : 'border-green-300 bg-green-50 dark:bg-green-950/20'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Mail className={`h-5 w-5 flex-shrink-0 ${expired ? 'text-amber-600' : 'text-green-600'}`} />
+                    <Mail className={`h-5 w-5 flex-shrink-0 ${hasIssue ? needsFullReconnect ? 'text-red-600' : 'text-amber-600' : 'text-green-600'}`} />
                     <div>
                       <p className="font-medium">{token.user_email}</p>
                       <p className="text-xs text-muted-foreground">
-                        {expired ? (
-                          <span className="text-amber-600">Token expired - emails may not be syncing</span>
+                        {needsFullReconnect ? (
+                          <span className="text-red-600 font-medium">
+                            ⚠️ Gmail disconnected - must reconnect ({token.reauth_reason || 'token revoked'})
+                          </span>
+                        ) : hasIssue ? (
+                          <span className="text-amber-600">Token expired - click Refresh to restore</span>
                         ) : (
                           <>Valid until: {new Date(token.token_expiry).toLocaleString()}</>
                         )}
@@ -252,15 +271,27 @@ export default function TenantGmailConnection({ tenantId, tenantName }: TenantGm
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {expired && (
+                    {hasIssue && !needsFullReconnect && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleRefreshToken(token.id)}
+                        onClick={() => handleRefreshToken(token.id, token.user_email)}
                         className="text-amber-600 border-amber-300 hover:bg-amber-100"
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Refresh
+                      </Button>
+                    )}
+                    {needsFullReconnect && (
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={handleConnectGmail}
+                        disabled={connecting}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Link2 className="h-3 w-3 mr-1" />
+                        Reconnect Gmail
                       </Button>
                     )}
                     <AlertDialog>

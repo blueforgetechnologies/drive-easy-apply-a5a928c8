@@ -1938,6 +1938,8 @@ export type Database = {
           access_token: string
           created_at: string | null
           id: string
+          needs_reauth: boolean | null
+          reauth_reason: string | null
           refresh_token: string
           tenant_id: string | null
           token_expiry: string
@@ -1948,6 +1950,8 @@ export type Database = {
           access_token: string
           created_at?: string | null
           id?: string
+          needs_reauth?: boolean | null
+          reauth_reason?: string | null
           refresh_token: string
           tenant_id?: string | null
           token_expiry: string
@@ -1958,6 +1962,8 @@ export type Database = {
           access_token?: string
           created_at?: string | null
           id?: string
+          needs_reauth?: boolean | null
+          reauth_reason?: string | null
           refresh_token?: string
           tenant_id?: string | null
           token_expiry?: string
