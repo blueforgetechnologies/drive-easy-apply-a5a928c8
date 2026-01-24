@@ -253,12 +253,25 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
     }
   };
 
-  const canSendDirectEmail = () => {
+  // ============================================================
+  // ACCOUNTING EMAIL SAFEGUARD
+  // ============================================================
+  // Block sending if Company Profile accounting email is missing.
+  // This ensures all invoice emails have proper CC for audit trail.
+  // ============================================================
+  const canSendDirectEmail = (): { can: boolean; reason: string | null; isMissingAccountingEmail?: boolean } => {
     if (!deliveryInfo) return { can: false, reason: "Loading..." };
     if (invoice.billing_method !== 'direct_email') return { can: false, reason: "Not direct email method" };
     if (invoice.status === 'sent' || invoice.status === 'paid') return { can: false, reason: "Already sent" };
     if (!deliveryInfo.to_email) return { can: false, reason: "No customer email" };
-    if (!deliveryInfo.cc_email) return { can: false, reason: "No accounting email in company profile" };
+    // Critical: Block if accounting email is missing
+    if (!deliveryInfo.cc_email) {
+      return { 
+        can: false, 
+        reason: "Company Profile accounting email is required", 
+        isMissingAccountingEmail: true 
+      };
+    }
     if (deliveryInfo.rate_confirmations.length === 0) return { can: false, reason: "Missing Rate Confirmation" };
     if (deliveryInfo.bills_of_lading.length === 0) return { can: false, reason: "Missing BOL/POD" };
     return { can: true, reason: null };
@@ -459,29 +472,44 @@ export function InvoiceDeliveryPanel({ invoiceId, invoice, onRefresh }: InvoiceD
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          {/* Direct Email Button */}
-          {invoice.billing_method === 'direct_email' && (
-            <div>
-              <Button
-                onClick={handleSendDirectEmail}
-                disabled={!sendCheck.can || sending}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                {sending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                {lastAttempt?.status === 'failed' ? 'Retry Send' : 'Send Direct Email'}
-              </Button>
-              {!sendCheck.can && sendCheck.reason && (
-                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {sendCheck.reason}
-                </p>
+        {/* Direct Email Button */}
+        {invoice.billing_method === 'direct_email' && (
+          <div className="space-y-2">
+            {/* Missing Accounting Email - Prominent Error */}
+            {sendCheck.isMissingAccountingEmail && (
+              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-destructive">Accounting email required</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Configure the accounting email in Company Profile before sending invoices.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <Button
+              onClick={handleSendDirectEmail}
+              disabled={!sendCheck.can || sending}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
               )}
-            </div>
-          )}
+              {lastAttempt?.status === 'failed' ? 'Retry Send' : 'Send Direct Email'}
+            </Button>
+            {!sendCheck.can && sendCheck.reason && !sendCheck.isMissingAccountingEmail && (
+              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {sendCheck.reason}
+              </p>
+            )}
+          </div>
+        )}
 
           {/* OTR Button */}
           {invoice.billing_method === 'otr' && (

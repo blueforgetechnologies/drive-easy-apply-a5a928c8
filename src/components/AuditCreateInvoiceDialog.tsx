@@ -459,7 +459,7 @@ export default function AuditCreateInvoiceDialog({
             </div>
           </div>
 
-          {/* Warning Banner */}
+          {/* Warning Banner with Audit Notice */}
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -468,7 +468,8 @@ export default function AuditCreateInvoiceDialog({
                   You are overriding AI verification
                 </p>
                 <p className="text-muted-foreground mt-1">
-                  This action will be logged. Ensure you have manually verified all documents.
+                  This override will be <span className="font-medium">logged for audit purposes</span>. 
+                  Ensure you have manually verified all documents before proceeding.
                 </p>
               </div>
             </div>

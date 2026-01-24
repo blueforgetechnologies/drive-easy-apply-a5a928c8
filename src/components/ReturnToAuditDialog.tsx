@@ -141,24 +141,40 @@ export default function ReturnToAuditDialog({
     }
   };
 
-  // Compute if return is allowed based on guardrails
-  // Industry-standard accounting rules: only allow return while invoice is internal
+  // ============================================================
+  // INVOICE STATE TRANSITION GUARD
+  // ============================================================
+  // Industry-standard accounting rules: only allow return while invoice is INTERNAL
+  // An invoice is considered "internal" if it has NOT:
+  //   - Reached a terminal status (paid, overdue, cancelled)
+  //   - Had any payments applied
+  //   - Been submitted to OTR (factoring)
+  //   - Been successfully sent via email (sent/delivered)
+  // 
+  // Once an invoice "leaves the system" (sent to customer or factoring company),
+  // reversing it requires formal accounting procedures: Void or Credit Memo.
+  // This prevents data inconsistencies and maintains audit trail integrity.
+  // ============================================================
   const canReturn = (): { allowed: boolean; reason?: string; requiresVoidOrCreditMemo?: boolean } => {
     if (!invoice) return { allowed: false, reason: "No invoice selected" };
 
-    // Check status - paid/overdue/cancelled are terminal states
-    const blockedStatuses = ["paid", "overdue", "cancelled"];
+    // GUARD: Terminal statuses cannot be returned
+    // These represent completed accounting states
+    const blockedStatuses = ["paid", "overdue", "cancelled", "sent"];
     if (invoice.status && blockedStatuses.includes(invoice.status)) {
+      // Map internal status to user-friendly display (draft->Open)
+      const displayStatus = invoice.status === "draft" ? "Open" : invoice.status;
       const isPaid = invoice.status === "paid";
       const isOverdue = invoice.status === "overdue";
+      const isSent = invoice.status === "sent";
       return { 
         allowed: false, 
-        reason: `Invoice status is "${invoice.status}"`,
-        requiresVoidOrCreditMemo: isPaid || isOverdue
+        reason: `Invoice status is "${displayStatus}"`,
+        requiresVoidOrCreditMemo: isPaid || isOverdue || isSent
       };
     }
 
-    // Check amount_paid - any payment means invoice has been processed
+    // GUARD: Any payment means invoice has been financially processed
     const amountPaid = invoice.amount_paid ?? 0;
     if (amountPaid > 0) {
       return { 
@@ -168,16 +184,16 @@ export default function ReturnToAuditDialog({
       };
     }
 
-    // Check OTR submission - invoice has left the system
+    // GUARD: OTR submission = invoice left the system to factoring company
     if (invoice.otr_submitted_at) {
       return { 
         allowed: false, 
-        reason: "Invoice was submitted to OTR",
+        reason: "Invoice was submitted to OTR factoring",
         requiresVoidOrCreditMemo: true
       };
     }
 
-    // Check if email was sent/delivered - invoice has left the system
+    // GUARD: Email sent/delivered = invoice left the system to customer
     const deliveredStatuses = ["sent", "delivered"];
     if (lastEmailStatus && deliveredStatuses.includes(lastEmailStatus.toLowerCase())) {
       return { 
@@ -187,6 +203,7 @@ export default function ReturnToAuditDialog({
       };
     }
 
+    // Invoice is still internal - return is allowed
     return { allowed: true };
   };
 

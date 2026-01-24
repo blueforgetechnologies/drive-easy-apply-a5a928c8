@@ -1014,34 +1014,42 @@ export default function InvoicesTab() {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-0 flex-wrap">
-          {[
-            { key: "needs_setup", label: "Needs Setup", icon: Settings, activeClass: "btn-glossy-dark", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset" },
-            { key: "ready", label: "Ready to Send", icon: Mail, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue" },
-            { key: "delivered", label: "Delivered", icon: CheckCircle2, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
-            { key: "failed", label: "Failed", icon: XCircle, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
-            { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
-            { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
-          ].map((status) => (
-            <Button
-              key={status.key}
-              variant="ghost"
-              size="sm"
-              onClick={() => setInvoiceFilter(status.key)}
-              className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                filter === status.key 
-                  ? `${status.activeClass} text-white` 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              {status.icon && <status.icon className="h-3 w-3" />}
-              {status.label}
-              <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
-                {tabCounts[status.key as keyof typeof tabCounts]}
-              </span>
-            </Button>
-          ))}
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-0 flex-wrap">
+            {[
+              { key: "needs_setup", label: "Needs Setup", icon: Settings, activeClass: "btn-glossy-dark", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset", tooltip: "Invoices missing billing method, email, or documents" },
+              { key: "ready", label: "Ready to Send", icon: Mail, activeClass: "btn-glossy-primary", activeBadgeClass: "badge-inset-dark", softBadgeClass: "badge-inset-soft-blue", tooltip: "Invoices ready to send — not yet sent" },
+              { key: "delivered", label: "Delivered", icon: CheckCircle2, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green", tooltip: "Successfully sent via email or OTR" },
+              { key: "failed", label: "Failed", icon: XCircle, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red", tooltip: "Delivery failed — retry available" },
+              { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green", tooltip: "Fully paid invoices" },
+              { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red", tooltip: "Past due date with balance remaining" },
+            ].map((status) => (
+              <Tooltip key={status.key}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setInvoiceFilter(status.key)}
+                    className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                      filter === status.key 
+                        ? `${status.activeClass} text-white` 
+                        : 'btn-glossy text-gray-700'
+                    }`}
+                  >
+                    {status.icon && <status.icon className="h-3 w-3" />}
+                    {status.label}
+                    <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                      {tabCounts[status.key as keyof typeof tabCounts]}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {status.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </TooltipProvider>
 
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
@@ -1180,8 +1188,11 @@ export default function InvoicesTab() {
                                 Return
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Return invoice to Ready for Audit
+                            <TooltipContent side="left" className="max-w-[220px] text-xs">
+                              <p className="font-medium mb-1">Return to Audit</p>
+                              <p className="text-muted-foreground">
+                                Allowed only if invoice is still internal (no email sent, no OTR submission, no payments).
+                              </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
