@@ -704,6 +704,8 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           load_documents: (load.load_documents as any[]) || [],
         } : null}
         auditNotes={notes}
+        rateConfirmationItems={rateConfirmation}
+        billOfLadingItems={billOfLading}
       />
     </div>
   );
