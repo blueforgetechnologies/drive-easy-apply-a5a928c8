@@ -881,7 +881,7 @@ export default function InvoicesTab() {
     
     return (
       <Badge variant="outline" className="text-xs">
-        {invoice.otr_status || 'Pending'}
+        {invoice.otr_status || '—'}
       </Badge>
     );
   };
