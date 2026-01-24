@@ -471,12 +471,14 @@ export function ApplicationsManager() {
     return app.status === statusFilter;
   });
 
-  // Search filter
+  // Search filter (name, email, phone)
   const filteredApplications = statusFilteredApplications.filter((app) => {
     const name = getApplicantName(app.personal_info).toLowerCase();
     const email = (app.personal_info?.email || "").toLowerCase();
+    const phone = (app.personal_info?.phone || "").replace(/\D/g, "");
     const query = searchQuery.toLowerCase();
-    return name.includes(query) || email.includes(query);
+    const queryDigits = searchQuery.replace(/\D/g, "");
+    return name.includes(query) || email.includes(query) || (queryDigits.length >= 3 && phone.includes(queryDigits));
   });
 
   const totalPages = Math.ceil(filteredApplications.length / ROWS_PER_PAGE);
@@ -582,7 +584,7 @@ export function ApplicationsManager() {
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or email..."
+              placeholder="Search name, email, or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-8"
@@ -689,6 +691,7 @@ export function ApplicationsManager() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          {/* Primary action: Open Review Drawer */}
                           <Button
                             onClick={() => handleOpenDrawer(app)}
                             size="icon"
@@ -698,31 +701,8 @@ export function ApplicationsManager() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            onClick={() => handlePreviewPDF(app.id)}
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title="Preview PDF"
-                          >
-                            <FileSearch className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => handleDownloadPDF(app.id)}
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            disabled={downloadingId === app.id}
-                            title="Download PDF"
-                          >
-                            {downloadingId === app.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                          </Button>
                           
-                          {/* More actions dropdown */}
+                          {/* More actions dropdown - contains all secondary actions */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -734,7 +714,24 @@ export function ApplicationsManager() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handlePreviewPDF(app.id)}>
+                                <FileSearch className="h-4 w-4 mr-2" />
+                                Preview PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDownloadPDF(app.id)}
+                                disabled={downloadingId === app.id}
+                              >
+                                {downloadingId === app.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4 mr-2" />
+                                )}
+                                Download PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
+                                <ExternalLink className="h-4 w-4 mr-2" />
                                 View Full Details
                               </DropdownMenuItem>
                               {app.invite_id && invites.has(app.invite_id) && (
