@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useTenantId } from "@/hooks/useTenantId";
-import { FileCheck, Receipt, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Receipt, AlertTriangle, CheckCircle2, XCircle, ShieldAlert } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 interface LoadData {
@@ -32,11 +33,21 @@ interface LoadData {
   load_documents?: Array<{ document_type: string }>;
 }
 
+interface VerificationItem {
+  id: string;
+  label: string;
+  status: "match" | "fail" | null;
+}
+
 interface AuditCreateInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   load: LoadData | null;
   auditNotes?: string;
+  /** Rate Confirmation verification items from the audit sidebar */
+  rateConfirmationItems?: VerificationItem[];
+  /** Bill of Lading verification items from the audit sidebar */
+  billOfLadingItems?: VerificationItem[];
 }
 
 export default function AuditCreateInvoiceDialog({
@@ -44,30 +55,61 @@ export default function AuditCreateInvoiceDialog({
   onOpenChange,
   load,
   auditNotes = "",
+  rateConfirmationItems = [],
+  billOfLadingItems = [],
 }: AuditCreateInvoiceDialogProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const tenantId = useTenantId();
 
-  const [confirmChecklist, setConfirmChecklist] = useState({
-    ratesVerified: false,
-    documentsReviewed: false,
-    customerCorrect: false,
-  });
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const today = format(new Date(), "yyyy-MM-dd");
   const defaultDueDate = format(addDays(new Date(), 30), "yyyy-MM-dd");
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [dueDate, setDueDate] = useState(defaultDueDate);
 
-  // Calculate document coverage for load
-  const documents = load?.load_documents || [];
-  const hasRc = documents.some(d => d.document_type === "rate_confirmation");
-  const hasBol = documents.some(d => 
-    ["bill_of_lading", "pod", "proof_of_delivery"].includes(d.document_type)
-  );
+  // Combine all verification items
+  const allVerificationItems = useMemo(() => {
+    return [...rateConfirmationItems, ...billOfLadingItems];
+  }, [rateConfirmationItems, billOfLadingItems]);
 
-  const allChecked = Object.values(confirmChecklist).every(Boolean);
+  // Determine verification state
+  const verificationState = useMemo(() => {
+    if (allVerificationItems.length === 0) {
+      // No verification items provided = incomplete/unknown
+      return "incomplete";
+    }
+    
+    const hasAnyFail = allVerificationItems.some(item => item.status === "fail");
+    const hasAnyNull = allVerificationItems.some(item => item.status === null);
+    const allMatch = allVerificationItems.every(item => item.status === "match");
+    
+    if (allMatch) return "all_match";
+    if (hasAnyFail) return "has_failures";
+    if (hasAnyNull) return "incomplete";
+    return "incomplete";
+  }, [allVerificationItems]);
+
+  // Get failed items for display
+  const failedItems = useMemo(() => {
+    return allVerificationItems.filter(item => item.status === "fail");
+  }, [allVerificationItems]);
+
+  // Get incomplete items for display
+  const incompleteItems = useMemo(() => {
+    return allVerificationItems.filter(item => item.status === null);
+  }, [allVerificationItems]);
+
+  // Determine if we can proceed
+  const canProceed = useMemo(() => {
+    if (verificationState === "all_match") {
+      return true; // Simple confirm, no checklist needed
+    }
+    // For failures or incomplete, require override confirmation
+    return overrideConfirmed && overrideReason.trim().length > 0;
+  }, [verificationState, overrideConfirmed, overrideReason]);
 
   const createInvoiceMutation = useMutation({
     mutationFn: async () => {
@@ -79,6 +121,13 @@ export default function AuditCreateInvoiceDialog({
       let createdInvoiceId: string | null = null;
       let createdInvoiceNumber: string | null = null;
       
+      // Build notes with override reason if applicable
+      let finalNotes = auditNotes || "";
+      if (verificationState !== "all_match" && overrideReason.trim()) {
+        const overrideNote = `[OVERRIDE] ${overrideReason.trim()}`;
+        finalNotes = finalNotes ? `${finalNotes}\n\n${overrideNote}` : overrideNote;
+      }
+
       // ============================================================
       // STEP 1: Generate invoice number (atomic via RPC)
       // ============================================================
@@ -115,7 +164,7 @@ export default function AuditCreateInvoiceDialog({
         total_amount: load.rate || 0,
         amount_paid: 0,
         balance_due: load.rate || 0,
-        notes: auditNotes || null,
+        notes: finalNotes || null,
       };
 
       const { data: invoice, error: invoiceError } = await supabase
@@ -168,7 +217,7 @@ export default function AuditCreateInvoiceDialog({
         .update({
           status: "closed",
           financial_status: "invoiced",
-          billing_notes: auditNotes || undefined,
+          billing_notes: finalNotes || undefined,
         })
         .eq("id", load.id)
         .eq("tenant_id", tenantId); // Ensure tenant scoping
@@ -203,15 +252,24 @@ export default function AuditCreateInvoiceDialog({
       // ============================================================
       // STEP 6: Insert audit_log entry (non-fatal if fails)
       // ============================================================
+      const auditAction = verificationState === "all_match" 
+        ? "audit_create_invoice" 
+        : "audit_create_invoice_override";
+        
       const { error: auditLogError } = await supabase
         .from("audit_logs")
         .insert({
           tenant_id: tenantId,
           entity_type: "load",
           entity_id: load.id,
-          action: "audit_create_invoice",
-          new_value: JSON.stringify({ invoice_id: createdInvoiceId, invoice_number: createdInvoiceNumber }),
-          notes: `Audit approved. Invoice ${createdInvoiceNumber} created.`,
+          action: auditAction,
+          new_value: JSON.stringify({ 
+            invoice_id: createdInvoiceId, 
+            invoice_number: createdInvoiceNumber,
+            verification_state: verificationState,
+            override_reason: verificationState !== "all_match" ? overrideReason : undefined,
+          }),
+          notes: `Audit ${verificationState === "all_match" ? "approved" : "overridden"}. Invoice ${createdInvoiceNumber} created.`,
         });
 
       if (auditLogError) {
@@ -242,25 +300,124 @@ export default function AuditCreateInvoiceDialog({
   });
 
   const handleConfirm = () => {
-    if (!allChecked) {
-      toast.error("Please confirm all checklist items");
+    if (!canProceed) {
+      if (verificationState !== "all_match") {
+        toast.error("Please confirm the override and provide a reason");
+      }
       return;
     }
     createInvoiceMutation.mutate();
   };
 
   const resetState = () => {
-    setConfirmChecklist({
-      ratesVerified: false,
-      documentsReviewed: false,
-      customerCorrect: false,
-    });
+    setOverrideConfirmed(false);
+    setOverrideReason("");
     setInvoiceDate(today);
     setDueDate(defaultDueDate);
   };
 
   if (!load) return null;
 
+  // ============================================================
+  // RENDER: All Verified - Simple Confirm Modal
+  // ============================================================
+  if (verificationState === "all_match") {
+    return (
+      <Dialog 
+        open={open} 
+        onOpenChange={(newOpen) => {
+          if (!newOpen) resetState();
+          onOpenChange(newOpen);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              All Checks Passed
+            </DialogTitle>
+            <DialogDescription>
+              AI verification confirmed all items match. Ready to create invoice.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Load Summary */}
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Load</span>
+                <span className="text-sm">{load.load_number}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Customer</span>
+                <span className="text-sm">{load.customers?.name || "Unknown"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Rate</span>
+                <span className="text-sm font-medium">
+                  {load.rate ? `$${load.rate.toLocaleString()}` : "—"}
+                </span>
+              </div>
+            </div>
+
+            {/* Verification Summary */}
+            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                {allVerificationItems.length} verification items passed
+              </span>
+            </div>
+
+            {/* Invoice Dates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="invoice_date">Invoice Date</Label>
+                <Input
+                  id="invoice_date"
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Due Date</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirm} 
+              disabled={createInvoiceMutation.isPending}
+              className="gap-2"
+            >
+              {createInvoiceMutation.isPending ? (
+                <>Creating...</>
+              ) : (
+                <>
+                  <Receipt className="h-4 w-4" />
+                  Create Invoice
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ============================================================
+  // RENDER: Has Failures or Incomplete - Override Modal
+  // ============================================================
   return (
     <Dialog 
       open={open} 
@@ -271,12 +428,15 @@ export default function AuditCreateInvoiceDialog({
     >
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-primary" />
-            Audit & Create Invoice
+          <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <ShieldAlert className="h-5 w-5" />
+            Override Required
           </DialogTitle>
           <DialogDescription>
-            Review the load details and create an invoice for billing.
+            {verificationState === "has_failures" 
+              ? "Some verification checks failed. You must confirm override to proceed."
+              : "Verification is incomplete. Please verify manually or run AI verification first."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -287,12 +447,6 @@ export default function AuditCreateInvoiceDialog({
               <span className="text-sm font-medium">Load</span>
               <span className="text-sm">{load.load_number}</span>
             </div>
-            {load.reference_number && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Reference</span>
-                <span className="text-sm">{load.reference_number}</span>
-              </div>
-            )}
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Customer</span>
               <span className="text-sm">{load.customers?.name || "Unknown"}</span>
@@ -305,33 +459,50 @@ export default function AuditCreateInvoiceDialog({
             </div>
           </div>
 
-          {/* Document Coverage */}
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-            <div className="text-sm font-medium mb-2">Document Coverage</div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                {hasRc ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                )}
-                <span className="text-sm">Rate Confirmation</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {hasBol ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                )}
-                <span className="text-sm">BOL/POD</span>
+          {/* Warning Banner */}
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-700 dark:text-amber-300">
+                  You are overriding AI verification
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  This action will be logged. Ensure you have manually verified all documents.
+                </p>
               </div>
             </div>
-            {(!hasRc || !hasBol) && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Missing documents may require Direct Email billing method with manual upload.
-              </p>
-            )}
           </div>
+
+          {/* Failed Items */}
+          {failedItems.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-destructive">Failed Checks ({failedItems.length})</Label>
+              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
+                {failedItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 text-sm">
+                    <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Incomplete Items */}
+          {incompleteItems.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Not Verified ({incompleteItems.length})</Label>
+              <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
+                {incompleteItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="h-4 w-4 rounded-full border border-muted-foreground/30 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Invoice Dates */}
           <div className="grid grid-cols-2 gap-4">
@@ -355,52 +526,37 @@ export default function AuditCreateInvoiceDialog({
             </div>
           </div>
 
-          {/* Confirmation Checklist */}
-          <div className="border rounded-lg p-3 space-y-3">
-            <div className="text-sm font-medium flex items-center gap-2">
-              <FileCheck className="h-4 w-4 text-primary" />
-              Confirm before creating invoice
+          {/* Override Confirmation */}
+          <div className="border border-amber-500/30 rounded-lg p-3 space-y-3 bg-amber-500/5">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="override_confirm"
+                checked={overrideConfirmed}
+                onCheckedChange={(checked) => setOverrideConfirmed(!!checked)}
+                className="mt-0.5"
+              />
+              <Label 
+                htmlFor="override_confirm" 
+                className="text-sm font-normal cursor-pointer leading-tight"
+              >
+                I confirm this load is correct and ready to invoice despite failed or incomplete verification checks
+              </Label>
             </div>
-            
+
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="ratesVerified"
-                  checked={confirmChecklist.ratesVerified}
-                  onCheckedChange={(checked) => 
-                    setConfirmChecklist(prev => ({ ...prev, ratesVerified: !!checked }))
-                  }
-                />
-                <Label htmlFor="ratesVerified" className="text-sm font-normal cursor-pointer">
-                  Rates have been verified against Rate Confirmation
-                </Label>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="documentsReviewed"
-                  checked={confirmChecklist.documentsReviewed}
-                  onCheckedChange={(checked) => 
-                    setConfirmChecklist(prev => ({ ...prev, documentsReviewed: !!checked }))
-                  }
-                />
-                <Label htmlFor="documentsReviewed" className="text-sm font-normal cursor-pointer">
-                  Documents have been reviewed for completeness
-                </Label>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="customerCorrect"
-                  checked={confirmChecklist.customerCorrect}
-                  onCheckedChange={(checked) => 
-                    setConfirmChecklist(prev => ({ ...prev, customerCorrect: !!checked }))
-                  }
-                />
-                <Label htmlFor="customerCorrect" className="text-sm font-normal cursor-pointer">
-                  Customer and billing information is correct
-                </Label>
-              </div>
+              <Label htmlFor="override_reason" className="text-sm">
+                Override Reason <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="override_reason"
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Explain why you are overriding the verification (e.g., 'Manually verified RC and BOL match expected values')"
+                className="min-h-[80px] resize-none text-sm"
+              />
+              {overrideConfirmed && !overrideReason.trim() && (
+                <p className="text-xs text-destructive">Override reason is required</p>
+              )}
             </div>
           </div>
         </div>
@@ -411,15 +567,16 @@ export default function AuditCreateInvoiceDialog({
           </Button>
           <Button 
             onClick={handleConfirm} 
-            disabled={!allChecked || createInvoiceMutation.isPending}
+            disabled={!canProceed || createInvoiceMutation.isPending}
+            variant="destructive"
             className="gap-2"
           >
             {createInvoiceMutation.isPending ? (
               <>Creating...</>
             ) : (
               <>
-                <Receipt className="h-4 w-4" />
-                Create Invoice
+                <ShieldAlert className="h-4 w-4" />
+                Override & Create Invoice
               </>
             )}
           </Button>
