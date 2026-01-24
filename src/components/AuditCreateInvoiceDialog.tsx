@@ -76,30 +76,33 @@ export default function AuditCreateInvoiceDialog({
       }
 
       const customer = load.customers;
+      let createdInvoiceId: string | null = null;
+      let createdInvoiceNumber: string | null = null;
       
-      // 1. Generate invoice number using tenant-scoped RPC
+      // ============================================================
+      // STEP 1: Generate invoice number (atomic via RPC)
+      // ============================================================
+      toast.loading("Generating invoice number...", { id: "audit-invoice" });
+      
       const { data: invoiceNumber, error: rpcError } = await supabase
         .rpc("next_invoice_number", { p_tenant_id: tenantId });
 
-      if (rpcError) {
+      if (rpcError || !invoiceNumber) {
         console.error("Invoice number RPC error:", rpcError);
-        // Fallback to manual numbering
-        const { data: lastInvoice } = await supabase
-          .from("invoices" as any)
-          .select("invoice_number")
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        const lastNum = parseInt((lastInvoice as any)?.invoice_number || "1000000", 10);
+        toast.error("Step 1 failed: Could not generate invoice number", { id: "audit-invoice" });
         throw new Error("Could not generate invoice number");
       }
+      
+      createdInvoiceNumber = String(invoiceNumber);
 
-      // 2. Create invoice record (status='draft' internally, displays as 'Open')
+      // ============================================================
+      // STEP 2: Create invoice record (status='draft')
+      // ============================================================
+      toast.loading("Creating invoice record...", { id: "audit-invoice" });
+      
       const invoiceData = {
         tenant_id: tenantId,
-        invoice_number: String(invoiceNumber),
+        invoice_number: createdInvoiceNumber,
         customer_id: load.customer_id,
         customer_name: customer?.name || "Unknown",
         customer_email: customer?.billing_email || customer?.email || "",
@@ -121,13 +124,22 @@ export default function AuditCreateInvoiceDialog({
         .select()
         .single();
 
-      if (invoiceError) throw invoiceError;
-      const invoiceId = (invoice as any).id;
+      if (invoiceError || !invoice) {
+        console.error("Invoice creation error:", invoiceError);
+        toast.error("Step 2 failed: Could not create invoice record", { id: "audit-invoice" });
+        throw new Error(`Invoice creation failed: ${invoiceError?.message || "Unknown error"}`);
+      }
+      
+      createdInvoiceId = (invoice as any).id;
 
-      // 3. Link load to invoice via invoice_loads
+      // ============================================================
+      // STEP 3: Link load to invoice via invoice_loads
+      // ============================================================
+      toast.loading("Linking load to invoice...", { id: "audit-invoice" });
+      
       const invoiceLoadData = {
-        tenant_id: tenantId, // Tenant-scoped
-        invoice_id: invoiceId,
+        tenant_id: tenantId,
+        invoice_id: createdInvoiceId,
         load_id: load.id,
         amount: load.rate || 0,
         description: `Load ${load.load_number}: ${load.pickup_city || ""}, ${load.pickup_state || ""} → ${load.delivery_city || ""}, ${load.delivery_state || ""}`.trim(),
@@ -137,9 +149,20 @@ export default function AuditCreateInvoiceDialog({
         .from("invoice_loads" as any)
         .insert(invoiceLoadData);
 
-      if (linkError) throw linkError;
+      if (linkError) {
+        console.error("Invoice-load link error:", linkError);
+        // ROLLBACK: Delete the orphaned invoice
+        await supabase.from("invoices" as any).delete().eq("id", createdInvoiceId);
+        toast.error("Step 3 failed: Could not link load to invoice (rolled back)", { id: "audit-invoice" });
+        throw new Error(`Failed to link load: ${linkError.message}`);
+      }
 
-      // 4. Update load status: set financial_status to 'invoiced' to remove from audit queue
+      // ============================================================
+      // STEP 4: Update load financial_status to 'invoiced'
+      // This is the ONLY step that removes the load from audit queue
+      // ============================================================
+      toast.loading("Updating load status...", { id: "audit-invoice" });
+      
       const { error: loadUpdateError } = await supabase
         .from("loads")
         .update({
@@ -147,11 +170,39 @@ export default function AuditCreateInvoiceDialog({
           financial_status: "invoiced",
           billing_notes: auditNotes || undefined,
         })
-        .eq("id", load.id);
+        .eq("id", load.id)
+        .eq("tenant_id", tenantId); // Ensure tenant scoping
 
-      if (loadUpdateError) throw loadUpdateError;
+      if (loadUpdateError) {
+        console.error("Load update error:", loadUpdateError);
+        // ROLLBACK: Delete invoice_loads link and invoice
+        await supabase.from("invoice_loads" as any).delete().eq("invoice_id", createdInvoiceId);
+        await supabase.from("invoices" as any).delete().eq("id", createdInvoiceId);
+        toast.error("Step 4 failed: Could not update load status (rolled back)", { id: "audit-invoice" });
+        throw new Error(`Failed to update load: ${loadUpdateError.message}`);
+      }
 
-      // 5. Insert audit_log entry for traceability
+      // ============================================================
+      // STEP 5: Verify the load was actually updated (safety check)
+      // ============================================================
+      const { data: verifyLoad, error: verifyError } = await supabase
+        .from("loads")
+        .select("financial_status")
+        .eq("id", load.id)
+        .single();
+
+      if (verifyError || (verifyLoad as any)?.financial_status !== "invoiced") {
+        console.error("Load verification failed:", verifyError, verifyLoad);
+        // ROLLBACK: Delete invoice_loads link and invoice
+        await supabase.from("invoice_loads" as any).delete().eq("invoice_id", createdInvoiceId);
+        await supabase.from("invoices" as any).delete().eq("id", createdInvoiceId);
+        toast.error("Step 5 failed: Load status verification failed (rolled back)", { id: "audit-invoice" });
+        throw new Error("Load financial_status was not updated correctly");
+      }
+
+      // ============================================================
+      // STEP 6: Insert audit_log entry (non-fatal if fails)
+      // ============================================================
       const { error: auditLogError } = await supabase
         .from("audit_logs")
         .insert({
@@ -159,21 +210,23 @@ export default function AuditCreateInvoiceDialog({
           entity_type: "load",
           entity_id: load.id,
           action: "audit_create_invoice",
-          new_value: JSON.stringify({ invoice_id: invoiceId, invoice_number: invoiceNumber }),
-          notes: `Audit approved. Invoice ${invoiceNumber} created.`,
+          new_value: JSON.stringify({ invoice_id: createdInvoiceId, invoice_number: createdInvoiceNumber }),
+          notes: `Audit approved. Invoice ${createdInvoiceNumber} created.`,
         });
 
       if (auditLogError) {
         console.error("Audit log error (non-fatal):", auditLogError);
       }
 
-      return { invoiceId, invoiceNumber };
+      toast.dismiss("audit-invoice");
+      return { invoiceId: createdInvoiceId, invoiceNumber: createdInvoiceNumber };
     },
     onSuccess: ({ invoiceId, invoiceNumber }) => {
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["loads"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["accounting-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant-accounting-counts-v3"] });
 
       toast.success(`Invoice ${invoiceNumber} created successfully`);
       onOpenChange(false);
@@ -183,7 +236,8 @@ export default function AuditCreateInvoiceDialog({
     },
     onError: (error) => {
       console.error("Create invoice error:", error);
-      toast.error(`Failed to create invoice: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.dismiss("audit-invoice");
+      // Error already shown by step-specific toast
     },
   });
 
