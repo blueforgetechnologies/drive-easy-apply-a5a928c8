@@ -5728,6 +5728,7 @@ export type Database = {
       }
       unroutable_emails: {
         Row: {
+          cc_header: string | null
           delivered_to_header: string | null
           envelope_to_header: string | null
           extracted_alias: string | null
@@ -5746,9 +5747,12 @@ export type Database = {
           status: string
           subject: string | null
           to_header: string | null
+          x_forwarded_to_header: string | null
+          x_gm_original_to_header: string | null
           x_original_to_header: string | null
         }
         Insert: {
+          cc_header?: string | null
           delivered_to_header?: string | null
           envelope_to_header?: string | null
           extracted_alias?: string | null
@@ -5767,9 +5771,12 @@ export type Database = {
           status?: string
           subject?: string | null
           to_header?: string | null
+          x_forwarded_to_header?: string | null
+          x_gm_original_to_header?: string | null
           x_original_to_header?: string | null
         }
         Update: {
+          cc_header?: string | null
           delivered_to_header?: string | null
           envelope_to_header?: string | null
           extracted_alias?: string | null
@@ -5788,6 +5795,8 @@ export type Database = {
           status?: string
           subject?: string | null
           to_header?: string | null
+          x_forwarded_to_header?: string | null
+          x_gm_original_to_header?: string | null
           x_original_to_header?: string | null
         }
         Relationships: []

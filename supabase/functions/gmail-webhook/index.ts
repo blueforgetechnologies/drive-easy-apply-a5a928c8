@@ -191,7 +191,7 @@ async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtra
   };
 }
 
-// Quarantine an unroutable email
+// Quarantine an unroutable email with full header visibility
 async function quarantineEmail(
   messageId: string,
   historyId: string | null,
@@ -208,10 +208,14 @@ async function quarantineEmail(
         gmail_message_id: messageId,
         gmail_history_id: historyId,
         received_at: new Date().toISOString(),
+        // Store ALL routing headers for debugging
         delivered_to_header: headers.deliveredTo,
         x_original_to_header: headers.xOriginalTo,
+        x_gm_original_to_header: headers.xGmOriginalTo,
+        x_forwarded_to_header: headers.xForwardedTo,
         envelope_to_header: headers.envelopeTo,
         to_header: headers.to,
+        cc_header: headers.cc,
         from_header: fromEmail,
         subject: subject,
         extracted_alias: headers.alias,
@@ -232,6 +236,7 @@ async function quarantineEmail(
         deliveredTo: headers.deliveredTo?.substring(0, 50) || 'NULL',
         xOriginalTo: headers.xOriginalTo?.substring(0, 50) || 'NULL',
         xGmOriginalTo: headers.xGmOriginalTo?.substring(0, 50) || 'NULL',
+        xForwardedTo: headers.xForwardedTo?.substring(0, 50) || 'NULL',
         to: headers.to?.substring(0, 50) || 'NULL',
         rawHeaderCount: rawHeaders.length,
       };
