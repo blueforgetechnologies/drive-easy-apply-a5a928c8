@@ -31,6 +31,7 @@ import {
   Calendar,
   Award,
   Car,
+  Archive,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -79,6 +80,7 @@ export function ApplicationReviewDrawer({
 }: ApplicationReviewDrawerProps) {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [note, setNote] = useState("");
@@ -192,6 +194,27 @@ export function ApplicationReviewDrawer({
       toast.error("Failed to reject: " + error.message);
     } finally {
       setIsRejecting(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    setIsArchiving(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({
+          status: "archived",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", application.id);
+
+      if (error) throw error;
+      toast.success("Application archived");
+      onStatusChange();
+    } catch (error: any) {
+      toast.error("Failed to archive: " + error.message);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -443,7 +466,7 @@ export function ApplicationReviewDrawer({
                     variant="default"
                     size="sm"
                     onClick={handleApprove}
-                    disabled={isApproving || application.driver_status === "active"}
+                    disabled={isApproving || application.driver_status === "active" || application.status === "approved"}
                     className="gap-2 bg-green-600 hover:bg-green-700"
                   >
                     {isApproving ? (
@@ -464,6 +487,22 @@ export function ApplicationReviewDrawer({
                     Reject
                   </Button>
                 </div>
+
+                {/* Archive button - full width */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleArchive}
+                  disabled={isArchiving || application.status === "archived"}
+                  className="gap-2 w-full text-muted-foreground hover:text-foreground"
+                >
+                  {isArchiving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Archive className="h-4 w-4" />
+                  )}
+                  Archive Application
+                </Button>
               </div>
 
               <Separator />

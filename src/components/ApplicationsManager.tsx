@@ -63,7 +63,7 @@ interface InviteWithToken {
   email: string;
 }
 
-type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved" | "rejected" | "archived";
+type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved" | "rejected" | "archived" | "needs_review";
 
 export function ApplicationsManager() {
   const navigate = useNavigate();
@@ -427,6 +427,10 @@ export function ApplicationsManager() {
     if (app.status === "invited") {
       return <Badge variant="secondary">Invited</Badge>;
     }
+    // Handle "pending" status (legacy/manual entries)
+    if (app.status === "pending") {
+      return <Badge variant="outline" className="border-amber-500 text-amber-600">Pending Review</Badge>;
+    }
     return <Badge variant="outline">{app.status || "Unknown"}</Badge>;
   };
 
@@ -461,6 +465,9 @@ export function ApplicationsManager() {
   const statusFilteredApplications = applications.filter((app) => {
     if (statusFilter === "all") return app.status !== "archived";
     if (statusFilter === "archived") return app.status === "archived";
+    if (statusFilter === "needs_review") return needsReview(app) && app.status !== "archived";
+    // Handle "pending" as part of "submitted" filter for legacy entries
+    if (statusFilter === "submitted") return app.status === "submitted" || app.status === "pending";
     return app.status === statusFilter;
   });
 
@@ -487,10 +494,11 @@ export function ApplicationsManager() {
     all: applications.filter((a) => a.status !== "archived").length,
     invited: applications.filter((a) => a.status === "invited").length,
     in_progress: applications.filter((a) => a.status === "in_progress").length,
-    submitted: applications.filter((a) => a.status === "submitted").length,
+    submitted: applications.filter((a) => a.status === "submitted" || a.status === "pending").length,
     approved: applications.filter((a) => a.status === "approved").length,
     rejected: applications.filter((a) => a.status === "rejected").length,
     archived: applications.filter((a) => a.status === "archived").length,
+    needs_review: applications.filter((a) => needsReview(a) && a.status !== "archived").length,
   };
 
   if (loading) {
@@ -554,6 +562,19 @@ export function ApplicationsManager() {
               </Badge>
             </Button>
           ))}
+          {/* Needs Review Toggle - Distinctive Warning Style */}
+          <Button
+            variant={statusFilter === "needs_review" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter(statusFilter === "needs_review" ? "all" : "needs_review")}
+            className={`h-7 text-xs gap-1 ${statusFilter === "needs_review" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-500 text-amber-600 hover:bg-amber-50"}`}
+          >
+            <AlertTriangle className="h-3 w-3" />
+            Needs Review
+            <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
+              {statusCounts.needs_review}
+            </Badge>
+          </Button>
         </div>
 
         {/* Search + Bulk Actions */}
