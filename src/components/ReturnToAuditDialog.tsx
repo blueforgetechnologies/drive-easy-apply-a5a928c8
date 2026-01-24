@@ -398,9 +398,11 @@ export default function ReturnToAuditDialog({
                 <div className="flex items-start gap-2 pt-2 border-t border-red-200 dark:border-red-700">
                   <Info className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-red-600 dark:text-red-300">
-                    <span className="font-medium">Accounting best practice:</span>{" "}
-                    Use <span className="font-semibold">Void</span> (if not paid) or{" "}
-                    <span className="font-semibold">Credit Memo</span> (if paid/posted) instead.
+                    <p className="font-medium mb-1">This invoice has already left the system.</p>
+                    <p>
+                      Use <span className="font-semibold">Void</span> (if unpaid) or{" "}
+                      <span className="font-semibold">Credit Memo</span> (if paid) instead.
+                    </p>
                   </div>
                 </div>
               )}
