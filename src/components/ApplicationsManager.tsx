@@ -24,6 +24,7 @@ import {
   FileSearch
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
+import { PDFPreviewDialog } from "./PDFPreviewDialog";
 
 
 interface ApplicationRow {
@@ -53,6 +54,12 @@ export function ApplicationsManager() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
+  
+  // PDF Preview state (in-app modal)
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPdf, setPreviewPdf] = useState<string | null>(null);
+  const [previewFilename, setPreviewFilename] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -173,21 +180,17 @@ export function ApplicationsManager() {
   };
 
   const handlePreviewPDF = async (applicationId: string) => {
-    // IMPORTANT: pre-open the tab synchronously so Chrome doesn't treat this as a blocked popup
-    const previewTab = window.open("about:blank", "_blank", "noopener,noreferrer");
-    if (!previewTab) {
-      toast.error("Popup blocked. Allow popups for this site.");
-      return;
-    }
-
-    previewTab.document.title = "Generating PDF...";
-    toast.info("Generating PDF preview...");
+    // Open in-app modal with pdf.js rendering (no new tab, no Chrome blocking)
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    setPreviewPdf(null);
+    setPreviewFilename("");
 
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
         toast.error("You must be logged in to preview");
-        previewTab.close();
+        setPreviewOpen(false);
         return;
       }
 
@@ -203,31 +206,14 @@ export function ApplicationsManager() {
         throw new Error(data.error || "Failed to generate PDF");
       }
 
-      // Convert base64 to blob and open in new tab
-      const byteCharacters = atob(data.pdf_base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "application/pdf" });
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Navigate the already-opened tab to the blob URL
-      previewTab.location.href = blobUrl;
-
-      // Revoke after a longer delay to avoid breaking slow loads
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-      
-      toast.success("PDF opened in new tab");
+      setPreviewPdf(data.pdf_base64);
+      setPreviewFilename(data.filename || "application.pdf");
     } catch (error: any) {
       console.error("Error generating PDF preview:", error);
       toast.error("Failed to preview PDF: " + (error.message || "Unknown error"));
-      try {
-        previewTab.close();
-      } catch {
-        // ignore
-      }
+      setPreviewOpen(false);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -575,6 +561,15 @@ export function ApplicationsManager() {
           </>
         )}
       </CardContent>
+      
+      {/* PDF Preview Dialog (renders pages as images via pdf.js) */}
+      <PDFPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        pdfBase64={previewPdf}
+        filename={previewFilename}
+        isLoading={previewLoading}
+      />
     </Card>
   );
 }
