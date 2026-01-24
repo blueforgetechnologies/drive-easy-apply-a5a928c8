@@ -248,3 +248,6 @@ verify_jwt = false
 
 [functions.load-application]
 verify_jwt = false
+
+[functions.resend-driver-invite]
+verify_jwt = true
