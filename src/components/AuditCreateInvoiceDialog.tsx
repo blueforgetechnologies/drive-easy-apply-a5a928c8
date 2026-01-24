@@ -251,10 +251,22 @@ export default function AuditCreateInvoiceDialog({
 
       // ============================================================
       // STEP 6: Insert audit_log entry (non-fatal if fails)
+      // Differentiate between standard approval and override actions
+      // Override actions are logged for compliance and audit trail
       // ============================================================
-      const auditAction = verificationState === "all_match" 
-        ? "audit_create_invoice" 
-        : "audit_create_invoice_override";
+      const isOverride = verificationState !== "all_match";
+      const auditAction = isOverride 
+        ? "audit_create_invoice_override" 
+        : "audit_create_invoice";
+      
+      // Build detailed audit log notes (separate from invoice notes)
+      let auditLogNotes = isOverride
+        ? `[OVERRIDE] Invoice ${createdInvoiceNumber} created despite verification failures.`
+        : `Invoice ${createdInvoiceNumber} created. All verification checks passed.`;
+      
+      if (isOverride && overrideReason.trim()) {
+        auditLogNotes += ` Reason: ${overrideReason.trim()}`;
+      }
         
       const { error: auditLogError } = await supabase
         .from("audit_logs")
@@ -267,9 +279,11 @@ export default function AuditCreateInvoiceDialog({
             invoice_id: createdInvoiceId, 
             invoice_number: createdInvoiceNumber,
             verification_state: verificationState,
-            override_reason: verificationState !== "all_match" ? overrideReason : undefined,
+            failed_items: isOverride ? failedItems.map(i => i.label) : undefined,
+            incomplete_items: isOverride ? incompleteItems.map(i => i.label) : undefined,
+            override_reason: isOverride ? overrideReason.trim() : undefined,
           }),
-          notes: `Audit ${verificationState === "all_match" ? "approved" : "overridden"}. Invoice ${createdInvoiceNumber} created.`,
+          notes: auditLogNotes,
         });
 
       if (auditLogError) {

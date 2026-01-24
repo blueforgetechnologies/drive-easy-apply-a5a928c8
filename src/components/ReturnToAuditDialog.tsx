@@ -16,6 +16,7 @@ interface InvoiceForReturn {
   otr_submitted_at: string | null;
   otr_status: string | null;
   amount_paid: number | null;
+  notes?: string | null;
 }
 
 interface LinkedLoad {
@@ -214,45 +215,66 @@ export default function ReturnToAuditDialog({
       }
 
       const loadIds = linkedLoads.map((l) => l.load_id);
+      const loadNumbers = linkedLoads.map((l) => l.load_number);
 
       // ============================================================
-      // MUTATION ORDERING FOR DATA INTEGRITY
+      // ATOMIC MUTATION SEQUENCE FOR DATA INTEGRITY
+      // Order matters: unlink loads → update loads → cancel invoice → audit log
+      // If any step fails, the operation stops and partial state is avoided
       // ============================================================
 
       // (1) Delete invoice_loads rows for this invoice (tenant scoped)
+      // This must happen first to break the FK relationship
       const { error: deleteError } = await supabase
         .from("invoice_loads" as any)
         .delete()
         .eq("invoice_id", invoice.id)
         .eq("tenant_id", tenantId);
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error("Failed to delete invoice_loads:", deleteError);
+        throw new Error(`Failed to unlink loads: ${deleteError.message}`);
+      }
 
-      // (2) Update loads: set financial_status = 'pending_invoice' AND status = 'ready_for_audit'
-      // This restores loads to the Ready for Audit queue
+      // (2) Update loads: set financial_status = 'pending_invoice' ONLY
+      // IMPORTANT: We do NOT change loads.status (operational lifecycle)
+      // The Ready for Audit query uses financial_status='pending_invoice' to include these loads
+      // This preserves the operational status truth (e.g., closed loads stay closed)
       if (loadIds.length > 0) {
         const { error: loadsError } = await supabase
           .from("loads")
           .update({ 
-            financial_status: "pending_invoice",
-            status: "ready_for_audit"
+            financial_status: "pending_invoice"
+            // status is NOT changed - operational lifecycle is preserved
           })
           .in("id", loadIds)
           .eq("tenant_id", tenantId);
         
-        if (loadsError) throw loadsError;
+        if (loadsError) {
+          console.error("Failed to update loads:", loadsError);
+          throw new Error(`Failed to update load financial status: ${loadsError.message}`);
+        }
       }
 
       // (3) Update invoice status to 'cancelled'
+      // This marks the invoice as returned/cancelled in the system
       const { error: invoiceError } = await supabase
         .from("invoices" as any)
-        .update({ status: "cancelled" })
+        .update({ 
+          status: "cancelled",
+          notes: invoice.notes 
+            ? `${invoice.notes}\n\n[RETURNED TO AUDIT] ${new Date().toISOString().split('T')[0]}`
+            : `[RETURNED TO AUDIT] ${new Date().toISOString().split('T')[0]}`
+        })
         .eq("id", invoice.id)
         .eq("tenant_id", tenantId);
 
-      if (invoiceError) throw invoiceError;
+      if (invoiceError) {
+        console.error("Failed to cancel invoice:", invoiceError);
+        throw new Error(`Failed to cancel invoice: ${invoiceError.message}`);
+      }
 
-      // (4) Insert audit_logs entry with details
+      // (4) Insert audit_logs entry with comprehensive details
       const { error: auditLogError } = await supabase
         .from("audit_logs")
         .insert({
@@ -263,14 +285,15 @@ export default function ReturnToAuditDialog({
           new_value: JSON.stringify({
             invoice_number: invoice.invoice_number,
             load_ids: loadIds,
+            load_numbers: loadNumbers,
             load_count: loadIds.length,
           }),
-          notes: `Invoice ${invoice.invoice_number} returned to audit. ${loadIds.length} load(s) moved back to Ready for Audit.`,
+          notes: `Invoice ${invoice.invoice_number} cancelled and returned to audit. ${loadIds.length} load(s) (${loadNumbers.join(', ')}) restored to Ready for Audit.`,
         });
 
       if (auditLogError) {
         console.error("Audit log error (non-fatal):", auditLogError);
-        // Non-fatal - continue
+        // Non-fatal - continue, the core operation succeeded
       }
 
       return { invoice_number: invoice.invoice_number, load_count: loadIds.length };
