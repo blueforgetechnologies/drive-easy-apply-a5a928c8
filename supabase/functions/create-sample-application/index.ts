@@ -304,27 +304,49 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Build the complete sample data
     const sampleData = buildSampleApplicationData(tenantId);
+    const SAMPLE_EMAIL = 'john.smith@example.com';
     
-    // Check if sample application already exists for this tenant
-    const { data: existingApp } = await supabase
-      .from('applications')
-      .select('id, invite_id')
+    // Check if sample invite already exists for this tenant (stable key: tenant_id + email)
+    const { data: existingInvite } = await supabase
+      .from('driver_invites')
+      .select('id, public_token')
       .eq('tenant_id', tenantId)
-      .eq('personal_info->>email', 'john.smith@example.com')
+      .eq('email', SAMPLE_EMAIL)
       .maybeSingle();
     
-    if (existingApp) {
+    let existingApp = null;
+    if (existingInvite) {
+      // Check for application linked to this invite
+      const { data: app } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('invite_id', existingInvite.id)
+        .maybeSingle();
+      existingApp = app;
+    }
+    
+    if (existingApp && existingInvite) {
       // Update existing sample application
       console.log(`[create-sample-application] Updating existing sample: ${existingApp.id}`);
       
       const { error: updateError } = await supabase
         .from('applications')
-        .update(sampleData.application)
+        .update({
+          ...sampleData.application,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', existingApp.id);
       
       if (updateError) {
         console.error('Error updating sample application:', updateError);
-        throw new Error('Failed to update sample application');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to update sample application',
+            details: updateError,
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       
       return new Response(
@@ -332,18 +354,24 @@ const handler = async (req: Request): Promise<Response> => {
           success: true, 
           message: 'Sample application updated',
           application_id: existingApp.id,
-          invite_id: existingApp.invite_id,
+          invite_id: existingInvite.id,
           updated: true,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
+    // If there's an existing invite without app, delete it to start fresh
+    if (existingInvite && !existingApp) {
+      console.log(`[create-sample-application] Cleaning up orphan invite: ${existingInvite.id}`);
+      await supabase.from('driver_invites').delete().eq('id', existingInvite.id);
+    }
+    
     // Create new invite
     const { data: inviteData, error: inviteError } = await supabase
       .from('driver_invites')
       .insert({
-        email: sampleData.invite.email,
+        email: SAMPLE_EMAIL,
         name: sampleData.invite.name,
         tenant_id: tenantId,
         invited_by: userId,
@@ -356,7 +384,14 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (inviteError) {
       console.error('Error creating sample invite:', inviteError);
-      throw new Error('Failed to create sample invite');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to create sample invite',
+          details: inviteError,
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     console.log(`[create-sample-application] Created invite: ${inviteData.id}`);
@@ -377,7 +412,14 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error creating sample application:', appError);
       // Clean up the invite if app creation fails
       await supabase.from('driver_invites').delete().eq('id', inviteData.id);
-      throw new Error('Failed to create sample application');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to create sample application',
+          details: appError,
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     console.log(`[create-sample-application] Created application: ${appData.id}`);
@@ -390,7 +432,8 @@ const handler = async (req: Request): Promise<Response> => {
         invite_id: inviteData.id,
         public_token: inviteData.public_token,
         applicant_name: 'John Smith',
-        applicant_email: 'john.smith@example.com',
+        applicant_email: SAMPLE_EMAIL,
+        updated: false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -398,7 +441,11 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('[create-sample-application] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Internal server error',
+        details: String(error),
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

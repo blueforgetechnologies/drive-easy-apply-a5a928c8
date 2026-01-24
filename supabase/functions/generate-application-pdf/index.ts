@@ -326,19 +326,32 @@ class DriverApplicationPDF {
     this.yPos += 6 + (maxLines - 1) * 4;
   }
 
+  /**
+   * Draw a checkbox with optional checkmark using lines (not glyphs).
+   * Returns the x position after the checkbox + label.
+   */
+  private drawCheckbox(x: number, y: number, checked: boolean, size: number = 3.5): void {
+    // Draw box
+    this.doc.setDrawColor(80, 80, 80);
+    this.doc.setFillColor(255, 255, 255);
+    this.doc.setLineWidth(0.4);
+    this.doc.rect(x, y - size, size, size, 'FD');
+    
+    if (checked) {
+      // Draw checkmark using two line strokes (V shape)
+      this.doc.setDrawColor(0, 120, 0);
+      this.doc.setLineWidth(0.6);
+      // First stroke: from upper-left going down to middle-bottom
+      this.doc.line(x + 0.7, y - size / 2, x + size / 2, y - 0.5);
+      // Second stroke: from middle-bottom going up to upper-right
+      this.doc.line(x + size / 2, y - 0.5, x + size - 0.5, y - size + 0.5);
+    }
+  }
+
   private addCheckboxField(label: string, checked: boolean | string, x: number, width: number): number {
     const isChecked = checked === true || checked === 'yes' || checked === 'Yes';
     
-    // Checkbox
-    this.doc.setDrawColor(80, 80, 80);
-    this.doc.setLineWidth(0.4);
-    this.doc.rect(x, this.yPos - 3, 3.5, 3.5);
-    
-    if (isChecked) {
-      this.doc.setFont(undefined, 'bold');
-      this.doc.setFontSize(9);
-      this.doc.text('✓', x + 0.5, this.yPos);
-    }
+    this.drawCheckbox(x, this.yPos, isChecked);
     
     this.doc.setFontSize(8);
     this.doc.setFont(undefined, 'normal');
@@ -363,23 +376,14 @@ class DriverApplicationPDF {
     let x = this.margin + labelWidth;
     
     // Yes checkbox
-    this.doc.setDrawColor(80, 80, 80);
-    this.doc.rect(x, this.yPos - 3, 3.5, 3.5);
-    if (isYes) {
-      this.doc.setFont(undefined, 'bold');
-      this.doc.text('✓', x + 0.5, this.yPos);
-    }
+    this.drawCheckbox(x, this.yPos, isYes);
     this.doc.setFont(undefined, 'normal');
     this.doc.text('Yes', x + 5, this.yPos);
     
     x += 18;
     
     // No checkbox
-    this.doc.rect(x, this.yPos - 3, 3.5, 3.5);
-    if (isNo) {
-      this.doc.setFont(undefined, 'bold');
-      this.doc.text('✓', x + 0.5, this.yPos);
-    }
+    this.drawCheckbox(x, this.yPos, isNo);
     this.doc.setFont(undefined, 'normal');
     this.doc.text('No', x + 5, this.yPos);
     
@@ -867,7 +871,12 @@ class DriverApplicationPDF {
   }
 
   private generateMvrConsentSection(): void {
-    this.checkPageBreak(100);
+    // Calculate required space: title (12) + consent paragraph + checkbox row + padding
+    const consentText = `By signing below, I authorize ${this.companyName} to obtain my Motor Vehicle Record (MVR) from any state agency and any other driving-related records necessary to evaluate my qualifications for employment. I further authorize, where applicable, the Company to request my FMCSA Pre-Employment Screening Program (PSP) report and to conduct CDLIS queries. I understand this authorization is valid during the hiring process and, if hired, may be used periodically thereafter as permitted by law.`;
+    const consentLines = this.wrapText(consentText, this.contentWidth - 16);
+    const boxHeight = consentLines.length * 5 + 20; // Just consent + checkbox, no signature
+    
+    this.checkPageBreak(boxHeight + 20);
     
     // Section title bar
     this.doc.setFillColor(90, 90, 90);
@@ -879,12 +888,6 @@ class DriverApplicationPDF {
     this.yPos += 12;
     
     // Gray box for consent text
-    const consentText = `By signing below, I authorize ${this.companyName} to obtain my Motor Vehicle Record (MVR) from any state agency and any other driving-related records necessary to evaluate my qualifications for employment. I further authorize, where applicable, the Company to request my FMCSA Pre-Employment Screening Program (PSP) report and to conduct CDLIS queries. I understand this authorization is valid during the hiring process and, if hired, may be used periodically thereafter as permitted by law.`;
-    
-    const consentLines = this.wrapText(consentText, this.contentWidth - 16);
-    const boxHeight = consentLines.length * 5 + 40;
-    
-    // Draw box
     this.doc.setDrawColor(180, 180, 180);
     this.doc.setFillColor(250, 250, 250);
     this.doc.setLineWidth(0.5);
@@ -900,67 +903,18 @@ class DriverApplicationPDF {
       this.doc.text(line, this.margin + 5, startY + (idx * 5));
     });
     
-    this.yPos = startY + (consentLines.length * 5) + 8;
+    this.yPos = startY + (consentLines.length * 5) + 6;
     
-    // Checkbox with authorization
-    this.doc.setFillColor(255, 255, 255);
-    this.doc.setDrawColor(100, 100, 100);
-    this.doc.rect(this.margin + 5, this.yPos - 3.5, 4, 4, 'FD');
-    
-    // Checkmark (authorization granted by default since this is generated from submitted app)
-    this.doc.setTextColor(0, 120, 0);
-    this.doc.setFontSize(10);
-    this.doc.setFont(undefined, 'bold');
-    this.doc.text('✓', this.margin + 5.3, this.yPos + 0.5);
+    // Checkbox with authorization (using drawn checkmark, not glyph)
+    this.drawCheckbox(this.margin + 5, this.yPos, true, 4);
     
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFontSize(8);
     this.doc.setFont(undefined, 'bold');
     this.doc.text('I AUTHORIZE the Company to obtain my MVR/PSP/CDLIS records for employment purposes.', this.margin + 12, this.yPos);
-    this.yPos += 12;
     
-    // Signature line
-    this.doc.setFontSize(7);
-    this.doc.setTextColor(80, 80, 80);
-    this.doc.setFont(undefined, 'normal');
-    this.doc.text('Applicant Signature:', this.margin + 5, this.yPos);
-    
-    this.doc.setDrawColor(0, 0, 0);
-    this.doc.setLineWidth(0.3);
-    this.doc.line(this.margin + 35, this.yPos, this.margin + 95, this.yPos);
-    
-    // Pre-fill with typed name
-    this.doc.setFontSize(9);
-    this.doc.setTextColor(0, 0, 0);
-    this.doc.setFont(undefined, 'italic');
-    this.doc.text(this.applicantName, this.margin + 37, this.yPos - 1);
-    
-    // Date
-    this.doc.setFontSize(7);
-    this.doc.setTextColor(80, 80, 80);
-    this.doc.setFont(undefined, 'normal');
-    this.doc.text('Date:', this.margin + 100, this.yPos);
-    this.doc.line(this.margin + 110, this.yPos, this.margin + 145, this.yPos);
-    
-    this.doc.setFontSize(9);
-    this.doc.setTextColor(0, 0, 0);
-    this.doc.text(this.formatDate(new Date().toISOString()), this.margin + 112, this.yPos - 1);
-    
-    this.yPos += 8;
-    
-    // Printed name line
-    this.doc.setFontSize(7);
-    this.doc.setTextColor(80, 80, 80);
-    this.doc.setFont(undefined, 'normal');
-    this.doc.text('Printed Name:', this.margin + 5, this.yPos);
-    this.doc.line(this.margin + 35, this.yPos, this.margin + 95, this.yPos);
-    
-    this.doc.setFontSize(9);
-    this.doc.setTextColor(0, 0, 0);
-    this.doc.setFont(undefined, 'bold');
-    this.doc.text(this.applicantName.toUpperCase(), this.margin + 37, this.yPos - 1);
-    
-    this.yPos += boxHeight - (consentLines.length * 5) - 28;
+    // Move past the box
+    this.yPos += boxHeight - (consentLines.length * 5) - 6;
   }
 
   private generateAttestationPage(): void {
