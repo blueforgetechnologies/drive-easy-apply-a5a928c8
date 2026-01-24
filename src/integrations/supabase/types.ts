@@ -101,6 +101,7 @@ export type Database = {
           cell_phone: string | null
           checking_number: string | null
           contractor_agreement: Json
+          current_step: number | null
           detention_pay: number | null
           direct_deposit: Json
           document_upload: Json
@@ -153,6 +154,7 @@ export type Database = {
           submitted_at: string | null
           tenant_id: string
           termination_date: string | null
+          updated_at: string | null
           vehicle_note: string | null
           weekend_premium: number | null
           weekly_salary: number | null
@@ -168,6 +170,7 @@ export type Database = {
           cell_phone?: string | null
           checking_number?: string | null
           contractor_agreement: Json
+          current_step?: number | null
           detention_pay?: number | null
           direct_deposit: Json
           document_upload: Json
@@ -220,6 +223,7 @@ export type Database = {
           submitted_at?: string | null
           tenant_id: string
           termination_date?: string | null
+          updated_at?: string | null
           vehicle_note?: string | null
           weekend_premium?: number | null
           weekly_salary?: number | null
@@ -235,6 +239,7 @@ export type Database = {
           cell_phone?: string | null
           checking_number?: string | null
           contractor_agreement?: Json
+          current_step?: number | null
           detention_pay?: number | null
           direct_deposit?: Json
           document_upload?: Json
@@ -287,6 +292,7 @@ export type Database = {
           submitted_at?: string | null
           tenant_id?: string
           termination_date?: string | null
+          updated_at?: string | null
           vehicle_note?: string | null
           weekend_premium?: number | null
           weekly_salary?: number | null
