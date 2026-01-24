@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Cutoff for payload_url health: only consider content created after the MIME/bucket fix
+// This prevents legacy data from triggering false "critical" status
+const PAYLOAD_URL_FIX_CUTOFF_ISO = '2026-01-24T19:00:00Z';
+
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -35,9 +39,12 @@ interface TimeWindowMetrics {
 }
 
 interface RecentContentExample {
+  content_id: string;
   provider: string;
   content_hash_prefix: string;
-  receipt_count: number;
+  lifetime_receipt_count: number;
+  window_receipts_count: number;
+  window_duplicates_count: number;
   payload_url_present: boolean;
   last_seen_at: string;
 }
@@ -49,6 +56,12 @@ interface RecentUnroutableExample {
   delivered_to_header: string | null;
 }
 
+interface SanityWarning {
+  window: string;
+  message: string;
+  raw_data: RpcMetrics;
+}
+
 interface DedupCostResponse {
   generated_at: string;
   metrics: TimeWindowMetrics[];
@@ -58,8 +71,11 @@ interface DedupCostResponse {
     payload_url_pct: 'healthy' | 'warning' | 'critical';
     queue_collisions: 'healthy' | 'warning' | 'critical';
   };
+  payload_url_health_pct: number;
+  payload_url_health_window: string;
   recent_content_examples: RecentContentExample[];
   recent_unroutable_examples: RecentUnroutableExample[];
+  sanity_warnings: SanityWarning[];
 }
 
 function computeMetrics(rpc: RpcMetrics, windowLabel: string): TimeWindowMetrics {
@@ -159,52 +175,96 @@ serve(async (req) => {
       throw new Error(`RPC 24h error: ${rpc24h.error.message}`);
     }
 
+    // Collect sanity warnings
+    const sanityWarnings: SanityWarning[] = [];
+
     // Sanity checks with logging
-    const sanityCheck = (label: string, rpc: RpcMetrics) => {
-      const warnings: string[] = [];
-      
+    const runSanityCheck = (label: string, rpc: RpcMetrics) => {
       // Queue total must be >= unique dedupe keys
       if (rpc.queue_total < rpc.queue_unique_dedupe) {
-        warnings.push(`queue_total (${rpc.queue_total}) < queue_unique_dedupe (${rpc.queue_unique_dedupe})`);
+        const warning = {
+          window: label,
+          message: `queue_total (${rpc.queue_total}) < queue_unique_dedupe (${rpc.queue_unique_dedupe})`,
+          raw_data: rpc,
+        };
+        sanityWarnings.push(warning);
+        console.warn(`[inspector-dedup-cost] SANITY CHECK FAILED:`, warning);
       }
       
-      // Receipts count must be >= unique content count (can't have more unique than total)
+      // Receipts count must be >= unique content count
       if (rpc.receipts_count < rpc.unique_content_count) {
-        warnings.push(`receipts_count (${rpc.receipts_count}) < unique_content_count (${rpc.unique_content_count})`);
+        const warning = {
+          window: label,
+          message: `receipts_count (${rpc.receipts_count}) < unique_content_count (${rpc.unique_content_count})`,
+          raw_data: rpc,
+        };
+        sanityWarnings.push(warning);
+        console.warn(`[inspector-dedup-cost] SANITY CHECK FAILED:`, warning);
       }
       
       // Payload URL count can't exceed unique content count
       if (rpc.payload_url_present_count > rpc.unique_content_count) {
-        warnings.push(`payload_url_present_count (${rpc.payload_url_present_count}) > unique_content_count (${rpc.unique_content_count})`);
-      }
-      
-      if (warnings.length > 0) {
-        console.warn(`[inspector-dedup-cost] SANITY CHECK FAILED (${label}):`, warnings, 'Raw RPC:', rpc);
+        const warning = {
+          window: label,
+          message: `payload_url_present_count (${rpc.payload_url_present_count}) > unique_content_count (${rpc.unique_content_count})`,
+          raw_data: rpc,
+        };
+        sanityWarnings.push(warning);
+        console.warn(`[inspector-dedup-cost] SANITY CHECK FAILED:`, warning);
       }
     };
 
-    sanityCheck('15m', rpc15m.data as RpcMetrics);
-    sanityCheck('60m', rpc60m.data as RpcMetrics);
-    sanityCheck('24h', rpc24h.data as RpcMetrics);
+    runSanityCheck('15m', rpc15m.data as RpcMetrics);
+    runSanityCheck('60m', rpc60m.data as RpcMetrics);
+    runSanityCheck('24h', rpc24h.data as RpcMetrics);
 
     const metrics15m = computeMetrics(rpc15m.data as RpcMetrics, 'Last 15 min');
     const metrics60m = computeMetrics(rpc60m.data as RpcMetrics, 'Last 60 min');
     const metrics24h = computeMetrics(rpc24h.data as RpcMetrics, 'Last 24 hours');
 
-    // Fetch recent examples (small limit, cheap)
+    // Compute payload_url health using 15m window (most current, avoids legacy data skew)
+    // This reflects current pipeline health, not historical issues
+    const payloadUrlHealthPct = metrics15m.email_content_payload_url_populated_pct;
+    const payloadUrlHealthWindow = '15m';
+
+    // Fetch recent content examples (last 10)
     const { data: recentContent } = await supabase
       .from('email_content')
-      .select('provider, content_hash, receipt_count, payload_url, last_seen_at')
+      .select('id, provider, content_hash, receipt_count, payload_url, last_seen_at')
       .order('last_seen_at', { ascending: false })
       .limit(10);
 
-    const recentContentExamples: RecentContentExample[] = (recentContent || []).map(row => ({
-      provider: row.provider || 'unknown',
-      content_hash_prefix: (row.content_hash || '').substring(0, 12) + '...',
-      receipt_count: row.receipt_count || 1,
-      payload_url_present: row.payload_url != null,
-      last_seen_at: row.last_seen_at,
-    }));
+    // Get window-based receipt counts for these content IDs (last 15 minutes)
+    const contentIds = (recentContent || []).map(row => row.id);
+    const windowCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    
+    let windowReceiptCounts: Record<string, number> = {};
+    if (contentIds.length > 0) {
+      const { data: windowReceipts } = await supabase
+        .from('email_receipts')
+        .select('content_id')
+        .in('content_id', contentIds)
+        .gte('received_at', windowCutoff);
+      
+      // Count receipts per content_id
+      (windowReceipts || []).forEach(row => {
+        windowReceiptCounts[row.content_id] = (windowReceiptCounts[row.content_id] || 0) + 1;
+      });
+    }
+
+    const recentContentExamples: RecentContentExample[] = (recentContent || []).map(row => {
+      const windowCount = windowReceiptCounts[row.id] || 0;
+      return {
+        content_id: row.id,
+        provider: row.provider || 'unknown',
+        content_hash_prefix: (row.content_hash || '').substring(0, 12) + '...',
+        lifetime_receipt_count: row.receipt_count || 1,
+        window_receipts_count: windowCount,
+        window_duplicates_count: Math.max(windowCount - 1, 0),
+        payload_url_present: row.payload_url != null,
+        last_seen_at: row.last_seen_at,
+      };
+    });
 
     const { data: recentUnroutable } = await supabase
       .from('unroutable_emails')
@@ -219,14 +279,15 @@ serve(async (req) => {
       delivered_to_header: row.delivered_to_header?.substring(0, 50) || null,
     }));
 
-    // Compute health status
+    // Compute health status using appropriate windows
     const unroutable15mStatus: 'healthy' | 'warning' | 'critical' =
       metrics15m.unroutable_count >= 200 ? 'critical' :
       metrics15m.unroutable_count >= 50 ? 'warning' : 'healthy';
 
+    // Use 60m payload URL % for health (avoids legacy data issues)
     const payloadUrlStatus: 'healthy' | 'warning' | 'critical' =
-      metrics24h.email_content_payload_url_populated_pct < 80 ? 'critical' :
-      metrics24h.email_content_payload_url_populated_pct < 95 ? 'warning' : 'healthy';
+      payloadUrlHealthPct < 80 ? 'critical' :
+      payloadUrlHealthPct < 95 ? 'warning' : 'healthy';
 
     const queueCollisionStatus: 'healthy' | 'warning' | 'critical' =
       metrics15m.email_queue_dedup_collision_count > 10 ? 'critical' :
@@ -245,11 +306,14 @@ serve(async (req) => {
         payload_url_pct: payloadUrlStatus,
         queue_collisions: queueCollisionStatus,
       },
+      payload_url_health_pct: payloadUrlHealthPct,
+      payload_url_health_window: payloadUrlHealthWindow,
       recent_content_examples: recentContentExamples,
       recent_unroutable_examples: recentUnroutableExamples,
+      sanity_warnings: sanityWarnings,
     };
 
-    console.log(`[inspector-dedup-cost] Health: ${overallStatus}, Unroutable15m: ${metrics15m.unroutable_count}, PayloadURL%: ${metrics24h.email_content_payload_url_populated_pct}%`);
+    console.log(`[inspector-dedup-cost] Health: ${overallStatus}, Unroutable15m: ${metrics15m.unroutable_count}, PayloadURL60m: ${payloadUrlHealthPct}%, Warnings: ${sanityWarnings.length}`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

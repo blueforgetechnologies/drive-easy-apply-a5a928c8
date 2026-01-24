@@ -29,9 +29,12 @@ interface TimeWindowMetrics {
 }
 
 interface RecentContentExample {
+  content_id: string;
   provider: string;
   content_hash_prefix: string;
-  receipt_count: number;
+  lifetime_receipt_count: number;
+  window_receipts_count: number;
+  window_duplicates_count: number;
   payload_url_present: boolean;
   last_seen_at: string;
 }
@@ -43,6 +46,11 @@ interface RecentUnroutableExample {
   delivered_to_header: string | null;
 }
 
+interface SanityWarning {
+  window: string;
+  message: string;
+}
+
 interface DedupCostData {
   generated_at: string;
   metrics: TimeWindowMetrics[];
@@ -52,8 +60,11 @@ interface DedupCostData {
     payload_url_pct: "healthy" | "warning" | "critical";
     queue_collisions: "healthy" | "warning" | "critical";
   };
+  payload_url_health_pct: number;
+  payload_url_health_window: string;
   recent_content_examples: RecentContentExample[];
   recent_unroutable_examples: RecentUnroutableExample[];
+  sanity_warnings: SanityWarning[];
 }
 
 type HealthStatus = "healthy" | "warning" | "critical";
@@ -177,6 +188,27 @@ export default function DedupCostTab() {
 
       {data && (
         <>
+          {/* Sanity Warnings */}
+          {data.sanity_warnings && data.sanity_warnings.length > 0 && (
+            <Card className="border-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  Sanity Check Warnings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm space-y-1">
+                  {data.sanity_warnings.map((warning, idx) => (
+                    <li key={idx} className="text-yellow-700 dark:text-yellow-400">
+                      <span className="font-medium">[{warning.window}]</span> {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Health Status Overview */}
           <Card>
             <CardHeader className="pb-3">
@@ -207,9 +239,9 @@ export default function DedupCostTab() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   {getStatusIcon(data.health_status.payload_url_pct)}
                   <div>
-                    <p className="text-sm font-medium">Payload URL %</p>
+                    <p className="text-sm font-medium">Payload URL % ({data.payload_url_health_window})</p>
                     <p className="text-xs text-muted-foreground">
-                      {data.metrics[2]?.email_content_payload_url_populated_pct ?? 0}%
+                      {data.payload_url_health_pct}%
                       {data.health_status.payload_url_pct !== "healthy" && (
                         <span className="ml-1">(threshold: ⚠️&lt;95%, 🔴&lt;80%)</span>
                       )}
@@ -309,19 +341,25 @@ export default function DedupCostTab() {
                 <Mail className="w-4 h-4" />
                 Recent Content Examples (Last 10)
               </CardTitle>
+              <CardDescription>
+                Dedup savings % is computed within the selected time window using receipt rows; 
+                lifetime receipt count may reflect reuse outside this window.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {data.recent_content_examples.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No recent content</p>
               ) : (
-                <Table>
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>Content Hash</TableHead>
-                      <TableHead className="text-right">Receipt Count</TableHead>
-                      <TableHead>Payload URL</TableHead>
-                      <TableHead>Last Seen</TableHead>
+                      <TableHead className="w-[80px]">Provider</TableHead>
+                      <TableHead className="w-[120px]">Content Hash</TableHead>
+                      <TableHead className="w-[90px] text-right">Lifetime Reuse</TableHead>
+                      <TableHead className="w-[90px] text-right">Window (15m)</TableHead>
+                      <TableHead className="w-[90px] text-right">Window Dups</TableHead>
+                      <TableHead className="w-[80px]">Storage</TableHead>
+                      <TableHead className="w-[140px]">Last Seen</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -332,10 +370,28 @@ export default function DedupCostTab() {
                         </TableCell>
                         <TableCell className="font-mono text-xs">{ex.content_hash_prefix}</TableCell>
                         <TableCell className="text-right">
-                          {ex.receipt_count > 1 ? (
-                            <Badge variant="default">{ex.receipt_count}</Badge>
+                          {ex.lifetime_receipt_count > 1 ? (
+                            <Badge variant="secondary">{ex.lifetime_receipt_count}</Badge>
                           ) : (
-                            <span>1</span>
+                            <span className="text-muted-foreground">1</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {ex.window_receipts_count > 0 ? (
+                            <Badge variant={ex.window_receipts_count > 1 ? "default" : "outline"}>
+                              {ex.window_receipts_count}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {ex.window_duplicates_count > 0 ? (
+                            <Badge variant="default" className="bg-green-500/20 text-green-700">
+                              {ex.window_duplicates_count}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
                           )}
                         </TableCell>
                         <TableCell>
