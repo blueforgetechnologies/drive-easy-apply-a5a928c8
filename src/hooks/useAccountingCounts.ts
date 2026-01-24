@@ -169,17 +169,17 @@ export function useAccountingCounts(): AccountingCounts {
         }
       }
 
-      // Build deduplicated docs per load
+      // Build docs-per-load map (checks existence of each doc type per load)
       const docsPerLoad = new Map<string, { hasRc: boolean; hasBol: boolean }>();
       for (const doc of allLoadDocs) {
         if (!docsPerLoad.has(doc.load_id)) {
           docsPerLoad.set(doc.load_id, { hasRc: false, hasBol: false });
         }
         const entry = docsPerLoad.get(doc.load_id)!;
-        if (doc.document_type === 'rate_confirmation' && !entry.hasRc) {
+        if (doc.document_type === 'rate_confirmation') {
           entry.hasRc = true;
         }
-        if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') && !entry.hasBol) {
+        if (doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') {
           entry.hasBol = true;
         }
       }
@@ -260,10 +260,13 @@ export function useAccountingCounts(): AccountingCounts {
             deliveryStatus = 'delivered';
           } else if (inv.otr_status === 'failed') {
             deliveryStatus = 'failed';
+          } else if (!hasToEmail || !hasCcEmail) {
+            // Check email fields first before credit check
+            deliveryStatus = 'needs_setup';
           } else if (creditApproval !== 'approved') {
             // OTR requires credit approval
             deliveryStatus = 'needs_setup';
-          } else if (hasToEmail && hasCcEmail) {
+          } else {
             deliveryStatus = 'ready';
           }
         } else if (inv.billing_method === 'direct_email') {
@@ -274,6 +277,9 @@ export function useAccountingCounts(): AccountingCounts {
             deliveryStatus = 'failed';
           } else if (['queued', 'sending', 'retrying', 'pending'].includes(latestLogStatus)) {
             // In-progress treated as ready (will show in Ready tab)
+            deliveryStatus = 'ready';
+          } else if (latestLogStatus && latestLogStatus.length > 0) {
+            // Unknown non-empty status - treat as in-progress
             deliveryStatus = 'ready';
           } else if (hasToEmail && hasCcEmail && allLoadsHaveRc && allLoadsHaveBol) {
             deliveryStatus = 'ready';
