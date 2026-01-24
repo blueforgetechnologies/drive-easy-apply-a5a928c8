@@ -20,9 +20,11 @@ import {
   ChevronRight,
   Loader2,
   Eye,
-  UserPlus
+  UserPlus,
+  FileSearch
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
+import { PDFPreviewDialog } from "./PDFPreviewDialog";
 
 interface ApplicationRow {
   id: string;
@@ -51,6 +53,12 @@ export function ApplicationsManager() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
+  
+  // PDF Preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPdf, setPreviewPdf] = useState<string | null>(null);
+  const [previewFilename, setPreviewFilename] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
   const { isPlatformAdmin, effectiveTenant } = useTenantContext();
@@ -166,6 +174,43 @@ export function ApplicationsManager() {
       toast.error("Failed to download PDF: " + (error.message || "Unknown error"));
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handlePreviewPDF = async (applicationId: string) => {
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    setPreviewPdf(null);
+    setPreviewFilename("");
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error("You must be logged in to preview");
+        setPreviewOpen(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("generate-application-pdf", {
+        body: { application_id: applicationId },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to generate PDF");
+      }
+
+      setPreviewPdf(data.pdf_base64);
+      setPreviewFilename(data.filename);
+    } catch (error: any) {
+      console.error("Error generating PDF preview:", error);
+      toast.error("Failed to preview PDF: " + (error.message || "Unknown error"));
+      setPreviewOpen(false);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -414,6 +459,15 @@ export function ApplicationsManager() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
+                            onClick={() => handlePreviewPDF(app.id)}
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="Preview PDF"
+                          >
+                            <FileSearch className="h-4 w-4" />
+                          </Button>
+                          <Button
                             onClick={() => handleDownloadPDF(app.id)}
                             size="icon"
                             variant="ghost"
@@ -496,6 +550,15 @@ export function ApplicationsManager() {
           </>
         )}
       </CardContent>
+      
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        pdfBase64={previewPdf}
+        filename={previewFilename}
+        isLoading={previewLoading}
+      />
     </Card>
   );
 }
