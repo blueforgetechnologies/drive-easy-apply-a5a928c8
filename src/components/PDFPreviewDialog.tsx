@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import * as pdfjsLib from "pdfjs-dist";
 import {
   Dialog,
   DialogContent,
@@ -6,14 +7,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, Loader2, ZoomIn, ZoomOut, X } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Configure pdf.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 interface PDFPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pdfBase64: string | null;
   filename: string;
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
 export function PDFPreviewDialog({
@@ -21,105 +29,239 @@ export function PDFPreviewDialog({
   onOpenChange,
   pdfBase64,
   filename,
-  isLoading = false,
+  isLoading,
 }: PDFPreviewDialogProps) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [pageImages, setPageImages] = useState<string[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentRenderPage, setCurrentRenderPage] = useState(0);
+  const [isRendering, setIsRendering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1.2);
+  
+  const cancelledRef = useRef(false);
+  const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
-  useEffect(() => {
-    if (pdfBase64) {
-      // Convert base64 to blob URL
-      try {
-        const byteCharacters = atob(pdfBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+  const renderPDF = useCallback(async (base64: string, scale: number) => {
+    cancelledRef.current = false;
+    setIsRendering(true);
+    setError(null);
+    setPageImages([]);
+    setCurrentRenderPage(0);
+
+    try {
+      // Convert base64 to Uint8Array
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Load PDF
+      const loadingTask = pdfjsLib.getDocument({ data: bytes });
+      const pdf = await loadingTask.promise;
+      pdfDocRef.current = pdf;
+      setTotalPages(pdf.numPages);
+
+      // Render pages sequentially to avoid freezing UI
+      const images: string[] = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        if (cancelledRef.current) {
+          break;
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        setBlobUrl(url);
-      } catch (error) {
-        console.error("Error creating blob URL:", error);
-      }
-    }
 
-    return () => {
-      // Cleanup: revoke object URL when component unmounts or pdfBase64 changes
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
+        setCurrentRenderPage(pageNum);
+        
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
+
+        // Create canvas for rendering
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error("Failed to get canvas context");
+        }
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // Render page to canvas
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        // Convert to data URL and add to images
+        const dataUrl = canvas.toDataURL("image/png", 0.92);
+        images.push(dataUrl);
+        setPageImages([...images]);
       }
-    };
-  }, [pdfBase64]);
+    } catch (err: any) {
+      if (!cancelledRef.current) {
+        console.error("PDF render error:", err);
+        setError(err.message || "Failed to render PDF");
+      }
+    } finally {
+      setIsRendering(false);
+    }
+  }, []);
+
+  // Re-render when zoom changes (only if we have a PDF)
+  useEffect(() => {
+    if (open && pdfBase64 && !isLoading) {
+      renderPDF(pdfBase64, zoom);
+    }
+  }, [open, pdfBase64, isLoading, zoom, renderPDF]);
 
   // Cleanup on close
-  const handleClose = () => {
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      setBlobUrl(null);
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      cancelledRef.current = true;
+      setPageImages([]);
+      setTotalPages(0);
+      setCurrentRenderPage(0);
+      setError(null);
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
     }
-    onOpenChange(false);
+    onOpenChange(newOpen);
   };
 
   const handleDownload = () => {
-    if (!blobUrl) return;
+    if (!pdfBase64) return;
+
+    // Convert base64 to blob and download
+    const binaryString = atob(pdfBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
     
     const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = filename;
+    a.href = url;
+    a.download = filename || "application.pdf";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(prev + 0.2, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => Math.max(prev - 0.2, 0.5));
+  };
+
+  const showLoading = isLoading || (isRendering && pageImages.length === 0);
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">
-              PDF Preview: {filename}
+            <DialogTitle className="text-lg font-semibold truncate pr-4">
+              PDF Preview: {filename || "Application"}
             </DialogTitle>
             <div className="flex items-center gap-2">
+              {/* Zoom controls */}
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.5 || isRendering}
+                title="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground w-12 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3 || isRendering}
+                title="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              
+              {/* Download button */}
+              <Button
+                variant="default"
+                size="sm"
                 onClick={handleDownload}
-                disabled={!blobUrl || isLoading}
+                disabled={!pdfBase64}
                 className="gap-2"
               >
                 <Download className="h-4 w-4" />
                 Download
               </Button>
+              
+              {/* Close button */}
               <Button
                 variant="ghost"
-                size="icon"
-                onClick={handleClose}
-                className="h-8 w-8"
+                size="sm"
+                onClick={() => handleOpenChange(false)}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </DialogHeader>
-        
-        <div className="flex-1 overflow-hidden bg-muted/30">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Generating PDF...</span>
-              </div>
+
+        <div className="flex-1 overflow-hidden">
+          {showLoading ? (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">
+                {isLoading
+                  ? "Generating PDF..."
+                  : `Rendering page ${currentRenderPage} of ${totalPages}...`}
+              </p>
             </div>
-          ) : blobUrl ? (
-            <iframe
-              src={blobUrl}
-              className="w-full h-full border-0"
-              title="PDF Preview"
-            />
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <p className="text-destructive mb-2">Error rendering PDF</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <span className="text-muted-foreground">No PDF to display</span>
-            </div>
+            <ScrollArea className="h-[calc(90vh-100px)]">
+              <div className="space-y-4 p-6">
+                {pageImages.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="border rounded-lg bg-white shadow-sm overflow-hidden"
+                  >
+                    <div className="px-3 py-1.5 bg-muted/50 border-b text-xs text-muted-foreground">
+                      Page {idx + 1} of {totalPages}
+                    </div>
+                    <div className="p-2">
+                      <img
+                        src={src}
+                        alt={`Page ${idx + 1}`}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Show progress if still rendering additional pages */}
+                {isRendering && pageImages.length > 0 && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
+                    <span className="text-sm text-muted-foreground">
+                      Rendering page {currentRenderPage} of {totalPages}...
+                    </span>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           )}
         </div>
       </DialogContent>
