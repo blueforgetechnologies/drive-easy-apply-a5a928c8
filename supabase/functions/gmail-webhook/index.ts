@@ -806,10 +806,12 @@ serve(async (req) => {
     const messageDetailsPromises = messages.map(async (m: any) => {
       try {
         // Phase 1: Fetch with format=metadata + explicit metadataHeaders for routing
-        // This ensures we get Delivered-To and other routing headers
-        const metadataHeadersParam = encodeURIComponent(ROUTING_HEADERS.join(','));
+        // IMPORTANT: metadataHeaders must be repeated per header, not comma-separated
+        const params = new URLSearchParams({ format: 'metadata' });
+        ROUTING_HEADERS.forEach(h => params.append('metadataHeaders', h));
+        
         const metadataResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=${metadataHeadersParam}`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?${params.toString()}`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
@@ -818,9 +820,11 @@ serve(async (req) => {
         if (metadataResponse.ok) {
           const metadataMessage = await metadataResponse.json();
           headers = metadataMessage.payload?.headers || [];
-          console.log(`[gmail-webhook] Fetched ${headers.length} headers for ${m.id}: ${headers.map(h => h.name).join(', ')}`);
+          const headerNames = headers.map(h => h.name).join(', ');
+          console.log(`[gmail-webhook] 📋 Metadata fetch for ${m.id}: ${headers.length} headers [${headerNames}]`);
         } else {
-          console.warn(`Failed to fetch metadata for message ${m.id}: ${metadataResponse.status}`);
+          const errorText = await metadataResponse.text();
+          console.warn(`[gmail-webhook] ⚠️ Metadata fetch failed for ${m.id}: ${metadataResponse.status} - ${errorText.substring(0, 100)}`);
         }
         
         // Phase 2: Fetch full message for body content (worker parsing)
