@@ -251,3 +251,6 @@ verify_jwt = false
 
 [functions.resend-driver-invite]
 verify_jwt = true
+
+[functions.create-sample-application]
+verify_jwt = true
