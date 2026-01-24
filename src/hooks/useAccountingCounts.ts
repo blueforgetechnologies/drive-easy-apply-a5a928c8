@@ -36,6 +36,15 @@ interface AccountingCounts {
   isLoading: boolean;
 }
 
+// Helper to chunk arrays for IN queries
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 /**
  * Get tenant-scoped accounting counts for badges
  */
@@ -43,7 +52,7 @@ export function useAccountingCounts(): AccountingCounts {
   const { query, tenantId, shouldFilter, isPlatformAdmin, isReady } = useTenantQuery();
 
   const queryKey = [
-    "tenant-accounting-counts-v2",
+    "tenant-accounting-counts-v3",
     tenantId,
     shouldFilter,
     isPlatformAdmin,
@@ -63,50 +72,24 @@ export function useAccountingCounts(): AccountingCounts {
         };
       }
 
-      // Fetch counts in parallel
+      // Fetch base counts and invoices in parallel
       const [
         readyForAuditResult,
         allInvoicesResult,
-        emailLogsResult,
         companyProfileResult,
-        invoiceLoadsResult,
-        loadDocsResult,
         pendingSettlementsResult,
         approvedSettlementsResult,
         paidSettlementsResult,
         auditLogsResult,
       ] = await Promise.all([
-        // Ready for Audit: loads with financial_status = pending_invoice
         query("loads")
           .select("id", { count: "exact", head: true })
           .eq("financial_status", "pending_invoice"),
-        
-        // All invoices for categorization
         query("invoices")
           .select("id, status, billing_method, customer_id, otr_submitted_at, otr_status, customers(email, billing_email)"),
-        
-        // Email logs for delivery status - limit for performance
-        query("invoice_email_log")
-          .select("invoice_id, status")
-          .order("created_at", { ascending: false })
-          .limit(2000),
-        
-        // Company profile for accounting email check
         query("company_profile")
           .select("accounting_email")
           .limit(1),
-        
-        // Invoice loads for document check
-        query("invoice_loads")
-          .select("invoice_id, load_id"),
-        
-        // Load documents - limit for performance
-        query("load_documents")
-          .select("load_id, document_type")
-          .order("uploaded_at", { ascending: false })
-          .limit(2000),
-        
-        // Settlement counts by status
         query("settlements")
           .select("id", { count: "exact", head: true })
           .eq("status", "pending"),
@@ -116,29 +99,82 @@ export function useAccountingCounts(): AccountingCounts {
         query("settlements")
           .select("id", { count: "exact", head: true })
           .eq("status", "paid"),
-        
-        // Audit logs count
         query("audit_logs")
           .select("id", { count: "exact", head: true }),
       ]);
 
       const invoices = (allInvoicesResult.data as any[]) || [];
-      const emailLogs = (emailLogsResult.data as any[]) || [];
+      const invoiceIds = invoices.map((inv: any) => inv.id);
       const accountingEmail = (companyProfileResult.data as any[])?.[0]?.accounting_email || null;
-      const invoiceLoads = (invoiceLoadsResult.data as any[]) || [];
-      const loadDocs = (loadDocsResult.data as any[]) || [];
+
+      if (invoiceIds.length === 0) {
+        return {
+          readyForAudit: readyForAuditResult.count ?? 0,
+          invoices: 0,
+          invoicesByStatus: { needs_setup: 0, ready: 0, delivered: 0, failed: 0, paid: 0, overdue: 0 },
+          settlements: (pendingSettlementsResult.count ?? 0) + (approvedSettlementsResult.count ?? 0) + (paidSettlementsResult.count ?? 0),
+          settlementsByStatus: {
+            pending: pendingSettlementsResult.count ?? 0,
+            approved: approvedSettlementsResult.count ?? 0,
+            paid: paidSettlementsResult.count ?? 0,
+          },
+          auditLogs: auditLogsResult.count ?? 0,
+        };
+      }
+
+      // Fetch invoice_loads for these invoices (chunked)
+      let allInvoiceLoads: { invoice_id: string; load_id: string }[] = [];
+      const invoiceChunks = chunkArray(invoiceIds, 200);
+      
+      for (const chunk of invoiceChunks) {
+        const ilResult = await query("invoice_loads")
+          .select("invoice_id, load_id")
+          .in("invoice_id", chunk);
+        if (ilResult.data) {
+          allInvoiceLoads = allInvoiceLoads.concat(ilResult.data as any);
+        }
+      }
+      
+      const loadIds = [...new Set(allInvoiceLoads.map(il => il.load_id))];
+
+      // Fetch email logs for these invoices (chunked)
+      let allEmailLogs: { invoice_id: string; status: string }[] = [];
+      for (const chunk of invoiceChunks) {
+        const elResult = await query("invoice_email_log")
+          .select("invoice_id, status")
+          .in("invoice_id", chunk)
+          .order("created_at", { ascending: false });
+        if (elResult.data) {
+          allEmailLogs = allEmailLogs.concat(elResult.data as any);
+        }
+      }
+
+      // Fetch load_documents for these loads (chunked)
+      let allLoadDocs: { load_id: string; document_type: string }[] = [];
+      if (loadIds.length > 0) {
+        const loadChunks = chunkArray(loadIds, 200);
+        for (const chunk of loadChunks) {
+          const ldResult = await query("load_documents")
+            .select("load_id, document_type")
+            .in("load_id", chunk)
+            .order("uploaded_at", { ascending: false });
+          if (ldResult.data) {
+            allLoadDocs = allLoadDocs.concat(ldResult.data as any);
+          }
+        }
+      }
 
       // Build latest email log per invoice (first seen = latest due to DESC order)
       const latestLogByInvoice = new Map<string, string>();
-      for (const log of emailLogs) {
+      for (const log of allEmailLogs) {
         if (!latestLogByInvoice.has(log.invoice_id)) {
           latestLogByInvoice.set(log.invoice_id, log.status);
         }
       }
 
-      // Build deduplicated docs per load (newest RC and newest BOL/POD per load)
+      // Build deduplicated docs per load
       const docsPerLoad = new Map<string, { hasRc: boolean; hasBol: boolean }>();
-      for (const doc of loadDocs) {
+      for (const doc of allLoadDocs) {
         if (!docsPerLoad.has(doc.load_id)) {
           docsPerLoad.set(doc.load_id, { hasRc: false, hasBol: false });
         }
@@ -146,14 +182,14 @@ export function useAccountingCounts(): AccountingCounts {
         if (doc.document_type === 'rate_confirmation' && !entry.hasRc) {
           entry.hasRc = true;
         }
-        if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod') && !entry.hasBol) {
+        if ((doc.document_type === 'bill_of_lading' || doc.document_type === 'pod' || doc.document_type === 'proof_of_delivery') && !entry.hasBol) {
           entry.hasBol = true;
         }
       }
 
       // Build invoice-to-loads map
       const loadsByInvoice = new Map<string, string[]>();
-      for (const il of invoiceLoads) {
+      for (const il of allInvoiceLoads) {
         if (!loadsByInvoice.has(il.invoice_id)) {
           loadsByInvoice.set(il.invoice_id, []);
         }
@@ -171,7 +207,6 @@ export function useAccountingCounts(): AccountingCounts {
       };
 
       for (const inv of invoices) {
-        // Paid and overdue are based on invoice.status
         if (inv.status === 'paid') {
           counts.paid++;
           continue;
@@ -184,22 +219,20 @@ export function useAccountingCounts(): AccountingCounts {
           continue;
         }
 
-        // Check if valid billing method
         const hasValidBillingMethod = inv.billing_method === 'otr' || inv.billing_method === 'direct_email';
-        
-        // Check emails
         const customerEmail = inv.customers?.billing_email || inv.customers?.email;
         const hasToEmail = !!customerEmail;
         const hasCcEmail = !!accountingEmail;
 
-        // Check docs
-        const loadIds = loadsByInvoice.get(inv.id) || [];
-        let hasRc = false;
-        let hasBol = false;
-        for (const lid of loadIds) {
+        // Check per-load doc coverage
+        const loadIdsForInv = loadsByInvoice.get(inv.id) || [];
+        let allLoadsHaveRc = loadIdsForInv.length > 0;
+        let allLoadsHaveBol = loadIdsForInv.length > 0;
+        
+        for (const lid of loadIdsForInv) {
           const docs = docsPerLoad.get(lid);
-          if (docs?.hasRc) hasRc = true;
-          if (docs?.hasBol) hasBol = true;
+          if (!docs?.hasRc) allLoadsHaveRc = false;
+          if (!docs?.hasBol) allLoadsHaveBol = false;
         }
 
         const latestLogStatus = latestLogByInvoice.get(inv.id);
@@ -214,7 +247,6 @@ export function useAccountingCounts(): AccountingCounts {
           } else if (inv.otr_status === 'failed') {
             deliveryStatus = 'failed';
           } else if (hasToEmail && hasCcEmail) {
-            // OTR doesn't require RC/BOL for submission
             deliveryStatus = 'ready';
           }
         } else if (inv.billing_method === 'direct_email') {
@@ -222,7 +254,7 @@ export function useAccountingCounts(): AccountingCounts {
             deliveryStatus = 'delivered';
           } else if (latestLogStatus === 'failed') {
             deliveryStatus = 'failed';
-          } else if (hasToEmail && hasCcEmail && hasRc && hasBol) {
+          } else if (hasToEmail && hasCcEmail && allLoadsHaveRc && allLoadsHaveBol) {
             deliveryStatus = 'ready';
           }
         }
