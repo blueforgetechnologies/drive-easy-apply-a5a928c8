@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   Shield, Loader2, Building2, Users, Truck, Target, RefreshCw, Flag, Check, X, Minus,
   Mail, Zap, MapPin, Brain, AlertTriangle, Clock, Activity, MousePointer2, ExternalLink,
-  Navigation, Database, LayoutGrid, Rocket, Inbox, HelpCircle
+  Navigation, Database, LayoutGrid, Rocket, Inbox, HelpCircle, PiggyBank
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ReleaseControlTab } from "@/components/inspector/ReleaseControlTab";
+import DedupCostTab from "@/components/inspector/DedupCostTab";
 import EmailRoutingHealthTab from "@/pages/EmailRoutingHealthTab";
 import UnroutableEmailsTab from "@/pages/UnroutableEmailsTab";
 
@@ -598,6 +599,10 @@ export default function Inspector() {
           <TabsTrigger value="unroutable" className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
             Unroutable
+          </TabsTrigger>
+          <TabsTrigger value="dedup-cost" className="flex items-center gap-2">
+            <PiggyBank className="w-4 h-4" />
+            Dedup & Cost
           </TabsTrigger>
         </TabsList>
 
@@ -1362,6 +1367,11 @@ export default function Inspector() {
         {/* Unroutable Emails Tab */}
         <TabsContent value="unroutable">
           <UnroutableEmailsTab />
+        </TabsContent>
+
+        {/* Dedup & Cost Tab */}
+        <TabsContent value="dedup-cost">
+          <DedupCostTab />
         </TabsContent>
       </Tabs>
     </div>
