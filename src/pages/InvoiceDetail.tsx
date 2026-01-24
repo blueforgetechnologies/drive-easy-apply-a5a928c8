@@ -311,6 +311,8 @@ export default function InvoiceDetail() {
       paid: { label: "Paid", className: "bg-green-600 hover:bg-green-700" },
       overdue: { label: "Overdue", className: "bg-red-500 hover:bg-red-600" },
       failed: { label: "Failed", className: "bg-red-600 hover:bg-red-700" },
+      // Cancelled status specifically for returned-to-audit invoices
+      cancelled: { label: "Cancelled (Returned to Audit)", className: "bg-amber-500 hover:bg-amber-600" },
     };
     const config = configs[status] || configs.draft;
     return <Badge className={config.className}>{config.label}</Badge>;

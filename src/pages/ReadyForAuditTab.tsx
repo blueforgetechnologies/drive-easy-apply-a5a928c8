@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, FileCheck, AlertTriangle } from "lucide-react";
+import { Search, FileCheck } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import AuditDetailInline from "@/components/AuditDetailInline";
@@ -18,8 +18,19 @@ export default function ReadyForAuditTab() {
   const { data: loads, isLoading } = useQuery({
     queryKey: ["ready-for-audit-loads", tenantId],
     queryFn: async () => {
-      // Query loads that are ready for audit OR have pending_invoice financial status (safety net)
-      // Exclude loads that are already invoiced
+      // ============================================================
+      // READY FOR AUDIT QUERY LOGIC
+      // ============================================================
+      // This query captures loads that need billing audit, including:
+      // 1. Loads explicitly marked ready_for_audit (normal workflow)
+      // 2. Loads marked set_aside (temporarily deferred)
+      // 3. ANY load with financial_status='pending_invoice' regardless of operational status
+      //    - This is the KEY CHANGE: allows "Return to Audit" to work without
+      //      changing loads.status (operational lifecycle is preserved)
+      //    - e.g., a closed load can appear here if its invoice was returned
+      // 
+      // Exclusion: loads already invoiced (financial_status='invoiced')
+      // ============================================================
       let query = supabase
         .from("loads")
         .select(`
@@ -31,8 +42,9 @@ export default function ReadyForAuditTab() {
           load_owner:load_owner_id(first_name, last_name),
           driver:assigned_driver_id(personal_info)
         `)
-        // Include: ready_for_audit, set_aside, OR closed with pending_invoice (orphaned)
-        .or("status.in.(ready_for_audit,set_aside),and(status.eq.closed,financial_status.eq.pending_invoice)")
+        // Include: ready_for_audit, set_aside, OR any load with pending_invoice financial status
+        // The financial_status check is the primary billing-ready indicator
+        .or("status.in.(ready_for_audit,set_aside),financial_status.eq.pending_invoice")
         .neq("financial_status", "invoiced")
         .order("completed_at", { ascending: false });
 
@@ -165,15 +177,18 @@ export default function ReadyForAuditTab() {
                     : "";
                   const driverName = getDriverName(load.driver);
                   const isSetAside = load.status === "set_aside";
-                  // Orphaned load: status is closed but financial_status is pending_invoice
-                  const isOrphaned = load.status === "closed" && load.financial_status === "pending_invoice";
+                  // Returned load: operational status is NOT ready_for_audit but financial_status is pending_invoice
+                  // This indicates a load whose invoice was returned/cancelled
+                  const isReturned = load.status !== "ready_for_audit" && 
+                                     load.status !== "set_aside" && 
+                                     load.financial_status === "pending_invoice";
 
                   return (
                     <TableRow 
                       key={load.id} 
                       className={`cursor-pointer hover:bg-muted/50 transition-colors ${
-                        isOrphaned 
-                          ? "bg-red-50 dark:bg-red-950/20 border-l-4 border-l-red-500" 
+                        isReturned 
+                          ? "bg-blue-50 dark:bg-blue-950/20 border-l-4 border-l-blue-500" 
                           : isSetAside 
                             ? "bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500" 
                             : "border-l-4 border-l-primary"
@@ -183,13 +198,12 @@ export default function ReadyForAuditTab() {
                       <TableCell className="py-2 px-3">
                         <div className="flex items-center gap-2">
                           <div className="font-medium text-sm">{load.load_number}</div>
-                          {isOrphaned && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-red-400 to-red-600 text-white shadow-sm flex items-center gap-1" title="Invoice creation failed - load returned to audit">
-                              <AlertTriangle className="h-3 w-3" />
-                              Audit Error
+                          {isReturned && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-blue-400 to-blue-600 text-white shadow-sm" title="Invoice was cancelled - load returned to audit">
+                              Returned
                             </span>
                           )}
-                          {isSetAside && !isOrphaned && (
+                          {isSetAside && !isReturned && (
                             <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
                               Set Aside
                             </span>
