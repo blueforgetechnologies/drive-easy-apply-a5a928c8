@@ -554,7 +554,7 @@ export default function AuditCreateInvoiceDialog({
                 htmlFor="override_confirm" 
                 className="text-sm font-normal cursor-pointer leading-tight"
               >
-                I confirm this load is correct and ready to invoice despite failed or incomplete verification checks
+                I confirm I manually verified this load
               </Label>
             </div>
 
