@@ -592,14 +592,9 @@ serve(async (req) => {
 
     console.log('[gmail-webhook] Request validated as Pub/Sub notification');
 
-    // Track Pub/Sub usage
-    supabase
-      .from('pubsub_tracking')
-      .insert({
-        message_type: 'gmail_notification',
-        message_size_bytes: bodyText.length,
-      })
-      .then(() => console.log('📊 Pub/Sub usage tracked'));
+    // NOTE: Removed per-message pubsub_tracking writes to reduce DB costs
+    // Pub/Sub usage can be estimated from load_emails count (1 email ≈ 4 notifications)
+    // This saves ~300K writes/week at current volume
 
     // Parse Pub/Sub message for historyId
     try {
