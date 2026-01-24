@@ -27,26 +27,65 @@ interface ReturnToAuditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: InvoiceForReturn | null;
-  lastEmailStatus: string | null; // Latest invoice_email_log.status
 }
 
 export default function ReturnToAuditDialog({
   open,
   onOpenChange,
   invoice,
-  lastEmailStatus,
 }: ReturnToAuditDialogProps) {
   const queryClient = useQueryClient();
   const tenantId = useTenantId();
   const [linkedLoads, setLinkedLoads] = useState<LinkedLoad[]>([]);
   const [loadingLoads, setLoadingLoads] = useState(false);
+  const [lastEmailStatus, setLastEmailStatus] = useState<string | null>(null);
+  const [loadingEmailStatus, setLoadingEmailStatus] = useState(false);
 
-  // Fetch linked loads when dialog opens
+  // Fetch linked loads and latest email status when dialog opens
   useEffect(() => {
     if (open && invoice) {
       fetchLinkedLoads();
+      fetchLatestEmailStatus();
+    } else {
+      // Reset state when dialog closes
+      setLastEmailStatus(null);
     }
   }, [open, invoice?.id]);
+
+  // Fetch latest invoice_email_log status for this invoice
+  const fetchLatestEmailStatus = async () => {
+    if (!invoice) return;
+    setLoadingEmailStatus(true);
+    try {
+      const query = supabase
+        .from("invoice_email_logs" as any)
+        .select("status, created_at")
+        .eq("invoice_id", invoice.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      // Add tenant_id filter if available
+      if (tenantId) {
+        query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching email log status:", error);
+        setLastEmailStatus(null);
+      } else if (data && data.length > 0) {
+        setLastEmailStatus((data[0] as any).status);
+      } else {
+        setLastEmailStatus(null);
+      }
+    } catch (error) {
+      console.error("Error fetching email log status:", error);
+      setLastEmailStatus(null);
+    } finally {
+      setLoadingEmailStatus(false);
+    }
+  };
 
   const fetchLinkedLoads = async () => {
     if (!invoice) return;
@@ -127,7 +166,41 @@ export default function ReturnToAuditDialog({
 
       const loadIds = linkedLoads.map((l) => l.load_id);
 
-      // A) Update invoice status to 'cancelled'
+      // Operations ordered for data integrity:
+      // (1) Block checks already done in canReturn()
+      
+      // (2) Delete invoice_loads linkage first (with tenant scoping)
+      const deleteQuery = supabase
+        .from("invoice_loads" as any)
+        .delete()
+        .eq("invoice_id", invoice.id);
+      
+      // Add tenant_id filter if the table supports it
+      if (tenantId) {
+        deleteQuery.eq("tenant_id", tenantId);
+      }
+      
+      const { error: deleteError } = await deleteQuery;
+      if (deleteError) throw deleteError;
+
+      // (3) Update loads: ONLY set financial_status to 'pending_invoice'
+      // Do NOT mutate loads.status - that's lifecycle truth
+      if (loadIds.length > 0) {
+        const loadsQuery = supabase
+          .from("loads")
+          .update({ financial_status: "pending_invoice" })
+          .in("id", loadIds);
+        
+        // Add tenant scoping
+        if (tenantId) {
+          loadsQuery.eq("tenant_id", tenantId);
+        }
+        
+        const { error: loadsError } = await loadsQuery;
+        if (loadsError) throw loadsError;
+      }
+
+      // (4) Update invoice status to 'cancelled'
       const { error: invoiceError } = await supabase
         .from("invoices" as any)
         .update({ status: "cancelled" })
@@ -135,28 +208,7 @@ export default function ReturnToAuditDialog({
 
       if (invoiceError) throw invoiceError;
 
-      // B) Update loads: set status back to 'ready_for_audit' and financial_status to 'pending_invoice'
-      if (loadIds.length > 0) {
-        const { error: loadsError } = await supabase
-          .from("loads")
-          .update({ 
-            status: "ready_for_audit",
-            financial_status: "pending_invoice" 
-          })
-          .in("id", loadIds);
-
-        if (loadsError) throw loadsError;
-      }
-
-      // C) Delete invoice_loads linkage
-      const { error: deleteError } = await supabase
-        .from("invoice_loads" as any)
-        .delete()
-        .eq("invoice_id", invoice.id);
-
-      if (deleteError) throw deleteError;
-
-      // D) Insert audit log
+      // (5) Insert audit log
       const { error: auditLogError } = await supabase
         .from("audit_logs")
         .insert({
@@ -207,6 +259,7 @@ export default function ReturnToAuditDialog({
   };
 
   const { allowed, reason } = canReturn();
+  const isLoading = loadingLoads || loadingEmailStatus;
 
   if (!invoice) return null;
 
@@ -241,7 +294,7 @@ export default function ReturnToAuditDialog({
             <div className="text-sm font-medium mb-2">
               Loads to Return ({linkedLoads.length})
             </div>
-            {loadingLoads ? (
+            {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading...
@@ -291,7 +344,7 @@ export default function ReturnToAuditDialog({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={!allowed || returnToAuditMutation.isPending}
+            disabled={!allowed || returnToAuditMutation.isPending || isLoading}
             className="gap-2"
           >
             {returnToAuditMutation.isPending ? (

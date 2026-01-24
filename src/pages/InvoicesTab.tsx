@@ -1212,7 +1212,6 @@ export default function InvoicesTab() {
           otr_status: invoiceToReturn.otr_status,
           amount_paid: invoiceToReturn.amount_paid,
         } : null}
-        lastEmailStatus={invoiceToReturn?.last_attempt_status || null}
       />
     </div>
   );
