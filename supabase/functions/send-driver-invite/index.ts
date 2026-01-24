@@ -12,6 +12,7 @@ const corsHeaders = {
 interface DriverInviteRequest {
   email: string;
   name?: string;
+  tenant_id?: string; // Frontend should pass the effective tenant
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -51,7 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, name }: DriverInviteRequest = await req.json();
+    const { email, name, tenant_id }: DriverInviteRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -68,22 +69,43 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get the user's tenant_id
-    const { data: tenantData, error: tenantError } = await supabaseService
-      .from('tenant_users')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // If tenant_id provided by frontend, validate user has access to it
+    // Otherwise, try to get from user's single membership
+    let tenantId = tenant_id;
+    
+    if (tenantId) {
+      // Validate user has access to the provided tenant
+      const { data: membershipCheck, error: membershipError } = await supabaseService
+        .from('tenant_users')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
 
-    if (tenantError || !tenantData?.tenant_id) {
-      console.error('Error getting tenant:', tenantError);
-      return new Response(JSON.stringify({ error: 'Could not determine tenant' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (membershipError || !membershipCheck) {
+        console.error('User does not have access to tenant:', tenantId, membershipError);
+        return new Response(JSON.stringify({ error: 'Access denied to tenant' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      // Fallback: get user's only tenant (fails if multiple)
+      const { data: tenantData, error: tenantError } = await supabaseService
+        .from('tenant_users')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (tenantError || !tenantData?.tenant_id) {
+        console.error('Error getting tenant (user may have multiple):', tenantError);
+        return new Response(JSON.stringify({ error: 'Could not determine tenant. Please ensure tenant context is provided.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      tenantId = tenantData.tenant_id;
     }
-
-    const tenantId = tenantData.tenant_id;
 
     // Insert invite record into database
     const { data: inviteData, error: inviteError } = await supabaseService

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenantContext } from "@/contexts/TenantContext";
 import { Mail } from "lucide-react";
 
 export function InviteDriverDialog() {
@@ -21,6 +22,7 @@ export function InviteDriverDialog() {
   const [driverName, setDriverName] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { effectiveTenant } = useTenantContext();
 
   const handleInvite = async () => {
     if (!email || !email.includes("@")) {
@@ -40,7 +42,8 @@ export function InviteDriverDialog() {
       const { error } = await supabase.functions.invoke("send-driver-invite", {
         body: {
           email: email.toLowerCase(),
-          driverName: driverName.trim() || undefined,
+          name: driverName.trim() || undefined,
+          tenant_id: effectiveTenant?.id,
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
