@@ -176,16 +176,40 @@ Deno.serve(async (req: Request) => {
 
     if (loadIds.length > 0) {
       // Use correct schema: file_url, file_name, document_type
+      // Order by created_at DESC to get newest first
       const { data: documents } = await supabase
         .from("load_documents")
-        .select("id, load_id, document_type, file_name, file_url")
+        .select("id, load_id, document_type, file_name, file_url, created_at")
         .in("load_id", loadIds)
-        .in("document_type", ["rate_confirmation", "bill_of_lading", "pod"]);
+        .in("document_type", ["rate_confirmation", "bill_of_lading", "pod"])
+        .order("created_at", { ascending: false });
 
       if (!documents || documents.length === 0) {
         warnings.push("No rate confirmation or BOL documents found for attached loads");
       } else {
+        // Deduplicate: keep only newest RC and newest BOL/POD per load
+        const seenRcByLoad = new Set<string>();
+        const seenBolByLoad = new Set<string>();
+        const uniqueDocs: typeof documents = [];
+
         for (const doc of documents) {
+          const isRc = doc.document_type === "rate_confirmation";
+          const isBol = doc.document_type === "bill_of_lading" || doc.document_type === "pod";
+          
+          if (isRc) {
+            if (!seenRcByLoad.has(doc.load_id)) {
+              seenRcByLoad.add(doc.load_id);
+              uniqueDocs.push(doc);
+            }
+          } else if (isBol) {
+            if (!seenBolByLoad.has(doc.load_id)) {
+              seenBolByLoad.add(doc.load_id);
+              uniqueDocs.push(doc);
+            }
+          }
+        }
+
+        for (const doc of uniqueDocs) {
           if (doc.file_url) {
             try {
               // Download from storage bucket 'load-documents'
@@ -206,15 +230,9 @@ Deno.serve(async (req: Request) => {
               
               const filename = doc.file_name || `${doc.document_type}_${doc.load_id.slice(0, 8)}.pdf`;
               
-              // Determine mime type from filename
-              const mimeType = filename.toLowerCase().endsWith('.pdf') 
-                ? 'application/pdf' 
-                : 'application/octet-stream';
-              
               attachments.push({ 
                 filename, 
                 content: base64Content,
-                type: mimeType
               });
               
               if (doc.document_type === "rate_confirmation") {
@@ -239,7 +257,6 @@ Deno.serve(async (req: Request) => {
     attachments.push({
       filename: invoiceFilename,
       content: invoiceHtmlBase64,
-      type: 'text/html'
     });
     attachmentInfo.invoice = true;
 
@@ -247,10 +264,9 @@ Deno.serve(async (req: Request) => {
     const subject = `Invoice ${invoice.invoice_number} from ${company?.company_name || 'Our Company'}`;
     const emailBody = buildEmailBody(invoice, loads || [], company, customer);
 
-    // Determine sender - use company email domain or fallback
-    // For now, use a verified domain sender
-    const fromEmail = company?.email || "billing@resend.dev";
-    const replyTo = company?.accounting_email || company?.email;
+    // Fixed verified sender domain - never use resend.dev or company email as sender
+    const fromEmail = `${company?.company_name || 'Billing'} <billing@nexustechsolution.com>`;
+    const replyTo = company.accounting_email;
 
     // Send email via Resend with CC to accounting
     const resend = new Resend(resendApiKey);
@@ -262,7 +278,7 @@ Deno.serve(async (req: Request) => {
       reply_to?: string;
       subject: string;
       html: string;
-      attachments?: Array<{ filename: string; content: string; type?: string }>;
+      attachments?: Array<{ filename: string; content: string }>;
     } = {
       from: fromEmail,
       to: [toEmail],
@@ -508,8 +524,22 @@ function buildEmailBody(
 </head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
   <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="color: #333; margin: 0;">Invoice ${invoice.invoice_number}</h1>
+    
+    <!-- Quick Summary Box -->
+    <div style="background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 25px; text-align: center;">
+      <h2 style="margin: 0 0 10px 0; font-size: 1.5em;">Invoice ${invoice.invoice_number}</h2>
+      <p style="margin: 0; font-size: 1.8em; font-weight: bold;">${formatCurrency(invoice.total_amount as number)}</p>
+      <p style="margin: 8px 0 0 0; opacity: 0.9;">Due: ${invoice.due_date || 'Upon Receipt'}</p>
+    </div>
+    
+    <!-- Attachments Note -->
+    <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px 15px; border-radius: 6px; margin-bottom: 20px;">
+      <p style="margin: 0; color: #0369a1; font-size: 0.95em;">
+        📎 <strong>Attached:</strong> Invoice, Rate Confirmation(s), and Bill of Lading/POD document(s).
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 20px;">
       <p style="color: #666; margin: 5px 0;">From ${company?.company_name || 'Our Company'}</p>
     </div>
 
