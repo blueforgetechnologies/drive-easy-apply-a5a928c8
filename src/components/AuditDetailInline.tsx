@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Sparkles, Loader2, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowLeft, FileText, Download, ExternalLink, Sparkles, Loader2, AlertCircle, CheckCircle2, XCircle, Receipt } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuditDocumentViewer } from "@/components/audit/AuditDocumentViewer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import AuditCreateInvoiceDialog from "@/components/AuditCreateInvoiceDialog";
 
 
 interface ChecklistItem {
@@ -48,6 +49,8 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
   ]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<{ title: string; message: string; suggestion?: string } | null>(null);
+  const [createInvoiceDialogOpen, setCreateInvoiceDialogOpen] = useState(false);
+
 
   const { data: load, isLoading } = useQuery({
     queryKey: ["audit-load", loadId],
@@ -56,13 +59,13 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         .from("loads")
         .select(`
           *,
-          customers(name),
+          customers(id, name, email, billing_email, otr_approval_status, factoring_approval),
           carriers(name),
           vehicles(vehicle_number),
           dispatchers:assigned_dispatcher_id(first_name, last_name),
           load_owner:load_owner_id(first_name, last_name),
           driver:assigned_driver_id(personal_info),
-          load_documents(*)
+          load_documents(id, document_type, file_name, file_url)
         `)
         .eq("id", loadId)
         .single();
@@ -79,30 +82,6 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         billing_notes: notes || load?.billing_notes 
       };
       
-      // When approved, also set financial_status to pending_invoice and generate invoice number
-      if (newStatus === "closed") {
-        updateData.financial_status = "pending_invoice";
-        
-        // Generate sequential invoice number
-        const { data: lastLoad } = await supabase
-          .from("loads")
-          .select("invoice_number")
-          .not("invoice_number", "is", null)
-          .order("invoice_number", { ascending: false })
-          .limit(1)
-          .single();
-
-        let nextNumber = 1000001;
-        const lastRecord = lastLoad as { invoice_number?: string } | null;
-        if (lastRecord?.invoice_number) {
-          const lastNum = parseInt(lastRecord.invoice_number, 10);
-          if (!isNaN(lastNum)) {
-            nextNumber = lastNum + 1;
-          }
-        }
-        updateData.invoice_number = String(nextNumber);
-      }
-      
       const { error } = await supabase
         .from("loads")
         .update(updateData)
@@ -112,12 +91,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
     onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ["ready-for-audit-loads"] });
       queryClient.invalidateQueries({ queryKey: ["loads"] });
-      if (newStatus === "closed") {
-        toast.success("Audit approved! Load moved to Invoices.");
-        onClose();
-        // Navigate to invoices tab
-        setSearchParams({ subtab: "invoices" });
-      } else if (newStatus === "set_aside") {
+      if (newStatus === "set_aside") {
         toast.info("Load set aside for later review");
         onClose();
       } else {
@@ -604,21 +578,25 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
               />
             </div>
 
-            {/* Action Buttons - Connected Group */}
-            <div className="flex pt-2">
+            {/* Primary Action: Audit & Create Invoice */}
+            <div className="py-2">
               <button
                 type="button"
-                onClick={() => updateStatusMutation.mutate("closed")}
-                disabled={updateStatusMutation.isPending}
-                className="flex-1 h-9 text-xs font-semibold rounded-l-lg rounded-r-none bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-md shadow-emerald-500/25 disabled:opacity-50 transition-all"
+                onClick={() => setCreateInvoiceDialogOpen(true)}
+                className="w-full h-10 text-xs font-semibold rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-md shadow-primary/25 transition-all flex items-center justify-center gap-2"
               >
-                Approve
+                <Receipt className="h-4 w-4" />
+                Audit & Create Invoice
               </button>
+            </div>
+
+            {/* Secondary Actions */}
+            <div className="flex pt-2 gap-1">
               <button
                 type="button"
                 onClick={() => updateStatusMutation.mutate("set_aside")}
                 disabled={updateStatusMutation.isPending}
-                className="flex-1 h-9 text-xs font-semibold rounded-none border-x border-white/30 bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white shadow-md shadow-amber-500/25 disabled:opacity-50 transition-all"
+                className="flex-1 h-8 text-xs font-medium rounded-lg bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white shadow-sm shadow-amber-500/25 disabled:opacity-50 transition-all"
               >
                 Set Aside
               </button>
@@ -626,7 +604,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
                 type="button"
                 onClick={() => updateStatusMutation.mutate("action_needed")}
                 disabled={updateStatusMutation.isPending}
-                className="flex-1 h-9 text-xs font-semibold rounded-r-lg rounded-l-none bg-gradient-to-b from-rose-400 to-rose-600 hover:from-rose-500 hover:to-rose-700 text-white shadow-md shadow-rose-500/25 disabled:opacity-50 transition-all"
+                className="flex-1 h-8 text-xs font-medium rounded-lg bg-gradient-to-b from-rose-400 to-rose-600 hover:from-rose-500 hover:to-rose-700 text-white shadow-sm shadow-rose-500/25 disabled:opacity-50 transition-all"
               >
                 Fail
               </button>
@@ -707,6 +685,26 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Audit & Create Invoice Dialog */}
+      <AuditCreateInvoiceDialog
+        open={createInvoiceDialogOpen}
+        onOpenChange={setCreateInvoiceDialogOpen}
+        load={load ? {
+          id: load.id,
+          load_number: load.load_number,
+          reference_number: load.reference_number,
+          rate: load.rate,
+          customer_id: load.customer_id,
+          pickup_city: load.pickup_city,
+          pickup_state: load.pickup_state,
+          delivery_city: load.delivery_city,
+          delivery_state: load.delivery_state,
+          customers: load.customers as any,
+          load_documents: (load.load_documents as any[]) || [],
+        } : null}
+        auditNotes={notes}
+      />
     </div>
   );
 }
