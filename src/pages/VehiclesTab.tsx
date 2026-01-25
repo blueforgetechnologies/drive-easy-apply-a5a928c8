@@ -172,6 +172,7 @@ export default function VehiclesTab() {
 
       if (error) {
         toast.error("Error loading assets");
+        setLoading(false);
         return;
       }
 
