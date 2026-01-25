@@ -455,13 +455,13 @@ export function ApplicationsManager() {
       return <Badge variant="secondary">Archived</Badge>;
     }
     if (app.status === "submitted") {
-      return <Badge className="bg-blue-600">Submitted</Badge>;
+      return <Badge className="bg-blue-600">Completed</Badge>;
     }
     if (app.status === "in_progress") {
       return <Badge variant="default">In Progress (Step {app.current_step || 1}/9)</Badge>;
     }
     if (app.status === "invited") {
-      return <Badge variant="secondary">Invited</Badge>;
+      return <Badge variant="secondary">Invitation Sent</Badge>;
     }
     // Handle "pending" status (legacy/manual entries)
     if (app.status === "pending") {
@@ -587,11 +587,12 @@ export function ApplicationsManager() {
         <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           {(["all", "invited", "in_progress", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
-            // Custom label mapping
+            // Custom label mapping - renamed for simplified flow
             const getLabel = (s: StatusFilter) => {
               if (s === "all") return "All";
-              if (s === "invited") return "Not Started";
+              if (s === "invited") return "Invitations";
               if (s === "in_progress") return "In Progress";
+              if (s === "submitted") return "Completed";
               return s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
             };
             
@@ -691,9 +692,8 @@ export function ApplicationsManager() {
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Applicant</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Email / Phone</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Status</TableHead>
-                    <TableHead className="font-bold text-blue-700 dark:text-blue-400">Driver Status</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400">Progress</TableHead>
-                    <TableHead className="font-bold text-blue-700 dark:text-blue-400">Submitted</TableHead>
+                    <TableHead className="font-bold text-blue-700 dark:text-blue-400">Completed</TableHead>
                     <TableHead className="font-bold text-blue-700 dark:text-blue-400 w-[140px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -741,7 +741,6 @@ export function ApplicationsManager() {
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(app)}</TableCell>
-                        <TableCell>{getDriverStatusBadge(app.driver_status)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">

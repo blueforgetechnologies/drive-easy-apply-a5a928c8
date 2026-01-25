@@ -90,8 +90,6 @@ export default function DriversTab() {
         await loadActiveDrivers();
       } else if (filter === "pending") {
         await loadPendingDrivers();
-      } else if (filter === "invitations") {
-        await loadInvitations();
       } else if (filter === "inactive") {
         await loadInactiveDrivers();
       } else if (filter === "applications") {
@@ -681,8 +679,7 @@ export default function DriversTab() {
             { key: "active", label: "Active", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "inactive", label: "Inactive", activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
             { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "invitations", label: "Invitations", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
-            { key: "applications", label: "Applications", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "applications", label: "Pending Applications", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
           ].map((status) => (
             <Button
               key={status.key}
