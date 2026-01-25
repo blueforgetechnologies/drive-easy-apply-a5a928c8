@@ -695,7 +695,6 @@ export default function DriversTab() {
             <Upload className="h-3.5 w-3.5" />
             Import
           </Button>
-          <AddDriverDialog onDriverAdded={loadData} />
         </div>
       </div>
 
@@ -792,8 +791,9 @@ export default function DriversTab() {
             </Button>
             
             {/* Invite Driver Button - next to Invitations */}
-            <div className="ml-2">
+            <div className="ml-2 flex gap-1">
               <InviteDriverDialog />
+              <AddDriverDialog onDriverAdded={loadData} />
             </div>
           </div>
         );
