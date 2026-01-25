@@ -918,36 +918,40 @@ export function ApplicationsManager() {
                               </>
                             )}
 
-                            {/* SUBMITTED/PENDING: Upload MVR (if missing) + Approve (if ready) or View + Reject */}
+                            {/* SUBMITTED/PENDING: Upload MVR + Approve (if ready) or View + Reject */}
                             {isSubmittedOrPending && (
                               <>
-                                {/* Upload MVR button - shown when MVR is missing */}
-                                {isMvrMissing(app) && (
-                                  <Button
-                                    onClick={() => {
-                                      const input = document.createElement("input");
-                                      input.type = "file";
-                                      input.accept = ".pdf,.jpg,.jpeg,.png";
-                                      input.onchange = (e) => {
-                                        const file = (e.target as HTMLInputElement).files?.[0];
-                                        if (file) handleUploadMvr(app.id, file);
-                                      };
-                                      input.click();
-                                    }}
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2 gap-1 border-amber-500 text-amber-700 hover:bg-amber-50"
-                                    disabled={uploadingMvrId === app.id}
-                                    title="MVR is required for approval"
-                                  >
-                                    {uploadingMvrId === app.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Upload className="h-3 w-3" />
-                                    )}
-                                    Upload MVR
-                                  </Button>
-                                )}
+                                {/* Upload MVR button - always visible with status indicator */}
+                                <Button
+                                  onClick={() => {
+                                    const input = document.createElement("input");
+                                    input.type = "file";
+                                    input.accept = ".pdf,.jpg,.jpeg,.png";
+                                    input.onchange = (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0];
+                                      if (file) handleUploadMvr(app.id, file);
+                                    };
+                                    input.click();
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                  className={`h-7 px-2 gap-1 ${
+                                    isMvrMissing(app)
+                                      ? "border-amber-500 text-amber-700 hover:bg-amber-50"
+                                      : "border-green-500 text-green-700 hover:bg-green-50"
+                                  }`}
+                                  disabled={uploadingMvrId === app.id}
+                                  title={isMvrMissing(app) ? "MVR is required for approval" : "MVR uploaded - click to replace"}
+                                >
+                                  {uploadingMvrId === app.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : isMvrMissing(app) ? (
+                                    <Upload className="h-3 w-3" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3 w-3" />
+                                  )}
+                                  {isMvrMissing(app) ? "Upload MVR" : "MVR ✓"}
+                                </Button>
                                 {canApprove ? (
                                   <Button
                                     onClick={() => handleQuickApprove(app.id)}
