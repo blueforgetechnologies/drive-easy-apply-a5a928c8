@@ -881,103 +881,57 @@ export default function CustomersTab() {
         </div>
 
         {/* Status Filters */}
-        <div className="flex flex-wrap gap-1">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "all" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "all");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "active");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Active
-          </Button>
-          <Button
-            variant={filter === "inactive" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "inactive" ? "bg-muted text-muted-foreground" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "inactive");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Inactive
-          </Button>
-          <Button
-            variant={filter === "pending" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${filter === "pending" ? "bg-orange-500 text-white hover:bg-orange-600" : ""}`}
-            onClick={() => {
-              const newParams = new URLSearchParams(searchParams);
-              newParams.set("filter", "pending");
-              setSearchParams(newParams);
-              setSearchQuery("");
-            }}
-          >
-            Pending
-          </Button>
+        <div className="flex items-center gap-0">
+          {[
+            { key: "all", label: "All", activeClass: "btn-glossy-dark" },
+            { key: "active", label: "Active", activeClass: "btn-glossy-success" },
+            { key: "inactive", label: "Inactive", activeClass: "btn-glossy" },
+            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const newParams = new URLSearchParams(searchParams);
+                newParams.set("filter", status.key);
+                setSearchParams(newParams);
+                setSearchQuery("");
+              }}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                filter === status.key 
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {status.label}
+            </Button>
+          ))}
         </div>
 
         {/* Type Filters */}
-        <div className="flex flex-wrap gap-1 border-l pl-2 ml-1">
-          <Button
-            variant={typeFilter === "all" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "all" ? "bg-slate-600 text-white hover:bg-slate-700" : ""}`}
-            onClick={() => setTypeFilter("all")}
-          >
-            All Types
-          </Button>
-          <Button
-            variant={typeFilter === "broker" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "broker" ? "bg-purple-600 text-white hover:bg-purple-700" : ""}`}
-            onClick={() => setTypeFilter("broker")}
-          >
-            Brokers
-          </Button>
-          <Button
-            variant={typeFilter === "shipper" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "shipper" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
-            onClick={() => setTypeFilter("shipper")}
-          >
-            Shippers
-          </Button>
-          <Button
-            variant={typeFilter === "receiver" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "receiver" ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-            onClick={() => setTypeFilter("receiver")}
-          >
-            Receivers
-          </Button>
-          <Button
-            variant={typeFilter === "shipper_receiver" ? "default" : "outline"}
-            size="sm"
-            className={`h-7 px-2.5 ${typeFilter === "shipper_receiver" ? "bg-amber-600 text-white hover:bg-amber-700" : ""}`}
-            onClick={() => setTypeFilter("shipper_receiver")}
-          >
-            Shipper/Receiver
-          </Button>
+        <div className="flex items-center gap-0 border-l pl-2 ml-1">
+          {[
+            { key: "all", label: "All Types", activeClass: "btn-glossy-dark" },
+            { key: "broker", label: "Brokers", activeClass: "btn-glossy-violet" },
+            { key: "shipper", label: "Shippers", activeClass: "btn-glossy-primary" },
+            { key: "receiver", label: "Receivers", activeClass: "btn-glossy-success" },
+            { key: "shipper_receiver", label: "Ship/Recv", activeClass: "btn-glossy-warning" },
+          ].map((type) => (
+            <Button
+              key={type.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => setTypeFilter(type.key as CustomerTypeFilter)}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                typeFilter === type.key 
+                  ? `${type.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {type.label}
+            </Button>
+          ))}
         </div>
       </div>
 
