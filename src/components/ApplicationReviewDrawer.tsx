@@ -76,6 +76,11 @@ interface ApplicationData {
   checking_number?: string | null;
   account_name?: string | null;
   account_type?: string | null;
+  // Rejection tracking fields
+  rejected_at?: string | null;
+  rejected_by?: string | null;
+  rejected_by_name?: string | null;
+  rejection_reason?: string | null;
 }
 
 interface ApplicationReviewDrawerProps {
@@ -815,6 +820,45 @@ export function ApplicationReviewDrawer({
                     </Card>
 
                     <Separator />
+
+                    {/* Rejection Info - Show when application is rejected */}
+                    {application.status === "rejected" && (
+                      <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base font-semibold flex items-center gap-2 text-red-700 dark:text-red-400">
+                            <XCircle className="h-5 w-5" />
+                            Application Rejected
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Rejected By</p>
+                              <p className="text-sm font-medium mt-1">
+                                {application.rejected_by_name || "Unknown"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Rejected On</p>
+                              <p className="text-sm font-medium mt-1">
+                                {application.rejected_at 
+                                  ? format(new Date(application.rejected_at), "MMM d, yyyy 'at' h:mm a")
+                                  : "Unknown"
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          {application.rejection_reason && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Reason</p>
+                              <p className="text-sm mt-1 p-3 bg-white dark:bg-slate-900 rounded border border-red-200 dark:border-red-800">
+                                {application.rejection_reason}
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Workflow Actions */}
                     <div className="space-y-3">

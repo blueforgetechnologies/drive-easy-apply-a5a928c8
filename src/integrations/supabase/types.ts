@@ -143,6 +143,10 @@ export type Database = {
           per_diem: number | null
           personal_info: Json
           referral_bonus: number | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejected_by_name: string | null
+          rejection_reason: string | null
           restrictions: string | null
           routing_number: string | null
           safe_driving_policy: Json
@@ -212,6 +216,10 @@ export type Database = {
           per_diem?: number | null
           personal_info: Json
           referral_bonus?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_by_name?: string | null
+          rejection_reason?: string | null
           restrictions?: string | null
           routing_number?: string | null
           safe_driving_policy: Json
@@ -281,6 +289,10 @@ export type Database = {
           per_diem?: number | null
           personal_info?: Json
           referral_bonus?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_by_name?: string | null
+          rejection_reason?: string | null
           restrictions?: string | null
           routing_number?: string | null
           safe_driving_policy?: Json
