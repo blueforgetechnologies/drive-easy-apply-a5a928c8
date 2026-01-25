@@ -737,6 +737,13 @@ export default function VehiclesTab() {
                 inactive: vehicles.filter(v => v.status === "inactive").length,
                 pending: vehicles.filter(v => v.status === "pending").length,
               };
+              
+              // Count vehicles needing service
+              const serviceNeededCount = vehicles.filter(v => 
+                (v.oil_change_remaining !== null && v.oil_change_remaining <= 0) ||
+                (v.registration_exp_date && new Date(v.registration_exp_date) < new Date()) ||
+                (v.insurance_expiry && new Date(v.insurance_expiry) < new Date())
+              ).length;
 
               const statusFilters = [
                 { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
@@ -745,45 +752,50 @@ export default function VehiclesTab() {
                 { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
               ];
 
-              return statusFilters.map((status, index) => (
-                <Button
-                  key={status.key}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchParams({ filter: status.key });
-                    setSearchQuery("");
-                  }}
-                  className={`h-[28px] px-2 text-[12px] font-medium gap-1 border-0 ${
-                    index === 0 ? 'rounded-l-full rounded-r-none' : 
-                    index === statusFilters.length - 1 ? 'rounded-r-full rounded-l-none' : 
-                    'rounded-none'
-                  } ${
-                    filter === status.key 
-                      ? `${status.activeClass} text-white` 
-                      : 'btn-glossy text-gray-700'
-                  }`}
-                >
-                  {status.label}
-                  <span className={`${filter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>{status.count}</span>
-                </Button>
-              ));
+              return (
+                <>
+                  {statusFilters.map((status, index) => (
+                    <Button
+                      key={status.key}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSearchParams({ filter: status.key });
+                        setSearchQuery("");
+                      }}
+                      className={`h-[28px] px-2 text-[12px] font-medium gap-1 border-0 ${
+                        index === 0 ? 'rounded-l-full rounded-r-none' : 
+                        index === statusFilters.length - 1 ? 'rounded-r-full rounded-l-none' : 
+                        'rounded-none'
+                      } ${
+                        filter === status.key 
+                          ? `${status.activeClass} text-white` 
+                          : 'btn-glossy text-gray-700'
+                      }`}
+                    >
+                      {status.label}
+                      <span className={`${filter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>{status.count}</span>
+                    </Button>
+                  ))}
+                  
+                  {/* Spacer */}
+                  <div className="w-3" />
+                  
+                  {/* Service Needed - Standalone button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-[28px] px-3 text-[12px] font-medium rounded-full border-0 gap-1 ${
+                      showServiceDue ? "btn-glossy-danger text-white" : "btn-glossy text-gray-700"
+                    }`}
+                    onClick={() => setShowServiceDue(!showServiceDue)}
+                  >
+                    Service Needed
+                    <span className={`${showServiceDue ? 'badge-inset-danger' : 'badge-inset-soft-red'} text-[10px] h-5`}>{serviceNeededCount}</span>
+                  </Button>
+                </>
+              );
             })()}
-            
-            {/* Spacer */}
-            <div className="w-3" />
-            
-            {/* Service Needed - Standalone button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-[28px] px-3 text-[12px] font-medium rounded-full border-0 ${
-                showServiceDue ? "btn-glossy-danger text-white" : "btn-glossy text-gray-700"
-              }`}
-              onClick={() => setShowServiceDue(!showServiceDue)}
-            >
-              Service Needed
-            </Button>
           </div>
         </div>
 
