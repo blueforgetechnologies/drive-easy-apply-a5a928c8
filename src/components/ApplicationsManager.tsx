@@ -427,6 +427,29 @@ export function ApplicationsManager() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} application(s)? This cannot be undone.`)) {
+      return;
+    }
+    setIsBulkProcessing(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .delete()
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} application(s) deleted`);
+      setSelectedIds(new Set());
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Bulk delete failed: " + error.message);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedIds.size === paginatedApplications.length) {
       setSelectedIds(new Set());
@@ -657,6 +680,16 @@ export function ApplicationsManager() {
               >
                 <Archive className="h-3 w-3" />
                 Archive
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={isBulkProcessing}
+                className="gap-1 h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
               </Button>
             </div>
           )}
