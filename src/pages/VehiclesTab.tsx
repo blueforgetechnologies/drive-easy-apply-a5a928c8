@@ -746,12 +746,14 @@ export default function VehiclesTab() {
                 pending: vehicles.filter(v => v.status === "pending").length,
               };
 
-              return [
+              const statusFilters = [
                 { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
                 { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
                 { key: "inactive", label: "Inactive", count: statusCounts.inactive, activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
                 { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-              ].map((status) => (
+              ];
+
+              return statusFilters.map((status, index) => (
                 <Button
                   key={status.key}
                   variant="ghost"
@@ -760,7 +762,11 @@ export default function VehiclesTab() {
                     setSearchParams({ filter: status.key });
                     setSearchQuery("");
                   }}
-                  className={`h-[28px] px-2 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                  className={`h-[28px] px-2 text-[12px] font-medium gap-1 border-0 ${
+                    index === 0 ? 'rounded-l-full rounded-r-none' : 
+                    index === statusFilters.length - 1 ? 'rounded-r-full rounded-l-none' : 
+                    'rounded-none'
+                  } ${
                     filter === status.key 
                       ? `${status.activeClass} text-white` 
                       : 'btn-glossy text-gray-700'
@@ -771,15 +777,20 @@ export default function VehiclesTab() {
                 </Button>
               ));
             })()}
+            
+            {/* Spacer */}
+            <div className="w-3" />
+            
+            {/* Service Needed - Standalone button */}
             <Button
               variant="ghost"
               size="sm"
-              className={`h-[28px] px-2 text-[12px] font-medium rounded-full ml-2 border-0 ${
+              className={`h-[28px] px-3 text-[12px] font-medium rounded-full border-0 ${
                 showServiceDue ? "btn-glossy-danger text-white" : "btn-glossy text-gray-700"
               }`}
               onClick={() => setShowServiceDue(!showServiceDue)}
             >
-              Service
+              Service Needed
             </Button>
           </div>
         </div>
