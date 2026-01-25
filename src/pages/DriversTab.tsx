@@ -313,17 +313,25 @@ export default function DriversTab() {
 
   const handleResendInvite = async (invite: DriverInvite) => {
     try {
-      const { error } = await supabase.functions.invoke("send-driver-invite", {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("resend-driver-invite", {
         body: {
-          email: invite.email,
-          name: invite.name,
+          invite_id: invite.id,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
       if (error) throw error;
-      toast.success("Invitation resent successfully");
+      if (!data?.success) throw new Error(data?.error || "Failed to resend invitation");
+      
+      toast.success(`Invitation resent to ${invite.email}`);
     } catch (error: any) {
-      toast.error("Failed to resend invitation");
+      console.error("Error resending invite:", error);
+      toast.error("Failed to resend invitation: " + error.message);
     }
   };
 
