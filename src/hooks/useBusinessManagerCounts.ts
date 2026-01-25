@@ -32,7 +32,8 @@ export function useBusinessManagerCounts(): BusinessManagerCounts {
         query("vehicles").select("id", { count: "exact", head: true }),
         query("carriers").select("id", { count: "exact", head: true }),
         query("payees").select("id", { count: "exact", head: true }),
-        query("applications").select("id", { count: "exact", head: true }).eq("driver_status", "active"),
+        // Count all HIRED drivers (both pending and active - those with driver_status not null)
+        query("applications").select("id", { count: "exact", head: true }).not("driver_status", "is", null).neq("driver_status", "rejected"),
         query("dispatchers").select("id", { count: "exact", head: true }),
         query("customers").select("id", { count: "exact", head: true }),
       ]);
