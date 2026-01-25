@@ -136,59 +136,61 @@ const Apply = () => {
       {/* Navigation */}
       <div className="absolute top-4 left-4 z-10">
         <Link to="/">
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 gap-2">
+          <Button variant="ghost" size="sm" className="text-white/90 hover:text-white hover:bg-white/10 gap-2 rounded-full">
             <ArrowLeft className="h-4 w-4" />
-            Back to Home
+            Home
           </Button>
         </Link>
       </div>
       <div className="absolute top-4 right-4 z-10">
         <Link to="/auth">
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+          <Button variant="ghost" size="sm" className="text-white/90 hover:text-white hover:bg-white/10 rounded-full">
             Admin Login
           </Button>
         </Link>
       </div>
 
-      {/* Hero Section */}
-      <header className="relative h-[350px] md:h-[400px] overflow-hidden">
+      {/* Golden Hero Section */}
+      <header className="relative h-[280px] md:h-[320px] overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={heroImage}
             alt="Professional truck driver"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/85 via-primary/70 to-primary/50" />
+          {/* Golden gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-900/90 via-amber-800/80 to-yellow-700/70" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
         <div className="relative h-full flex items-center justify-center text-center px-4">
-          <div className="max-w-3xl">
+          <div className="max-w-2xl">
             {companyName && (
-              <p className="text-primary-foreground/80 text-lg mb-2">
+              <p className="text-amber-200/90 text-sm mb-2 font-medium tracking-wide uppercase">
                 {companyName}
               </p>
             )}
-            <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4">
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
               Driver Employment Application
             </h1>
-            <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl mx-auto">
-              Join our professional team of drivers. Complete your application online — your progress is saved automatically.
+            <p className="text-base md:text-lg text-white/85 max-w-xl mx-auto">
+              Join our professional team. Complete your application online — progress saved automatically.
             </p>
           </div>
         </div>
       </header>
 
       {/* Application Form */}
-      <main className="-mt-16 relative z-10">
+      <main className="-mt-12 relative z-10">
         <ApplicationForm publicToken={publicToken || "preview"} isPreviewMode={isPreviewMode} />
       </main>
 
       {/* Footer */}
-      <footer className="bg-card border-t mt-16 py-8">
-        <div className="max-w-4xl mx-auto px-4 text-center text-muted-foreground text-sm">
+      <footer className="bg-card border-t mt-12 py-6">
+        <div className="max-w-3xl mx-auto px-4 text-center text-muted-foreground text-xs">
           <p>© {new Date().getFullYear()} {companyName || 'Blueforge Technologies'}. All rights reserved.</p>
-          <p className="mt-2">
-            Questions? Contact us at{" "}
-            <a href="mailto:hr@blueforgetechnologies.org" className="text-primary hover:underline">
+          <p className="mt-1">
+            Questions?{" "}
+            <a href="mailto:hr@blueforgetechnologies.org" className="text-gold hover:underline">
               hr@blueforgetechnologies.org
             </a>
           </p>

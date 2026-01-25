@@ -69,6 +69,13 @@ export default {
           DEFAULT: "hsl(var(--header))",
           foreground: "hsl(var(--header-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          light: "hsl(var(--gold-light))",
+          dark: "hsl(var(--gold-dark))",
+          foreground: "hsl(var(--gold-foreground))",
+          muted: "hsl(var(--gold-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
