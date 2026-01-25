@@ -29,6 +29,7 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
     deniedLicense: data?.licenseInfo?.deniedLicense || "",
     suspendedRevoked: data?.licenseInfo?.suspendedRevoked || "",
     deniedDetails: data?.licenseInfo?.deniedDetails || "",
+    suspendedDetails: data?.licenseInfo?.suspendedDetails || "",
   });
 
   const endorsementOptions = [
@@ -311,15 +312,32 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
             </div>
           </div>
 
-          {(formData.deniedLicense === "yes" || formData.suspendedRevoked === "yes") && (
-            <div className="form-field-scifi space-y-1 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-              <Label htmlFor="deniedDetails" className="label-scifi">Please provide details *</Label>
+          {formData.deniedLicense === "yes" && (
+            <div className="form-field-scifi space-y-1 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Label htmlFor="deniedDetails" className="label-scifi text-amber-400">
+                Details about license denial *
+              </Label>
               <textarea
                 id="deniedDetails"
                 className="input-scifi w-full min-h-[80px] text-sm resize-y"
                 value={formData.deniedDetails}
                 onChange={(e) => setFormData({ ...formData, deniedDetails: e.target.value })}
-                placeholder="Provide details about license denial or suspension/revocation"
+                placeholder="Explain the circumstances of your license denial"
+              />
+            </div>
+          )}
+
+          {formData.suspendedRevoked === "yes" && (
+            <div className="form-field-scifi space-y-1 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <Label htmlFor="suspendedDetails" className="label-scifi text-destructive">
+                Details about suspension/revocation *
+              </Label>
+              <textarea
+                id="suspendedDetails"
+                className="input-scifi w-full min-h-[80px] text-sm resize-y"
+                value={formData.suspendedDetails}
+                onChange={(e) => setFormData({ ...formData, suspendedDetails: e.target.value })}
+                placeholder="Explain the circumstances of your license suspension or revocation"
               />
             </div>
           )}
