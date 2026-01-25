@@ -142,7 +142,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Using company name: ${companyName}`);
 
-    // Insert invite record into database
+    // Insert invite record into database (now includes carrier_id for branding)
     const { data: inviteData, error: inviteError } = await supabaseService
       .from('driver_invites')
       .insert({
@@ -150,6 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
         name,
         invited_by: user.id,
         tenant_id: tenantId,
+        carrier_id: carrier_id || null,
       })
       .select()
       .single();
