@@ -340,6 +340,19 @@ export default function DriversTab() {
 
   const handleDeleteInvite = async (inviteId: string) => {
     try {
+      // First, unlink any applications that reference this invite
+      // This prevents FK constraint violations
+      const { error: unlinkError } = await supabase
+        .from("applications")
+        .update({ invite_id: null })
+        .eq("invite_id", inviteId);
+
+      if (unlinkError) {
+        console.warn("Error unlinking applications:", unlinkError);
+        // Continue anyway - the applications may not have proper permissions or don't exist
+      }
+
+      // Now delete the invitation
       const { error } = await supabase
         .from("driver_invites")
         .delete()
