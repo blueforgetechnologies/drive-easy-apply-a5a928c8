@@ -200,12 +200,32 @@ export function PDFPreviewDialog({
   // Get document URL from various formats
   const getDocumentUrl = (doc: string | File | null | undefined): string | null => {
     if (!doc) return null;
-    if (typeof doc === "string") {
-      // It's already a URL or path
-      return doc;
+    
+    // If it's a File object, create object URL
+    if (doc instanceof File) {
+      return URL.createObjectURL(doc);
     }
-    // It's a File object - create object URL
-    return URL.createObjectURL(doc);
+    
+    // It's a string - check what kind
+    if (typeof doc === "string") {
+      // Already a full URL
+      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
+        return doc;
+      }
+      
+      // It's a storage path - construct full Supabase storage URL
+      // Storage paths look like: "tenant_id/filename.jpg" or "/tenant_id/filename.jpg"
+      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (supabaseUrl && cleanPath) {
+        // Determine bucket - documents are typically in 'load-documents' bucket
+        return `${supabaseUrl}/storage/v1/object/public/load-documents/${cleanPath}`;
+      }
+      
+      return null;
+    }
+    
+    return null;
   };
 
   // Document click handler
