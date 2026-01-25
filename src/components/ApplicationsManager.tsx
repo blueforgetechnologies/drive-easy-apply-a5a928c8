@@ -783,7 +783,11 @@ export function ApplicationsManager() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
-                                title="Review Application"
+                                title={
+                                  isSubmittedOrPending
+                                    ? `Not ready: ${(app.current_step || 1) < 9 ? `Step ${app.current_step || 1}/9` : ""}${needsReview(app) ? " Missing docs" : ""}`
+                                    : "Review Application"
+                                }
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>

@@ -21,7 +21,6 @@ import {
   AlertTriangle,
   FileCheck,
   FileSearch,
-  CheckCircle2,
   XCircle,
   MessageSquare,
   Loader2,
@@ -31,6 +30,7 @@ import {
   Award,
   Car,
   Archive,
+  CheckCircle2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -73,7 +73,7 @@ export function ApplicationReviewDrawer({
   onPreviewPDF,
   onStatusChange,
 }: ApplicationReviewDrawerProps) {
-  const [isApproving, setIsApproving] = useState(false);
+  // Drawer does NOT approve - that's done via row-level action only
   const [isRejecting, setIsRejecting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -141,28 +141,7 @@ export function ApplicationReviewDrawer({
     return docInfo.missing.length > 0 || application.current_step !== 9;
   };
 
-  const handleApprove = async () => {
-    setIsApproving(true);
-    try {
-      // Use edge function for proper server-side workflow
-      const { data, error } = await supabase.functions.invoke("approve-application", {
-        body: { application_id: application.id },
-      });
-
-      if (error) throw error;
-      
-      if (!data?.success) {
-        throw new Error(data?.error || "Failed to approve application");
-      }
-      
-      toast.success(data.message || "Application approved - driver is now pending onboarding");
-      onStatusChange();
-    } catch (error: any) {
-      toast.error("Failed to approve: " + error.message);
-    } finally {
-      setIsApproving(false);
-    }
-  };
+  // NOTE: Approve is NOT available in drawer - use row-level action only
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
