@@ -930,9 +930,11 @@ export function ApplicationsManager() {
                 <TableBody>
                   {paginatedApplications.map((app) => {
                     const isSubmittedOrPending = app.status === "submitted" || app.status === "pending";
-                    // Show Approve button ONLY when truly READY: submitted/pending, step 9, all docs present
-                    const isReady = isSubmittedOrPending && app.current_step === 9 && !needsReview(app);
-                    const canApprove = isReady && app.status !== "approved" && app.status !== "rejected";
+                    // Show Approve button for submitted/pending, step 9, not already approved/rejected
+                    const isFormComplete = isSubmittedOrPending && app.current_step === 9;
+                    const showApproveButton = isFormComplete && app.status !== "approved" && app.status !== "rejected";
+                    const mvrMissing = isMvrMissing(app);
+                    const canApprove = showApproveButton && !mvrMissing;
                     
                     return (
                       <TableRow 
@@ -1073,11 +1075,21 @@ export function ApplicationsManager() {
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
-                                {canApprove ? (
+                                {showApproveButton ? (
                                   <Button
-                                    onClick={() => handleQuickApprove(app.id)}
+                                    onClick={() => {
+                                      if (mvrMissing) {
+                                        toast.error("MVR is required before approval. Please upload the Motor Vehicle Record.");
+                                        return;
+                                      }
+                                      handleQuickApprove(app.id);
+                                    }}
                                     size="sm"
-                                    className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white gap-1"
+                                    className={`h-7 px-2 gap-1 ${
+                                      mvrMissing 
+                                        ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted" 
+                                        : "bg-green-600 hover:bg-green-700 text-white"
+                                    }`}
                                     disabled={approvingId === app.id}
                                   >
                                     {approvingId === app.id ? (
