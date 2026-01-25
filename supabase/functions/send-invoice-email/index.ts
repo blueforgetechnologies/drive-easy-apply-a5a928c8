@@ -265,7 +265,7 @@ Deno.serve(async (req: Request) => {
     const emailBody = buildEmailBody(invoice, loads || [], company, customer);
 
     // Fixed verified sender domain - never use resend.dev or company email as sender
-    const fromEmail = `${company?.company_name || 'Billing'} <billing@nexustechsolution.com>`;
+    const fromEmail = `${company?.company_name || 'Billing'} <billing@blueforgetechnologies.org>`;
     const replyTo = company.accounting_email;
 
     // Send email via Resend with CC to accounting

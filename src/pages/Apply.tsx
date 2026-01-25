@@ -185,11 +185,11 @@ const Apply = () => {
       {/* Footer */}
       <footer className="bg-card border-t mt-16 py-8">
         <div className="max-w-4xl mx-auto px-4 text-center text-muted-foreground text-sm">
-          <p>© {new Date().getFullYear()} {companyName || 'NexusTech Solution'}. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {companyName || 'Blueforge Technologies'}. All rights reserved.</p>
           <p className="mt-2">
             Questions? Contact us at{" "}
-            <a href="mailto:hr@nexustechsolution.com" className="text-primary hover:underline">
-              hr@nexustechsolution.com
+            <a href="mailto:hr@blueforgetechnologies.org" className="text-primary hover:underline">
+              hr@blueforgetechnologies.org
             </a>
           </p>
         </div>

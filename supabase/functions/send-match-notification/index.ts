@@ -229,7 +229,7 @@ ${tenant.name} • Match Notifications
 
     // Use custom from email if configured, otherwise fallback to default
     // NOTE: The custom domain must be verified in Resend for this to work
-    const fromEmail = tenant.match_notification_from_email || 'dispatch@nexustechsolution.com';
+    const fromEmail = tenant.match_notification_from_email || 'dispatch@blueforgetechnologies.org';
     const fromName = tenant.name + ' Load Hunter';
     
     console.log(`[send-match-notification] Sending from: ${fromName} <${fromEmail}>`);
