@@ -11,6 +11,9 @@ const Apply = () => {
   const [searchParams] = useSearchParams();
   // Support both token param (new) and invite param (legacy fallback)
   const publicToken = searchParams.get("token") || searchParams.get("invite");
+  // PREVIEW MODE: Allow internal users to view the form without a token
+  const isPreviewMode = searchParams.get("preview") === "true";
+  
   const [isValidating, setIsValidating] = useState(true);
   const [isValidInvite, setIsValidInvite] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -18,6 +21,14 @@ const Apply = () => {
 
   useEffect(() => {
     const validateInvite = async () => {
+      // PREVIEW MODE: Skip validation and show form directly
+      if (isPreviewMode) {
+        setCompanyName("Preview Mode - Your Company");
+        setIsValidInvite(true);
+        setIsValidating(false);
+        return;
+      }
+
       // FAIL CLOSED: No token = immediate deny
       if (!publicToken) {
         setIsValidating(false);
@@ -77,7 +88,7 @@ const Apply = () => {
     };
 
     validateInvite();
-  }, [publicToken]);
+  }, [publicToken, isPreviewMode]);
 
   // Show loading state while validating
   if (isValidating) {
@@ -168,7 +179,7 @@ const Apply = () => {
 
       {/* Application Form */}
       <main className="-mt-16 relative z-10">
-        <ApplicationForm publicToken={publicToken!} />
+        <ApplicationForm publicToken={publicToken || "preview"} isPreviewMode={isPreviewMode} />
       </main>
 
       {/* Footer */}
