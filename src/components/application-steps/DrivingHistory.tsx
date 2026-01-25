@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Plus, Trash2, Car, AlertTriangle, FileWarning, MapPin, Calendar } from "lucide-react";
 
 interface DrivingHistoryProps {
   data: any;
@@ -59,50 +58,75 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">Driving History</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          List all accidents and traffic violations for the past 3 years. If none, leave sections empty.
-        </p>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header */}
+      <div className="section-scifi p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-scifi-purple/20">
+            <Car className="h-5 w-5 text-scifi-purple" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Driving History</h2>
+            <p className="text-sm text-muted-foreground">
+              List all accidents and traffic violations for the past 3 years. If none, leave sections empty.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Accidents Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-foreground">Accidents (Past 3 Years)</h4>
-          <Button type="button" variant="outline" size="sm" onClick={addAccident} className="gap-2">
-            <Plus className="w-4 h-4" />
+      <div className="section-scifi">
+        <div className="flex items-center justify-between mb-3">
+          <div className="section-header-scifi">
+            <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              Accidents (Past 3 Years)
+            </h3>
+          </div>
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={addAccident} 
+            className="btn-scifi-outline text-xs h-8"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
             Add Accident
           </Button>
         </div>
 
         {accidents.length === 0 ? (
-          <Card className="p-6 text-center text-muted-foreground">
-            No accidents reported. Click "Add Accident" if you need to report any.
-          </Card>
+          <div className="p-4 rounded-lg bg-scifi-card/50 border border-scifi-border/50 text-center">
+            <p className="text-sm text-scifi-text-muted">
+              No accidents reported. Click "Add Accident" if you need to report any.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {accidents.map((accident, index) => (
-              <Card key={index} className="p-6 relative">
+              <div key={index} className="p-3 rounded-lg bg-scifi-card/50 border border-scifi-border/50 relative">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute top-4 right-4"
+                  className="absolute top-2 right-2 text-destructive hover:bg-destructive/20 h-7 w-7 p-0"
                   onClick={() => removeAccident(index)}
                 >
-                  <Trash2 className="w-4 h-4 text-destructive" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </Button>
 
-                <h5 className="font-semibold mb-4">Accident {index + 1}</h5>
+                <h5 className="font-medium text-sm text-scifi-text mb-3 pr-8">Accident {index + 1}</h5>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Date of Accident *</Label>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        Date of Accident *
+                      </Label>
                       <Input
                         type="date"
+                        className="input-scifi h-9 text-sm"
                         value={accident.date}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -111,9 +135,13 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                         }}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Location *</Label>
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
+                        Location *
+                      </Label>
                       <Input
+                        className="input-scifi h-9 text-sm"
                         value={accident.location}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -124,9 +152,10 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Description *</Label>
+                  <div className="form-field-scifi space-y-1">
+                    <Label className="label-scifi">Description *</Label>
                     <Textarea
+                      className="input-scifi text-sm min-h-[60px] resize-y"
                       value={accident.description}
                       onChange={(e) => {
                         const updated = [...accidents];
@@ -136,12 +165,13 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Fatalities</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi">Fatalities</Label>
                       <Input
                         type="number"
                         min="0"
+                        className="input-scifi h-9 text-sm"
                         value={accident.fatalities}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -150,11 +180,12 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                         }}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Injuries</Label>
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi">Injuries</Label>
                       <Input
                         type="number"
                         min="0"
+                        className="input-scifi h-9 text-sm"
                         value={accident.injuries}
                         onChange={(e) => {
                           const updated = [...accidents];
@@ -165,48 +196,65 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
       </div>
 
       {/* Violations Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-foreground">Traffic Violations (Past 3 Years)</h4>
-          <Button type="button" variant="outline" size="sm" onClick={addViolation} className="gap-2">
-            <Plus className="w-4 h-4" />
+      <div className="section-scifi">
+        <div className="flex items-center justify-between mb-3">
+          <div className="section-header-scifi">
+            <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+              <FileWarning className="w-4 h-4 text-red-500" />
+              Traffic Violations (Past 3 Years)
+            </h3>
+          </div>
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={addViolation} 
+            className="btn-scifi-outline text-xs h-8"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
             Add Violation
           </Button>
         </div>
 
         {violations.length === 0 ? (
-          <Card className="p-6 text-center text-muted-foreground">
-            No violations reported. Click "Add Violation" if you need to report any.
-          </Card>
+          <div className="p-4 rounded-lg bg-scifi-card/50 border border-scifi-border/50 text-center">
+            <p className="text-sm text-scifi-text-muted">
+              No violations reported. Click "Add Violation" if you need to report any.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {violations.map((violation, index) => (
-              <Card key={index} className="p-6 relative">
+              <div key={index} className="p-3 rounded-lg bg-scifi-card/50 border border-scifi-border/50 relative">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute top-4 right-4"
+                  className="absolute top-2 right-2 text-destructive hover:bg-destructive/20 h-7 w-7 p-0"
                   onClick={() => removeViolation(index)}
                 >
-                  <Trash2 className="w-4 h-4 text-destructive" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </Button>
 
-                <h5 className="font-semibold mb-4">Violation {index + 1}</h5>
+                <h5 className="font-medium text-sm text-scifi-text mb-3 pr-8">Violation {index + 1}</h5>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Date of Violation *</Label>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        Date of Violation *
+                      </Label>
                       <Input
                         type="date"
+                        className="input-scifi h-9 text-sm"
                         value={violation.date}
                         onChange={(e) => {
                           const updated = [...violations];
@@ -215,9 +263,13 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                         }}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Location *</Label>
+                    <div className="form-field-scifi space-y-1">
+                      <Label className="label-scifi flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
+                        Location *
+                      </Label>
                       <Input
+                        className="input-scifi h-9 text-sm"
                         value={violation.location}
                         onChange={(e) => {
                           const updated = [...violations];
@@ -228,46 +280,47 @@ export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) =>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Type of Violation *</Label>
-                      <Input
-                        placeholder="e.g., Speeding, Following too close"
-                        value={violation.violation}
-                        onChange={(e) => {
-                          const updated = [...violations];
-                          updated[index].violation = e.target.value;
-                          setViolations(updated);
-                        }}
-                      />
+                  <div className="form-field-scifi space-y-1">
+                    <Label className="label-scifi">Type of Violation *</Label>
+                    <Input
+                      placeholder="e.g., Speeding, Following too close"
+                      className="input-scifi h-9 text-sm"
+                      value={violation.violation}
+                      onChange={(e) => {
+                        const updated = [...violations];
+                        updated[index].violation = e.target.value;
+                        setViolations(updated);
+                      }}
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Penalty *</Label>
-                      <Input
-                        placeholder="e.g., Fine amount, points"
-                        value={violation.penalty}
-                        onChange={(e) => {
-                          const updated = [...violations];
-                          updated[index].penalty = e.target.value;
-                          setViolations(updated);
-                        }}
-                      />
+                  <div className="form-field-scifi space-y-1">
+                    <Label className="label-scifi">Penalty *</Label>
+                    <Input
+                      placeholder="e.g., Fine amount, points"
+                      className="input-scifi h-9 text-sm"
+                      value={violation.penalty}
+                      onChange={(e) => {
+                        const updated = [...violations];
+                        updated[index].penalty = e.target.value;
+                        setViolations(updated);
+                      }}
+                    />
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* Navigation */}
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Back
+        <Button type="button" variant="outline" onClick={onBack} className="btn-scifi-outline">
+          Previous
         </Button>
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="btn-scifi">
           Next
-          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </form>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IdCard, Calendar, Award, AlertTriangle, FileCheck } from "lucide-react";
 
 interface LicenseInfoProps {
   data: any;
@@ -43,7 +43,7 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
   const handleEndorsementChange = (endorsementId: string) => {
     setFormData((prev) => {
       const endorsements = prev.endorsements.includes(endorsementId)
-        ? prev.endorsements.filter((e) => e !== endorsementId)
+        ? prev.endorsements.filter((e: string) => e !== endorsementId)
         : [...prev.endorsements, endorsementId];
       return { ...prev, endorsements };
     });
@@ -54,142 +54,155 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
     onNext({ licenseInfo: formData });
   };
 
+  const isCommercialLicense = ["A", "B", "C", "CLASS A", "CLASS B", "CLASS C"].some(
+    cls => formData.licenseClass.toUpperCase().includes(cls)
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">Driver's License Information</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Please provide your current driver's license details. You will upload a copy later.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="nameOnLicense">Name as it Appears on License *</Label>
-        <Input
-          id="nameOnLicense"
-          placeholder="Full name on driver's license"
-          value={formData.nameOnLicense}
-          onChange={(e) => setFormData({ ...formData, nameOnLicense: e.target.value })}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="licenseNumber">Driver's License Number (DL#) *</Label>
-          <Input
-            id="licenseNumber"
-            value={formData.licenseNumber}
-            onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="licenseState">State Issued *</Label>
-          <Input
-            id="licenseState"
-            placeholder="XX"
-            maxLength={2}
-            value={formData.licenseState}
-            onChange={(e) =>
-              setFormData({ ...formData, licenseState: e.target.value.toUpperCase() })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="licenseClass">License Class *</Label>
-          <Input
-            id="licenseClass"
-            placeholder="e.g., Class A, Class B"
-            value={formData.licenseClass}
-            onChange={(e) => setFormData({ ...formData, licenseClass: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="issuedDate">Issued Date *</Label>
-          <Input
-            id="issuedDate"
-            type="date"
-            value={formData.issuedDate}
-            onChange={(e) => setFormData({ ...formData, issuedDate: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="expirationDate">Expiration Date *</Label>
-          <Input
-            id="expirationDate"
-            type="date"
-            value={formData.expirationDate}
-            onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="hasDotMedicalCert">Do you possess a DOT Medical Examiner Certificate? *</Label>
-        <select
-          id="hasDotMedicalCert"
-          className="w-full rounded-md border border-input bg-background px-3 py-2"
-          value={formData.hasDotMedicalCert}
-          onChange={(e) => setFormData({ ...formData, hasDotMedicalCert: e.target.value })}
-        >
-          <option value="">Select...</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
-      </div>
-
-      {formData.hasDotMedicalCert === "yes" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="nationalRegistryNumber">National Registry Number *</Label>
-            <Input
-              id="nationalRegistryNumber"
-              placeholder="Enter national registry number"
-              value={formData.nationalRegistryNumber}
-              onChange={(e) => setFormData({ ...formData, nationalRegistryNumber: e.target.value })}
-            />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header */}
+      <div className="section-scifi p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-scifi-purple/20">
+            <IdCard className="h-5 w-5 text-scifi-purple" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="medicalCardExpiration">Medical Card Expiration Date *</Label>
-            <Input
-              id="medicalCardExpiration"
-              type="date"
-              value={formData.medicalCardExpiration}
-              onChange={(e) => setFormData({ ...formData, medicalCardExpiration: e.target.value })}
-            />
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              {isCommercialLicense ? "Commercial Driver's License (CDL)" : "Driver's License Information"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Please provide your current driver's license details.
+            </p>
           </div>
         </div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="yearsExperience">Years of Commercial Driving Experience *</Label>
-        <Input
-          id="yearsExperience"
-          type="number"
-          min="0"
-          value={formData.yearsExperience}
-          onChange={(e) => setFormData({ ...formData, yearsExperience: e.target.value })}
-        />
       </div>
 
-      <div className="space-y-4">
-        <Label>CDL Endorsements</Label>
-        <p className="text-sm text-muted-foreground">
-          Select all endorsements that apply to your license
-        </p>
-        <div className="space-y-3">
+      {/* License Details Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <IdCard className="w-4 h-4 text-scifi-cyan" />
+            License Details
+          </h3>
+        </div>
+
+        <div className="space-y-3 mt-3">
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="nameOnLicense" className="label-scifi">Name as it Appears on License *</Label>
+            <Input
+              id="nameOnLicense"
+              placeholder="Full name on driver's license"
+              className="input-scifi h-9 text-sm"
+              value={formData.nameOnLicense}
+              onChange={(e) => setFormData({ ...formData, nameOnLicense: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="licenseNumber" className="label-scifi">Driver's License Number (DL#) *</Label>
+              <Input
+                id="licenseNumber"
+                className="input-scifi h-9 text-sm"
+                value={formData.licenseNumber}
+                onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="licenseState" className="label-scifi">State Issued *</Label>
+              <Input
+                id="licenseState"
+                placeholder="XX"
+                maxLength={2}
+                className="input-scifi h-9 text-sm uppercase"
+                value={formData.licenseState}
+                onChange={(e) =>
+                  setFormData({ ...formData, licenseState: e.target.value.toUpperCase() })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="licenseClass" className="label-scifi">License Class *</Label>
+              <Input
+                id="licenseClass"
+                placeholder="e.g., Class A, Class B"
+                className="input-scifi h-9 text-sm"
+                value={formData.licenseClass}
+                onChange={(e) => setFormData({ ...formData, licenseClass: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="issuedDate" className="label-scifi flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Issued Date *
+              </Label>
+              <Input
+                id="issuedDate"
+                type="date"
+                className="input-scifi h-9 text-sm"
+                value={formData.issuedDate}
+                onChange={(e) => setFormData({ ...formData, issuedDate: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="expirationDate" className="label-scifi flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Expiration Date *
+              </Label>
+              <Input
+                id="expirationDate"
+                type="date"
+                className="input-scifi h-9 text-sm"
+                value={formData.expirationDate}
+                onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="yearsExperience" className="label-scifi">Years of Commercial Driving Experience *</Label>
+            <Input
+              id="yearsExperience"
+              type="number"
+              min="0"
+              className="input-scifi h-9 text-sm w-32"
+              value={formData.yearsExperience}
+              onChange={(e) => setFormData({ ...formData, yearsExperience: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Endorsements Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <Award className="w-4 h-4 text-scifi-cyan" />
+            CDL Endorsements
+          </h3>
+          <p className="text-xs text-scifi-text-muted mt-0.5">
+            Select all endorsements that apply to your license
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
           {endorsementOptions.map((endorsement) => (
-            <div key={endorsement.id} className="flex items-center space-x-2">
+            <div 
+              key={endorsement.id} 
+              className="flex items-center space-x-2 p-2 rounded-lg bg-scifi-card/50 border border-scifi-border/50 hover:border-scifi-purple/30 transition-colors"
+            >
               <Checkbox
                 id={endorsement.id}
                 checked={formData.endorsements.includes(endorsement.id)}
                 onCheckedChange={() => handleEndorsementChange(endorsement.id)}
+                className="border-scifi-border data-[state=checked]:bg-scifi-purple data-[state=checked]:border-scifi-purple"
               />
               <label
                 htmlFor={endorsement.id}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="text-sm font-medium text-scifi-text cursor-pointer"
               >
                 {endorsement.label}
               </label>
@@ -198,60 +211,128 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
         </div>
       </div>
 
-      <div className="pt-6 border-t mt-6">
-        <h4 className="font-semibold mb-4 text-foreground">License History</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="deniedLicense">Have you ever been denied a license, permit or privilege to operate a motor vehicle? *</Label>
-            <select
-              id="deniedLicense"
-              className="w-full rounded-md border border-input bg-background px-3 py-2"
-              value={formData.deniedLicense}
-              onChange={(e) => setFormData({ ...formData, deniedLicense: e.target.value })}
-            >
-              <option value="">Select...</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="suspendedRevoked">Has any license, permit or privilege ever been suspended or revoked? *</Label>
-            <select
-              id="suspendedRevoked"
-              className="w-full rounded-md border border-input bg-background px-3 py-2"
-              value={formData.suspendedRevoked}
-              onChange={(e) => setFormData({ ...formData, suspendedRevoked: e.target.value })}
-            >
-              <option value="">Select...</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
+      {/* Medical Certificate Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <FileCheck className="w-4 h-4 text-scifi-cyan" />
+            DOT Medical Certificate
+          </h3>
         </div>
 
-        {(formData.deniedLicense === "yes" || formData.suspendedRevoked === "yes") && (
-          <div className="space-y-2 mt-4">
-            <Label htmlFor="deniedDetails">Please provide details *</Label>
-            <textarea
-              id="deniedDetails"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[100px]"
-              value={formData.deniedDetails}
-              onChange={(e) => setFormData({ ...formData, deniedDetails: e.target.value })}
-              placeholder="Provide details about license denial or suspension/revocation"
-            />
+        <div className="space-y-3 mt-3">
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="hasDotMedicalCert" className="label-scifi">
+              Do you possess a DOT Medical Examiner Certificate? *
+            </Label>
+            <select
+              id="hasDotMedicalCert"
+              className="input-scifi h-9 text-sm w-full"
+              value={formData.hasDotMedicalCert}
+              onChange={(e) => setFormData({ ...formData, hasDotMedicalCert: e.target.value })}
+            >
+              <option value="">Select...</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
           </div>
-        )}
+
+          {formData.hasDotMedicalCert === "yes" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-scifi-purple/10 border border-scifi-purple/20">
+              <div className="form-field-scifi space-y-1">
+                <Label htmlFor="nationalRegistryNumber" className="label-scifi">National Registry Number *</Label>
+                <Input
+                  id="nationalRegistryNumber"
+                  placeholder="Enter national registry number"
+                  className="input-scifi h-9 text-sm"
+                  value={formData.nationalRegistryNumber}
+                  onChange={(e) => setFormData({ ...formData, nationalRegistryNumber: e.target.value })}
+                />
+              </div>
+              <div className="form-field-scifi space-y-1">
+                <Label htmlFor="medicalCardExpiration" className="label-scifi flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Medical Card Expiration *
+                </Label>
+                <Input
+                  id="medicalCardExpiration"
+                  type="date"
+                  className="input-scifi h-9 text-sm"
+                  value={formData.medicalCardExpiration}
+                  onChange={(e) => setFormData({ ...formData, medicalCardExpiration: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* License History Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-scifi-cyan" />
+            License History
+          </h3>
+        </div>
+
+        <div className="space-y-3 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="deniedLicense" className="label-scifi text-xs">
+                Have you ever been denied a license, permit or privilege to operate a motor vehicle? *
+              </Label>
+              <select
+                id="deniedLicense"
+                className="input-scifi h-9 text-sm w-full"
+                value={formData.deniedLicense}
+                onChange={(e) => setFormData({ ...formData, deniedLicense: e.target.value })}
+              >
+                <option value="">Select...</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="suspendedRevoked" className="label-scifi text-xs">
+                Has any license, permit or privilege ever been suspended or revoked? *
+              </Label>
+              <select
+                id="suspendedRevoked"
+                className="input-scifi h-9 text-sm w-full"
+                value={formData.suspendedRevoked}
+                onChange={(e) => setFormData({ ...formData, suspendedRevoked: e.target.value })}
+              >
+                <option value="">Select...</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          </div>
+
+          {(formData.deniedLicense === "yes" || formData.suspendedRevoked === "yes") && (
+            <div className="form-field-scifi space-y-1 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <Label htmlFor="deniedDetails" className="label-scifi">Please provide details *</Label>
+              <textarea
+                id="deniedDetails"
+                className="input-scifi w-full min-h-[80px] text-sm resize-y"
+                value={formData.deniedDetails}
+                onChange={(e) => setFormData({ ...formData, deniedDetails: e.target.value })}
+                placeholder="Provide details about license denial or suspension/revocation"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Back
+        <Button type="button" variant="outline" onClick={onBack} className="btn-scifi-outline">
+          Previous
         </Button>
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="btn-scifi">
           Next
-          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </form>

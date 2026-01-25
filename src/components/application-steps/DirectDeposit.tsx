@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { Landmark, User, Mail, Building, CreditCard, DollarSign } from "lucide-react";
 
 interface DirectDepositProps {
   data: any;
@@ -31,116 +31,176 @@ export const DirectDeposit = ({ data, onNext, onBack }: DirectDepositProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">Direct Deposit Information</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          This information will be used for direct deposit purposes only and will not be shared with anyone else.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="firstName">First Name *</Label>
-          <Input
-            id="firstName"
-            value={formData.firstName}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName">Last Name *</Label>
-          <Input
-            id="lastName"
-            value={formData.lastName}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-          />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header */}
+      <div className="section-scifi p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-scifi-purple/20">
+            <Landmark className="h-5 w-5 text-scifi-purple" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Direct Deposit Information</h2>
+            <p className="text-sm text-muted-foreground">
+              This information will be used for direct deposit purposes only and kept confidential.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="businessName">Business Name (if applicable)</Label>
-          <Input
-            id="businessName"
-            value={formData.businessName}
-            onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-          />
+      {/* Account Holder Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <User className="w-4 h-4 text-scifi-cyan" />
+            Account Holder Information
+          </h3>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email *</Label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          />
+
+        <div className="space-y-3 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="firstName" className="label-scifi">First Name *</Label>
+              <Input
+                id="firstName"
+                className="input-scifi h-9 text-sm"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="lastName" className="label-scifi">Last Name *</Label>
+              <Input
+                id="lastName"
+                className="input-scifi h-9 text-sm"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="businessName" className="label-scifi flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5" />
+                Business Name (if applicable)
+              </Label>
+              <Input
+                id="businessName"
+                className="input-scifi h-9 text-sm"
+                value={formData.businessName}
+                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="email" className="label-scifi flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" />
+                Email *
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                className="input-scifi h-9 text-sm"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="bankName">Bank Name *</Label>
-        <Input
-          id="bankName"
-          value={formData.bankName}
-          onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="routingNumber">Routing Number *</Label>
-          <Input
-            id="routingNumber"
-            value={formData.routingNumber}
-            onChange={(e) => setFormData({ ...formData, routingNumber: e.target.value })}
-          />
+      {/* Bank Details Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-scifi-cyan" />
+            Bank Account Details
+          </h3>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="checkingNumber">Account Number *</Label>
-          <Input
-            id="checkingNumber"
-            value={formData.checkingNumber}
-            onChange={(e) => setFormData({ ...formData, checkingNumber: e.target.value })}
-          />
+
+        <div className="space-y-3 mt-3">
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="bankName" className="label-scifi flex items-center gap-1.5">
+              <Landmark className="w-3.5 h-3.5" />
+              Bank Name *
+            </Label>
+            <Input
+              id="bankName"
+              className="input-scifi h-9 text-sm"
+              value={formData.bankName}
+              onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="routingNumber" className="label-scifi">Routing Number *</Label>
+              <Input
+                id="routingNumber"
+                className="input-scifi h-9 text-sm"
+                value={formData.routingNumber}
+                onChange={(e) => setFormData({ ...formData, routingNumber: e.target.value })}
+              />
+            </div>
+            <div className="form-field-scifi space-y-1">
+              <Label htmlFor="checkingNumber" className="label-scifi">Account Number *</Label>
+              <Input
+                id="checkingNumber"
+                className="input-scifi h-9 text-sm"
+                value={formData.checkingNumber}
+                onChange={(e) => setFormData({ ...formData, checkingNumber: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="accountType" className="label-scifi">Account Type *</Label>
+            <select
+              id="accountType"
+              className="input-scifi h-9 text-sm w-full"
+              value={formData.accountType}
+              onChange={(e) => setFormData({ ...formData, accountType: e.target.value })}
+              required
+            >
+              <option value="">Select account type...</option>
+              <option value="personal-checking">Personal Checking</option>
+              <option value="personal-savings">Personal Savings</option>
+              <option value="business-checking">Business Checking</option>
+              <option value="business-savings">Business Savings</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="cashAppCashtag">CashApp Cashtag (optional)</Label>
-        <Input
-          id="cashAppCashtag"
-          placeholder="$username"
-          value={formData.cashAppCashtag}
-          onChange={(e) => setFormData({ ...formData, cashAppCashtag: e.target.value })}
-        />
+      {/* Alternative Payment Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-scifi-cyan" />
+            Alternative Payment (Optional)
+          </h3>
+        </div>
+
+        <div className="mt-3">
+          <div className="form-field-scifi space-y-1">
+            <Label htmlFor="cashAppCashtag" className="label-scifi">CashApp Cashtag</Label>
+            <Input
+              id="cashAppCashtag"
+              placeholder="$username"
+              className="input-scifi h-9 text-sm"
+              value={formData.cashAppCashtag}
+              onChange={(e) => setFormData({ ...formData, cashAppCashtag: e.target.value })}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="accountType">Account Type *</Label>
-        <select
-          id="accountType"
-          className="w-full rounded-md border border-input bg-background px-3 py-2"
-          value={formData.accountType}
-          onChange={(e) => setFormData({ ...formData, accountType: e.target.value })}
-          required
-        >
-          <option value="">Select account type...</option>
-          <option value="personal-checking">Personal Checking</option>
-          <option value="personal-savings">Personal Savings</option>
-          <option value="business-checking">Business Checking</option>
-          <option value="business-savings">Business Savings</option>
-        </select>
-      </div>
-
+      {/* Navigation */}
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Back
+        <Button type="button" variant="outline" onClick={onBack} className="btn-scifi-outline">
+          Previous
         </Button>
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="btn-scifi">
           Next
-          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </form>
