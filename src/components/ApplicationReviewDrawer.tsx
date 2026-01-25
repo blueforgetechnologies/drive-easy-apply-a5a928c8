@@ -24,26 +24,20 @@ import {
   XCircle,
   MessageSquare,
   Loader2,
-  Phone,
-  Mail,
-  Calendar,
-  Award,
   Car,
   Archive,
   CheckCircle2,
-  MapPin,
   FileText,
   Image as ImageIcon,
-  Building,
   Clock,
-  Shield,
   Heart,
   DollarSign,
   AlertCircle,
   Home,
   Truck,
-  IdCard,
+  Stethoscope,
   GraduationCap,
+  Award,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -152,7 +146,7 @@ export function ApplicationReviewDrawer({
       { key: "driversLicense", label: "Driver's License" },
       { key: "socialSecurity", label: "Social Security Card" },
       { key: "medicalCard", label: "DOT Medical Card" },
-      { key: "mvr", label: "Motor Vehicle Record (MVR)" },
+      { key: "mvr", label: "Motor Vehicle Record" },
     ];
     const present = required.filter((d) => docs[d.key]);
     const missing = required.filter((d) => !docs[d.key]);
@@ -183,6 +177,12 @@ export function ApplicationReviewDrawer({
   const needsReview = () => {
     const docInfo = getRequiredDocs();
     return docInfo.missing.length > 0 || application.current_step !== 9;
+  };
+
+  // Check if license is Commercial (Class A, B, or C)
+  const isCommercialLicense = () => {
+    const licenseClass = li.licenseClass?.toUpperCase() || "";
+    return licenseClass.includes("A") || licenseClass.includes("B") || licenseClass.includes("C");
   };
 
   // Document helpers
@@ -236,7 +236,6 @@ export function ApplicationReviewDrawer({
       addr.city,
       addr.state,
       addr.zip,
-      addr.county ? `(${addr.county} County)` : null,
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : "Not Provided";
   };
@@ -325,9 +324,9 @@ export function ApplicationReviewDrawer({
 
   // Info row component for cleaner display
   const InfoRow = ({ label, value, className = "" }: { label: string; value: React.ReactNode; className?: string }) => (
-    <div className={`flex justify-between py-1 ${className}`}>
+    <div className={`flex justify-between py-1.5 ${className}`}>
       <span className="text-muted-foreground text-sm">{label}</span>
-      <span className="text-sm font-medium text-right">{value || "Not Provided"}</span>
+      <span className="text-sm font-medium text-right max-w-[60%]">{value || "Not Provided"}</span>
     </div>
   );
 
@@ -449,6 +448,7 @@ export function ApplicationReviewDrawer({
                 // Application Details
                 <ScrollArea className="flex-1">
                   <div className="p-5 space-y-5">
+                    
                     {/* SECTION 1: Personal Information */}
                     <Card>
                       <CardHeader className="pb-3">
@@ -458,28 +458,22 @@ export function ApplicationReviewDrawer({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1">
-                        <InfoRow label="Full Legal Name" value={`${pi.firstName || ""} ${pi.middleName || ""} ${pi.lastName || ""} ${pi.suffix || ""}`.trim()} />
+                        <InfoRow label="Full Legal Name" value={`${pi.firstName || ""} ${pi.middleName || ""} ${pi.lastName || ""}`.trim()} />
                         <InfoRow label="Date of Birth" value={formatDate(pi.dob)} />
                         <InfoRow label="Social Security Number" value={maskSensitive(pi.ssn)} />
-                        <InfoRow label="Gender" value={pi.gender} />
-                        <InfoRow label="Marital Status" value={pi.maritalStatus} />
                         <Separator className="my-2" />
-                        <InfoRow label="Primary Phone" value={pi.phone} />
-                        <InfoRow label="Alternate Phone" value={pi.alternatePhone} />
+                        <InfoRow label="Phone Number" value={pi.phone} />
                         <InfoRow label="Email Address" value={pi.email} />
                         <Separator className="my-2" />
-                        <InfoRow label="Citizenship Status" value={pi.citizenship} />
-                        <InfoRow label="Legally Authorized to Work" value={pi.legallyAuthorized} />
-                        <InfoRow label="Requires Sponsorship" value={pi.requiresSponsorship} />
-                        <InfoRow label="Veteran Status" value={pi.veteranStatus} />
-                        <Separator className="my-2" />
+                        <InfoRow label="Legally Authorized to Work in the United States" value={pi.legallyAuthorized} />
                         <InfoRow label="Felony Conviction" value={pi.felonyConviction} />
-                        {pi.felonyExplanation && <InfoRow label="Felony Explanation" value={pi.felonyExplanation} />}
-                        <InfoRow label="Misdemeanor Conviction" value={pi.misdemeanorConviction} />
+                        {pi.felonyConviction === "yes" || pi.felonyConviction === "Yes" ? (
+                          <InfoRow label="Felony Details" value={pi.felonyDetails || pi.felonyExplanation} />
+                        ) : null}
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 2: Current Address */}
+                    {/* SECTION 2: Residential Address History */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -517,61 +511,24 @@ export function ApplicationReviewDrawer({
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 3: Additional IDs */}
-                    {(pi.hasTwicCard || pi.hasPassport || pi.hasHazmatEndorsement) && (
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base font-semibold flex items-center gap-2">
-                            <IdCard className="h-5 w-5 text-cyan-600" />
-                            Additional Identification
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-1">
-                          {pi.hasTwicCard && (
-                            <>
-                              <InfoRow label="TWIC Card" value={pi.hasTwicCard ? "Yes" : "No"} />
-                              <InfoRow label="TWIC Card Number" value={pi.twicCardNumber} />
-                              <InfoRow label="TWIC Expiration Date" value={formatDate(pi.twicExpiration)} />
-                            </>
-                          )}
-                          {pi.hasPassport && (
-                            <>
-                              <Separator className="my-2" />
-                              <InfoRow label="Passport" value={pi.hasPassport ? "Yes" : "No"} />
-                              <InfoRow label="Passport Number" value={maskSensitive(pi.passportNumber)} />
-                              <InfoRow label="Passport Country" value={pi.passportCountry} />
-                              <InfoRow label="Passport Expiration Date" value={formatDate(pi.passportExpiration)} />
-                            </>
-                          )}
-                          {pi.hasHazmatEndorsement && (
-                            <>
-                              <Separator className="my-2" />
-                              <InfoRow label="HazMat Endorsement" value="Yes" />
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* SECTION 4: Commercial Driver's License */}
+                    {/* SECTION 3: Driver's License Information */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
                           <CreditCard className="h-5 w-5 text-green-600" />
-                          Commercial Driver's License (CDL)
+                          {isCommercialLicense() ? "Commercial Driver's License (CDL)" : "Driver's License Information"}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1">
-                        <InfoRow label="License Number" value={li.licenseNumber} />
-                        <InfoRow label="Name on License" value={li.nameOnLicense} />
-                        <InfoRow label="Issuing State" value={li.licenseState} />
+                        <InfoRow label="Name as it Appears on License" value={li.nameOnLicense} />
+                        <InfoRow label="Driver's License Number" value={li.licenseNumber} />
+                        <InfoRow label="State Issued" value={li.licenseState} />
                         <InfoRow label="License Class" value={li.licenseClass ? `Class ${li.licenseClass}` : null} />
-                        <InfoRow label="Issue Date" value={formatDate(li.issuedDate)} />
+                        <InfoRow label="Issued Date" value={formatDate(li.issuedDate)} />
                         <InfoRow label="Expiration Date" value={formatDate(li.expirationDate)} />
-                        <InfoRow label="Restrictions" value={li.restrictions || "None"} />
                         <Separator className="my-2" />
-                        <div className="flex justify-between py-1">
-                          <span className="text-muted-foreground text-sm">Endorsements</span>
+                        <div className="flex justify-between py-1.5">
+                          <span className="text-muted-foreground text-sm">CDL Endorsements</span>
                           <div className="flex gap-1 flex-wrap justify-end">
                             {Array.isArray(li.endorsements) && li.endorsements.length > 0 ? (
                               li.endorsements.map((e: string) => (
@@ -582,51 +539,40 @@ export function ApplicationReviewDrawer({
                             )}
                           </div>
                         </div>
+                        <InfoRow label="Years of Commercial Driving Experience" value={li.yearsExperience ? `${li.yearsExperience} years` : null} />
                         <Separator className="my-2" />
-                        <InfoRow label="DOT Medical Card Number" value={li.medicalCardNumber} />
-                        <InfoRow label="Medical Card Expiration" value={formatDate(li.medicalCardExpiration)} />
-                        <InfoRow label="Medical Examiner Name" value={li.medicalExaminerName} />
-                        <InfoRow label="DOT Medical Certified" value={li.dotMedical ? "Yes" : "No"} />
-                        <Separator className="my-2" />
-                        <InfoRow label="Years of CDL Experience" value={li.yearsExperience ? `${li.yearsExperience} years` : null} />
-                        <InfoRow label="Other States Licensed" value={li.otherStatesLicensed} />
-                        <InfoRow label="Willing to Team Drive" value={li.willingToTeamDrive ? "Yes" : (li.teamDriving || "No")} />
-                        <InfoRow label="Willing to Relocate" value={li.willingToRelocate} />
-                        <InfoRow label="Preferred Routes" value={li.preferredRoutes} />
-                        <InfoRow label="Home Time Preference" value={li.homeTime} />
-                        <Separator className="my-2" />
-                        <InfoRow label="License Ever Suspended/Revoked" value={li.suspendedRevoked} />
-                        <InfoRow label="Ever Denied a License" value={li.deniedLicense} />
+                        <InfoRow label="License Ever Denied" value={li.deniedLicense} />
+                        <InfoRow label="License Ever Suspended or Revoked" value={li.suspendedRevoked} />
+                        {(li.deniedLicense === "yes" || li.deniedLicense === "Yes" || li.suspendedRevoked === "yes" || li.suspendedRevoked === "Yes") && (
+                          <InfoRow label="Details" value={li.deniedDetails || li.suspendedRevokedExplanation || li.deniedLicenseExplanation} />
+                        )}
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 5: Equipment Experience */}
-                    {li.equipmentExperience && li.equipmentExperience.length > 0 && (
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base font-semibold flex items-center gap-2">
-                            <Truck className="h-5 w-5 text-orange-600" />
-                            Equipment Experience
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex flex-wrap gap-2">
-                            {li.equipmentExperience.map((eq: string, idx: number) => (
-                              <Badge key={idx} variant="outline" className="text-sm">{eq}</Badge>
-                            ))}
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-4 mt-3">
-                            <InfoRow label="Straight Truck" value={li.straightTruck ? "Yes" : "No"} />
-                            <InfoRow label="Tractor-Trailer" value={li.tractorTrailer ? "Yes" : "No"} />
-                            <InfoRow label="Doubles/Triples" value={li.doubleTripples ? "Yes" : "No"} />
-                            <InfoRow label="Tanker" value={li.tankerExperience ? "Yes" : "No"} />
-                            <InfoRow label="HazMat" value={li.hazmatExperience ? "Yes" : "No"} />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                    {/* SECTION 4: DOT Medical Certification */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                          <Stethoscope className="h-5 w-5 text-red-600" />
+                          DOT Medical Certification
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-1">
+                        <InfoRow 
+                          label="Do you possess a DOT Medical Examiner Certificate?" 
+                          value={li.hasDotMedicalCert === "yes" || li.dotMedical ? "Yes" : li.hasDotMedicalCert === "no" ? "No" : li.hasDotMedicalCert} 
+                        />
+                        {(li.hasDotMedicalCert === "yes" || li.dotMedical) && (
+                          <>
+                            <InfoRow label="Medical Card Number" value={li.medicalCardNumber} />
+                            <InfoRow label="Medical Card Expiration Date" value={formatDate(li.medicalCardExpiration)} />
+                            <InfoRow label="Medical Examiner Name" value={li.medicalExaminerName} />
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                    {/* SECTION 6: Employment History */}
+                    {/* SECTION 5: Employment History */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -635,7 +581,7 @@ export function ApplicationReviewDrawer({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                           <div className="text-center p-3 bg-muted/50 rounded-lg border">
                             <div className="text-2xl font-bold text-primary">{employment.length}</div>
                             <div className="text-xs text-muted-foreground">Employers Listed</div>
@@ -643,10 +589,6 @@ export function ApplicationReviewDrawer({
                           <div className="text-center p-3 bg-muted/50 rounded-lg border">
                             <div className="text-2xl font-bold text-primary">{getEmploymentYears()}</div>
                             <div className="text-xs text-muted-foreground">Years Covered</div>
-                          </div>
-                          <div className="text-center p-3 bg-muted/50 rounded-lg border">
-                            <div className="text-2xl font-bold text-primary">{li.yearsExperience || 0}</div>
-                            <div className="text-xs text-muted-foreground">CDL Experience</div>
                           </div>
                         </div>
                         
@@ -662,74 +604,77 @@ export function ApplicationReviewDrawer({
                               </Badge>
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                              <InfoRow label="Address" value={`${emp.address || ""} ${emp.city || ""} ${emp.state || ""} ${emp.zip || ""}`.trim()} />
+                              <InfoRow label="Address" value={emp.address} />
                               <InfoRow label="Phone" value={emp.phone} />
                               <InfoRow label="Supervisor" value={emp.supervisor} />
-                              <InfoRow label="Supervisor Title" value={emp.supervisorTitle} />
-                              <InfoRow label="Equipment Driven" value={emp.equipmentDriven} />
-                              <InfoRow label="Miles Per Week" value={emp.milesPerWeek} />
-                              <InfoRow label="Starting Salary" value={emp.startingSalary} />
-                              <InfoRow label="Ending Salary" value={emp.endingSalary} />
                             </div>
                             <InfoRow label="Reason for Leaving" value={emp.reasonForLeaving} />
-                            <div className="flex gap-4 text-xs pt-1">
-                              <span className={emp.subjectToFMCSR ? "text-green-600" : "text-muted-foreground"}>
-                                {emp.subjectToFMCSR ? "✓" : "○"} Subject to FMCSR
-                              </span>
-                              <span className={emp.subjectToTesting ? "text-green-600" : "text-muted-foreground"}>
-                                {emp.subjectToTesting ? "✓" : "○"} Subject to Drug Testing
-                              </span>
-                              <span className={emp.mayWeContact ? "text-green-600" : "text-muted-foreground"}>
-                                {emp.mayWeContact ? "✓" : "○"} May Contact
-                              </span>
-                            </div>
                           </div>
                         ))}
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 7: Driving Record */}
+                    {/* SECTION 6: Driving Record & Safety History */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
-                          <Car className="h-5 w-5 text-red-600" />
-                          Driving Record & Safety History
+                          <Car className="h-5 w-5 text-orange-600" />
+                          Driving Record (Past 3 Years)
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                           <div className="text-center p-3 bg-muted/50 rounded-lg border">
                             <div className={`text-2xl font-bold ${getAccidentCount() === 0 ? "text-green-600" : "text-red-600"}`}>
                               {getAccidentCount()}
                             </div>
-                            <div className="text-xs text-muted-foreground">Accidents (3 Year)</div>
+                            <div className="text-xs text-muted-foreground">Accidents Reported</div>
                           </div>
                           <div className="text-center p-3 bg-muted/50 rounded-lg border">
                             <div className={`text-2xl font-bold ${getViolationCount() === 0 ? "text-green-600" : "text-amber-600"}`}>
                               {getViolationCount()}
                             </div>
-                            <div className="text-xs text-muted-foreground">Violations (3 Year)</div>
-                          </div>
-                          <div className="text-center p-3 bg-muted/50 rounded-lg border">
-                            <div className={`text-2xl font-bold ${dh.dui === "No" || !dh.dui ? "text-green-600" : "text-red-600"}`}>
-                              {dh.dui === "No" || !dh.dui ? "No" : "Yes"}
-                            </div>
-                            <div className="text-xs text-muted-foreground">DUI/DWI</div>
-                          </div>
-                          <div className="text-center p-3 bg-muted/50 rounded-lg border">
-                            <div className={`text-2xl font-bold ${dh.failedDrugTest === "No" || !dh.failedDrugTest ? "text-green-600" : "text-red-600"}`}>
-                              {dh.failedDrugTest === "No" || !dh.failedDrugTest ? "No" : "Yes"}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Failed Drug Test</div>
+                            <div className="text-xs text-muted-foreground">Violations Reported</div>
                           </div>
                         </div>
-                        
-                        <InfoRow label="License Ever Suspended" value={dh.licenseSuspension} />
-                        <InfoRow label="License Ever Revoked" value={dh.licenseRevocation} />
-                        <InfoRow label="Refused Drug Test" value={dh.refusedDrugTest} />
-                        <InfoRow label="Preventable Accidents" value={dh.preventableAccidents} />
-                        <InfoRow label="Last MVR Date" value={formatDate(dh.lastMVRDate)} />
-                        <InfoRow label="PSP Record Check" value={dh.pspRecordCheck} />
+
+                        {/* Display individual accidents if any */}
+                        {Array.isArray(dh.accidents) && dh.accidents.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Accident Details</p>
+                            {dh.accidents.map((accident: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Accident {idx + 1}</span>
+                                  <span className="text-muted-foreground">{formatDateShort(accident.date)}</span>
+                                </div>
+                                <p className="text-muted-foreground mt-1">{accident.location}</p>
+                                <p className="mt-1">{accident.description}</p>
+                                <div className="flex gap-4 mt-2 text-xs">
+                                  <span>Fatalities: {accident.fatalities || 0}</span>
+                                  <span>Injuries: {accident.injuries || 0}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Display individual violations if any */}
+                        {Array.isArray(dh.violations) && dh.violations.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Violation Details</p>
+                            {dh.violations.map((violation: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{violation.violation}</span>
+                                  <span className="text-muted-foreground">{formatDateShort(violation.date)}</span>
+                                </div>
+                                <p className="text-muted-foreground mt-1">{violation.location}</p>
+                                <p className="mt-1">Penalty: {violation.penalty}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         
                         {dh.safetyAwards && (
                           <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
@@ -740,21 +685,10 @@ export function ApplicationReviewDrawer({
                             </div>
                           </div>
                         )}
-
-                        {dh.safetyTraining && dh.safetyTraining.length > 0 && (
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-2">Safety Training Completed:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {dh.safetyTraining.map((training: string, idx: number) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">{training}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 8: Emergency Contacts */}
+                    {/* SECTION 7: Emergency Contacts */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -763,6 +697,7 @@ export function ApplicationReviewDrawer({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
+                        {/* From EmergencyContact step */}
                         {Array.isArray(ec) && ec.length > 0 ? (
                           ec.map((contact: any, idx: number) => (
                             <div key={idx} className="p-3 bg-muted/30 rounded-lg border">
@@ -772,51 +707,66 @@ export function ApplicationReviewDrawer({
                               </div>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                 <InfoRow label="Relationship" value={contact.relationship} />
-                                <InfoRow label="Phone" value={contact.phone} />
-                                <InfoRow label="Alternate Phone" value={contact.alternatePhone} />
-                                <InfoRow label="Email" value={contact.email} />
+                                <InfoRow label="Phone Number" value={contact.phone} />
+                                <InfoRow label="Address" value={contact.address} />
                               </div>
-                              {(contact.address || contact.city) && (
-                                <InfoRow label="Address" value={formatFullAddress(contact)} className="text-xs mt-1" />
-                              )}
                             </div>
                           ))
-                        ) : ec.name || ec.contactName || ec.firstName ? (
-                          <div className="p-3 bg-muted/30 rounded-lg border">
-                            <p className="font-semibold text-sm mb-2">{ec.name || ec.contactName || `${ec.firstName} ${ec.lastName}`}</p>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                              <InfoRow label="Relationship" value={ec.relationship} />
-                              <InfoRow label="Phone" value={ec.phone} />
-                            </div>
-                          </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No emergency contacts provided</p>
+                          /* Fallback to PersonalInfo emergency contact */
+                          pi.emergencyContactName ? (
+                            <div className="p-3 bg-muted/30 rounded-lg border">
+                              <p className="font-semibold text-sm mb-2">{pi.emergencyContactName}</p>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                <InfoRow label="Relationship" value={pi.emergencyContactRelationship} />
+                                <InfoRow label="Phone Number" value={pi.emergencyContactPhone} />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No emergency contacts provided</p>
+                          )
                         )}
                       </CardContent>
                     </Card>
 
-                    {/* SECTION 9: Banking / Direct Deposit */}
+                    {/* SECTION 8: Banking & Direct Deposit */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
                           <DollarSign className="h-5 w-5 text-emerald-600" />
-                          Banking & Direct Deposit Information
+                          Banking and Direct Deposit Information
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1">
-                        <InfoRow label="Account Holder Name" value={dd.accountHolderName || dd.firstName && dd.lastName ? `${dd.firstName} ${dd.lastName}` : application.account_name} />
+                        <InfoRow label="Account Holder First Name" value={dd.firstName} />
+                        <InfoRow label="Account Holder Last Name" value={dd.lastName} />
+                        {dd.businessName && <InfoRow label="Business Name" value={dd.businessName} />}
+                        <InfoRow label="Email" value={dd.email} />
+                        <Separator className="my-2" />
                         <InfoRow label="Bank Name" value={dd.bankName || application.bank_name} />
-                        <InfoRow label="Bank Address" value={dd.bankAddress} />
                         <InfoRow label="Account Type" value={dd.accountType || application.account_type} />
                         <InfoRow label="Routing Number" value={maskSensitive(dd.routingNumber || application.routing_number)} />
-                        <InfoRow label="Account Number" value={maskSensitive(dd.accountNumber || application.checking_number)} />
-                        <Separator className="my-2" />
-                        <InfoRow label="Preferred Payment Method" value={dd.preferredPaymentMethod} />
-                        <InfoRow label="Cash App ($Cashtag)" value={dd.cashAppCashtag} />
-                        <InfoRow label="Venmo Handle" value={dd.venmoHandle} />
-                        <InfoRow label="Zelle Email" value={dd.zelleEmail} />
+                        <InfoRow label="Account Number" value={maskSensitive(dd.checkingNumber || dd.accountNumber || application.checking_number)} />
+                        {dd.cashAppCashtag && <InfoRow label="Cash App ($Cashtag)" value={dd.cashAppCashtag} />}
                       </CardContent>
                     </Card>
+
+                    {/* SECTION 9: Applicant Statement (Why Hire You) */}
+                    {(why.whyHireYou || why.statement) && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base font-semibold flex items-center gap-2">
+                            <GraduationCap className="h-5 w-5 text-cyan-600" />
+                            Applicant Statement
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="p-4 bg-muted/30 rounded-lg border italic text-sm">
+                            "{why.whyHireYou || why.statement}"
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* SECTION 10: Documents Checklist */}
                     <Card>
@@ -849,93 +799,6 @@ export function ApplicationReviewDrawer({
                         </div>
                       </CardContent>
                     </Card>
-
-                    {/* SECTION 11: Policy Agreements */}
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2">
-                          <Shield className="h-5 w-5 text-indigo-600" />
-                          Policy Agreements & Acknowledgements
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { key: "contractor_agreement", label: "Independent Contractor Agreement", data: application.contractor_agreement },
-                            { key: "drug_alcohol_policy", label: "Drug & Alcohol Testing Policy", data: application.drug_alcohol_policy },
-                            { key: "safe_driving_policy", label: "Safe Driving Policy", data: application.safe_driving_policy },
-                            { key: "no_rider_policy", label: "No Rider Policy", data: application.no_rider_policy },
-                            { key: "payroll_policy", label: "Payroll & Compensation Policy", data: application.payroll_policy },
-                            { key: "driver_dispatch_sheet", label: "Driver Dispatch Sheet Acknowledgement", data: application.driver_dispatch_sheet },
-                          ].map((policy) => (
-                            <div 
-                              key={policy.key} 
-                              className={`flex items-center justify-between p-3 rounded border ${
-                                policy.data?.agreed || policy.data?.acknowledged 
-                                  ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800" 
-                                  : "bg-muted/30 border-muted"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {policy.data?.agreed || policy.data?.acknowledged ? (
-                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                ) : (
-                                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <span className="text-sm">{policy.label}</span>
-                              </div>
-                              {policy.data?.signature && (
-                                <span className="text-xs text-muted-foreground italic">
-                                  Signed: {policy.data.signature}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* SECTION 12: Why Hire You */}
-                    {(why.whyHireYou || why.statement || why.experience || why.skills || why.goals) && (
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base font-semibold flex items-center gap-2">
-                            <GraduationCap className="h-5 w-5 text-cyan-600" />
-                            Applicant Statement - Why Hire Me
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {(why.whyHireYou || why.statement) && (
-                            <div className="p-4 bg-muted/30 rounded-lg border italic text-sm">
-                              "{why.whyHireYou || why.statement}"
-                            </div>
-                          )}
-                          {why.experience && (
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Experience</p>
-                              <p className="text-sm">{why.experience}</p>
-                            </div>
-                          )}
-                          {why.skills && (
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Skills & Qualifications</p>
-                              <p className="text-sm">{why.skills}</p>
-                            </div>
-                          )}
-                          {why.goals && (
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Career Goals</p>
-                              <p className="text-sm">{why.goals}</p>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-x-4">
-                            <InfoRow label="Availability" value={why.availability} />
-                            <InfoRow label="Desired Compensation" value={why.desiredPay} />
-                            <InfoRow label="Preferred Routes" value={why.preferredRoutes} />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
 
                     <Separator />
 
@@ -1066,17 +929,17 @@ export function ApplicationReviewDrawer({
             placeholder="Enter rejection reason..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            className="mt-2 min-h-[100px]"
+            className="min-h-[100px]"
           />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
-              disabled={!rejectReason.trim() || isRejecting}
-              className="bg-destructive hover:bg-destructive/90"
+              disabled={isRejecting || !rejectReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isRejecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Reject Application
+              Reject
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
