@@ -674,6 +674,51 @@ export function ApplicationsManager() {
     input.click();
   };
 
+  const handleDeleteMvr = async (app: ApplicationRow) => {
+    const mvrPath = app.document_upload?.mvr;
+    if (!mvrPath) {
+      toast.error("No MVR to delete");
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete this MVR? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("load-documents")
+        .remove([mvrPath]);
+
+      if (storageError) {
+        console.error("Error deleting MVR from storage:", storageError);
+        toast.error("Failed to delete MVR file");
+        return;
+      }
+
+      // Update application record to remove MVR path
+      const updatedDocUpload = { ...app.document_upload };
+      delete updatedDocUpload.mvr;
+
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({ document_upload: updatedDocUpload })
+        .eq("id", app.id);
+
+      if (updateError) {
+        console.error("Error updating application:", updateError);
+        toast.error("Failed to update application record");
+        return;
+      }
+
+      toast.success("MVR deleted successfully");
+      loadApplications();
+    } catch (error) {
+      console.error("Error deleting MVR:", error);
+      toast.error("Failed to delete MVR");
+    }
+  };
+
   // Filter applications by status
   const statusFilteredApplications = applications.filter((app) => {
     if (statusFilter === "all") return app.status !== "archived";
@@ -1017,6 +1062,15 @@ export function ApplicationsManager() {
                                       <Upload className="h-4 w-4 mr-2" />
                                       {isMvrMissing(app) ? "Upload MVR" : "Replace MVR"}
                                     </DropdownMenuItem>
+                                    {!isMvrMissing(app) && (
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteMvr(app)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete MVR
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                                 {canApprove ? (
