@@ -108,6 +108,12 @@ export function ApplicationsManager() {
   const [mvrPreviewUrl, setMvrPreviewUrl] = useState<string | null>(null);
   const [mvrPreviewLoading, setMvrPreviewLoading] = useState(false);
   
+  // Rejection dialog state
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectingApp, setRejectingApp] = useState<ApplicationRow | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
+  
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
   const { isPlatformAdmin, effectiveTenant } = useTenantContext();
@@ -719,6 +725,45 @@ export function ApplicationsManager() {
     }
   };
 
+  // Handle rejection with reason
+  const handleOpenRejectDialog = (app: ApplicationRow) => {
+    setRejectingApp(app);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
+
+  const handleReject = async () => {
+    if (!rejectingApp) return;
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    setIsRejecting(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: "rejected", 
+          driver_status: "rejected", 
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", rejectingApp.id);
+      
+      if (error) throw error;
+      
+      toast.success("Application rejected");
+      setRejectDialogOpen(false);
+      setRejectingApp(null);
+      setRejectReason("");
+      loadApplications();
+    } catch (error: any) {
+      console.error("Error rejecting application:", error);
+      toast.error("Failed to reject application");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   // Filter applications by status
   const statusFilteredApplications = applications.filter((app) => {
     if (statusFilter === "all") return app.status !== "archived";
@@ -1111,10 +1156,7 @@ export function ApplicationsManager() {
                                   </Button>
                                 )}
                                 <Button
-                                  onClick={() => {
-                                    setSelectedApplication(app);
-                                    setDrawerOpen(true);
-                                  }}
+                                  onClick={() => handleOpenRejectDialog(app)}
                                   size="sm"
                                   variant="destructive"
                                   className="h-7 px-2 gap-1"
@@ -1453,6 +1495,73 @@ export function ApplicationsManager() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rejection Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Reject Application
+            </DialogTitle>
+          </DialogHeader>
+          
+          {rejectingApp && (
+            <div className="space-y-4">
+              {/* Driver Details */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-lg">
+                    {getApplicantName(rejectingApp.personal_info)}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>{rejectingApp.personal_info?.email || "No email"}</p>
+                  <p>{rejectingApp.personal_info?.phone || "No phone"}</p>
+                </div>
+              </div>
+
+              {/* Reason Field */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Reason for Rejection <span className="text-destructive">*</span>
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Enter the reason for rejecting this application..."
+                  className="w-full min-h-[100px] p-3 border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setRejectDialogOpen(false)}
+                  disabled={isRejecting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleReject}
+                  disabled={isRejecting || !rejectReason.trim()}
+                >
+                  {isRejecting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Rejecting...
+                    </>
+                  ) : (
+                    "Reject Application"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
