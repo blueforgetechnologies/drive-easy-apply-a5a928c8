@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface ReviewSubmitProps {
   data: any;
@@ -15,22 +15,9 @@ interface ReviewSubmitProps {
 
 export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tenantId, setTenantId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTenantId = async () => {
-      if (!data?.inviteId) return;
-      const { data: invite } = await supabase
-        .from('driver_invites')
-        .select('tenant_id')
-        .eq('id', data.inviteId)
-        .single();
-      if (invite?.tenant_id) {
-        setTenantId(invite.tenant_id);
-      }
-    };
-    fetchTenantId();
-  }, [data?.inviteId]);
+  // tenantId is now passed directly from ApplicationForm via data.tenantId
+  const tenantId = data?.tenantId;
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -43,7 +30,7 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
       }
 
       if (!tenantId) {
-        throw new Error("Could not determine tenant. Please try again.");
+        throw new Error("Could not determine tenant. Please refresh the page and try again.");
       }
 
       const { error: inviteError } = await supabase

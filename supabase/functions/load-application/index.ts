@@ -89,15 +89,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     // If no application exists yet, return empty state with invite info
     if (!application) {
+      // Fetch tenant branding even when no application exists
+      const { data: companyProfileForNew } = await supabaseService
+        .from('company_profile')
+        .select('company_name, logo_url')
+        .eq('tenant_id', invite.tenant_id)
+        .maybeSingle();
+
       return new Response(
         JSON.stringify({
           success: true,
           invite: {
             id: invite.id,
+            tenant_id: invite.tenant_id,
             email: invite.email,
             name: invite.name,
           },
           application: null,
+          company: companyProfileForNew ? {
+            name: companyProfileForNew.company_name,
+            logo_url: companyProfileForNew.logo_url,
+          } : null,
           can_edit: true,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -124,6 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         invite: {
           id: invite.id,
+          tenant_id: invite.tenant_id,
           email: invite.email,
           name: invite.name,
         },
