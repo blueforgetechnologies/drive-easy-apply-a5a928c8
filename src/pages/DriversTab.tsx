@@ -1102,22 +1102,6 @@ export default function DriversTab() {
                           </TableCell>
                           <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                             <div className="flex gap-1 items-center">
-                              {/* Show Activate button for pending drivers */}
-                              {filter === "pending" && app.driver_status === "pending" && (
-                                <Button
-                                  onClick={() => handleActivateDriver(app.id, `${personalInfo.firstName} ${personalInfo.lastName}`)}
-                                  size="sm"
-                                  className="h-6 px-2 bg-green-600 hover:bg-green-700 text-white gap-1 text-xs"
-                                  disabled={activatingId === app.id}
-                                >
-                                  {activatingId === app.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle2 className="h-3 w-3" />
-                                  )}
-                                  Activate
-                                </Button>
-                              )}
                               <Button
                                 onClick={() => viewApplication(app.id)}
                                 size="icon"
