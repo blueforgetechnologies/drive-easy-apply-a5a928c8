@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Check if application exists for this invite
-    const { data: existingApp, error: appError } = await supabaseService
+    let { data: existingApp, error: appError } = await supabaseService
       .from('applications')
       .select('id, tenant_id, status')
       .eq('invite_id', invite.id)
@@ -100,12 +100,45 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // If no application exists, create one automatically
     if (!existingApp) {
-      console.error("No application found for invite (token validated)");
-      return new Response(
-        JSON.stringify({ error: "Application not found for this invitation" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.log(`Creating new application for invite ${invite.id}`);
+      
+      const { data: newApp, error: createError } = await supabaseService
+        .from('applications')
+        .insert({
+          invite_id: invite.id,
+          tenant_id: invite.tenant_id,
+          status: 'in_progress',
+          current_step: 1,
+          // Initialize required JSONB columns with empty objects
+          personal_info: {},
+          license_info: {},
+          employment_history: [],
+          driving_history: { accidents: [], violations: [] },
+          document_upload: {},
+          direct_deposit: {},
+          why_hire_you: {},
+          contractor_agreement: {},
+          driver_dispatch_sheet: {},
+          no_rider_policy: {},
+          drug_alcohol_policy: {},
+          safe_driving_policy: {},
+          payroll_policy: {},
+        })
+        .select('id, tenant_id, status')
+        .single();
+
+      if (createError) {
+        console.error("Error creating application:", createError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create application" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      existingApp = newApp;
+      console.log(`Created application ${newApp.id} for invite ${invite.id}`);
     }
 
     // Prevent updates to submitted applications
