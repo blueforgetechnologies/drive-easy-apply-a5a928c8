@@ -166,6 +166,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
   const [companyBranding, setCompanyBranding] = useState<CompanyBranding | null>(null);
   const [canEdit, setCanEdit] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [editingFromReview, setEditingFromReview] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load existing application data on mount
@@ -295,10 +296,15 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
     if (currentStepKey && canEdit) {
       const dataKey = Object.keys(data)[0];
       const payload = data[dataKey];
-      await saveStep(currentStepKey, payload, currentStep + 1);
+      await saveStep(currentStepKey, payload, editingFromReview ? steps.length : currentStep + 1);
     }
 
-    if (currentStep < steps.length) {
+    // If editing from Review, return to Review & Submit (step 9)
+    if (editingFromReview) {
+      setEditingFromReview(false);
+      setCurrentStep(steps.length);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -499,6 +505,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
               isFirstStep={currentStep === 1}
               isLastStep={currentStep === steps.length}
               onEditStep={(step: number) => {
+                setEditingFromReview(true);
                 setCurrentStep(step);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
