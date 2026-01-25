@@ -1252,8 +1252,47 @@ export function ApplicationsManager() {
                               </>
                             )}
 
-                            {/* REJECTED/ARCHIVED: View only */}
-                            {(app.status === "rejected" || app.status === "archived") && (
+                            {/* REJECTED: Archive button + View */}
+                            {app.status === "rejected" && (
+                              <>
+                                <Button
+                                  onClick={async () => {
+                                    try {
+                                      const { error } = await supabase
+                                        .from("applications")
+                                        .update({ 
+                                          status: "archived",
+                                          updated_at: new Date().toISOString() 
+                                        })
+                                        .eq("id", app.id);
+                                      if (error) throw error;
+                                      toast.success("Application archived");
+                                      await loadApplications();
+                                    } catch (err: any) {
+                                      toast.error("Failed to archive: " + err.message);
+                                    }
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 gap-1"
+                                >
+                                  <Archive className="h-3 w-3" />
+                                  Archive
+                                </Button>
+                                <Button
+                                  onClick={() => handleOpenDrawer(app)}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  title="View Application"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+
+                            {/* ARCHIVED: View only */}
+                            {app.status === "archived" && (
                               <Button
                                 onClick={() => handleOpenDrawer(app)}
                                 size="icon"
