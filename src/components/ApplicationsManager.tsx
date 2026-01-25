@@ -748,38 +748,122 @@ export function ApplicationsManager() {
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 items-center">
-                            {/* Contextual Primary Action */}
-                            {canApprove ? (
-                              <Button
-                                onClick={() => handleQuickApprove(app.id)}
-                                size="sm"
-                                className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white gap-1"
-                                disabled={approvingId === app.id}
-                              >
-                                {approvingId === app.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="h-3 w-3" />
+                            {/* Status-aware row actions */}
+                            
+                            {/* INVITED: Resend Invite + View */}
+                            {app.status === "invited" && (
+                              <>
+                                {app.invite_id && invites.has(app.invite_id) && (
+                                  <Button
+                                    onClick={() => handleResendInvite(app)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 gap-1"
+                                    disabled={resendingId === app.id}
+                                  >
+                                    {resendingId === app.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <RotateCw className="h-3 w-3" />
+                                    )}
+                                    Resend
+                                  </Button>
                                 )}
-                                Approve
-                              </Button>
-                            ) : (
+                                <Button
+                                  onClick={() => handleOpenDrawer(app)}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  title="View Application"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+
+                            {/* SUBMITTED/PENDING: Approve (if ready) or View + Reject */}
+                            {isSubmittedOrPending && (
+                              <>
+                                {canApprove ? (
+                                  <Button
+                                    onClick={() => handleQuickApprove(app.id)}
+                                    size="sm"
+                                    className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white gap-1"
+                                    disabled={approvingId === app.id}
+                                  >
+                                    {approvingId === app.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    )}
+                                    Approve
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={() => handleOpenDrawer(app)}
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    title={`Not ready: ${(app.current_step || 1) < 9 ? `Step ${app.current_step || 1}/9` : ""}${needsReview(app) ? " Missing docs" : ""}`}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  onClick={() => {
+                                    setSelectedApplication(app);
+                                    setDrawerOpen(true);
+                                  }}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  title="Reject Application"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+
+                            {/* APPROVED: View only (Activate is in Pending Drivers) */}
+                            {app.status === "approved" && (
                               <Button
                                 onClick={() => handleOpenDrawer(app)}
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
-                                title={
-                                  isSubmittedOrPending
-                                    ? `Not ready: ${(app.current_step || 1) < 9 ? `Step ${app.current_step || 1}/9` : ""}${needsReview(app) ? " Missing docs" : ""}`
-                                    : "Review Application"
-                                }
+                                title="View Application"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* REJECTED/ARCHIVED: View only */}
+                            {(app.status === "rejected" || app.status === "archived") && (
+                              <Button
+                                onClick={() => handleOpenDrawer(app)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                title="View Application"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* IN_PROGRESS: View only */}
+                            {app.status === "in_progress" && (
+                              <Button
+                                onClick={() => handleOpenDrawer(app)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                title="View Application (In Progress)"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             )}
                             
-                            {/* More actions dropdown */}
+                            {/* More actions dropdown - always available */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -793,9 +877,14 @@ export function ApplicationsManager() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleOpenDrawer(app)}>
                                   <Eye className="h-4 w-4 mr-2" />
-                                  Review Details
+                                  View Application
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDownloadPDF(app.id)} disabled={downloadingId === app.id}>
+                                
+                                {/* Download PDF - row action only */}
+                                <DropdownMenuItem 
+                                  onClick={() => handleDownloadPDF(app.id)} 
+                                  disabled={downloadingId === app.id}
+                                >
                                   {downloadingId === app.id ? (
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                   ) : (
@@ -803,27 +892,16 @@ export function ApplicationsManager() {
                                   )}
                                   Download PDF
                                 </DropdownMenuItem>
+                                
                                 <DropdownMenuSeparator />
+                                
                                 <DropdownMenuItem onClick={() => handleViewApplication(app.id)}>
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   View Full Details
                                 </DropdownMenuItem>
-                                {canApprove && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      onClick={() => {
-                                        setSelectedApplication(app);
-                                        setDrawerOpen(true);
-                                      }}
-                                      className="text-destructive"
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Reject...
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {app.invite_id && invites.has(app.invite_id) && (
+                                
+                                {/* Resend Invite - only for invited with invite_id */}
+                                {app.status === "invited" && app.invite_id && invites.has(app.invite_id) && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => handleOpenPublicLink(app.invite_id!)}>
@@ -834,8 +912,40 @@ export function ApplicationsManager() {
                                       onClick={() => handleResendInvite(app)}
                                       disabled={resendingId === app.id}
                                     >
-                                      <RotateCw className="h-4 w-4 mr-2" />
+                                      {resendingId === app.id ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      ) : (
+                                        <RotateCw className="h-4 w-4 mr-2" />
+                                      )}
                                       Resend Invite
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                
+                                {/* Archive - available unless already archived */}
+                                {app.status !== "archived" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={async () => {
+                                        try {
+                                          const { error } = await supabase
+                                            .from("applications")
+                                            .update({ 
+                                              status: "archived",
+                                              updated_at: new Date().toISOString() 
+                                            })
+                                            .eq("id", app.id);
+                                          if (error) throw error;
+                                          toast.success("Application archived");
+                                          await loadApplications();
+                                        } catch (err: any) {
+                                          toast.error("Failed to archive: " + err.message);
+                                        }
+                                      }}
+                                    >
+                                      <Archive className="h-4 w-4 mr-2" />
+                                      Archive
                                     </DropdownMenuItem>
                                   </>
                                 )}
