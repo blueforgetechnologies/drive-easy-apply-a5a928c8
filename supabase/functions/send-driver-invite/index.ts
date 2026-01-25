@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     // NOTE: Application record is created when the driver opens the invite link,
     // not when the invite is sent
     const appUrl = "https://drive-easy-apply.lovable.app";
-    const applicationUrl = `${appUrl}/?token=${inviteData.public_token}`;
+    const applicationUrl = `${appUrl}/apply?token=${inviteData.public_token}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
 
