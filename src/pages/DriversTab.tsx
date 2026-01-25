@@ -696,7 +696,6 @@ export default function DriversTab() {
             Import
           </Button>
           <AddDriverDialog onDriverAdded={loadData} />
-          <InviteDriverDialog />
         </div>
       </div>
 
@@ -791,6 +790,11 @@ export default function DriversTab() {
               Invitations
               <span className={`${filter === "invitations" ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{invites.length}</span>
             </Button>
+            
+            {/* Invite Driver Button - next to Invitations */}
+            <div className="ml-2">
+              <InviteDriverDialog />
+            </div>
           </div>
         );
       })()}
