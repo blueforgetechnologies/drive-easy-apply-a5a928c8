@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -73,6 +74,7 @@ type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved"
 
 export function ApplicationsManager() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [invites, setInvites] = useState<Map<string, InviteWithToken>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -412,6 +414,10 @@ export function ApplicationsManager() {
       }
 
       toast.success(data.message || "Driver hired and added to Pending Drivers");
+      
+      // Invalidate business manager counts so Pending badge updates immediately
+      queryClient.invalidateQueries({ queryKey: ["business-manager-counts"] });
+      
       await loadApplications();
     } catch (error: any) {
       toast.error("Failed to hire: " + error.message);
