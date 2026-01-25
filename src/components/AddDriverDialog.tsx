@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useTenantId } from "@/hooks/useTenantId";
 
 export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: string) => void }) {
@@ -87,8 +87,13 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Plus className="h-4 w-4" />
+        <Button 
+          variant="ghost"
+          size="sm"
+          className="h-[30px] px-3 text-[13px] font-medium gap-1.5 border-0 rounded-full btn-glossy-success text-white"
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          Add Driver
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
