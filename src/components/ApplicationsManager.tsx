@@ -68,6 +68,18 @@ interface InviteWithToken {
   id: string;
   public_token: string;
   email: string;
+  name?: string | null;
+  invited_at?: string | null;
+}
+
+// Pending invite that hasn't started an application yet
+interface PendingInvite {
+  id: string;
+  email: string;
+  name: string | null;
+  public_token: string;
+  invited_at: string | null;
+  opened_at: string | null;
 }
 
 type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved" | "rejected" | "archived" | "needs_review";
@@ -77,6 +89,7 @@ export function ApplicationsManager() {
   const queryClient = useQueryClient();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [invites, setInvites] = useState<Map<string, InviteWithToken>>(new Map());
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]); // Invites without applications
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -184,8 +197,72 @@ export function ApplicationsManager() {
           setInvites(inviteMap);
         }
       }
+      
+      // Load pending invites (invites without corresponding applications)
+      await loadPendingInvites(data || []);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Load invites that haven't started an application yet
+  const loadPendingInvites = async (currentApps: ApplicationRow[]) => {
+    try {
+      // Get all invite IDs that already have applications
+      const usedInviteIds = new Set(
+        currentApps
+          .filter((app) => app.invite_id)
+          .map((app) => app.invite_id)
+      );
+      
+      // Load all invites
+      let query = supabase
+        .from("driver_invites")
+        .select("id, email, name, public_token, invited_at, opened_at")
+        .order("invited_at", { ascending: false });
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("Error loading pending invites:", error);
+        return;
+      }
+      
+      // Filter to only invites without applications
+      const pending = (data || []).filter(
+        (inv) => !usedInviteIds.has(inv.id)
+      );
+      
+      setPendingInvites(pending);
+    } catch (error) {
+      console.error("Error in loadPendingInvites:", error);
+    }
+  };
+  
+  // Resend invitation email for pending invites (no application yet)
+  const handleResendPendingInvite = async (invite: PendingInvite) => {
+    setResendingId(invite.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("resend-driver-invite", {
+        body: { invite_id: invite.id },
+      });
+      
+      if (error) throw error;
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to resend invitation");
+      }
+      
+      toast.success(`Invitation resent to ${invite.email}`);
+    } catch (error: any) {
+      console.error("Error resending invite:", error);
+      toast.error("Failed to resend invitation: " + error.message);
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -836,10 +913,10 @@ export function ApplicationsManager() {
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
-  // Status filter counts - "Completed" = step 9/9 AND submitted/pending status
+  // Status filter counts - "Invited" includes pending invites (no application) + invited status applications
   const statusCounts = {
-    all: applications.filter((a) => a.status !== "archived").length,
-    invited: applications.filter((a) => a.status === "invited").length,
+    all: applications.filter((a) => a.status !== "archived").length + pendingInvites.length,
+    invited: pendingInvites.length + applications.filter((a) => a.status === "invited").length,
     in_progress: applications.filter((a) => a.status === "in_progress").length,
     submitted: applications.filter((a) => (a.status === "submitted" || a.status === "pending") && a.current_step === 9).length,
     approved: applications.filter((a) => a.status === "approved").length,
@@ -847,6 +924,15 @@ export function ApplicationsManager() {
     archived: applications.filter((a) => a.status === "archived").length,
     needs_review: applications.filter((a) => needsReview(a) && a.status !== "archived").length,
   };
+  
+  // Filter pending invites by search
+  const filteredPendingInvites = pendingInvites.filter((inv) => {
+    if (!searchQuery) return true;
+    const name = (inv.name || "").toLowerCase();
+    const email = inv.email.toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return name.includes(query) || email.includes(query);
+  });
 
   if (loading) {
     return (
@@ -1484,6 +1570,75 @@ export function ApplicationsManager() {
                       </TableRow>
                     );
                   })}
+                  
+                  {/* Pending Invites - show when filter is "all" or "invited" */}
+                  {(statusFilter === "all" || statusFilter === "invited") && filteredPendingInvites.map((invite) => (
+                    <TableRow 
+                      key={`invite-${invite.id}`} 
+                      className="hover:bg-muted/50 bg-amber-50/30 dark:bg-amber-950/10"
+                    >
+                      <TableCell>
+                        {/* No checkbox for pending invites */}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {invite.name || "Pending Invite"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{invite.email}</div>
+                        <div className="text-xs text-muted-foreground">—</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
+                          Invited
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full" style={{ width: "0%" }} />
+                          </div>
+                          <span className="text-xs text-muted-foreground">0/9</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {invite.invited_at
+                          ? format(new Date(invite.invited_at), "MM/dd/yy HH:mm")
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 items-center">
+                          <Button
+                            onClick={() => handleResendPendingInvite(invite)}
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 gap-1"
+                            disabled={resendingId === invite.id}
+                          >
+                            {resendingId === invite.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RotateCw className="h-3 w-3" />
+                            )}
+                            Resend
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              const url = `${window.location.origin}/apply?token=${invite.public_token}`;
+                              window.open(url, "_blank");
+                            }}
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="Open Application Link"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
