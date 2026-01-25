@@ -104,7 +104,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Resending driver invite to ${invite.email} (invite ${invite.id})`);
+    // Fetch the tenant/company name for personalized email
+    const { data: companyData, error: companyError } = await supabaseService
+      .from('tenants')
+      .select('name')
+      .eq('id', invite.tenant_id)
+      .single();
+
+    if (companyError) {
+      console.error('Error fetching tenant name:', companyError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch company information' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const companyName = companyData.name || 'Our Company';
+
+    console.log(`Resending driver invite to ${invite.email} (invite ${invite.id}) for ${companyName}`);
 
     // Build the application URL using the EXISTING public_token
     const appUrl = "https://drive-easy-apply.lovable.app";
@@ -113,19 +130,19 @@ const handler = async (req: Request): Promise<Response> => {
     const greeting = invite.name ? `Hi ${invite.name},` : "Hello,";
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <noreply@blueforgetechnologies.org>",
+      from: `${companyName} <noreply@blueforgetechnologies.org>`,
       to: [invite.email],
-      subject: "Reminder: Complete Your Driver Employment Application",
+      subject: `${companyName} - Reminder: Complete Your Driver Employment Application`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px;">Driver Employment Application</h1>
+          <h1 style="color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px;">${companyName} - Driver Application</h1>
           
           <p style="font-size: 16px; color: #555; line-height: 1.6;">
             ${greeting}
           </p>
           
           <p style="font-size: 16px; color: #555; line-height: 1.6;">
-            This is a friendly reminder to complete your driver employment application. We noticed you haven't finished the application yet, and we'd love to have you on our team!
+            This is a friendly reminder from <strong>${companyName}</strong> to complete your driver employment application. We noticed you haven't finished the application yet, and we'd love to have you on our team!
           </p>
           
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -157,7 +174,7 @@ const handler = async (req: Request): Promise<Response> => {
               <strong>Note:</strong> This application is available on all devices - desktop, tablet, or mobile phone.
             </p>
             <p style="font-size: 14px; color: #999;">
-              If you have any questions, please don't hesitate to reach out to us.
+              If you have any questions, please don't hesitate to reach out to ${companyName}.
             </p>
           </div>
         </div>
