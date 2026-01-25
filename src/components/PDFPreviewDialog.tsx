@@ -50,7 +50,7 @@ export function PDFPreviewDialog({
   const [currentRenderPage, setCurrentRenderPage] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1.2);
+  const [zoom, setZoom] = useState(1.5); // Higher default for sharper rendering
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
   const [selectedDocName, setSelectedDocName] = useState<string>("");
   
@@ -152,7 +152,7 @@ export function PDFPreviewDialog({
       setTotalPages(0);
       setCurrentRenderPage(0);
       setError(null);
-      setZoom(1.2); // Reset zoom on close
+      setZoom(1.5); // Reset zoom on close
       prevBase64Ref.current = null;
       setSelectedDocUrl(null);
       setSelectedDocName("");
@@ -194,7 +194,7 @@ export function PDFPreviewDialog({
   };
 
   const handleResetZoom = () => {
-    setZoom(1.2);
+    setZoom(1.5);
   };
 
   // Get document URL from various formats
@@ -340,15 +340,6 @@ export function PDFPreviewDialog({
                 <Download className="h-4 w-4" />
                 Download
               </Button>
-              
-              {/* Close button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleOpenChange(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>
@@ -379,13 +370,21 @@ export function PDFPreviewDialog({
                         onClick={() => handleDocumentClick(item.doc, item.label)}
                       >
                         {isImage && url ? (
-                          <div className="aspect-[4/3] relative bg-muted">
+                          <div className="aspect-[4/3] relative bg-muted overflow-hidden">
                             <img
                               src={url}
                               alt={item.label}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              onError={(e) => {
+                                // Hide broken image, show fallback
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
                             />
+                            {/* Fallback icon shown behind image */}
+                            <div className="absolute inset-0 flex items-center justify-center -z-10">
+                              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                            </div>
                           </div>
                         ) : (
                           <div className="aspect-[4/3] flex items-center justify-center bg-muted">
