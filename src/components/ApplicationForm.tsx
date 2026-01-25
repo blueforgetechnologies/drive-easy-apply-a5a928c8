@@ -149,6 +149,7 @@ const steps = [
 
 interface ApplicationFormProps {
   publicToken: string;
+  isPreviewMode?: boolean;
 }
 
 interface CompanyBranding {
@@ -156,7 +157,7 @@ interface CompanyBranding {
   logo_url: string | null;
 }
 
-export const ApplicationForm = ({ publicToken }: ApplicationFormProps) => {
+export const ApplicationForm = ({ publicToken, isPreviewMode = false }: ApplicationFormProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [applicationData, setApplicationData] = useState<Partial<ApplicationData>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -170,6 +171,13 @@ export const ApplicationForm = ({ publicToken }: ApplicationFormProps) => {
   // Load existing application data on mount
   useEffect(() => {
     const loadApplication = async () => {
+      // PREVIEW MODE: Skip loading, just show empty form
+      if (isPreviewMode) {
+        setIsLoading(false);
+        setCompanyBranding({ name: "Preview Mode", logo_url: null });
+        return;
+      }
+
       try {
         setIsLoading(true);
         setLoadError(null);
@@ -231,11 +239,12 @@ export const ApplicationForm = ({ publicToken }: ApplicationFormProps) => {
     };
 
     loadApplication();
-  }, [publicToken]);
+  }, [publicToken, isPreviewMode]);
 
   // Autosave function
   const saveStep = useCallback(async (stepKey: string, payload: any, step: number) => {
-    if (!canEdit) return;
+    // PREVIEW MODE: Skip saving entirely
+    if (isPreviewMode || !canEdit) return;
 
     try {
       setIsSaving(true);

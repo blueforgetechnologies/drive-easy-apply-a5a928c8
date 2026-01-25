@@ -630,8 +630,18 @@ export function ApplicationsManager() {
                 <Badge variant="secondary" className="ml-1 text-xs">INTERNAL</Badge>
               </Button>
             )}
-            {/* Internal Preview Button */}
-            <InternalApplicationPreview />
+            {/* View Fillable Application Button - Opens application form in preview mode */}
+            {canCreateSample && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open("/apply?preview=true", "_blank")}
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                View Fillable Application
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
