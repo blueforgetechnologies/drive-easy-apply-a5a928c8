@@ -47,39 +47,62 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
       const directDeposit = data.directDeposit || {};
       const licenseInfo = data.licenseInfo || {};
 
-      const { error: dbError } = await supabase
-        .from('applications')
-        .update({
-          personal_info: data.personalInfo,
-          payroll_policy: {},
-          license_info: licenseInfo,
-          driving_history: data.drivingHistory || {},
-          employment_history: data.employmentHistory || {},
-          document_upload: data.documents || {},
-          drug_alcohol_policy: {},
-          driver_dispatch_sheet: {},
-          no_rider_policy: {},
-          safe_driving_policy: {},
-          contractor_agreement: {},
-          direct_deposit: directDeposit,
-          why_hire_you: data.whyHireYou || {},
-          emergency_contacts: data.emergencyContacts || [],
-          status: 'submitted',
-          submitted_at: new Date().toISOString(),
-          driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
-          cell_phone: data.personalInfo?.phone || null,
-          home_phone: data.personalInfo?.homePhone || null,
-          bank_name: directDeposit.bankName || null,
-          account_name: `${directDeposit.firstName || ''} ${directDeposit.lastName || ''}`.trim() || null,
-          routing_number: directDeposit.routingNumber || null,
-          checking_number: directDeposit.accountNumber || null,
-          account_type: directDeposit.accountType || null,
-          driver_record_expiry: licenseInfo.licenseExpiration || null,
-          medical_card_expiry: licenseInfo.medicalCardExpiration || null,
-        })
-        .eq('invite_id', data.inviteId);
+      const applicationPayload = {
+        personal_info: data.personalInfo,
+        payroll_policy: {},
+        license_info: licenseInfo,
+        driving_history: data.drivingHistory || {},
+        employment_history: data.employmentHistory || {},
+        document_upload: data.documents || {},
+        drug_alcohol_policy: {},
+        driver_dispatch_sheet: {},
+        no_rider_policy: {},
+        safe_driving_policy: {},
+        contractor_agreement: {},
+        direct_deposit: directDeposit,
+        why_hire_you: data.whyHireYou || {},
+        emergency_contacts: data.emergencyContacts || [],
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
+        cell_phone: data.personalInfo?.phone || null,
+        home_phone: data.personalInfo?.homePhone || null,
+        bank_name: directDeposit.bankName || null,
+        account_name: `${directDeposit.firstName || ''} ${directDeposit.lastName || ''}`.trim() || null,
+        routing_number: directDeposit.routingNumber || null,
+        checking_number: directDeposit.accountNumber || null,
+        account_type: directDeposit.accountType || null,
+        driver_record_expiry: licenseInfo.licenseExpiration || null,
+        medical_card_expiry: licenseInfo.medicalCardExpiration || null,
+      };
 
-      if (dbError) {
+      // Try update first, if no rows affected then upsert
+      const { data: updateResult, error: dbError } = await supabase
+        .from('applications')
+        .update(applicationPayload)
+        .eq('invite_id', data.inviteId)
+        .select('id');
+
+      // If update returned no rows, create the application
+      if (!dbError && (!updateResult || updateResult.length === 0)) {
+        console.log('[ReviewSubmit] No existing application found, creating new one');
+        const { error: insertError } = await supabase
+          .from('applications')
+          .insert({
+            ...applicationPayload,
+            invite_id: data.inviteId,
+            tenant_id: tenantId,
+            current_step: 9,
+          });
+
+        if (insertError) {
+          console.error("Error creating application:", insertError);
+          toast.error("Failed to save application", {
+            description: "Please try again or contact support.",
+          });
+          return;
+        }
+      } else if (dbError) {
         console.error("Error saving to database:", dbError);
         toast.error("Failed to save application", {
           description: "Please try again or contact support.",
