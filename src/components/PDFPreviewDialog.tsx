@@ -7,8 +7,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, ZoomIn, ZoomOut, X } from "lucide-react";
+import { Download, Loader2, ZoomIn, ZoomOut, X, FileText, Image as ImageIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 // Configure pdf.js worker
@@ -17,12 +20,21 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+interface DocumentInfo {
+  driversLicense?: string | File | null;
+  socialSecurity?: string | File | null;
+  medicalCard?: string | File | null;
+  mvr?: string | File | null;
+  other?: (string | File)[];
+}
+
 interface PDFPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pdfBase64: string | null;
   filename: string;
   isLoading: boolean;
+  documents?: DocumentInfo | null;
 }
 
 export function PDFPreviewDialog({
@@ -31,6 +43,7 @@ export function PDFPreviewDialog({
   pdfBase64,
   filename,
   isLoading,
+  documents,
 }: PDFPreviewDialogProps) {
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -38,10 +51,21 @@ export function PDFPreviewDialog({
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1.2);
+  const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
+  const [selectedDocName, setSelectedDocName] = useState<string>("");
   
   const cancelledRef = useRef(false);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const prevBase64Ref = useRef<string | null>(null);
+
+  // Check if we have any documents to show
+  const hasDocuments = documents && (
+    documents.driversLicense ||
+    documents.socialSecurity ||
+    documents.medicalCard ||
+    documents.mvr ||
+    (documents.other && documents.other.length > 0)
+  );
 
   const renderPDF = useCallback(async (base64: string, scale: number) => {
     cancelledRef.current = false;
@@ -130,6 +154,8 @@ export function PDFPreviewDialog({
       setError(null);
       setZoom(1.2); // Reset zoom on close
       prevBase64Ref.current = null;
+      setSelectedDocUrl(null);
+      setSelectedDocName("");
       if (pdfDocRef.current) {
         pdfDocRef.current.destroy();
         pdfDocRef.current = null;
@@ -171,49 +197,117 @@ export function PDFPreviewDialog({
     setZoom(1.2);
   };
 
+  // Get document URL from various formats
+  const getDocumentUrl = (doc: string | File | null | undefined): string | null => {
+    if (!doc) return null;
+    if (typeof doc === "string") {
+      // It's already a URL or path
+      return doc;
+    }
+    // It's a File object - create object URL
+    return URL.createObjectURL(doc);
+  };
+
+  // Document click handler
+  const handleDocumentClick = (doc: string | File | null | undefined, label: string) => {
+    const url = getDocumentUrl(doc);
+    if (url) {
+      setSelectedDocUrl(url);
+      setSelectedDocName(label);
+    } else {
+      toast.error("Document not available");
+    }
+  };
+
+  // Check if a document URL is an image
+  const isImageUrl = (url: string): boolean => {
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes('.jpg') || 
+           lowerUrl.includes('.jpeg') || 
+           lowerUrl.includes('.png') || 
+           lowerUrl.includes('.gif') ||
+           lowerUrl.includes('.webp') ||
+           lowerUrl.startsWith('blob:') || // Blob URLs from File objects
+           lowerUrl.startsWith('data:image'); // Data URLs
+  };
+
   const showLoading = isLoading || (isRendering && pageImages.length === 0);
+
+  // Build document list
+  const documentList: { key: string; label: string; doc: string | File | null | undefined }[] = [];
+  if (documents) {
+    if (documents.driversLicense) documentList.push({ key: 'driversLicense', label: "Driver's License", doc: documents.driversLicense });
+    if (documents.socialSecurity) documentList.push({ key: 'socialSecurity', label: 'Social Security Card', doc: documents.socialSecurity });
+    if (documents.medicalCard) documentList.push({ key: 'medicalCard', label: 'Medical Card', doc: documents.medicalCard });
+    if (documents.mvr) documentList.push({ key: 'mvr', label: 'MVR', doc: documents.mvr });
+    if (documents.other && documents.other.length > 0) {
+      documents.other.forEach((doc, idx) => {
+        const name = typeof doc === 'string' ? doc.split('/').pop() || `Document ${idx + 1}` : (doc as File).name || `Document ${idx + 1}`;
+        documentList.push({ key: `other_${idx}`, label: name, doc });
+      });
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-semibold truncate pr-4">
-              PDF Preview: {filename || "Application"}
+              {selectedDocUrl ? `Document: ${selectedDocName}` : `PDF Preview: ${filename || "Application"}`}
             </DialogTitle>
             <div className="flex items-center gap-2">
-              {/* Zoom controls */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomOut}
-                disabled={zoom <= 0.5 || isRendering}
-                title="Zoom out (0.5x min)"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResetZoom}
-                disabled={isRendering}
-                className="w-14 text-xs font-mono"
-                title="Reset zoom"
-              >
-                {Math.round(zoom * 100)}%
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomIn}
-                disabled={zoom >= 3 || isRendering}
-                title="Zoom in (3x max)"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
+              {/* Back to PDF button when viewing document */}
+              {selectedDocUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedDocUrl(null);
+                    setSelectedDocName("");
+                  }}
+                  className="gap-1"
+                >
+                  ← Back to PDF
+                </Button>
+              )}
               
-              {/* Separator */}
-              <div className="w-px h-6 bg-border mx-1" />
+              {/* Zoom controls - only show when viewing PDF */}
+              {!selectedDocUrl && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleZoomOut}
+                    disabled={zoom <= 0.5 || isRendering}
+                    title="Zoom out (0.5x min)"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetZoom}
+                    disabled={isRendering}
+                    className="w-14 text-xs font-mono"
+                    title="Reset zoom"
+                  >
+                    {Math.round(zoom * 100)}%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleZoomIn}
+                    disabled={zoom >= 3 || isRendering}
+                    title="Zoom in (3x max)"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Separator */}
+                  <div className="w-px h-6 bg-border mx-1" />
+                </>
+              )}
               
               {/* Download button */}
               <Button
@@ -239,54 +333,129 @@ export function PDFPreviewDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          {showLoading ? (
-            <div className="flex flex-col items-center justify-center h-full py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground">
-                {isLoading
-                  ? "Generating PDF..."
-                  : `Rendering page ${currentRenderPage} of ${totalPages}...`}
-              </p>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full py-12">
-              <p className="text-destructive mb-2">Error rendering PDF</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[calc(90vh-100px)]">
-              <div className="space-y-4 p-6">
-                {pageImages.map((src, idx) => (
-                  <div
-                    key={idx}
-                    className="border rounded-lg bg-white shadow-sm overflow-hidden"
-                  >
-                    <div className="px-3 py-1.5 bg-muted/50 border-b text-xs text-muted-foreground">
-                      Page {idx + 1} of {totalPages}
-                    </div>
-                    <div className="p-2">
-                      <img
-                        src={src}
-                        alt={`Page ${idx + 1}`}
-                        className="w-full h-auto"
-                      />
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Show progress if still rendering additional pages */}
-                {isRendering && pageImages.length > 0 && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Rendering page {currentRenderPage} of {totalPages}...
-                    </span>
-                  </div>
-                )}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel: Documents List */}
+          {hasDocuments && !selectedDocUrl && (
+            <div className="w-64 border-r bg-muted/30 flex-shrink-0">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Uploaded Documents
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Click to view full size
+                </p>
               </div>
-            </ScrollArea>
+              <ScrollArea className="h-[calc(90vh-180px)]">
+                <div className="p-3 space-y-2">
+                  {documentList.map((item) => {
+                    const url = getDocumentUrl(item.doc);
+                    const isImage = url && isImageUrl(url);
+                    
+                    return (
+                      <Card
+                        key={item.key}
+                        className="cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden"
+                        onClick={() => handleDocumentClick(item.doc, item.label)}
+                      >
+                        {isImage && url ? (
+                          <div className="aspect-[4/3] relative bg-muted">
+                            <img
+                              src={url}
+                              alt={item.label}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[4/3] flex items-center justify-center bg-muted">
+                            <FileText className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="p-2 border-t">
+                          <p className="text-xs font-medium truncate">{item.label}</p>
+                          <Badge variant="secondary" className="text-[10px] mt-1">
+                            {isImage ? 'Image' : 'PDF'}
+                          </Badge>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
           )}
+
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-hidden">
+            {/* Show selected document full-size */}
+            {selectedDocUrl ? (
+              <ScrollArea className="h-[calc(90vh-100px)]">
+                <div className="p-6 flex justify-center">
+                  {isImageUrl(selectedDocUrl) ? (
+                    <img
+                      src={selectedDocUrl}
+                      alt={selectedDocName}
+                      className="max-w-full h-auto shadow-lg rounded-lg"
+                      style={{ imageRendering: 'crisp-edges' }}
+                    />
+                  ) : (
+                    <iframe
+                      src={selectedDocUrl}
+                      className="w-full h-[80vh] border rounded-lg"
+                      title={selectedDocName}
+                    />
+                  )}
+                </div>
+              </ScrollArea>
+            ) : showLoading ? (
+              <div className="flex flex-col items-center justify-center h-full py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">
+                  {isLoading
+                    ? "Generating PDF..."
+                    : `Rendering page ${currentRenderPage} of ${totalPages}...`}
+                </p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full py-12">
+                <p className="text-destructive mb-2">Error rendering PDF</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[calc(90vh-100px)]">
+                <div className="space-y-4 p-6">
+                  {pageImages.map((src, idx) => (
+                    <div
+                      key={idx}
+                      className="border rounded-lg bg-white shadow-sm overflow-hidden"
+                    >
+                      <div className="px-3 py-1.5 bg-muted/50 border-b text-xs text-muted-foreground">
+                        Page {idx + 1} of {totalPages}
+                      </div>
+                      <div className="p-2">
+                        <img
+                          src={src}
+                          alt={`Page ${idx + 1}`}
+                          className="w-full h-auto"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Show progress if still rendering additional pages */}
+                  {isRendering && pageImages.length > 0 && (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2" />
+                      <span className="text-sm text-muted-foreground">
+                        Rendering page {currentRenderPage} of {totalPages}...
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

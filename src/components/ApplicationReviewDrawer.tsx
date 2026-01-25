@@ -62,7 +62,7 @@ interface ApplicationReviewDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   application: ApplicationData | null;
-  onPreviewPDF: (id: string) => void;
+  onPreviewPDF: (id: string, documents?: any) => void;
   onStatusChange: () => void;
 }
 
@@ -505,7 +505,7 @@ export function ApplicationReviewDrawer({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onPreviewPDF(application.id)}
+                  onClick={() => onPreviewPDF(application.id, docs)}
                   className="gap-2 w-full"
                 >
                   <FileSearch className="h-4 w-4" />

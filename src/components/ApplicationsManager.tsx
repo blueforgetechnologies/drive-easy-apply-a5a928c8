@@ -94,6 +94,7 @@ export function ApplicationsManager() {
   const [previewPdf, setPreviewPdf] = useState<string | null>(null);
   const [previewFilename, setPreviewFilename] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewDocuments, setPreviewDocuments] = useState<any>(null);
   
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -222,12 +223,13 @@ export function ApplicationsManager() {
     }
   };
 
-  const handlePreviewPDF = async (applicationId: string) => {
+  const handlePreviewPDF = async (applicationId: string, documentUpload?: any) => {
     // Open in-app modal with pdf.js rendering (no new tab, no Chrome blocking)
     setPreviewOpen(true);
     setPreviewLoading(true);
     setPreviewPdf(null);
     setPreviewFilename("");
+    setPreviewDocuments(documentUpload || null);
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -1101,6 +1103,7 @@ export function ApplicationsManager() {
         pdfBase64={previewPdf}
         filename={previewFilename}
         isLoading={previewLoading}
+        documents={previewDocuments}
       />
 
       {/* Application Review Drawer */}
