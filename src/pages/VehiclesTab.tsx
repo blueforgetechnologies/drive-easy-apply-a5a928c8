@@ -102,7 +102,9 @@ export default function VehiclesTab() {
   }, [filter, sortOrder]);
 
   const loadAvailableDriversAndDispatchers = async () => {
-    if (shouldFilter && !tenantId) return;
+    if (shouldFilter && !tenantId) {
+      return; // Wait for tenant to load
+    }
     
     try {
       // Load drivers - must filter by tenant
@@ -142,7 +144,11 @@ export default function VehiclesTab() {
   };
 
   const loadData = async () => {
-    if (shouldFilter && !tenantId) return;
+    if (shouldFilter && !tenantId) {
+      // Tenant context not ready yet - don't leave in loading state
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     try {
