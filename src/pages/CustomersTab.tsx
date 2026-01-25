@@ -881,58 +881,80 @@ export default function CustomersTab() {
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center gap-0">
-          {[
-            { key: "all", label: "All", activeClass: "btn-glossy-dark" },
-            { key: "active", label: "Active", activeClass: "btn-glossy-success" },
-            { key: "inactive", label: "Inactive", activeClass: "btn-glossy" },
-            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning" },
-          ].map((status) => (
-            <Button
-              key={status.key}
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const newParams = new URLSearchParams(searchParams);
-                newParams.set("filter", status.key);
-                setSearchParams(newParams);
-                setSearchQuery("");
-              }}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                filter === status.key 
-                  ? `${status.activeClass} text-white` 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              {status.label}
-            </Button>
-          ))}
-        </div>
+        {(() => {
+          const statusCounts = {
+            all: customers.length,
+            active: customers.filter(c => c.status === "active").length,
+            inactive: customers.filter(c => c.status === "inactive").length,
+            pending: customers.filter(c => c.status === "pending").length,
+          };
+          const typeCounts = {
+            all: customers.length,
+            broker: customers.filter(c => c.customer_type === "broker").length,
+            shipper: customers.filter(c => c.customer_type === "shipper").length,
+            receiver: customers.filter(c => c.customer_type === "receiver").length,
+            shipper_receiver: customers.filter(c => c.customer_type === "shipper_receiver").length,
+          };
 
-        {/* Type Filters */}
-        <div className="flex items-center gap-0 border-l pl-2 ml-1">
-          {[
-            { key: "all", label: "All Types", activeClass: "btn-glossy-dark" },
-            { key: "broker", label: "Brokers", activeClass: "btn-glossy-violet" },
-            { key: "shipper", label: "Shippers", activeClass: "btn-glossy-primary" },
-            { key: "receiver", label: "Receivers", activeClass: "btn-glossy-success" },
-            { key: "shipper_receiver", label: "Ship/Recv", activeClass: "btn-glossy-warning" },
-          ].map((type) => (
-            <Button
-              key={type.key}
-              variant="ghost"
-              size="sm"
-              onClick={() => setTypeFilter(type.key as CustomerTypeFilter)}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                typeFilter === type.key 
-                  ? `${type.activeClass} text-white` 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
+          return (
+            <>
+              <div className="flex items-center gap-0">
+                {[
+                  { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+                  { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+                  { key: "inactive", label: "Inactive", count: statusCounts.inactive, activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
+                  { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+                ].map((status) => (
+                  <Button
+                    key={status.key}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set("filter", status.key);
+                      setSearchParams(newParams);
+                      setSearchQuery("");
+                    }}
+                    className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                      filter === status.key 
+                        ? `${status.activeClass} text-white` 
+                        : 'btn-glossy text-gray-700'
+                    }`}
+                  >
+                    {status.label}
+                    <span className={`${filter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>{status.count}</span>
+                  </Button>
+                ))}
+              </div>
+
+              {/* Type Filters */}
+              <div className="flex items-center gap-0 border-l pl-2 ml-1">
+                {[
+                  { key: "all", label: "All Types", count: typeCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+                  { key: "broker", label: "Brokers", count: typeCounts.broker, activeClass: "btn-glossy-violet", badgeClass: "badge-inset-aurora", softBadgeClass: "badge-inset" },
+                  { key: "shipper", label: "Shippers", count: typeCounts.shipper, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
+                  { key: "receiver", label: "Receivers", count: typeCounts.receiver, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+                  { key: "shipper_receiver", label: "Ship/Recv", count: typeCounts.shipper_receiver, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+                ].map((type) => (
+                  <Button
+                    key={type.key}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTypeFilter(type.key as CustomerTypeFilter)}
+                    className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                      typeFilter === type.key 
+                        ? `${type.activeClass} text-white` 
+                        : 'btn-glossy text-gray-700'
+                    }`}
+                  >
+                    {type.label}
+                    <span className={`${typeFilter === type.key ? type.badgeClass : type.softBadgeClass} text-[10px] h-5`}>{type.count}</span>
+                  </Button>
+                ))}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       <Card className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
