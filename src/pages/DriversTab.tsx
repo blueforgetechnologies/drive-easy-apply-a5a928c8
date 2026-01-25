@@ -676,7 +676,9 @@ export default function DriversTab() {
       {/* Compact Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">Driver Management</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-0">
+          <InviteDriverDialog />
+          <AddDriverDialog onDriverAdded={loadData} />
         </div>
       </div>
 
@@ -795,11 +797,6 @@ export default function DriversTab() {
               </Button>
             </div>
 
-            {/* Invite Driver + Add Driver buttons */}
-            <div className="flex gap-0">
-              <InviteDriverDialog />
-              <AddDriverDialog onDriverAdded={loadData} />
-            </div>
           </div>
         );
       })()}
