@@ -677,24 +677,6 @@ export default function DriversTab() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">Driver Management</h2>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={handleExportDrivers}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={() => setImportDialogOpen(true)}
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Import
-          </Button>
         </div>
       </div>
 
@@ -794,6 +776,28 @@ export default function DriversTab() {
             <div className="ml-2 flex gap-1">
               <InviteDriverDialog />
               <AddDriverDialog onDriverAdded={loadData} />
+            </div>
+
+            {/* Export/Import buttons - right aligned */}
+            <div className="ml-auto flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-[28px] px-2.5 text-[12px] font-medium gap-1.5 border-0 rounded-full btn-glossy text-gray-700"
+                onClick={handleExportDrivers}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-[28px] px-2.5 text-[12px] font-medium gap-1.5 border-0 rounded-full btn-glossy text-gray-700"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Import
+              </Button>
             </div>
           </div>
         );
