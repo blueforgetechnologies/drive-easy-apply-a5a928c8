@@ -773,7 +773,7 @@ export default function DriversTab() {
             </Button>
             
             {/* Invite Driver Button - next to Invitations */}
-            <div className="ml-2 flex gap-1">
+            <div className="ml-2 flex gap-0">
               <InviteDriverDialog />
               <AddDriverDialog onDriverAdded={loadData} />
             </div>
