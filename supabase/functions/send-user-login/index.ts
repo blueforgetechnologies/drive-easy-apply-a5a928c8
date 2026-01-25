@@ -71,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get the portal URL from environment or use production domain
-    const portalUrl = "https://nexustechsolution.com";
+    const portalUrl = "https://drive-easy-apply.lovable.app";
     const loginUrl = `${portalUrl}/auth`;
 
     // Send email with login credentials
@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "TMS Portal <noreply@nexustechsolution.com>",
+      from: "TMS Portal <noreply@blueforgetechnologies.org>",
       to: [userEmail],
       subject: "Your TMS Portal Login Credentials",
       html: emailHtml,

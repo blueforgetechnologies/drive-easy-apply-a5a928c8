@@ -241,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: `${safeTenantName} <noreply@nexustechsolution.com>`,
+      from: `${safeTenantName} <noreply@blueforgetechnologies.org>`,
       to: [email],
       subject: `You've been invited to join ${safeTenantName}`,
       html: emailContent,

@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`[send-bid-email] Processing for tenant ${gateResult.tenant_id}, user ${gateResult.user_id}`);
     
     // Normalize email domain to lowercase for Resend domain verification compatibility
-    const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@nexustechsolution.com';
+    const normalizedFromEmail = data.from_email?.toLowerCase() || 'dispatch@blueforgetechnologies.org';
     
     console.log("Sending bid email to:", data.to);
     console.log("From:", data.from_name, "<", normalizedFromEmail, ">");

@@ -262,7 +262,7 @@ email_queue (id, gmail_message_id, status, attempts, last_error, queued_at)`}
             <li>Driver applications require valid invite tokens</li>
             <li>RLS policies on all tables for proper data isolation</li>
             <li>Map load tracking restricted to user's own data</li>
-            <li>Production domain (nexustechsolution.com) for all external links</li>
+            <li>Production domain (blueforgetechnologies.org) for all external links</li>
           </ul>
         </section>
 
