@@ -14,7 +14,8 @@ import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
 import { ApplicationsManager } from "@/components/ApplicationsManager";
-import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload, CheckCircle2, Loader2 } from "lucide-react";
+import { MissingOnboardingItemsDialog } from "@/components/MissingOnboardingItemsDialog";
+import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { exportToExcel, mapExcelRowToEntity } from "@/lib/excel-utils";
 import { ExcelImportDialog } from "@/components/ExcelImportDialog";
@@ -61,6 +62,13 @@ export default function DriversTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  
+  // Missing items dialog state for activation failures
+  const [missingItemsDialogOpen, setMissingItemsDialogOpen] = useState(false);
+  const [missingItemsDriverName, setMissingItemsDriverName] = useState("");
+  const [missingItems, setMissingItems] = useState<{ category: string; label: string }[]>([]);
+  const [missingByCategory, setMissingByCategory] = useState<Record<string, string[]>>({});
+  
   const ROWS_PER_PAGE = 50;
   const { tenantId, shouldFilter } = useTenantFilter();
 
@@ -295,12 +303,18 @@ export default function DriversTab() {
       if (error) throw error;
       
       if (!data?.success) {
-        // Show missing items if onboarding incomplete
+        // Show missing items dialog if onboarding incomplete
         if (data?.missing_by_category) {
+          setMissingItemsDriverName(driverName);
+          setMissingItems(data.missing_items || []);
+          setMissingByCategory(data.missing_by_category);
+          setMissingItemsDialogOpen(true);
+          
+          // Also show toast for quick visibility
           const categories = Object.entries(data.missing_by_category)
             .map(([cat, items]) => `${cat}: ${(items as string[]).join(", ")}`)
             .join("; ");
-          toast.error(`Onboarding incomplete: ${categories}`);
+          toast.error(`Onboarding incomplete: ${categories}`, { duration: 5000 });
         } else {
           throw new Error(data?.error || "Failed to activate driver");
         }
@@ -715,7 +729,12 @@ export default function DriversTab() {
                       </TableCell>
                       <TableCell>
                         {invite.completed ? (
-                          <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1.5 shadow-md">Completed</Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1.5 shadow-md">
+                              Completed
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">Application created</span>
+                          </div>
                         ) : invite.application_started_at ? (
                           <Badge variant="default">Started</Badge>
                         ) : invite.opened_at ? (
@@ -730,11 +749,10 @@ export default function DriversTab() {
                             <Button
                               onClick={() => viewApplication(invite.application_id!)}
                               size="sm"
-                              variant="outline"
-                              className="gap-2"
+                              className="gap-2 bg-blue-600 hover:bg-blue-700"
                             >
                               <FileText className="h-4 w-4" />
-                              View
+                              Open Application
                             </Button>
                           ) : (
                             <Button
@@ -750,9 +768,10 @@ export default function DriversTab() {
                           <Button
                             onClick={() => handleDeleteInvite(invite.id)}
                             size="sm"
-                            variant="destructive"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
-                            Delete
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -1050,6 +1069,15 @@ export default function DriversTab() {
         entityType="drivers"
         entityLabel="Drivers"
         onImport={handleImportDrivers}
+      />
+      
+      {/* Missing Onboarding Items Dialog */}
+      <MissingOnboardingItemsDialog
+        open={missingItemsDialogOpen}
+        onOpenChange={setMissingItemsDialogOpen}
+        driverName={missingItemsDriverName}
+        missingItems={missingItems}
+        missingByCategory={missingByCategory}
       />
     </div>
   );
