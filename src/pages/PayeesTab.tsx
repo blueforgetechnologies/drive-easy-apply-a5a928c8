@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, UserPlus, Users, User, Mail, Phone, Building2, CreditCard, Check, Briefcase, Truck, Factory, Copy, MoreHorizontal, Download, Upload } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -103,6 +104,8 @@ export default function PayeesTab() {
   const [selectedPayee, setSelectedPayee] = useState<Payee | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Payee>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const ROWS_PER_PAGE = 50;
   const [formData, setFormData] = useState({
     name: "",
@@ -360,6 +363,44 @@ export default function PayeesTab() {
     } catch (error: any) {
       toast.error("Failed to delete payee: " + error.message);
     }
+  };
+
+  const handleMultiDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("payees" as any)
+        .delete()
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} payee(s) deleted successfully`);
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to delete payees: " + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedPayees.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedPayees.map(p => p.id)));
+    }
+  };
+
+  const toggleSelectPayee = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
   };
 
   const handleOpenPayeeDetail = (payee: Payee) => {
@@ -1044,8 +1085,24 @@ export default function PayeesTab() {
 
       <Card className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
         <CardHeader className="flex-shrink-0">
-          <CardTitle>Payees</CardTitle>
-          <CardDescription>Manage payee information and payment details</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Payees</CardTitle>
+              <CardDescription>Manage payee information and payment details</CardDescription>
+            </div>
+            {selectedIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleMultiDelete}
+                disabled={isDeleting}
+                className="gap-1.5"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete ({selectedIds.size})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col p-0 flex-1 overflow-hidden">
           {filteredPayees.length === 0 ? (
@@ -1058,7 +1115,12 @@ export default function PayeesTab() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30 h-10 border-b-2 border-blue-100 dark:border-blue-900">
-                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[80px]">ID</TableHead>
+                    <TableHead className="py-2 px-2 w-[40px]" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={paginatedPayees.length > 0 && selectedIds.size === paginatedPayees.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide w-[120px]">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">
                       <div>Name</div>
@@ -1080,21 +1142,17 @@ export default function PayeesTab() {
                   {paginatedPayees.map((payee) => (
                     <TableRow 
                       key={payee.id} 
-                      className="h-10 cursor-pointer hover:bg-muted/30 transition-colors"
+                      className={cn(
+                        "h-10 cursor-pointer hover:bg-muted/30 transition-colors",
+                        selectedIds.has(payee.id) && "bg-primary/5"
+                      )}
                       onClick={() => handleOpenPayeeDetail(payee)}
                     >
-                      <TableCell className="py-1 px-2">
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-xs text-muted-foreground">{payee.id.slice(0, 8)}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={(e) => { e.stopPropagation(); handleCopyId(payee.id); }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(payee.id)}
+                          onCheckedChange={() => toggleSelectPayee(payee.id)}
+                        />
                       </TableCell>
                       <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
