@@ -502,8 +502,11 @@ export function ApplicationsManager() {
     if (statusFilter === "all") return app.status !== "archived";
     if (statusFilter === "archived") return app.status === "archived";
     if (statusFilter === "needs_review") return needsReview(app) && app.status !== "archived";
-    // Handle "pending" as part of "submitted" filter for legacy entries
-    if (statusFilter === "submitted") return app.status === "submitted" || app.status === "pending";
+    // "Completed" = driver actually finished & submitted (step 9/9 AND status submitted/pending)
+    if (statusFilter === "submitted") {
+      const isSubmittedStatus = app.status === "submitted" || app.status === "pending";
+      return isSubmittedStatus && app.current_step === 9;
+    }
     return app.status === statusFilter;
   });
 
@@ -527,12 +530,12 @@ export function ApplicationsManager() {
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
-  // Status filter counts
+  // Status filter counts - "Completed" = step 9/9 AND submitted/pending status
   const statusCounts = {
     all: applications.filter((a) => a.status !== "archived").length,
     invited: applications.filter((a) => a.status === "invited").length,
     in_progress: applications.filter((a) => a.status === "in_progress").length,
-    submitted: applications.filter((a) => a.status === "submitted" || a.status === "pending").length,
+    submitted: applications.filter((a) => (a.status === "submitted" || a.status === "pending") && a.current_step === 9).length,
     approved: applications.filter((a) => a.status === "approved").length,
     rejected: applications.filter((a) => a.status === "rejected").length,
     archived: applications.filter((a) => a.status === "archived").length,
