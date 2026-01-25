@@ -284,32 +284,30 @@ export default function DriversTab() {
     navigate(`/dashboard/application/${id}`);
   };
 
-  // Activate a pending driver - complete onboarding and set to active
+  // Activate a pending driver - uses edge function for server-side validation
   const handleActivateDriver = async (id: string, driverName: string) => {
     setActivatingId(id);
     try {
-      const { error } = await supabase
-        .from("applications")
-        .update({ 
-          driver_status: "active",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", id);
+      const { data, error } = await supabase.functions.invoke("activate-driver", {
+        body: { application_id: id },
+      });
 
       if (error) throw error;
-      toast.success(`${driverName} is now Active`);
       
-      // Log the activation
-      if (tenantId) {
-        await supabase.from("audit_logs").insert({
-          tenant_id: tenantId,
-          entity_type: "driver",
-          entity_id: id,
-          action: "activate",
-          notes: `Driver ${driverName} activated (onboarding complete)`,
-        });
+      if (!data?.success) {
+        // Show missing items if onboarding incomplete
+        if (data?.missing_by_category) {
+          const categories = Object.entries(data.missing_by_category)
+            .map(([cat, items]) => `${cat}: ${(items as string[]).join(", ")}`)
+            .join("; ");
+          toast.error(`Onboarding incomplete: ${categories}`);
+        } else {
+          throw new Error(data?.error || "Failed to activate driver");
+        }
+        return;
       }
-      
+
+      toast.success(data.message || `${driverName} is now Active`);
       loadData();
     } catch (error: any) {
       toast.error("Failed to activate driver: " + error.message);
