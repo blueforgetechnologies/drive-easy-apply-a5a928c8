@@ -493,13 +493,13 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
           {/* Divider */}
           <div className="divider-scifi" />
 
-          {/* Read-only notice */}
+          {/* Read-only notice - only show AFTER successful submission */}
           {!canEdit && (
             <div className="mb-4 p-3 bg-scifi-purple/10 border border-scifi-purple/30 rounded-lg">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-scifi-purple-light flex-shrink-0" />
                 <p className="text-xs text-scifi-purple-light">
-                  This application has been submitted and cannot be modified.
+                  Once this application has been submitted, it cannot be modified.
                 </p>
               </div>
             </div>
