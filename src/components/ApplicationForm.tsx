@@ -498,6 +498,10 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
               onBack={handleBack}
               isFirstStep={currentStep === 1}
               isLastStep={currentStep === steps.length}
+              onEditStep={(step: number) => {
+                setCurrentStep(step);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           </div>
 
