@@ -107,6 +107,23 @@ const handler = async (req: Request): Promise<Response> => {
       tenantId = tenantData.tenant_id;
     }
 
+    // Fetch the tenant/company name for personalized email
+    const { data: companyData, error: companyError } = await supabaseService
+      .from('tenants')
+      .select('name')
+      .eq('id', tenantId)
+      .single();
+
+    if (companyError) {
+      console.error('Error fetching tenant name:', companyError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch company information' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const companyName = companyData.name || 'Our Company';
+
     // Insert invite record into database
     const { data: inviteData, error: inviteError } = await supabaseService
       .from('driver_invites')
@@ -136,19 +153,19 @@ const handler = async (req: Request): Promise<Response> => {
     const greeting = name ? `Hi ${name},` : "Hello,";
 
     const emailResponse = await resend.emails.send({
-      from: "Driver Application <noreply@blueforgetechnologies.org>",
+      from: `${companyName} <noreply@blueforgetechnologies.org>`,
       to: [email],
-      subject: "Complete Your Driver Employment Application",
+      subject: `${companyName} - Complete Your Driver Employment Application`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px;">Driver Employment Application</h1>
+          <h1 style="color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px;">${companyName} - Driver Application</h1>
           
           <p style="font-size: 16px; color: #555; line-height: 1.6;">
             ${greeting}
           </p>
           
           <p style="font-size: 16px; color: #555; line-height: 1.6;">
-            We're excited to invite you to apply for a driver position with our company. We've streamlined our application process to make it easy and convenient for you.
+            <strong>${companyName}</strong> is excited to invite you to apply for a driver position. We've streamlined our application process to make it easy and convenient for you.
           </p>
           
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -180,7 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
               <strong>Note:</strong> This application is available on all devices - desktop, tablet, or mobile phone. Make sure you have all required documents ready before starting.
             </p>
             <p style="font-size: 14px; color: #999;">
-              If you have any questions, please don't hesitate to reach out to us.
+              If you have any questions, please don't hesitate to reach out to ${companyName}.
             </p>
           </div>
         </div>
