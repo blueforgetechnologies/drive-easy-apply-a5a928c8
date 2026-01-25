@@ -28,6 +28,7 @@ import {
   Filter,
   AlertTriangle,
   MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
 import { PDFPreviewDialog } from "./PDFPreviewDialog";
@@ -950,6 +951,31 @@ export function ApplicationsManager() {
                                     </DropdownMenuItem>
                                   </>
                                 )}
+                                
+                                {/* Delete - permanently remove application */}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={async () => {
+                                    if (!confirm(`Delete application for ${getApplicantName(app.personal_info)}? This cannot be undone.`)) {
+                                      return;
+                                    }
+                                    try {
+                                      const { error } = await supabase
+                                        .from("applications")
+                                        .delete()
+                                        .eq("id", app.id);
+                                      if (error) throw error;
+                                      toast.success("Application deleted");
+                                      await loadApplications();
+                                    } catch (err: any) {
+                                      toast.error("Failed to delete: " + err.message);
+                                    }
+                                  }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
