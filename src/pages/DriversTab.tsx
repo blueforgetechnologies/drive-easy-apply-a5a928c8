@@ -54,6 +54,7 @@ export default function DriversTab() {
   const filter = searchParams.get("filter") || "active";
   const [applications, setApplications] = useState<Application[]>([]);
   const [invites, setInvites] = useState<DriverInvite[]>([]);
+  const [applicationsCount, setApplicationsCount] = useState(0); // Count for Invitations badge (invited + completed + approved)
   const [vehicles, setVehicles] = useState<VehicleAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +85,9 @@ export default function DriversTab() {
       // Always load vehicles for assignment display
       await loadVehicles();
       
+      // Always load applications count for the Invitations badge
+      await loadApplicationsCount();
+      
       if (filter === "all") {
         await loadAllDrivers();
       } else if (filter === "active") {
@@ -97,6 +101,29 @@ export default function DriversTab() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Load count of all non-hired applications for the Invitations badge
+  const loadApplicationsCount = async () => {
+    try {
+      let query = supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .or("driver_status.is.null,driver_status.eq.rejected")
+        .neq("status", "archived");
+      
+      if (shouldFilter && tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+      
+      const { count, error } = await query;
+      
+      if (!error) {
+        setApplicationsCount(count ?? 0);
+      }
+    } catch (error) {
+      console.error("Error loading applications count:", error);
     }
   };
 
@@ -672,7 +699,7 @@ export default function DriversTab() {
           active: applications.filter(a => a.driver_status === "active").length,
           inactive: applications.filter(a => a.driver_status === "inactive").length,
           pending: applications.filter(a => a.driver_status === "pending").length,
-          applications: invites.length,
+          applications: applicationsCount, // Count of invited + completed + approved (non-hired)
         };
 
         return (

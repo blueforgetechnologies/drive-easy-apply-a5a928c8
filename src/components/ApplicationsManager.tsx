@@ -925,6 +925,7 @@ export function ApplicationsManager() {
           <Filter className="h-4 w-4 text-muted-foreground mr-2" />
           {[
             { key: "all" as StatusFilter, label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+            { key: "invited" as StatusFilter, label: "Invited", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
             { key: "submitted" as StatusFilter, label: "Completed", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
             { key: "approved" as StatusFilter, label: "Approved", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "rejected" as StatusFilter, label: "Rejected", activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
