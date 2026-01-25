@@ -16,6 +16,8 @@ interface ReviewSubmitProps {
 export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  console.log('[ReviewSubmit] Received data:', { inviteId: data?.inviteId, tenantId: data?.tenantId });
+
   // tenantId is now passed directly from ApplicationForm via data.tenantId
   const tenantId = data?.tenantId;
 

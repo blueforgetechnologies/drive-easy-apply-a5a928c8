@@ -207,6 +207,8 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
         // Populate form with existing data
         if (data.application) {
           const app = data.application;
+          console.log('[ApplicationForm] Loading existing application, invite data:', data.invite);
+          console.log('[ApplicationForm] Setting tenantId to:', data.invite?.tenant_id);
           setCurrentStep(app.current_step || 1);
           setApplicationData({
             inviteId: data.invite?.id,
@@ -226,6 +228,8 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
           }
         } else if (data.invite) {
           // Pre-fill from invite
+          console.log('[ApplicationForm] No application yet, invite data:', data.invite);
+          console.log('[ApplicationForm] Setting tenantId to:', data.invite.tenant_id);
           setApplicationData({
             inviteId: data.invite.id,
             tenantId: data.invite.tenant_id,
