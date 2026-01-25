@@ -73,7 +73,7 @@ export function ApplicationReviewDrawer({
   onPreviewPDF,
   onStatusChange,
 }: ApplicationReviewDrawerProps) {
-  // Drawer does NOT approve - that's done via row-level action only
+  const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -141,7 +141,34 @@ export function ApplicationReviewDrawer({
     return docInfo.missing.length > 0 || application.current_step !== 9;
   };
 
-  // NOTE: Approve is NOT available in drawer - use row-level action only
+  // Check if application is ready for approval
+  const isSubmittedOrPending = application.status === "submitted" || application.status === "pending";
+  const isReady = isSubmittedOrPending && application.current_step === 9 && !needsReview();
+  const canApprove = isReady && application.status !== "approved" && application.status !== "rejected";
+
+  // Approve using edge function ONLY (no client-side writes)
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-application", {
+        body: { application_id: application.id },
+      });
+
+      if (error) throw error;
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to approve application");
+      }
+
+      toast.success(data.message || "Application approved - driver is now pending onboarding");
+      onStatusChange();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error("Failed to approve: " + error.message);
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
@@ -406,33 +433,40 @@ export function ApplicationReviewDrawer({
 
               <Separator />
 
-              {/* Actions */}
+              {/* Workflow Actions */}
               <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Document Actions</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Workflow Actions</p>
                 
-                {/* PDF Preview Only - Download is in the row's More menu */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPreviewPDF(application.id)}
-                  className="gap-2 w-full"
-                >
-                  <FileSearch className="h-4 w-4" />
-                  Preview PDF (in-app)
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  💡 Use the row's (...) menu to download PDF
-                </p>
+                {/* Approve Button - only if ready */}
+                {canApprove && (
+                  <Button
+                    onClick={handleApprove}
+                    size="sm"
+                    className="gap-2 w-full bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isApproving}
+                  >
+                    {isApproving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Approve Application
+                  </Button>
+                )}
 
-                {/* Workflow Actions - Reject only (Approve is row-level) */}
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Workflow</p>
-                
-                {(application.status === "submitted" || application.status === "pending") && (
-                  <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-                    ✓ Use the green <strong>Approve</strong> button in the table row for 1-click approval
-                  </p>
+                {/* Not ready message */}
+                {isSubmittedOrPending && !canApprove && (
+                  <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded p-2 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      Not ready for approval: {application.current_step !== 9 && `Step ${application.current_step || 1}/9`}
+                      {needsReview() && (application.current_step !== 9 ? " • " : "")}
+                      {needsReview() && "Missing required documents"}
+                    </span>
+                  </div>
                 )}
                 
+                {/* Reject Button */}
                 <Button
                   variant="destructive"
                   size="sm"
@@ -441,7 +475,7 @@ export function ApplicationReviewDrawer({
                   className="gap-2 w-full"
                 >
                   <XCircle className="h-4 w-4" />
-                  Reject Application...
+                  Reject Application
                 </Button>
 
                 {/* Archive button */}
@@ -459,6 +493,27 @@ export function ApplicationReviewDrawer({
                   )}
                   Archive Application
                 </Button>
+              </div>
+
+              <Separator />
+
+              {/* Document Actions */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Document Actions</p>
+                
+                {/* PDF Preview Only - Download is in the row's More menu */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPreviewPDF(application.id)}
+                  className="gap-2 w-full"
+                >
+                  <FileSearch className="h-4 w-4" />
+                  Preview PDF (in-app)
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  💡 Use the row's (...) menu to download PDF
+                </p>
               </div>
 
               <Separator />
