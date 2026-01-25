@@ -127,44 +127,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Create a pending driver/application record immediately
-    const { data: applicationData, error: appError } = await supabaseService
-      .from('applications')
-      .insert({
-        invite_id: inviteData.id,
-        tenant_id: tenantId,
-        personal_info: {
-          firstName: name?.split(' ')[0] || '',
-          lastName: name?.split(' ').slice(1).join(' ') || '',
-          email: email,
-        },
-        driver_status: 'pending',
-        status: 'invited',
-        // Initialize required JSONB fields with empty objects
-        payroll_policy: {},
-        license_info: {},
-        driving_history: {},
-        employment_history: {},
-        document_upload: {},
-        drug_alcohol_policy: {},
-        driver_dispatch_sheet: {},
-        no_rider_policy: {},
-        safe_driving_policy: {},
-        contractor_agreement: {},
-        direct_deposit: {},
-        why_hire_you: {},
-      })
-      .select()
-      .single();
-
-    if (appError) {
-      console.error('Error creating pending driver record:', appError);
-      // Continue anyway - invite was created, driver record is optional
-    } else {
-      console.log('Created pending driver record:', applicationData.id);
-    }
-
     // Use the production app URL with public_token (not raw id)
+    // NOTE: Application record is created when the driver opens the invite link,
+    // not when the invite is sent
     const appUrl = "https://drive-easy-apply.lovable.app";
     const applicationUrl = `${appUrl}/?token=${inviteData.public_token}`;
 
