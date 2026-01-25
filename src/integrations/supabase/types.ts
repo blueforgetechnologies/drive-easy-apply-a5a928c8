@@ -6753,6 +6753,7 @@ export type Database = {
         Args: { batch_size?: number }
         Returns: number
       }
+      auto_archive_rejected_applications: { Args: never; Returns: undefined }
       can_access_feature: {
         Args: { p_feature_key: string; p_tenant_id: string; p_user_id: string }
         Returns: boolean
