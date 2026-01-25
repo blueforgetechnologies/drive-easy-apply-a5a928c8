@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart } from "lucide-react";
+import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -10,9 +10,10 @@ interface ReviewSubmitProps {
   isFirstStep: boolean;
   isLastStep: boolean;
   onNext?: (data: any) => void;
+  onEditStep?: (step: number) => void;
 }
 
-export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
+export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantId, setTenantId] = useState<string | null>(null);
 
@@ -127,13 +128,37 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
 
   const hasDocument = (doc: any) => doc !== null && doc !== undefined;
 
-  const SectionCard = ({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) => (
+  const SectionCard = ({ 
+    title, 
+    icon: Icon, 
+    children, 
+    stepNumber 
+  }: { 
+    title: string; 
+    icon: React.ElementType; 
+    children: React.ReactNode;
+    stepNumber?: number;
+  }) => (
     <div className="section-scifi">
-      <div className="section-header-scifi mb-3">
-        <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
-          <Icon className="w-4 h-4 text-scifi-cyan" />
-          {title}
-        </h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <Icon className="w-4 h-4 text-scifi-cyan" />
+            {title}
+          </h3>
+        </div>
+        {stepNumber && onEditStep && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onEditStep(stepNumber)}
+            className="h-7 px-2 text-xs text-scifi-purple hover:text-scifi-cyan hover:bg-scifi-purple/10 gap-1"
+          >
+            <Pencil className="w-3 h-3" />
+            Edit
+          </Button>
+        )}
       </div>
       {children}
     </div>
@@ -157,14 +182,14 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           <div>
             <h2 className="text-xl font-semibold text-white">Review & Submit</h2>
             <p className="text-sm text-muted-foreground">
-              Please review your information before submitting. You can go back to edit any section.
+              Please review your information before submitting. Click <span className="text-scifi-purple font-medium">Edit</span> on any section to make changes.
             </p>
           </div>
         </div>
       </div>
 
       {/* Personal Information */}
-      <SectionCard title="Personal Information" icon={User}>
+      <SectionCard title="Personal Information" icon={User} stepNumber={1}>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <InfoRow label="Name" value={`${data?.personalInfo?.firstName || ''} ${data?.personalInfo?.middleName || ''} ${data?.personalInfo?.lastName || ''}`.trim()} />
           <InfoRow label="Date of Birth" value={data?.personalInfo?.dob} />
@@ -181,9 +206,39 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
         </div>
       </SectionCard>
 
+      {/* License Information */}
+      <SectionCard title="License Information" icon={IdCard} stepNumber={2}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+          <InfoRow label="License Number" value={data?.licenseInfo?.licenseNumber} />
+          <InfoRow label="State" value={data?.licenseInfo?.licenseState} />
+          <InfoRow label="Class" value={data?.licenseInfo?.licenseClass} />
+          <InfoRow label="Experience" value={`${data?.licenseInfo?.yearsExperience || 0} years`} />
+          {data?.licenseInfo?.endorsements?.length > 0 && (
+            <div className="col-span-2">
+              <InfoRow label="Endorsements" value={data?.licenseInfo?.endorsements.join(", ")} />
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Employment History */}
+      <SectionCard title="Employment History" icon={Briefcase} stepNumber={3}>
+        <p className="text-sm text-scifi-text">
+          {data?.employmentHistory?.length || 0} employer(s) listed
+        </p>
+      </SectionCard>
+
+      {/* Driving History */}
+      <SectionCard title="Driving History" icon={Car} stepNumber={4}>
+        <div className="grid grid-cols-2 gap-2">
+          <InfoRow label="Accidents" value={`${data?.drivingHistory?.accidents?.length || 0} reported`} />
+          <InfoRow label="Violations" value={`${data?.drivingHistory?.violations?.length || 0} reported`} />
+        </div>
+      </SectionCard>
+
       {/* Emergency Contacts */}
-      {data?.emergencyContacts && data.emergencyContacts.length > 0 && (
-        <SectionCard title="Emergency Contacts" icon={Heart}>
+      <SectionCard title="Emergency Contacts" icon={Heart} stepNumber={5}>
+        {data?.emergencyContacts && data.emergencyContacts.length > 0 ? (
           <div className="space-y-2">
             {data.emergencyContacts.map((contact: any, index: number) => (
               contact.firstName && (
@@ -198,42 +253,13 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
               )
             ))}
           </div>
-        </SectionCard>
-      )}
-
-      {/* License Information */}
-      <SectionCard title="License Information" icon={IdCard}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <InfoRow label="License Number" value={data?.licenseInfo?.licenseNumber} />
-          <InfoRow label="State" value={data?.licenseInfo?.licenseState} />
-          <InfoRow label="Class" value={data?.licenseInfo?.licenseClass} />
-          <InfoRow label="Experience" value={`${data?.licenseInfo?.yearsExperience || 0} years`} />
-          {data?.licenseInfo?.endorsements?.length > 0 && (
-            <div className="col-span-2">
-              <InfoRow label="Endorsements" value={data?.licenseInfo?.endorsements.join(", ")} />
-            </div>
-          )}
-        </div>
+        ) : (
+          <p className="text-sm text-scifi-text-muted">No emergency contacts provided</p>
+        )}
       </SectionCard>
 
-      {/* Employment & Driving History */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <SectionCard title="Employment History" icon={Briefcase}>
-          <p className="text-sm text-scifi-text">
-            {data?.employmentHistory?.length || 0} employer(s) listed
-          </p>
-        </SectionCard>
-
-        <SectionCard title="Driving History" icon={Car}>
-          <div className="grid grid-cols-2 gap-2">
-            <InfoRow label="Accidents" value={`${data?.drivingHistory?.accidents?.length || 0} reported`} />
-            <InfoRow label="Violations" value={`${data?.drivingHistory?.violations?.length || 0} reported`} />
-          </div>
-        </SectionCard>
-      </div>
-
       {/* Documents */}
-      <SectionCard title="Documents Uploaded" icon={FileText}>
+      <SectionCard title="Documents Uploaded" icon={FileText} stepNumber={6}>
         <div className="space-y-1.5">
           {[
             { key: 'driversLicense', label: "Driver's License", required: true },
@@ -261,12 +287,19 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
       </SectionCard>
 
       {/* Direct Deposit */}
-      <SectionCard title="Direct Deposit" icon={CreditCard}>
+      <SectionCard title="Direct Deposit" icon={CreditCard} stepNumber={7}>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <InfoRow label="Name" value={`${data?.directDeposit?.firstName || ''} ${data?.directDeposit?.lastName || ''}`.trim()} />
           <InfoRow label="Bank" value={data?.directDeposit?.bankName} />
           <InfoRow label="Account Type" value={data?.directDeposit?.accountType?.replace('-', ' ')} />
         </div>
+      </SectionCard>
+
+      {/* Why Hire You */}
+      <SectionCard title="Your Statement" icon={MessageSquare} stepNumber={8}>
+        <p className="text-sm text-scifi-text line-clamp-3">
+          {data?.whyHireYou?.statement || '—'}
+        </p>
       </SectionCard>
 
       {/* Navigation */}
