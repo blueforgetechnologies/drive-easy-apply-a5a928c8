@@ -772,12 +772,6 @@ export default function DriversTab() {
               <span className={`${filter === "invitations" ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{invites.length}</span>
             </Button>
             
-            {/* Invite Driver Button - next to Invitations */}
-            <div className="ml-2 flex gap-0">
-              <InviteDriverDialog />
-              <AddDriverDialog onDriverAdded={loadData} />
-            </div>
-
             {/* Export/Import buttons - right aligned */}
             <div className="ml-auto flex gap-1">
               <Button
@@ -798,6 +792,12 @@ export default function DriversTab() {
                 <Upload className="h-3.5 w-3.5" />
                 Import
               </Button>
+            </div>
+
+            {/* Invite Driver + Add Driver buttons */}
+            <div className="flex gap-0">
+              <InviteDriverDialog />
+              <AddDriverDialog onDriverAdded={loadData} />
             </div>
           </div>
         );
