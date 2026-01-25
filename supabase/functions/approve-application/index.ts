@@ -79,22 +79,35 @@ serve(async (req) => {
     }
 
     // Check if application is in a valid state to approve
-    const validStatuses = ["submitted", "pending", "in_progress"];
-    if (!validStatuses.includes(application.status || "")) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Cannot approve application with status: ${application.status}. Must be submitted/pending.` 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Valid states: submitted, pending (legacy), in_progress (allow early approval if needed)
+    const approvableStatuses = ["submitted", "pending", "in_progress"];
+    
     // Already approved?
     if (application.status === "approved") {
       return new Response(
         JSON.stringify({ success: true, message: "Application already approved", already_approved: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Already rejected/archived? Don't allow approval
+    if (application.status === "rejected" || application.status === "archived") {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Cannot approve application with status: ${application.status}. Application must be unarchived/unrestricted first.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!approvableStatuses.includes(application.status || "")) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Cannot approve application with status: ${application.status}. Must be submitted, pending, or in_progress.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

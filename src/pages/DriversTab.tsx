@@ -204,10 +204,10 @@ export default function DriversTab() {
       return;
     }
 
-    // Check for completed applications
+    // Load applications with invite_id for primary linkage, fallback to email
     let applicationsQuery = supabase
       .from("applications")
-      .select("id, personal_info, submitted_at, driver_status")
+      .select("id, invite_id, personal_info, submitted_at, updated_at, driver_status")
       .not("submitted_at", "is", null);
     
     if (shouldFilter && tenantId) {
@@ -220,16 +220,34 @@ export default function DriversTab() {
       console.error("Error loading applications:", appsError);
     }
 
-    // Match invitations with submitted applications
+    // Match invitations with submitted applications using real linkage:
+    // 1. Primary: applications.invite_id === invite.id (FK relationship)
+    // 2. Fallback: applications.personal_info.email === invite.email
     const enrichedInvites = (invitesData || []).map((invite) => {
-      const matchedApp = (applicationsData || []).find(
-        (app: any) => app.personal_info?.email === invite.email
+      // Primary match by invite_id FK
+      let matchedApp = (applicationsData || []).find(
+        (app: any) => app.invite_id === invite.id
       );
+      
+      // Fallback: match by email if no FK match
+      if (!matchedApp) {
+        const emailMatches = (applicationsData || []).filter(
+          (app: any) => app.personal_info?.email?.toLowerCase() === invite.email?.toLowerCase()
+        );
+        // If multiple matches, pick the newest by submitted_at or updated_at
+        if (emailMatches.length > 0) {
+          matchedApp = emailMatches.sort((a: any, b: any) => {
+            const dateA = new Date(a.submitted_at || a.updated_at || 0).getTime();
+            const dateB = new Date(b.submitted_at || b.updated_at || 0).getTime();
+            return dateB - dateA;
+          })[0];
+        }
+      }
       
       return {
         ...invite,
         completed: !!matchedApp,
-        application_id: matchedApp?.id,
+        application_id: matchedApp?.id || null,
       };
     });
 
