@@ -85,8 +85,11 @@ export default function DriversTab() {
       // Always load vehicles for assignment display
       await loadVehicles();
       
-      // Always load applications count for the Invitations badge
+      // Always load applications count for the Applications badge
       await loadApplicationsCount();
+      
+      // Always load invitations count for the Invitations badge
+      await loadInvitations();
       
       if (filter === "all") {
         await loadAllDrivers();
@@ -98,20 +101,23 @@ export default function DriversTab() {
         await loadInactiveDrivers();
       } else if (filter === "applications") {
         // Applications Manager handles its own loading
+      } else if (filter === "invitations") {
+        // Invitations loaded above
       }
     } finally {
       setLoading(false);
     }
   };
   
-  // Load count of all non-hired applications for the Invitations badge
+  // Load count of all non-hired applications for the Applications badge (excludes invited status)
   const loadApplicationsCount = async () => {
     try {
       let query = supabase
         .from("applications")
         .select("id", { count: "exact", head: true })
         .or("driver_status.is.null,driver_status.eq.rejected")
-        .neq("status", "archived");
+        .neq("status", "archived")
+        .neq("status", "invited"); // Exclude invited - those show in Invitations tab
       
       if (shouldFilter && tenantId) {
         query = query.eq("tenant_id", tenantId);
@@ -747,7 +753,7 @@ export default function DriversTab() {
             {/* Spacer - approximately 1 button width */}
             <div className="w-10" />
 
-            {/* Invitations filter - separate group */}
+            {/* Applications filter - separate group */}
             <Button
               variant="ghost"
               size="sm"
@@ -755,14 +761,33 @@ export default function DriversTab() {
                 setSearchParams({ filter: "applications" });
                 setSearchQuery("");
               }}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-full border-0 ${
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-l-full rounded-r-none border-0 ${
                 filter === "applications" 
                   ? 'btn-glossy-primary text-white' 
                   : 'btn-glossy text-gray-700'
               }`}
             >
-              Invitations
+              Applications
               <span className={`${filter === "applications" ? 'badge-inset-primary' : 'badge-inset-soft-blue'} text-[10px] h-5`}>{statusCounts.applications}</span>
+            </Button>
+            
+            {/* Invitations filter - shows all invitations with progress */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchParams({ filter: "invitations" });
+                setSearchQuery("");
+                loadInvitations();
+              }}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-r-full rounded-l-none border-0 ${
+                filter === "invitations" 
+                  ? 'btn-glossy-warning text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              Invitations
+              <span className={`${filter === "invitations" ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{invites.length}</span>
             </Button>
           </div>
         );
@@ -772,7 +797,7 @@ export default function DriversTab() {
         <Card>
           <CardHeader>
             <CardTitle>Driver Invitations</CardTitle>
-            <CardDescription>Manage and track driver invitation status</CardDescription>
+            <CardDescription>Track all driver invitations and their application progress</CardDescription>
           </CardHeader>
           <CardContent>
             {filteredInvites.length === 0 ? (
@@ -787,78 +812,98 @@ export default function DriversTab() {
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Email</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Invited</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Opened</TableHead>
+                    <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Progress</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Status</TableHead>
                     <TableHead className="py-2 px-2 text-sm font-bold text-blue-700 dark:text-blue-400 tracking-wide">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInvites.map((invite) => (
-                    <TableRow key={invite.id}>
-                      <TableCell className="font-medium">{invite.name || "N/A"}</TableCell>
-                      <TableCell>{invite.email}</TableCell>
-                      <TableCell>
-                        {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {invite.opened_at ? (
-                          <div className="text-sm">
-                            <div>{format(new Date(invite.opened_at), "MM/dd/yyyy")}</div>
-                            <div className="text-muted-foreground">{format(new Date(invite.opened_at), "h:mm a")}</div>
+                  {filteredInvites.map((invite) => {
+                    // Calculate progress from linked application
+                    const progress = invite.application_started_at && invite.application_id 
+                      ? (invite.completed ? 9 : 1) 
+                      : 0;
+                    
+                    return (
+                      <TableRow key={invite.id}>
+                        <TableCell className="font-medium">{invite.name || "N/A"}</TableCell>
+                        <TableCell>{invite.email}</TableCell>
+                        <TableCell>
+                          {invite.invited_at ? format(new Date(invite.invited_at), "MM/dd/yyyy") : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {invite.opened_at ? (
+                            <div className="text-sm">
+                              <div>{format(new Date(invite.opened_at), "MM/dd/yyyy")}</div>
+                              <div className="text-muted-foreground">{format(new Date(invite.opened_at), "h:mm a")}</div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">Not opened</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all ${
+                                  invite.completed ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                                }`}
+                                style={{ width: `${(progress / 9) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {progress}/9
+                            </span>
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">Not opened</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {invite.completed ? (
-                          <div className="flex flex-col gap-1">
-                            <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1.5 shadow-md">
+                        </TableCell>
+                        <TableCell>
+                          {invite.completed ? (
+                            <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1 shadow-md">
                               Completed
                             </Badge>
-                            <span className="text-xs text-muted-foreground">Application created</span>
-                          </div>
-                        ) : invite.application_started_at ? (
-                          <Badge variant="default">Started</Badge>
-                        ) : invite.opened_at ? (
-                          <Badge variant="secondary">Opened</Badge>
-                        ) : (
-                          <Badge variant="outline">Sent</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {invite.completed && invite.application_id ? (
-                            <Button
-                              onClick={() => viewApplication(invite.application_id!)}
-                              size="sm"
-                              className="gap-2 bg-blue-600 hover:bg-blue-700"
-                            >
-                              <FileText className="h-4 w-4" />
-                              Open Application
-                            </Button>
+                          ) : invite.application_started_at ? (
+                            <Badge variant="default">In Progress</Badge>
+                          ) : invite.opened_at ? (
+                            <Badge variant="secondary">Opened</Badge>
                           ) : (
-                            <Button
-                              onClick={() => handleResendInvite(invite)}
-                              size="sm"
-                              variant="outline"
-                              className="gap-2"
-                            >
-                              <RotateCw className="h-4 w-4" />
-                              Resend
-                            </Button>
+                            <Badge variant="outline">Sent</Badge>
                           )}
-                          <Button
-                            onClick={() => handleDeleteInvite(invite.id)}
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {invite.completed && invite.application_id ? (
+                              <Button
+                                onClick={() => viewApplication(invite.application_id!)}
+                                size="sm"
+                                className="gap-2 bg-blue-600 hover:bg-blue-700"
+                              >
+                                <FileText className="h-4 w-4" />
+                                View
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => handleResendInvite(invite)}
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                              >
+                                <RotateCw className="h-4 w-4" />
+                                Resend
+                              </Button>
+                            )}
+                            <Button
+                              onClick={() => handleDeleteInvite(invite.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
