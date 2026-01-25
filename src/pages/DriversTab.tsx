@@ -124,10 +124,13 @@ export default function DriversTab() {
   };
 
   const loadAllDrivers = async () => {
+    // Only show drivers who have been HIRED (driver_status is not null)
+    // Non-hired applications should only appear in the Applications/Invitations section
     let query = supabase
       .from("applications")
       .select("*")
       .not("submitted_at", "is", null)
+      .not("driver_status", "is", null)
       .order("submitted_at", { ascending: false });
     
     if (shouldFilter && tenantId) {
