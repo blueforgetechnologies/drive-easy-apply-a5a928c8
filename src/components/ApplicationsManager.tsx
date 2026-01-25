@@ -583,15 +583,13 @@ export function ApplicationsManager() {
       </CardHeader>
       
       <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
-        {/* Status Filter Toolbar */}
+        {/* Status Filter Toolbar - Clean: All, Completed, Approved, Rejected, Archived */}
         <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           {(["all", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
-            // Custom label mapping - renamed for simplified flow
+            // Label mapping: "submitted" displays as "Completed"
             const getLabel = (s: StatusFilter) => {
               if (s === "all") return "All";
-              if (s === "invited") return "Invitations";
-              if (s === "in_progress") return "In Progress";
               if (s === "submitted") return "Completed";
               return s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
             };

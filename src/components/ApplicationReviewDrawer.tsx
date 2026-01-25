@@ -454,14 +454,14 @@ export function ApplicationReviewDrawer({
                   </Button>
                 )}
 
-                {/* Not ready message */}
-                {isSubmittedOrPending && !canApprove && (
+                {/* Not ready message - only show for submitted/pending apps that aren't ready */}
+                {isSubmittedOrPending && !canApprove && application.status !== "approved" && (
                   <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded p-2 flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                     <span>
-                      Not ready for approval: {application.current_step !== 9 && `Step ${application.current_step || 1}/9`}
+                      Not ready: {application.current_step !== 9 ? `Step ${application.current_step || 1}/9` : ""}
                       {needsReview() && (application.current_step !== 9 ? " • " : "")}
-                      {needsReview() && "Missing required documents"}
+                      {needsReview() ? "Missing required documents" : ""}
                     </span>
                   </div>
                 )}
@@ -509,11 +509,8 @@ export function ApplicationReviewDrawer({
                   className="gap-2 w-full"
                 >
                   <FileSearch className="h-4 w-4" />
-                  Preview PDF (in-app)
+                  Preview PDF
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  💡 Use the row's (...) menu to download PDF
-                </p>
               </div>
 
               <Separator />
