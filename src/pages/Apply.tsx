@@ -132,11 +132,11 @@ const Apply = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-scifi">
       {/* Navigation */}
       <div className="absolute top-4 left-4 z-10">
         <Link to="/">
-          <Button variant="ghost" size="sm" className="text-white/90 hover:text-white hover:bg-white/10 gap-2 rounded-full">
+          <Button variant="ghost" size="sm" className="text-scifi-text-muted hover:text-scifi-text hover:bg-scifi-purple/10 gap-2 rounded-full border border-scifi-border/50">
             <ArrowLeft className="h-4 w-4" />
             Home
           </Button>
@@ -144,35 +144,38 @@ const Apply = () => {
       </div>
       <div className="absolute top-4 right-4 z-10">
         <Link to="/auth">
-          <Button variant="ghost" size="sm" className="text-white/90 hover:text-white hover:bg-white/10 rounded-full">
+          <Button variant="ghost" size="sm" className="text-scifi-text-muted hover:text-scifi-text hover:bg-scifi-purple/10 rounded-full border border-scifi-border/50">
             Admin Login
           </Button>
         </Link>
       </div>
 
-      {/* Golden Hero Section */}
-      <header className="relative h-[280px] md:h-[320px] overflow-hidden">
+      {/* Sci-Fi Hero Section */}
+      <header className="relative h-[260px] md:h-[300px] overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={heroImage}
             alt="Professional truck driver"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover opacity-40"
           />
-          {/* Golden gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-900/90 via-amber-800/80 to-yellow-700/70" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          {/* Sci-Fi gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(230,40%,8%)] via-[hsl(280,30%,12%)] to-[hsl(230,40%,8%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[hsl(230,40%,8%)] to-transparent" />
+          {/* Subtle glow effects */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-[hsl(280,70%,60%)] rounded-full blur-[150px] opacity-20" />
+          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-[hsl(185,70%,50%)] rounded-full blur-[120px] opacity-15" />
         </div>
         <div className="relative h-full flex items-center justify-center text-center px-4">
           <div className="max-w-2xl">
             {companyName && (
-              <p className="text-amber-200/90 text-sm mb-2 font-medium tracking-wide uppercase">
+              <p className="text-scifi-purple-light text-sm mb-2 font-medium tracking-wider uppercase">
                 {companyName}
               </p>
             )}
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+            <h1 className="text-2xl md:text-4xl font-bold text-scifi-text mb-3">
               Driver Employment Application
             </h1>
-            <p className="text-base md:text-lg text-white/85 max-w-xl mx-auto">
+            <p className="text-base md:text-lg text-scifi-text-muted max-w-xl mx-auto">
               Join our professional team. Complete your application online — progress saved automatically.
             </p>
           </div>
@@ -180,17 +183,17 @@ const Apply = () => {
       </header>
 
       {/* Application Form */}
-      <main className="-mt-12 relative z-10">
+      <main className="-mt-10 relative z-10">
         <ApplicationForm publicToken={publicToken || "preview"} isPreviewMode={isPreviewMode} />
       </main>
 
       {/* Footer */}
-      <footer className="bg-card border-t mt-12 py-6">
-        <div className="max-w-3xl mx-auto px-4 text-center text-muted-foreground text-xs">
+      <footer className="border-t border-scifi-border mt-12 py-6 bg-scifi-card/50">
+        <div className="max-w-3xl mx-auto px-4 text-center text-scifi-text-muted text-xs">
           <p>© {new Date().getFullYear()} {companyName || 'Blueforge Technologies'}. All rights reserved.</p>
           <p className="mt-1">
             Questions?{" "}
-            <a href="mailto:hr@blueforgetechnologies.org" className="text-gold hover:underline">
+            <a href="mailto:hr@blueforgetechnologies.org" className="text-scifi-purple-light hover:text-scifi-purple hover:underline transition-colors">
               hr@blueforgetechnologies.org
             </a>
           </p>
