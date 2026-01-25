@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 
 interface DirectDepositProps {
@@ -117,26 +116,21 @@ export const DirectDeposit = ({ data, onNext, onBack }: DirectDepositProps) => {
         />
       </div>
 
-      <div className="space-y-3">
-        <Label>Account Type *</Label>
-        <RadioGroup value={formData.accountType} onValueChange={(value) => setFormData({ ...formData, accountType: value })}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="personal-checking" id="personal-checking" />
-            <Label htmlFor="personal-checking" className="font-normal cursor-pointer">Personal Checking</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="personal-saving" id="personal-saving" />
-            <Label htmlFor="personal-saving" className="font-normal cursor-pointer">Personal Saving</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="business-checking" id="business-checking" />
-            <Label htmlFor="business-checking" className="font-normal cursor-pointer">Business Checking</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="business-saving" id="business-saving" />
-            <Label htmlFor="business-saving" className="font-normal cursor-pointer">Business Saving</Label>
-          </div>
-        </RadioGroup>
+      <div className="space-y-2">
+        <Label htmlFor="accountType">Account Type *</Label>
+        <select
+          id="accountType"
+          className="w-full rounded-md border border-input bg-background px-3 py-2"
+          value={formData.accountType}
+          onChange={(e) => setFormData({ ...formData, accountType: e.target.value })}
+          required
+        >
+          <option value="">Select account type...</option>
+          <option value="personal-checking">Personal Checking</option>
+          <option value="personal-savings">Personal Savings</option>
+          <option value="business-checking">Business Checking</option>
+          <option value="business-savings">Business Savings</option>
+        </select>
       </div>
 
       <div className="flex justify-between pt-4">

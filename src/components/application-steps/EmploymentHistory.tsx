@@ -31,6 +31,8 @@ interface Employment {
   supervisor: string;
   startDate: string;
   endDate: string;
+  payType: string;
+  payRate: string;
   reasonForLeaving: string;
 }
 
@@ -47,6 +49,8 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
             supervisor: "",
             startDate: "",
             endDate: "",
+            payType: "",
+            payRate: "",
             reasonForLeaving: "",
           },
         ]
@@ -65,6 +69,8 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
         supervisor: "",
         startDate: "",
         endDate: "",
+        payType: "",
+        payRate: "",
         reasonForLeaving: "",
       },
     ]);
@@ -223,6 +229,45 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
                       type="date"
                       value={employment.endDate}
                       onChange={(e) => updateEmployment(index, "endDate", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`payType-${index}`}>Pay Type *</Label>
+                    <select
+                      id={`payType-${index}`}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      value={employment.payType}
+                      onChange={(e) => updateEmployment(index, "payType", e.target.value)}
+                      required
+                    >
+                      <option value="">Select pay type...</option>
+                      <option value="hourly">Hourly</option>
+                      <option value="salary">Salary</option>
+                      <option value="per-mile">Per Mile</option>
+                      <option value="percentage">Percentage</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`payRate-${index}`}>
+                      {employment.payType === "hourly" ? "Hourly Rate ($)" : 
+                       employment.payType === "salary" ? "Annual Salary ($)" :
+                       employment.payType === "per-mile" ? "Rate Per Mile ($)" :
+                       employment.payType === "percentage" ? "Percentage (%)" :
+                       "Pay Rate"} *
+                    </Label>
+                    <Input
+                      id={`payRate-${index}`}
+                      placeholder={employment.payType === "hourly" ? "e.g., 25.00" : 
+                                   employment.payType === "salary" ? "e.g., 65000" :
+                                   employment.payType === "per-mile" ? "e.g., 0.55" :
+                                   employment.payType === "percentage" ? "e.g., 30" :
+                                   "Enter pay rate"}
+                      value={employment.payRate}
+                      onChange={(e) => updateEmployment(index, "payRate", e.target.value)}
                       required
                     />
                   </div>

@@ -23,6 +23,8 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
     issuedDate: data?.licenseInfo?.issuedDate || "",
     expirationDate: data?.licenseInfo?.expirationDate || "",
     hasDotMedicalCert: data?.licenseInfo?.hasDotMedicalCert || "",
+    nationalRegistryNumber: data?.licenseInfo?.nationalRegistryNumber || "",
+    medicalCardExpiration: data?.licenseInfo?.medicalCardExpiration || "",
     yearsExperience: data?.licenseInfo?.yearsExperience || "",
     deniedLicense: data?.licenseInfo?.deniedLicense || "",
     suspendedRevoked: data?.licenseInfo?.suspendedRevoked || "",
@@ -137,6 +139,29 @@ export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
           <option value="no">No</option>
         </select>
       </div>
+
+      {formData.hasDotMedicalCert === "yes" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="nationalRegistryNumber">National Registry Number *</Label>
+            <Input
+              id="nationalRegistryNumber"
+              placeholder="Enter national registry number"
+              value={formData.nationalRegistryNumber}
+              onChange={(e) => setFormData({ ...formData, nationalRegistryNumber: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="medicalCardExpiration">Medical Card Expiration Date *</Label>
+            <Input
+              id="medicalCardExpiration"
+              type="date"
+              value={formData.medicalCardExpiration}
+              onChange={(e) => setFormData({ ...formData, medicalCardExpiration: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="yearsExperience">Years of Commercial Driving Experience *</Label>
