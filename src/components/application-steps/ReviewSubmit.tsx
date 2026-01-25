@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil } from "lucide-react";
+import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ReviewSubmitProps {
   data: any;
@@ -13,6 +14,12 @@ interface ReviewSubmitProps {
   onEditStep?: (step: number) => void;
 }
 
+interface ValidationError {
+  step: number;
+  field: string;
+  message: string;
+}
+
 export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,7 +28,44 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
   // tenantId is now passed directly from ApplicationForm via data.tenantId
   const tenantId = data?.tenantId;
 
+  // Validation logic
+  const validationErrors = useMemo(() => {
+    const errors: ValidationError[] = [];
+    
+    // Step 1: Personal Info validation
+    const pi = data?.personalInfo;
+    if (!pi?.firstName?.trim()) errors.push({ step: 1, field: 'First Name', message: 'First name is required' });
+    if (!pi?.lastName?.trim()) errors.push({ step: 1, field: 'Last Name', message: 'Last name is required' });
+    if (!pi?.email?.trim()) errors.push({ step: 1, field: 'Email', message: 'Email is required' });
+    if (!pi?.phone?.trim()) errors.push({ step: 1, field: 'Phone', message: 'Phone number is required' });
+    if (!pi?.dob) errors.push({ step: 1, field: 'Date of Birth', message: 'Date of birth is required' });
+    
+    // Step 2: License Info validation
+    const li = data?.licenseInfo;
+    if (!li?.licenseNumber?.trim()) errors.push({ step: 2, field: 'License Number', message: 'License number is required' });
+    if (!li?.licenseState?.trim()) errors.push({ step: 2, field: 'License State', message: 'License state is required' });
+    if (!li?.licenseClass?.trim()) errors.push({ step: 2, field: 'License Class', message: 'License class is required' });
+    
+    // Step 5: Emergency Contacts validation
+    const ec = data?.emergencyContacts;
+    if (!ec || ec.length === 0 || !ec[0]?.firstName?.trim()) {
+      errors.push({ step: 5, field: 'Emergency Contact', message: 'At least one emergency contact is required' });
+    }
+    
+    return errors;
+  }, [data]);
+
+  const isValid = validationErrors.length === 0;
+
   const handleSubmit = async () => {
+    // Block submission if validation fails
+    if (!isValid) {
+      toast.error("Please complete all required fields", {
+        description: `${validationErrors.length} required field(s) are missing.`,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -186,6 +230,34 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
 
   return (
     <div className="space-y-4">
+      {/* Validation Errors Alert */}
+      {!isValid && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <p className="font-medium mb-2">Please complete all required fields before submitting:</p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              {validationErrors.map((error, index) => (
+                <li key={index}>
+                  <span className="font-medium">{error.field}</span> - {error.message}
+                  {onEditStep && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={() => onEditStep(error.step)}
+                      className="h-auto p-0 ml-2 text-xs underline"
+                    >
+                      Go to Step {error.step}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="section-scifi p-4">
         <div className="flex items-center gap-3 mb-2">
@@ -329,10 +401,10 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
         <Button 
           onClick={handleSubmit} 
           className="btn-scifi w-full sm:w-auto gap-2" 
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isValid}
         >
           <Check className="w-4 h-4" />
-          {isSubmitting ? "Submitting..." : "Submit Application"}
+          {isSubmitting ? "Submitting..." : !isValid ? "Complete Required Fields" : "Submit Application"}
         </Button>
       </div>
     </div>
