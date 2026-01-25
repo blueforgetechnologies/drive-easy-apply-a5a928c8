@@ -850,8 +850,8 @@ export function ApplicationsManager() {
                                     setDrawerOpen(true);
                                   }}
                                   size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 gap-1 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                                  variant="destructive"
+                                  className="h-7 px-2 gap-1"
                                 >
                                   <XCircle className="h-3 w-3" />
                                   Reject
