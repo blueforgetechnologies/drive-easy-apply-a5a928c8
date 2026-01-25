@@ -45,12 +45,18 @@ All colors MUST be HSL.
     --header: 221 83% 53%;
     --header-foreground: 0 0% 100%;
 
-    /* Golden theme for driver application */
-    --gold: 43 96% 56%;
-    --gold-light: 45 93% 65%;
-    --gold-dark: 40 90% 45%;
-    --gold-foreground: 30 10% 10%;
-    --gold-muted: 43 30% 85%;
+    /* Sci-Fi theme for driver application */
+    --scifi-bg: 230 40% 8%;
+    --scifi-card: 230 35% 12%;
+    --scifi-card-elevated: 230 30% 15%;
+    --scifi-border: 230 30% 20%;
+    --scifi-purple: 280 70% 60%;
+    --scifi-purple-light: 280 80% 75%;
+    --scifi-purple-dark: 280 60% 45%;
+    --scifi-cyan: 185 70% 50%;
+    --scifi-cyan-light: 185 80% 65%;
+    --scifi-text: 220 20% 90%;
+    --scifi-text-muted: 220 15% 60%;
 
     --radius: 0.75rem;
 
@@ -102,12 +108,18 @@ All colors MUST be HSL.
     --header: 221 70% 40%;
     --header-foreground: 0 0% 100%;
 
-    /* Golden theme for driver application (dark mode) */
-    --gold: 43 96% 56%;
-    --gold-light: 45 93% 65%;
-    --gold-dark: 40 90% 45%;
-    --gold-foreground: 30 10% 10%;
-    --gold-muted: 43 20% 25%;
+    /* Sci-Fi theme for driver application (dark mode) */
+    --scifi-bg: 230 40% 8%;
+    --scifi-card: 230 35% 12%;
+    --scifi-card-elevated: 230 30% 15%;
+    --scifi-border: 230 30% 20%;
+    --scifi-purple: 280 70% 60%;
+    --scifi-purple-light: 280 80% 75%;
+    --scifi-purple-dark: 280 60% 45%;
+    --scifi-cyan: 185 70% 50%;
+    --scifi-cyan-light: 185 80% 65%;
+    --scifi-text: 220 20% 90%;
+    --scifi-text-muted: 220 15% 60%;
 
     --sidebar-background: 224 71% 8%;
     --sidebar-foreground: 220 14% 96%;
@@ -319,122 +331,153 @@ All colors MUST be HSL.
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.1);
   }
 
-  /* ========== GOLDEN APPLICATION THEME ========== */
+  /* ========== SCI-FI APPLICATION THEME ========== */
 
-  /* Golden Gradient Background */
-  .bg-gold-gradient {
-    background: linear-gradient(135deg, hsl(43 96% 56% / 0.08) 0%, hsl(45 93% 65% / 0.12) 50%, hsl(40 90% 45% / 0.06) 100%);
-  }
-  .dark .bg-gold-gradient {
-    background: linear-gradient(135deg, hsl(43 96% 56% / 0.15) 0%, hsl(45 93% 65% / 0.1) 50%, hsl(40 90% 45% / 0.08) 100%);
-  }
-
-  /* Golden Card with shimmer */
-  .card-gold {
-    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(43 30% 98%) 100%);
-    border: 1px solid hsl(43 40% 80%);
-    box-shadow: 
-      0 4px 24px hsl(43 96% 56% / 0.1),
-      0 1px 4px hsl(0 0% 0% / 0.05),
-      inset 0 1px 0 hsl(0 0% 100%),
-      inset 0 -1px 0 hsl(43 30% 90%);
-  }
-  .dark .card-gold {
-    background: linear-gradient(180deg, hsl(224 71% 10%) 0%, hsl(224 50% 8%) 100%);
-    border-color: hsl(43 40% 25%);
-    box-shadow: 
-      0 4px 24px hsl(43 96% 56% / 0.15),
-      0 1px 4px hsl(0 0% 0% / 0.2),
-      inset 0 1px 0 hsl(43 40% 30% / 0.3);
+  /* Sci-Fi Dark Background */
+  .bg-scifi {
+    background: hsl(var(--scifi-bg));
+    background-image: 
+      radial-gradient(ellipse at 20% 0%, hsl(var(--scifi-purple) / 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, hsl(var(--scifi-cyan) / 0.06) 0%, transparent 50%);
   }
 
-  /* Golden Button */
-  .btn-glossy-gold {
-    background: linear-gradient(180deg, hsl(45 93% 65%) 0%, hsl(43 96% 56%) 50%, hsl(40 90% 45%) 100%);
-    color: hsl(30 10% 10%);
+  /* Sci-Fi Card */
+  .card-scifi {
+    background: hsl(var(--scifi-card));
+    border: 1px solid hsl(var(--scifi-border));
     box-shadow: 
-      inset 0 1px 0 rgba(255,255,255,0.4),
-      inset 0 -1px 0 rgba(0,0,0,0.15),
-      0 2px 8px hsl(43 96% 56% / 0.35);
-    text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+      0 4px 24px hsl(0 0% 0% / 0.3),
+      0 0 0 1px hsl(var(--scifi-purple) / 0.1),
+      inset 0 1px 0 hsl(var(--scifi-purple) / 0.05);
+  }
+
+  /* Sci-Fi Section Card - for visual separation */
+  .section-scifi {
+    background: hsl(var(--scifi-card-elevated));
+    border: 1px solid hsl(var(--scifi-border));
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: inset 0 1px 0 hsl(var(--scifi-purple) / 0.08);
+  }
+
+  /* Sci-Fi Button - Purple Gradient */
+  .btn-scifi {
+    background: linear-gradient(135deg, hsl(var(--scifi-purple)) 0%, hsl(var(--scifi-purple-dark)) 100%);
+    color: white;
     font-weight: 600;
-  }
-  .btn-glossy-gold:hover {
-    background: linear-gradient(180deg, hsl(45 93% 70%) 0%, hsl(43 96% 60%) 50%, hsl(40 90% 50%) 100%);
     box-shadow: 
-      inset 0 1px 0 rgba(255,255,255,0.5),
-      inset 0 -1px 0 rgba(0,0,0,0.15),
-      0 4px 16px hsl(43 96% 56% / 0.45);
+      0 4px 16px hsl(var(--scifi-purple) / 0.4),
+      inset 0 1px 0 hsl(var(--scifi-purple-light) / 0.3);
+    transition: all 0.2s ease;
+  }
+  .btn-scifi:hover {
+    background: linear-gradient(135deg, hsl(var(--scifi-purple-light)) 0%, hsl(var(--scifi-purple)) 100%);
+    box-shadow: 
+      0 6px 24px hsl(var(--scifi-purple) / 0.5),
+      inset 0 1px 0 hsl(var(--scifi-purple-light) / 0.4);
     transform: translateY(-1px);
   }
-  .btn-glossy-gold:active {
-    transform: translateY(0);
+
+  /* Sci-Fi Secondary Button - Outline with glow */
+  .btn-scifi-outline {
+    background: transparent;
+    border: 1px solid hsl(var(--scifi-purple) / 0.5);
+    color: hsl(var(--scifi-purple-light));
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .btn-scifi-outline:hover {
+    background: hsl(var(--scifi-purple) / 0.1);
+    border-color: hsl(var(--scifi-purple));
+    box-shadow: 0 0 16px hsl(var(--scifi-purple) / 0.3);
+  }
+
+  /* Sci-Fi Input */
+  .input-scifi {
+    background: hsl(var(--scifi-bg));
+    border: 1px solid hsl(var(--scifi-border));
+    color: hsl(var(--scifi-text));
+    transition: all 0.2s ease;
+  }
+  .input-scifi::placeholder {
+    color: hsl(var(--scifi-text-muted));
+  }
+  .input-scifi:focus {
+    border-color: hsl(var(--scifi-purple));
     box-shadow: 
-      inset 0 1px 0 rgba(255,255,255,0.3),
-      inset 0 2px 4px rgba(0,0,0,0.1),
-      0 1px 4px hsl(43 96% 56% / 0.25);
+      0 0 0 3px hsl(var(--scifi-purple) / 0.15),
+      0 0 16px hsl(var(--scifi-purple) / 0.1);
+    outline: none;
   }
 
-  /* Golden Progress Bar */
-  .progress-gold [data-state="complete"],
-  .progress-gold [data-state="indeterminate"] {
-    background: linear-gradient(90deg, hsl(40 90% 45%) 0%, hsl(43 96% 56%) 50%, hsl(45 93% 65%) 100%);
-    box-shadow: 0 0 12px hsl(43 96% 56% / 0.5);
+  /* Sci-Fi Progress Bar */
+  .progress-scifi {
+    background: hsl(var(--scifi-border));
+    overflow: hidden;
+  }
+  .progress-scifi [data-state="complete"],
+  .progress-scifi [data-state="indeterminate"] {
+    background: linear-gradient(90deg, hsl(var(--scifi-purple-dark)) 0%, hsl(var(--scifi-purple)) 50%, hsl(var(--scifi-cyan)) 100%);
+    box-shadow: 0 0 16px hsl(var(--scifi-purple) / 0.6);
   }
 
-  /* Golden Step Indicator */
-  .step-gold-active {
-    background: linear-gradient(180deg, hsl(45 93% 65%) 0%, hsl(43 96% 56%) 100%);
+  /* Sci-Fi Step Indicator - Active */
+  .step-scifi-active {
+    background: linear-gradient(135deg, hsl(var(--scifi-purple)) 0%, hsl(var(--scifi-purple-dark)) 100%);
     box-shadow: 
-      0 0 0 4px hsl(43 96% 56% / 0.2),
-      0 4px 12px hsl(43 96% 56% / 0.35);
-    color: hsl(30 10% 10%);
-  }
-  .step-gold-complete {
-    background: linear-gradient(180deg, hsl(142 71% 50%) 0%, hsl(142 71% 45%) 100%);
-    box-shadow: 0 2px 6px hsl(142 71% 45% / 0.3);
+      0 0 0 3px hsl(var(--scifi-purple) / 0.25),
+      0 4px 16px hsl(var(--scifi-purple) / 0.4);
+    color: white;
   }
 
-  /* Golden Input Focus */
-  .input-gold:focus {
-    border-color: hsl(43 96% 56%);
-    box-shadow: 
-      inset 0 1px 2px rgba(0,0,0,0.04),
-      0 0 0 3px hsl(43 96% 56% / 0.15),
-      0 0 12px hsl(43 96% 56% / 0.1);
+  /* Sci-Fi Step Indicator - Complete */
+  .step-scifi-complete {
+    background: linear-gradient(135deg, hsl(var(--scifi-cyan)) 0%, hsl(185 60% 40%) 100%);
+    box-shadow: 0 2px 8px hsl(var(--scifi-cyan) / 0.4);
+    color: white;
   }
 
-  /* Golden Section Header */
-  .section-header-gold {
+  /* Sci-Fi Section Header with glow bar */
+  .section-header-scifi {
     position: relative;
     padding-left: 1rem;
+    margin-bottom: 0.75rem;
   }
-  .section-header-gold::before {
+  .section-header-scifi::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, hsl(45 93% 65%) 0%, hsl(43 96% 56%) 100%);
+    width: 3px;
+    background: linear-gradient(180deg, hsl(var(--scifi-purple)) 0%, hsl(var(--scifi-cyan)) 100%);
     border-radius: 2px;
+    box-shadow: 0 0 8px hsl(var(--scifi-purple) / 0.5);
   }
 
-  /* Golden Divider */
-  .divider-gold {
-    height: 2px;
-    background: linear-gradient(90deg, transparent 0%, hsl(43 96% 56% / 0.3) 20%, hsl(43 96% 56% / 0.5) 50%, hsl(43 96% 56% / 0.3) 80%, transparent 100%);
+  /* Sci-Fi Divider */
+  .divider-scifi {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--scifi-border)) 20%, hsl(var(--scifi-purple) / 0.3) 50%, hsl(var(--scifi-border)) 80%, transparent 100%);
+    margin: 1rem 0;
   }
 
-  /* Golden Form Field */
-  .form-field-gold {
+  /* Sci-Fi Form Field */
+  .form-field-scifi {
     @apply transition-all duration-200;
   }
-  .form-field-gold:focus-within {
-    transform: translateY(-1px);
+  .form-field-scifi:focus-within label {
+    color: hsl(var(--scifi-purple-light));
   }
-  .form-field-gold:focus-within label {
-    color: hsl(40 90% 45%);
+
+  /* Sci-Fi Label */
+  .label-scifi {
+    color: hsl(var(--scifi-text-muted));
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
 
