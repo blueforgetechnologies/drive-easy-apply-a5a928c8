@@ -338,12 +338,15 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-12 shadow-xl flex flex-col items-center justify-center min-h-[400px]">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-lg text-muted-foreground">Loading your application...</p>
-          </Card>
+      <div className="min-h-screen bg-gold-gradient py-6 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="card-gold rounded-2xl p-8 flex flex-col items-center justify-center min-h-[300px]">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-gold/20 animate-ping" />
+              <Loader2 className="h-10 w-10 animate-spin text-gold relative z-10" />
+            </div>
+            <p className="text-base text-muted-foreground mt-4">Loading your application...</p>
+          </div>
         </div>
       </div>
     );
@@ -352,101 +355,102 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
   // Error state
   if (loadError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-12 shadow-xl">
+      <div className="min-h-screen bg-gold-gradient py-6 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="card-gold rounded-2xl p-8">
             <div className="flex flex-col items-center text-center">
-              <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                <AlertCircle className="h-8 w-8 text-destructive" />
+              <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <AlertCircle className="h-7 w-7 text-destructive" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Unable to Load Application</h2>
-              <p className="text-muted-foreground mb-6">{loadError}</p>
-              <Button onClick={() => window.location.reload()}>Try Again</Button>
+              <h2 className="text-xl font-bold text-foreground mb-2">Unable to Load Application</h2>
+              <p className="text-muted-foreground mb-5 text-sm">{loadError}</p>
+              <Button onClick={() => window.location.reload()} className="btn-glossy-gold rounded-full px-6">
+                Try Again
+              </Button>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gold-gradient py-6 px-4">
+      <div className="max-w-3xl mx-auto">
         {/* Company Branding Header */}
         {companyBranding && (
-          <div className="flex items-center justify-center gap-4 mb-6">
+          <div className="flex items-center justify-center gap-3 mb-4">
             {companyBranding.logo_url && (
               <img 
                 src={companyBranding.logo_url} 
                 alt={companyBranding.name} 
-                className="h-12 w-auto object-contain"
+                className="h-10 w-auto object-contain"
               />
             )}
-            <span className="text-xl font-semibold text-foreground">{companyBranding.name}</span>
+            <span className="text-lg font-semibold text-foreground">{companyBranding.name}</span>
           </div>
         )}
 
-        <Card className="p-6 md:p-8 shadow-xl border-0 bg-card">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="card-gold rounded-2xl p-5 md:p-6">
+          {/* Compact Header */}
+          <div className="mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                <h2 className="text-xl md:text-2xl font-bold text-foreground">
                   Driver Employment Application
                 </h2>
-                <p className="text-muted-foreground mt-1">
-                  Complete all required sections to submit your application
+                <p className="text-muted-foreground text-sm mt-0.5">
+                  Complete all sections to submit
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {isSaving && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex items-center gap-1.5 text-gold-dark text-xs font-medium bg-gold/10 px-2.5 py-1 rounded-full">
+                    <Loader2 className="h-3 w-3 animate-spin" />
                     <span>Saving...</span>
                   </div>
                 )}
                 {lastSaved && !isSaving && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Save className="h-4 w-4" />
-                    <span>Last saved {lastSaved.toLocaleTimeString()}</span>
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs bg-muted/50 px-2.5 py-1 rounded-full">
+                    <Save className="h-3 w-3" />
+                    <span>Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
+            {/* Golden Progress Bar */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-foreground">
-                  Step {currentStep} of {steps.length}: {steps[currentStep - 1].name}
+                  Step {currentStep}/{steps.length}: {steps[currentStep - 1].name}
                 </span>
-                <span className="text-muted-foreground">{Math.round(progress)}% complete</span>
+                <span className="text-gold-dark font-semibold">{Math.round(progress)}%</span>
               </div>
-              <Progress value={progress} className="h-2" />
+              <div className="progress-gold">
+                <Progress value={progress} className="h-2" />
+              </div>
 
-              {/* Step Indicators - Desktop */}
-              <div className="hidden md:flex justify-between mt-6">
+              {/* Compact Step Indicators - Desktop */}
+              <div className="hidden md:flex justify-between mt-4 px-1">
                 {steps.map((step) => (
-                  <div
-                    key={step.id}
-                    className="flex flex-col items-center group"
-                  >
+                  <div key={step.id} className="flex flex-col items-center group">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all duration-200 ${
+                      className={`w-9 h-9 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300 ${
                         step.id < currentStep
-                          ? "bg-emerald-500 text-white shadow-md"
+                          ? "step-gold-complete text-white"
                           : step.id === currentStep
-                          ? "bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/20"
+                          ? "step-gold-active"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {step.id < currentStep ? (
-                        <Check className="w-5 h-5" />
+                        <Check className="w-4 h-4" />
                       ) : (
-                        <span className="text-sm font-semibold">{step.id}</span>
+                        <span className="text-xs font-bold">{step.id}</span>
                       )}
                     </div>
-                    <span className={`text-xs text-center max-w-[70px] leading-tight ${
+                    <span className={`text-[10px] text-center max-w-[60px] leading-tight ${
                       step.id <= currentStep ? "text-foreground font-medium" : "text-muted-foreground"
                     }`}>
                       {step.shortName}
@@ -455,17 +459,17 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
                 ))}
               </div>
 
-              {/* Step Indicators - Mobile */}
-              <div className="flex md:hidden overflow-x-auto gap-1 pb-2">
+              {/* Compact Step Indicators - Mobile */}
+              <div className="flex md:hidden gap-1 justify-center">
                 {steps.map((step) => (
                   <div
                     key={step.id}
-                    className={`flex-shrink-0 h-2 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
                       step.id < currentStep
-                        ? "bg-emerald-500 w-8"
+                        ? "bg-success w-5"
                         : step.id === currentStep
-                        ? "bg-primary w-12"
-                        : "bg-muted w-6"
+                        ? "bg-gold w-8"
+                        : "bg-muted w-4"
                     }`}
                   />
                 ))}
@@ -473,20 +477,23 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
             </div>
           </div>
 
+          {/* Divider */}
+          <div className="divider-gold mb-5" />
+
           {/* Read-only notice */}
           {!canEdit && (
-            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-600" />
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  This application has already been submitted and cannot be modified.
+                <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  This application has been submitted and cannot be modified.
                 </p>
               </div>
             </div>
           )}
 
           {/* Form Content */}
-          <div className="min-h-[500px]">
+          <div className="min-h-[400px]">
             <CurrentStepComponent
               data={applicationData}
               onNext={handleNext}
@@ -498,23 +505,23 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
 
           {/* Save & Continue Later Button */}
           {canEdit && currentStep < steps.length && (
-            <div className="mt-8 pt-6 border-t flex justify-center">
+            <div className="mt-6 pt-4 border-t border-gold-muted flex justify-center">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={handleSaveAndContinueLater}
-                className="gap-2"
+                className="gap-2 text-muted-foreground hover:text-gold-dark hover:bg-gold/10 rounded-full text-sm"
                 disabled={isSaving}
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-3.5 w-3.5" />
                 Save & Continue Later
               </Button>
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Help Text */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Your progress is automatically saved. You can close this page and return anytime to continue.
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Your progress is automatically saved. Return anytime to continue.
         </p>
       </div>
     </div>
