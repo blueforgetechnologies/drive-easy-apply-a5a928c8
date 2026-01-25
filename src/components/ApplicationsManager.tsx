@@ -136,7 +136,8 @@ export function ApplicationsManager() {
         .select(`
           id, personal_info, license_info, employment_history, driving_history, 
           document_upload, emergency_contacts, status, driver_status, 
-          current_step, updated_at, submitted_at, invite_id
+          current_step, updated_at, submitted_at, invite_id,
+          rejected_at, rejected_by, rejected_by_name, rejection_reason
         `)
         .order("updated_at", { ascending: false });
 
@@ -740,12 +741,35 @@ export function ApplicationsManager() {
     }
     setIsRejecting(true);
     try {
+      // Get current user info for tracking who rejected
+      const { data: { user } } = await supabase.auth.getUser();
+      let rejectedByName = "Unknown";
+      
+      if (user) {
+        // Try to get user's name from profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", user.id)
+          .maybeSingle();
+        
+        if (profile) {
+          rejectedByName = profile.full_name || profile.email || user.email || "Unknown";
+        } else {
+          rejectedByName = user.email || "Unknown";
+        }
+      }
+
       const { error } = await supabase
         .from("applications")
         .update({ 
           status: "rejected", 
           driver_status: "rejected", 
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString(),
+          rejected_at: new Date().toISOString(),
+          rejected_by: user?.id || null,
+          rejected_by_name: rejectedByName,
+          rejection_reason: rejectReason.trim(),
         })
         .eq("id", rejectingApp.id);
       
