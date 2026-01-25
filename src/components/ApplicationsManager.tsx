@@ -1348,17 +1348,39 @@ export function ApplicationsManager() {
               Motor Vehicle Record (MVR)
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto">
             {mvrPreviewLoading ? (
               <div className="flex items-center justify-center h-96">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : mvrPreviewUrl ? (
-              <iframe
-                src={mvrPreviewUrl}
-                className="w-full h-[70vh] border rounded-lg"
-                title="MVR Preview"
-              />
+              (() => {
+                const isPdf = mvrPreviewUrl.toLowerCase().includes('.pdf') || 
+                              mvrPreviewUrl.toLowerCase().includes('application/pdf');
+                const isImage = /\.(jpg|jpeg|png|gif|webp)/i.test(mvrPreviewUrl);
+                
+                if (isImage) {
+                  return (
+                    <div className="p-4 flex items-center justify-center bg-muted/30">
+                      <img
+                        src={mvrPreviewUrl}
+                        alt="Motor Vehicle Record"
+                        className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                      />
+                    </div>
+                  );
+                }
+                
+                // For PDFs, use Google Docs viewer
+                const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(mvrPreviewUrl)}&embedded=true`;
+                return (
+                  <iframe
+                    src={googleDocsUrl}
+                    className="w-full h-[70vh] border-0"
+                    title="MVR Preview"
+                  />
+                );
+              })()
             ) : (
               <div className="flex items-center justify-center h-96 text-muted-foreground">
                 No document available
