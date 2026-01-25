@@ -285,7 +285,9 @@ export default function DriversTab() {
       };
     });
 
-    setInvites(enrichedInvites);
+    // Only show invites that are NOT completed (completed ones appear in Applications tab)
+    const pendingInvites = enrichedInvites.filter((inv) => !inv.completed);
+    setInvites(pendingInvites);
   };
 
   const loadInactiveDrivers = async () => {
