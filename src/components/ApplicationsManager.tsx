@@ -82,7 +82,7 @@ interface PendingInvite {
   opened_at: string | null;
 }
 
-type StatusFilter = "all" | "invited" | "in_progress" | "submitted" | "approved" | "rejected" | "archived" | "needs_review";
+type StatusFilter = "all" | "in_progress" | "submitted" | "approved" | "rejected" | "archived" | "needs_review";
 
 export function ApplicationsManager() {
   const navigate = useNavigate();
@@ -880,8 +880,11 @@ export function ApplicationsManager() {
     }
   };
 
-  // Filter applications by status
+  // Filter applications by status - now excludes "invited" since those are shown in separate Invitations tab
   const statusFilteredApplications = applications.filter((app) => {
+    // Always exclude invited status from ApplicationsManager (handled in Invitations tab)
+    if (app.status === "invited") return false;
+    
     if (statusFilter === "all") return app.status !== "archived";
     if (statusFilter === "archived") return app.status === "archived";
     if (statusFilter === "needs_review") return needsReview(app) && app.status !== "archived";
@@ -913,16 +916,16 @@ export function ApplicationsManager() {
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
-  // Status filter counts - "Invited" includes pending invites (no application) + invited status applications
+  // Status filter counts - excludes invited since those are in separate Invitations tab
+  const nonInvitedApps = applications.filter((a) => a.status !== "invited");
   const statusCounts = {
-    all: applications.filter((a) => a.status !== "archived").length + pendingInvites.length,
-    invited: pendingInvites.length + applications.filter((a) => a.status === "invited").length,
-    in_progress: applications.filter((a) => a.status === "in_progress").length,
-    submitted: applications.filter((a) => (a.status === "submitted" || a.status === "pending") && a.current_step === 9).length,
-    approved: applications.filter((a) => a.status === "approved").length,
-    rejected: applications.filter((a) => a.status === "rejected").length,
-    archived: applications.filter((a) => a.status === "archived").length,
-    needs_review: applications.filter((a) => needsReview(a) && a.status !== "archived").length,
+    all: nonInvitedApps.filter((a) => a.status !== "archived").length,
+    in_progress: nonInvitedApps.filter((a) => a.status === "in_progress").length,
+    submitted: nonInvitedApps.filter((a) => (a.status === "submitted" || a.status === "pending") && a.current_step === 9).length,
+    approved: nonInvitedApps.filter((a) => a.status === "approved").length,
+    rejected: nonInvitedApps.filter((a) => a.status === "rejected").length,
+    archived: nonInvitedApps.filter((a) => a.status === "archived").length,
+    needs_review: nonInvitedApps.filter((a) => needsReview(a) && a.status !== "archived").length,
   };
   
   // Filter pending invites by search
@@ -1011,7 +1014,6 @@ export function ApplicationsManager() {
           <Filter className="h-4 w-4 text-muted-foreground mr-2" />
           {[
             { key: "all" as StatusFilter, label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
-            { key: "invited" as StatusFilter, label: "Invited", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
             { key: "submitted" as StatusFilter, label: "Completed", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
             { key: "approved" as StatusFilter, label: "Approved", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "rejected" as StatusFilter, label: "Rejected", activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
@@ -1570,75 +1572,7 @@ export function ApplicationsManager() {
                       </TableRow>
                     );
                   })}
-                  
-                  {/* Pending Invites - show when filter is "all" or "invited" */}
-                  {(statusFilter === "all" || statusFilter === "invited") && filteredPendingInvites.map((invite) => (
-                    <TableRow 
-                      key={`invite-${invite.id}`} 
-                      className="hover:bg-muted/50 bg-amber-50/30 dark:bg-amber-950/10"
-                    >
-                      <TableCell>
-                        {/* No checkbox for pending invites */}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {invite.name || "Pending Invite"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{invite.email}</div>
-                        <div className="text-xs text-muted-foreground">—</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
-                          Invited
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-amber-400 rounded-full" style={{ width: "0%" }} />
-                          </div>
-                          <span className="text-xs text-muted-foreground">0/9</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {invite.invited_at
-                          ? format(new Date(invite.invited_at), "MM/dd/yy HH:mm")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 items-center">
-                          <Button
-                            onClick={() => handleResendPendingInvite(invite)}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 gap-1"
-                            disabled={resendingId === invite.id}
-                          >
-                            {resendingId === invite.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <RotateCw className="h-3 w-3" />
-                            )}
-                            Resend
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              const url = `${window.location.origin}/apply?token=${invite.public_token}`;
-                              window.open(url, "_blank");
-                            }}
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title="Open Application Link"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {/* Pending invites moved to separate Invitations tab in DriversTab */}
                 </TableBody>
               </Table>
             </div>
