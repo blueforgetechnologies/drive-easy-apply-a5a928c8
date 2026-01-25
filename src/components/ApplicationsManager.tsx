@@ -130,7 +130,8 @@ export function ApplicationsManager() {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      // Load all applications with extended fields for drawer
+      // Load applications that are NOT yet hired (driver_status is null or rejected)
+      // Once hired (driver_status = 'pending' or 'active'), they move to Drivers tab
       let query = supabase
         .from("applications")
         .select(`
@@ -139,6 +140,7 @@ export function ApplicationsManager() {
           current_step, updated_at, submitted_at, invite_id,
           rejected_at, rejected_by, rejected_by_name, rejection_reason
         `)
+        .or("driver_status.is.null,driver_status.eq.rejected")
         .order("updated_at", { ascending: false });
 
       if (shouldFilter && tenantId) {
