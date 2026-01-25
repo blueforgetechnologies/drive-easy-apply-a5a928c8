@@ -1,19 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { 
   User, Phone, Mail, MapPin, Calendar, Shield, 
   Briefcase, GraduationCap, AlertTriangle, FileCheck,
   CreditCard, Building2, Heart, ClipboardCheck,
-  CheckCircle2, XCircle, Clock, FileImage, File
+  CheckCircle2, XCircle, Clock, FileImage, File, Eye, FileText
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface ApplicationViewerProps {
   data: any;
+  onViewMvr?: () => void;
 }
 
-export const ApplicationViewer = ({ data }: ApplicationViewerProps) => {
+export const ApplicationViewer = ({ data, onViewMvr }: ApplicationViewerProps) => {
   const personalInfo = data.personal_info || {};
   const licenseInfo = data.license_info || {};
   const directDeposit = data.direct_deposit || {};
@@ -479,6 +481,38 @@ export const ApplicationViewer = ({ data }: ApplicationViewerProps) => {
                     <span>Document uploaded</span>
                   </div>
                 )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-rose-500" />
+                Not uploaded
+              </p>
+            )}
+          </div>
+
+          {/* MVR (Motor Vehicle Record) */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium text-sm">MVR (Motor Vehicle Record)</span>
+              </div>
+              {documentUpload.mvr && onViewMvr && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-orange-600 hover:text-orange-700"
+                  onClick={onViewMvr}
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1" />
+                  View
+                </Button>
+              )}
+            </div>
+            {documentUpload.mvr ? (
+              <div className="flex items-center gap-2 text-sm text-emerald-600">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Document uploaded</span>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground flex items-center gap-2">

@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Save, Trash2, User, CreditCard, FileText, 
@@ -30,6 +31,11 @@ export default function ApplicationDetail() {
   const [saving, setSaving] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  
+  // MVR Preview state
+  const [mvrPreviewOpen, setMvrPreviewOpen] = useState(false);
+  const [mvrPreviewUrl, setMvrPreviewUrl] = useState<string | null>(null);
+  const [mvrPreviewLoading, setMvrPreviewLoading] = useState(false);
 
   useEffect(() => {
     loadApplication();
@@ -104,6 +110,47 @@ export default function ApplicationDetail() {
       [parent]: { ...prev[parent], [field]: value }
     }));
   };
+
+  const handleViewMvr = async () => {
+    const documentUpload = formData.document_upload || {};
+    const mvrPath = documentUpload.mvr;
+    
+    if (!mvrPath) {
+      toast.error("No MVR uploaded");
+      return;
+    }
+
+    setMvrPreviewLoading(true);
+    setMvrPreviewOpen(true);
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("load-documents")
+        .createSignedUrl(mvrPath, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("Could not load MVR document");
+        setMvrPreviewOpen(false);
+        return;
+      }
+
+      if (data?.signedUrl) {
+        setMvrPreviewUrl(data.signedUrl);
+      } else {
+        toast.error("Could not generate MVR link");
+        setMvrPreviewOpen(false);
+      }
+    } catch (error) {
+      console.error("Error viewing MVR:", error);
+      toast.error("Failed to view MVR");
+      setMvrPreviewOpen(false);
+    } finally {
+      setMvrPreviewLoading(false);
+    }
+  };
+
+  const hasMvrUploaded = !!(formData.document_upload?.mvr);
 
   if (loading) {
     return (
@@ -214,7 +261,7 @@ export default function ApplicationDetail() {
 
           {/* Application Tab - Read-only professional view */}
           <TabsContent value="application">
-            <ApplicationViewer data={formData} />
+            <ApplicationViewer data={formData} onViewMvr={handleViewMvr} />
           </TabsContent>
 
           {/* Personal Tab */}
@@ -523,9 +570,21 @@ export default function ApplicationDetail() {
                       <FileText className="w-5 h-5" />
                       Driver Record
                     </span>
-                    <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700">
-                      <Upload className="w-4 h-4 mr-1" /> Upload
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasMvrUploaded && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-orange-600 hover:text-orange-700"
+                          onClick={handleViewMvr}
+                        >
+                          <Eye className="w-4 h-4 mr-1" /> View
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700">
+                        <Upload className="w-4 h-4 mr-1" /> Upload
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1313,6 +1372,57 @@ export default function ApplicationDetail() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* MVR Preview Dialog */}
+      <Dialog open={mvrPreviewOpen} onOpenChange={setMvrPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Motor Vehicle Record (MVR)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {mvrPreviewLoading ? (
+              <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : mvrPreviewUrl ? (
+              (() => {
+                const isPdf = mvrPreviewUrl.toLowerCase().includes('.pdf') || 
+                              mvrPreviewUrl.toLowerCase().includes('application/pdf');
+                const isImage = /\.(jpg|jpeg|png|gif|webp)/i.test(mvrPreviewUrl);
+                
+                if (isImage) {
+                  return (
+                    <div className="p-4 flex items-center justify-center bg-muted/30">
+                      <img
+                        src={mvrPreviewUrl}
+                        alt="Motor Vehicle Record"
+                        className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                      />
+                    </div>
+                  );
+                }
+                
+                // For PDFs, use Google Docs viewer
+                const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(mvrPreviewUrl)}&embedded=true`;
+                return (
+                  <iframe
+                    src={googleDocsUrl}
+                    className="w-full h-[70vh] border-0"
+                    title="MVR Preview"
+                  />
+                );
+              })()
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                No document available
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
