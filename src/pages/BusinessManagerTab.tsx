@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
+import { useBusinessManagerCounts } from "@/hooks/useBusinessManagerCounts";
 import VehiclesTab from "./VehiclesTab";
 import CarriersTab from "./CarriersTab";
 import PayeesTab from "./PayeesTab";
@@ -15,6 +16,9 @@ export default function BusinessManagerTab() {
   
   // Use tenant-scoped alert counts hook
   const { vehicleAlerts: assetAlertCount, carrierAlerts: carrierAlertCount } = useTenantAlertCounts();
+  
+  // Use tenant-scoped entity counts
+  const counts = useBusinessManagerCounts();
 
   useEffect(() => {
     const subTab = searchParams.get("subtab");
@@ -29,61 +33,61 @@ export default function BusinessManagerTab() {
     setSearchParams({ subtab: value });
   };
 
-  // Tab configuration with glossy styling
+  // Tab configuration with glossy styling and counts
   const tabs = [
     { 
       key: "assets", 
       label: "Assets", 
+      count: counts.assets,
       alertCount: assetAlertCount,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
     { 
       key: "carriers", 
       label: "Carriers", 
+      count: counts.carriers,
       alertCount: carrierAlertCount,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
     { 
       key: "payees", 
       label: "Payees", 
+      count: counts.payees,
       alertCount: 0,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
     { 
       key: "drivers", 
       label: "Drivers", 
+      count: counts.drivers,
       alertCount: 0,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
     { 
       key: "dispatchers", 
       label: "Dispatchers", 
+      count: counts.dispatchers,
       alertCount: 0,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
     { 
       key: "customers", 
       label: "Customers", 
+      count: counts.customers,
       alertCount: 0,
       activeClass: "btn-glossy-primary", 
       badgeClass: "badge-inset-primary", 
       softBadgeClass: "badge-inset-soft-blue",
-      alertBadgeClass: "badge-inset-danger"
     },
   ];
 
@@ -113,6 +117,11 @@ export default function BusinessManagerTab() {
             }`}
           >
             {tab.label}
+            {/* Entity count badge */}
+            <span className={`${activeSubTab === tab.key ? tab.badgeClass : tab.softBadgeClass} text-[10px] h-5`}>
+              {tab.count}
+            </span>
+            {/* Alert count badge (red) - only if there are alerts */}
             {tab.alertCount > 0 && (
               <span className={`${activeSubTab === tab.key ? 'badge-inset-danger' : 'badge-inset-soft-red'} text-[10px] h-5`}>
                 {tab.alertCount}
