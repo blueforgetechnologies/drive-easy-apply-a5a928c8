@@ -12,7 +12,8 @@ const corsHeaders = {
 interface DriverInviteRequest {
   email: string;
   name?: string;
-  tenant_id?: string; // Frontend should pass the effective tenant
+  tenant_id?: string;
+  carrier_id?: string; // Optional carrier for company name in email
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -31,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
-    // Verify the user is authenticated and is an admin
+    // Verify the user is authenticated
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -52,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, name, tenant_id }: DriverInviteRequest = await req.json();
+    const { email, name, tenant_id, carrier_id }: DriverInviteRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -61,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Sending driver application invite to ${email}`);
+    console.log(`Sending driver application invite to ${email}, carrier_id: ${carrier_id}`);
 
     // Create service role client for inserting invite record
     const supabaseService = createClient(
@@ -69,8 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // If tenant_id provided by frontend, validate user has access to it
-    // Otherwise, try to get from user's single membership
+    // Resolve tenant_id
     let tenantId = tenant_id;
     
     if (tenantId) {
@@ -107,22 +107,40 @@ const handler = async (req: Request): Promise<Response> => {
       tenantId = tenantData.tenant_id;
     }
 
-    // Fetch the tenant/company name for personalized email
-    const { data: companyData, error: companyError } = await supabaseService
-      .from('tenants')
-      .select('name')
-      .eq('id', tenantId)
-      .single();
+    // Determine company name: prefer carrier name if carrier_id provided, else use tenant name
+    let companyName = 'Our Company';
 
-    if (companyError) {
-      console.error('Error fetching tenant name:', companyError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch company information' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (carrier_id) {
+      // Fetch carrier name (validate it belongs to the tenant)
+      const { data: carrierData, error: carrierError } = await supabaseService
+        .from('carriers')
+        .select('name')
+        .eq('id', carrier_id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (carrierError) {
+        console.error('Error fetching carrier:', carrierError);
+        // Don't fail, just fall back to tenant name
+      } else if (carrierData?.name) {
+        companyName = carrierData.name;
+      }
     }
 
-    const companyName = companyData.name || 'Our Company';
+    // If no carrier name found, fall back to tenant name
+    if (companyName === 'Our Company') {
+      const { data: tenantInfo, error: tenantInfoError } = await supabaseService
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .single();
+
+      if (!tenantInfoError && tenantInfo?.name) {
+        companyName = tenantInfo.name;
+      }
+    }
+
+    console.log(`Using company name: ${companyName}`);
 
     // Insert invite record into database
     const { data: inviteData, error: inviteError } = await supabaseService
@@ -144,9 +162,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Use the production app URL with public_token (not raw id)
-    // NOTE: Application record is created when the driver opens the invite link,
-    // not when the invite is sent
+    // Build application URL
     const appUrl = "https://drive-easy-apply.lovable.app";
     const applicationUrl = `${appUrl}/apply?token=${inviteData.public_token}`;
 
