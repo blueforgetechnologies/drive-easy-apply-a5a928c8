@@ -29,7 +29,7 @@ function buildSampleApplicationData(tenantId: string) {
     application: {
       tenant_id: tenantId,
       status: "submitted",
-      driver_status: "pending",
+      driver_status: null, // Stays null until admin approves
       current_step: 9, // All steps complete
       submitted_at: now,
       updated_at: now,
