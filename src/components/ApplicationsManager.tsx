@@ -985,6 +985,45 @@ export function ApplicationsManager() {
                                   </>
                                 )}
                                 
+                                {/* Restore - for archived applications, restore to appropriate status */}
+                                {app.status === "archived" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={async () => {
+                                        // Determine appropriate status based on progress
+                                        let newStatus = "invited"; // default
+                                        if (app.current_step === 9) {
+                                          newStatus = "submitted"; // completed application
+                                        } else if ((app.current_step || 0) > 1) {
+                                          newStatus = "in_progress"; // partially completed
+                                        }
+                                        
+                                        try {
+                                          const { error } = await supabase
+                                            .from("applications")
+                                            .update({ 
+                                              status: newStatus,
+                                              updated_at: new Date().toISOString() 
+                                            })
+                                            .eq("id", app.id);
+                                          if (error) throw error;
+                                          
+                                          const statusLabel = newStatus === "submitted" ? "Completed" : 
+                                                             newStatus === "in_progress" ? "In Progress" : "Invited";
+                                          toast.success(`Application restored to ${statusLabel}`);
+                                          await loadApplications();
+                                        } catch (err: any) {
+                                          toast.error("Failed to restore: " + err.message);
+                                        }
+                                      }}
+                                    >
+                                      <RotateCw className="h-4 w-4 mr-2" />
+                                      Restore
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                
                                 {/* Delete - permanently remove application */}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
