@@ -683,14 +683,14 @@ export default function DriversTab() {
                 className="pl-8 h-7 text-sm"
               />
             </div>
+            {/* Main status filters */}
             <div className="flex items-center gap-0">
               {[
                 { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
                 { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
                 { key: "inactive", label: "Inactive", count: statusCounts.inactive, activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
                 { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-                { key: "applications", label: "Invitations", count: statusCounts.applications, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
-              ].map((status) => (
+              ].map((status, index, arr) => (
                 <Button
                   key={status.key}
                   variant="ghost"
@@ -699,7 +699,10 @@ export default function DriversTab() {
                     setSearchParams({ filter: status.key });
                     setSearchQuery("");
                   }}
-                  className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                  className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 border-0 ${
+                    index === 0 ? 'rounded-l-full rounded-r-none' : 
+                    index === arr.length - 1 ? 'rounded-r-full rounded-l-none' : 'rounded-none'
+                  } ${
                     filter === status.key 
                       ? `${status.activeClass} text-white` 
                       : 'btn-glossy text-gray-700'
@@ -710,6 +713,27 @@ export default function DriversTab() {
                 </Button>
               ))}
             </div>
+
+            {/* Spacer - approximately 1 button width */}
+            <div className="w-10" />
+
+            {/* Invitations filter - separate group */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchParams({ filter: "applications" });
+                setSearchQuery("");
+              }}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-full border-0 ${
+                filter === "applications" 
+                  ? 'btn-glossy-primary text-white' 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              Invitations
+              <span className={`${filter === "applications" ? 'badge-inset-primary' : 'badge-inset-soft-blue'} text-[10px] h-5`}>{statusCounts.applications}</span>
+            </Button>
           </div>
         );
       })()}
