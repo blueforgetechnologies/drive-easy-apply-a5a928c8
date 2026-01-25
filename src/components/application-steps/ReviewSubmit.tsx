@@ -118,8 +118,9 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
       }
     } catch (error) {
       console.error("Error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       toast.error("Failed to submit application", {
-        description: "Please check your internet connection and try again.",
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

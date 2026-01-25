@@ -208,6 +208,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
           const app = data.application;
           setCurrentStep(app.current_step || 1);
           setApplicationData({
+            inviteId: app.invite_id,
             personalInfo: app.personal_info || {},
             licenseInfo: app.license_info || {},
             employmentHistory: Array.isArray(app.employment_history) ? app.employment_history : [],
@@ -224,6 +225,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
         } else if (data.invite) {
           // Pre-fill from invite
           setApplicationData({
+            inviteId: data.invite.id,
             personalInfo: {
               email: data.invite.email || '',
               firstName: data.invite.name?.split(' ')[0] || '',
