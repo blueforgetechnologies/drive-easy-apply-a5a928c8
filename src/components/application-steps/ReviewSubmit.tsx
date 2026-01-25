@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil, AlertTriangle } from "lucide-react";
+import { Check, X, ClipboardCheck, User, IdCard, Briefcase, Car, FileText, CreditCard, MessageSquare, Heart, Pencil, AlertTriangle, CheckCircle2, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useMemo } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface ReviewSubmitProps {
   data: any;
@@ -22,6 +23,7 @@ interface ValidationError {
 
 export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   console.log('[ReviewSubmit] Received data:', { inviteId: data?.inviteId, tenantId: data?.tenantId });
 
@@ -161,16 +163,13 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
         }
       });
 
+      // Mark as submitted successfully
+      setIsSubmitted(true);
+
       if (emailError) {
         console.error("Error sending email:", emailError);
-        toast.success("Application submitted successfully!", {
-          description: "Your application has been saved. Email notification may be delayed.",
-        });
       } else {
         console.log("Application sent successfully");
-        toast.success("Application submitted successfully!", {
-          description: "We will review your application and contact you soon. A confirmation email has been sent.",
-        });
       }
     } catch (error) {
       console.error("Error:", error);
@@ -227,6 +226,59 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
       <p className="text-sm font-medium text-scifi-text">{value || '—'}</p>
     </div>
   );
+
+  // Success screen after submission
+  if (isSubmitted) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6">
+        <div className="relative">
+          <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl animate-pulse" />
+          <div className="relative p-6 rounded-full bg-gradient-to-br from-green-500/30 to-green-600/20 border border-green-500/50">
+            <CheckCircle2 className="h-16 w-16 text-green-500" />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-white">Application Submitted!</h2>
+          <p className="text-scifi-text-muted max-w-md">
+            Thank you for completing your driver application. Your information has been securely received.
+          </p>
+        </div>
+
+        <Card className="bg-scifi-card/50 border-scifi-border max-w-md w-full">
+          <CardContent className="p-6 space-y-4">
+            <h3 className="font-semibold text-scifi-text flex items-center gap-2">
+              <Mail className="h-4 w-4 text-scifi-purple" />
+              What happens next?
+            </h3>
+            <ul className="text-sm text-scifi-text-muted space-y-3 text-left">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">1</span>
+                <span>Our team will review your application within 1-3 business days.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">2</span>
+                <span>We may contact you for additional information or to schedule an interview.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">3</span>
+                <span>You'll receive an email notification once a decision has been made.</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center gap-2 text-sm text-scifi-text-muted">
+          <Phone className="h-4 w-4" />
+          <span>Questions? Contact us and we'll be happy to help.</span>
+        </div>
+
+        <p className="text-xs text-scifi-text-muted/60">
+          You can safely close this page now.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
