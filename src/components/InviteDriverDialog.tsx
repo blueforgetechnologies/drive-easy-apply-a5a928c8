@@ -78,7 +78,7 @@ export function InviteDriverDialog() {
         <Button 
           variant="ghost"
           size="sm"
-          className="h-[30px] px-3 text-[13px] font-medium gap-1.5 border-0 rounded-full btn-glossy-violet text-white"
+          className="h-[28px] px-2.5 text-[12px] font-medium gap-1.5 border-0 rounded-l-full rounded-r-none btn-glossy-violet text-white"
         >
           <Mail className="h-3.5 w-3.5" />
           Invite Driver to Apply

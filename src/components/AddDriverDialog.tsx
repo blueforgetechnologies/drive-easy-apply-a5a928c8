@@ -90,7 +90,7 @@ export function AddDriverDialog({ onDriverAdded }: { onDriverAdded?: (driverId: 
         <Button 
           variant="ghost"
           size="sm"
-          className="h-[30px] px-3 text-[13px] font-medium gap-1.5 border-0 rounded-full btn-glossy-primary text-white"
+          className="h-[28px] px-2.5 text-[12px] font-medium gap-1.5 border-0 rounded-r-full rounded-l-none btn-glossy-primary text-white"
         >
           <UserPlus className="h-3.5 w-3.5" />
           Add Driver
