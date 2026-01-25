@@ -157,57 +157,6 @@ export default function ApplicationDetail() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={downloadingPdf}
-              onClick={async () => {
-                setDownloadingPdf(true);
-                try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) throw new Error("Not authenticated");
-                  
-                  const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-application-pdf`,
-                    {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${session.access_token}`,
-                      },
-                      body: JSON.stringify({ application_id: id }),
-                    }
-                  );
-
-                  if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error || "Failed to generate PDF");
-                  }
-
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${personalInfo.firstName || "Driver"}_${personalInfo.lastName || "Application"}_Application.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  window.URL.revokeObjectURL(url);
-                  toast.success("PDF downloaded successfully");
-                } catch (error: any) {
-                  toast.error("Failed to download PDF: " + error.message);
-                } finally {
-                  setDownloadingPdf(false);
-                }
-              }}
-            >
-              {downloadingPdf ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">Download PDF</span>
-            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
@@ -1247,6 +1196,67 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-cyan-500"
                     />
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                    disabled={downloadingPdf}
+                    onClick={async () => {
+                      setDownloadingPdf(true);
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session) throw new Error("Not authenticated");
+                        
+                        const response = await fetch(
+                          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-application-pdf`,
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${session.access_token}`,
+                            },
+                            body: JSON.stringify({ application_id: id }),
+                          }
+                        );
+
+                        if (!response.ok) {
+                          const errData = await response.json();
+                          throw new Error(errData.error || "Failed to generate PDF");
+                        }
+
+                        const data = await response.json();
+                        
+                        // Decode base64 to binary
+                        const binaryString = atob(data.pdf_base64);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                          bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        
+                        const blob = new Blob([bytes], { type: 'application/pdf' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = data.filename || `${personalInfo.firstName || "Driver"}_${personalInfo.lastName || "Application"}_Application.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        toast.success("PDF downloaded successfully");
+                      } catch (error: any) {
+                        toast.error("Failed to download PDF: " + error.message);
+                      } finally {
+                        setDownloadingPdf(false);
+                      }
+                    }}
+                  >
+                    {downloadingPdf ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Download Application PDF
+                  </Button>
                 </CardContent>
               </Card>
 
