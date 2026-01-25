@@ -14,7 +14,7 @@ import { InviteDriverDialog } from "@/components/InviteDriverDialog";
 import { AddDriverDialog } from "@/components/AddDriverDialog";
 import { DraftApplications } from "@/components/DraftApplications";
 import { ApplicationsManager } from "@/components/ApplicationsManager";
-import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload } from "lucide-react";
+import { RotateCw, FileText, Edit, Search, ChevronLeft, ChevronRight, Trash2, X, Download, Upload, CheckCircle2, Loader2 } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { exportToExcel, mapExcelRowToEntity } from "@/lib/excel-utils";
 import { ExcelImportDialog } from "@/components/ExcelImportDialog";
@@ -59,6 +59,7 @@ export default function DriversTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const ROWS_PER_PAGE = 50;
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -281,6 +282,40 @@ export default function DriversTab() {
 
   const viewApplication = (id: string) => {
     navigate(`/dashboard/application/${id}`);
+  };
+
+  // Activate a pending driver - complete onboarding and set to active
+  const handleActivateDriver = async (id: string, driverName: string) => {
+    setActivatingId(id);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          driver_status: "active",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success(`${driverName} is now Active`);
+      
+      // Log the activation
+      if (tenantId) {
+        await supabase.from("audit_logs").insert({
+          tenant_id: tenantId,
+          entity_type: "driver",
+          entity_id: id,
+          action: "activate",
+          notes: `Driver ${driverName} activated (onboarding complete)`,
+        });
+      }
+      
+      loadData();
+    } catch (error: any) {
+      toast.error("Failed to activate driver: " + error.message);
+    } finally {
+      setActivatingId(null);
+    }
   };
 
   const handleDriverStatusChange = async (id: string, newStatus: string) => {
@@ -920,12 +955,29 @@ export default function DriversTab() {
                             </div>
                           </TableCell>
                           <TableCell className="py-1 px-2" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1 items-center">
+                              {/* Show Activate button for pending drivers */}
+                              {filter === "pending" && app.driver_status === "pending" && (
+                                <Button
+                                  onClick={() => handleActivateDriver(app.id, `${personalInfo.firstName} ${personalInfo.lastName}`)}
+                                  size="sm"
+                                  className="h-6 px-2 bg-green-600 hover:bg-green-700 text-white gap-1 text-xs"
+                                  disabled={activatingId === app.id}
+                                >
+                                  {activatingId === app.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3 w-3" />
+                                  )}
+                                  Activate
+                                </Button>
+                              )}
                               <Button
                                 onClick={() => viewApplication(app.id)}
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6"
+                                title="View Details"
                               >
                                 <FileText className="h-3.5 w-3.5" />
                               </Button>
@@ -933,6 +985,7 @@ export default function DriversTab() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6"
+                                title="Edit"
                               >
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
@@ -941,6 +994,7 @@ export default function DriversTab() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6 text-destructive hover:text-destructive"
+                                title="Delete"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>

@@ -343,21 +343,21 @@ export function ApplicationsManager() {
     }
   };
 
-  // Quick approve a single application (inline row action)
+  // Quick approve a single application (inline row action) - uses edge function for proper workflow
   const handleQuickApprove = async (applicationId: string) => {
     setApprovingId(applicationId);
     try {
-      const { error } = await supabase
-        .from("applications")
-        .update({ 
-          status: "approved", 
-          driver_status: "active",
-          updated_at: new Date().toISOString() 
-        })
-        .eq("id", applicationId);
+      const { data, error } = await supabase.functions.invoke("approve-application", {
+        body: { application_id: applicationId },
+      });
 
       if (error) throw error;
-      toast.success("Application approved - driver set to Active");
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to approve application");
+      }
+
+      toast.success(data.message || "Application approved - driver is now pending onboarding");
       await loadApplications();
     } catch (error: any) {
       toast.error("Failed to approve: " + error.message);
@@ -366,22 +366,34 @@ export function ApplicationsManager() {
     }
   };
 
-  // Bulk actions
+  // Bulk actions - use edge function for proper workflow
   const handleBulkApprove = async () => {
     if (selectedIds.size === 0) return;
     setIsBulkProcessing(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
     try {
-      const { error } = await supabase
-        .from("applications")
-        .update({ 
-          status: "approved", 
-          driver_status: "active",
-          updated_at: new Date().toISOString() 
-        })
-        .in("id", Array.from(selectedIds));
+      // Call edge function for each application
+      for (const appId of Array.from(selectedIds)) {
+        const { data, error } = await supabase.functions.invoke("approve-application", {
+          body: { application_id: appId },
+        });
+        
+        if (error || !data?.success) {
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
 
-      if (error) throw error;
-      toast.success(`${selectedIds.size} application(s) approved`);
+      if (successCount > 0) {
+        toast.success(`${successCount} application(s) approved - drivers now pending onboarding`);
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} application(s) failed to approve`);
+      }
+      
       setSelectedIds(new Set());
       await loadApplications();
     } catch (error: any) {
@@ -574,20 +586,30 @@ export function ApplicationsManager() {
         {/* Status Filter Toolbar */}
         <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          {(["all", "invited", "in_progress", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => (
-            <Button
-              key={status}
-              variant={statusFilter === status ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter(status)}
-              className="h-7 text-xs gap-1"
-            >
-              {status === "all" ? "All" : status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-              <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
-                {statusCounts[status]}
-              </Badge>
-            </Button>
-          ))}
+          {(["all", "invited", "in_progress", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
+            // Custom label mapping
+            const getLabel = (s: StatusFilter) => {
+              if (s === "all") return "All";
+              if (s === "invited") return "Not Started";
+              if (s === "in_progress") return "In Progress";
+              return s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+            };
+            
+            return (
+              <Button
+                key={status}
+                variant={statusFilter === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(status)}
+                className="h-7 text-xs gap-1"
+              >
+                {getLabel(status)}
+                <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
+                  {statusCounts[status]}
+                </Badge>
+              </Button>
+            );
+          })}
           {/* Needs Review Toggle - Distinctive Warning Style */}
           <Button
             variant={statusFilter === "needs_review" ? "default" : "outline"}
@@ -678,7 +700,9 @@ export function ApplicationsManager() {
                 <TableBody>
                   {paginatedApplications.map((app) => {
                     const isSubmittedOrPending = app.status === "submitted" || app.status === "pending";
-                    const canApprove = isSubmittedOrPending && app.status !== "approved" && app.status !== "rejected";
+                    // Show Approve button ONLY when truly READY: submitted/pending, step 9, all docs present
+                    const isReady = isSubmittedOrPending && app.current_step === 9 && !needsReview(app);
+                    const canApprove = isReady && app.status !== "approved" && app.status !== "rejected";
                     
                     return (
                       <TableRow 
