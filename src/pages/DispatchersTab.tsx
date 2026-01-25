@@ -265,42 +265,54 @@ export default function DispatchersTab() {
       </div>
 
       {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-48">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search dispatchers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-7 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-0">
-          {[
-            { key: "all", label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
-            { key: "active", label: "Active", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
-            { key: "inactive", label: "Inactive", activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
-            { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-          ].map((status) => (
-            <Button
-              key={status.key}
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchParams({ filter: status.key });
-                setSearchQuery("");
-              }}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                filter === status.key 
-                  ? `${status.activeClass} text-white` 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              {status.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+      {(() => {
+        const statusCounts = {
+          all: dispatchers.length,
+          active: dispatchers.filter(d => d.status === "active").length,
+          inactive: dispatchers.filter(d => d.status === "inactive").length,
+          pending: dispatchers.filter(d => d.status === "pending").length,
+        };
+
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search dispatchers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-7 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-0">
+              {[
+                { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+                { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+                { key: "inactive", label: "Inactive", count: statusCounts.inactive, activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
+                { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+              ].map((status) => (
+                <Button
+                  key={status.key}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchParams({ filter: status.key });
+                    setSearchQuery("");
+                  }}
+                  className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                    filter === status.key 
+                      ? `${status.activeClass} text-white` 
+                      : 'btn-glossy text-gray-700'
+                  }`}
+                >
+                  {status.label}
+                  <span className={`${filter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>{status.count}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <Card>
         <CardHeader className={isMobile ? "pb-2" : ""}>

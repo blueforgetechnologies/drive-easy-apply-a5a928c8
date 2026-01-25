@@ -732,29 +732,39 @@ export default function VehiclesTab() {
         {/* Filter buttons - scrollable on mobile */}
         <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="flex items-center gap-0 w-max sm:w-auto">
-            {[
-              { key: "all", label: "All", activeClass: "btn-glossy-dark", softBadgeClass: "badge-inset" },
-              { key: "active", label: "Active", activeClass: "btn-glossy-success", softBadgeClass: "badge-inset-soft-green" },
-              { key: "inactive", label: "Inactive", activeClass: "btn-glossy", softBadgeClass: "badge-inset" },
-              { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", softBadgeClass: "badge-inset-soft-orange" },
-            ].map((status) => (
-              <Button
-                key={status.key}
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchParams({ filter: status.key });
-                  setSearchQuery("");
-                }}
-                className={`h-[28px] px-2 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                  filter === status.key 
-                    ? `${status.activeClass} text-white` 
-                    : 'btn-glossy text-gray-700'
-                }`}
-              >
-                {status.label}
-              </Button>
-            ))}
+            {(() => {
+              const statusCounts = {
+                all: vehicles.length,
+                active: vehicles.filter(v => v.status === "active").length,
+                inactive: vehicles.filter(v => v.status === "inactive").length,
+                pending: vehicles.filter(v => v.status === "pending").length,
+              };
+
+              return [
+                { key: "all", label: "All", count: statusCounts.all, activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+                { key: "active", label: "Active", count: statusCounts.active, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+                { key: "inactive", label: "Inactive", count: statusCounts.inactive, activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
+                { key: "pending", label: "Pending", count: statusCounts.pending, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+              ].map((status) => (
+                <Button
+                  key={status.key}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchParams({ filter: status.key });
+                    setSearchQuery("");
+                  }}
+                  className={`h-[28px] px-2 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                    filter === status.key 
+                      ? `${status.activeClass} text-white` 
+                      : 'btn-glossy text-gray-700'
+                  }`}
+                >
+                  {status.label}
+                  <span className={`${filter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>{status.count}</span>
+                </Button>
+              ));
+            })()}
             <Button
               variant="ghost"
               size="sm"
