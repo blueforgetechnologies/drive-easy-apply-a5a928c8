@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Upload, FileText, X } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Upload, FileText, X, FileCheck, Shield, CreditCard, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 
 interface DocumentUploadProps {
@@ -23,13 +22,11 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
 
   const handleFileChange = (field: string, file: File | null) => {
     if (file) {
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error("File size must be less than 10MB");
         return;
       }
       
-      // Validate file type
       const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
       if (!validTypes.includes(file.type)) {
         toast.error("Please upload JPG, PNG, or PDF files only");
@@ -81,7 +78,6 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate that driver's license is uploaded (mandatory)
     if (!documents.driversLicense) {
       toast.error("Driver's License is required", {
         description: "Please upload a copy of your driver's license to continue.",
@@ -98,100 +94,117 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
     file,
     field,
     required = false,
+    icon: Icon,
   }: {
     title: string;
     description: string;
     file: File | null;
     field: string;
     required?: boolean;
+    icon: React.ElementType;
   }) => (
-    <Card className={`p-6 ${required && !file ? 'border-destructive' : ''}`}>
-      <div className="space-y-4">
-        <div>
-          <h4 className="font-semibold text-foreground mb-1">
-            {title} {required && <span className="text-destructive">* (Required)</span>}
-          </h4>
-          <p className="text-sm text-muted-foreground">{description}</p>
+    <div className={`section-scifi ${required && !file ? 'border-destructive/50' : ''}`}>
+      <div className="flex items-start gap-3 mb-3">
+        <div className={`p-2 rounded-lg ${required ? 'bg-scifi-purple/20' : 'bg-scifi-cyan/20'}`}>
+          <Icon className={`h-4 w-4 ${required ? 'text-scifi-purple' : 'text-scifi-cyan'}`} />
         </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor={field}
-            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-              required && !file 
-                ? 'border-destructive bg-destructive/5 hover:bg-destructive/10' 
-                : 'bg-muted hover:bg-muted/80'
-            }`}
-          >
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              {file ? (
-                <>
-                  <FileText className="w-8 h-8 mb-2 text-success" />
-                  <p className="text-sm text-success font-medium">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(file.size / 1024).toFixed(2)} KB
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Upload className={`w-8 h-8 mb-2 ${required ? 'text-destructive' : 'text-muted-foreground'}`} />
-                  <p className={`text-sm ${required ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground">PDF, JPG, or PNG (Max 10MB)</p>
-                </>
-              )}
-            </div>
-            <input
-              id={field}
-              type="file"
-              className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => handleFileChange(field, e.target.files?.[0] || null)}
-            />
-          </Label>
-          {file && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => handleFileChange(field, null)}
-            >
-              <X className="w-4 h-4 mr-2" />
-              Remove File
-            </Button>
-          )}
+        <div>
+          <h4 className="font-medium text-sm text-scifi-text">
+            {title} {required && <span className="text-scifi-cyan">* (Required)</span>}
+          </h4>
+          <p className="text-xs text-scifi-text-muted">{description}</p>
         </div>
       </div>
-    </Card>
+
+      <div className="space-y-2">
+        <Label
+          htmlFor={field}
+          className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+            required && !file 
+              ? 'border-destructive/50 bg-destructive/5 hover:bg-destructive/10' 
+              : file 
+                ? 'border-green-500/50 bg-green-500/5'
+                : 'border-scifi-border bg-scifi-card/50 hover:bg-scifi-card hover:border-scifi-purple/50'
+          }`}
+        >
+          <div className="flex flex-col items-center justify-center py-4">
+            {file ? (
+              <>
+                <FileText className="w-6 h-6 mb-1 text-green-500" />
+                <p className="text-sm text-green-400 font-medium">{file.name}</p>
+                <p className="text-xs text-scifi-text-muted">
+                  {(file.size / 1024).toFixed(2)} KB
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload className={`w-6 h-6 mb-1 ${required ? 'text-destructive' : 'text-scifi-text-muted'}`} />
+                <p className={`text-sm ${required ? 'text-destructive' : 'text-scifi-text-muted'}`}>
+                  Click to upload
+                </p>
+                <p className="text-xs text-scifi-text-muted">PDF, JPG, or PNG (Max 10MB)</p>
+              </>
+            )}
+          </div>
+          <input
+            id={field}
+            type="file"
+            className="hidden"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => handleFileChange(field, e.target.files?.[0] || null)}
+          />
+        </Label>
+        {file && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full btn-scifi-outline text-xs h-8"
+            onClick={() => handleFileChange(field, null)}
+          >
+            <X className="w-3.5 h-3.5 mr-1" />
+            Remove File
+          </Button>
+        )}
+      </div>
+    </div>
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">Document Upload</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Please upload clear, legible copies of the following documents. 
-          <span className="text-destructive font-medium"> Driver's License is required.</span>
-        </p>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header */}
+      <div className="section-scifi p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-scifi-purple/20">
+            <FileCheck className="h-5 w-5 text-scifi-purple" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Document Upload</h2>
+            <p className="text-sm text-muted-foreground">
+              Please upload clear, legible copies of the following documents.
+              <span className="text-scifi-cyan font-medium ml-1">Driver's License is required.</span>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <FileUploadCard
           title="Driver's License"
           description="Upload a copy of your current driver's license (front and back)"
           file={documents.driversLicense}
           field="driversLicense"
           required={true}
+          icon={CreditCard}
         />
 
         <FileUploadCard
           title="Social Security Card"
-          description="Upload a copy of your Social Security card (both sides if applicable)"
+          description="Upload a copy of your Social Security card"
           file={documents.socialSecurity}
           field="socialSecurity"
           required={false}
+          icon={Shield}
         />
 
         <FileUploadCard
@@ -200,76 +213,81 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
           file={documents.medicalCard}
           field="medicalCard"
           required={false}
+          icon={FileCheck}
         />
 
-        <Card className="p-6">
-          <div className="space-y-4">
+        {/* Other Documents */}
+        <div className="section-scifi">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-scifi-cyan/20">
+              <FolderOpen className="h-4 w-4 text-scifi-cyan" />
+            </div>
             <div>
-              <h4 className="font-semibold text-foreground mb-1">Other Documents</h4>
-              <p className="text-sm text-muted-foreground">
+              <h4 className="font-medium text-sm text-scifi-text">Other Documents</h4>
+              <p className="text-xs text-scifi-text-muted">
                 Upload any additional documents (certifications, endorsements, etc.)
               </p>
             </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="other"
-                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-muted/80 transition-colors"
-              >
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload additional documents
-                  </p>
-                  <p className="text-xs text-muted-foreground">Multiple files allowed</p>
-                </div>
-                <input
-                  id="other"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleOtherFilesChange(e.target.files)}
-                />
-              </Label>
-
-              {documents.other.length > 0 && (
-                <div className="space-y-2 mt-4">
-                  <p className="text-sm font-medium">Uploaded Files:</p>
-                  {documents.other.map((file: File, index: number) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-muted rounded"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-success" />
-                        <span className="text-sm">{file.name}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeOtherFile(index)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
-        </Card>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="other"
+              className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-all border-scifi-border bg-scifi-card/50 hover:bg-scifi-card hover:border-scifi-purple/50"
+            >
+              <div className="flex flex-col items-center justify-center py-4">
+                <Upload className="w-6 h-6 mb-1 text-scifi-text-muted" />
+                <p className="text-sm text-scifi-text-muted">
+                  Click to upload additional documents
+                </p>
+                <p className="text-xs text-scifi-text-muted">Multiple files allowed</p>
+              </div>
+              <input
+                id="other"
+                type="file"
+                multiple
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(e) => handleOtherFilesChange(e.target.files)}
+              />
+            </Label>
+
+            {documents.other.length > 0 && (
+              <div className="space-y-2 mt-3">
+                <p className="text-xs font-medium text-scifi-text-muted">Uploaded Files:</p>
+                {documents.other.map((file: File, index: number) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-scifi-card/50 rounded-lg border border-scifi-border/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-green-500" />
+                      <span className="text-sm text-scifi-text">{file.name}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:bg-destructive/20"
+                      onClick={() => removeOtherFile(index)}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
+      {/* Navigation */}
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Back
+        <Button type="button" variant="outline" onClick={onBack} className="btn-scifi-outline">
+          Previous
         </Button>
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="btn-scifi">
           Next
-          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </form>

@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Lightbulb, MessageSquare, Award, Clock, Shield, Users } from "lucide-react";
 
 interface WhyHireYouProps {
   data: any;
@@ -25,71 +24,93 @@ export const WhyHireYou = ({ data, onNext, onBack }: WhyHireYouProps) => {
     });
   };
 
+  const suggestions = [
+    { icon: Clock, text: "Years of driving experience and types of vehicles operated" },
+    { icon: Shield, text: "Safety record and any safety awards or recognitions" },
+    { icon: Award, text: "Relevant certifications and endorsements" },
+    { icon: Users, text: "Strong work ethic, reliability, and professionalism" },
+  ];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-4 text-foreground">
-          Why Should We Hire You?
-        </h3>
-        <div className="flex items-start gap-2 p-4 bg-primary/10 border border-primary/20 rounded-lg mb-6">
-          <Lightbulb className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-muted-foreground">
-            This is your opportunity to stand out! Tell us why you're the perfect candidate
-            for this position.
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header */}
+      <div className="section-scifi p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-scifi-purple/20">
+            <MessageSquare className="h-5 w-5 text-scifi-purple" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Why Should We Hire You?</h2>
+            <p className="text-sm text-muted-foreground">
+              This is your opportunity to stand out!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tip Card */}
+      <div className="flex items-start gap-3 p-3 rounded-lg bg-scifi-purple/10 border border-scifi-purple/30">
+        <Lightbulb className="w-5 h-5 text-scifi-purple mt-0.5 flex-shrink-0" />
+        <p className="text-sm text-scifi-text-muted">
+          Tell us why you're the perfect candidate for this position. Be specific about your qualifications and experience.
+        </p>
+      </div>
+
+      {/* Statement Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-scifi-cyan" />
+            Your Statement
+          </h3>
+          <p className="text-xs text-scifi-text-muted mt-0.5">
+            Explain why you should be considered for this position.
+          </p>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          <Textarea
+            id="statement"
+            placeholder="Example: I have 10+ years of experience as a CDL-A driver with a clean driving record and no accidents. I hold endorsements for hazmat and tanker operations. My dedication to safety, punctuality, and professional communication makes me an ideal candidate. I've consistently maintained on-time delivery rates above 98% and received multiple safety awards..."
+            value={statement}
+            onChange={(e) => setStatement(e.target.value)}
+            className="input-scifi min-h-[180px] resize-y text-sm"
+          />
+          <p className="text-xs text-scifi-text-muted">
+            Minimum suggested length: 100 characters. Be specific and highlight what makes you unique.
           </p>
         </div>
       </div>
 
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="statement" className="text-base font-semibold">
-              Your Statement
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1 mb-3">
-              Please explain why you should be considered for this position. Include your
-              qualifications, relevant experience, skills, certifications, and anything else
-              that will improve your chances of being hired.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Textarea
-              id="statement"
-              placeholder="Example: I have 10+ years of experience as a CDL-A driver with a clean driving record and no accidents. I hold endorsements for hazmat and tanker operations. My dedication to safety, punctuality, and professional communication makes me an ideal candidate. I've consistently maintained on-time delivery rates above 98% and received multiple safety awards..."
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              className="min-h-[250px] resize-y"
-            />
-            <p className="text-xs text-muted-foreground">
-              Minimum suggested length: 100 characters. Be specific and highlight what makes
-              you unique.
-            </p>
-          </div>
-
-          <div className="bg-muted/50 p-4 rounded-lg">
-            <p className="text-sm font-medium mb-2 text-foreground">Consider mentioning:</p>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Years of driving experience and types of vehicles operated</li>
-              <li>Safety record and any safety awards or recognitions</li>
-              <li>Relevant certifications and endorsements</li>
-              <li>Strong work ethic and reliability</li>
-              <li>Communication skills and professionalism</li>
-              <li>Willingness to work flexible hours or travel</li>
-              <li>Any specialized skills or training</li>
-            </ul>
-          </div>
+      {/* Suggestions Section */}
+      <div className="section-scifi">
+        <div className="section-header-scifi">
+          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
+            <Lightbulb className="w-4 h-4 text-scifi-cyan" />
+            Consider Mentioning
+          </h3>
         </div>
-      </Card>
 
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+          {suggestions.map((item, index) => (
+            <div 
+              key={index} 
+              className="flex items-center gap-2 p-2 rounded-lg bg-scifi-card/50 border border-scifi-border/50"
+            >
+              <item.icon className="w-4 h-4 text-scifi-cyan flex-shrink-0" />
+              <span className="text-xs text-scifi-text-muted">{item.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation */}
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Back
+        <Button type="button" variant="outline" onClick={onBack} className="btn-scifi-outline">
+          Previous
         </Button>
-        <Button type="submit" className="gap-2">
+        <Button type="submit" className="btn-scifi">
           Next
-          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </form>
