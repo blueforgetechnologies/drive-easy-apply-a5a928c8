@@ -40,7 +40,7 @@ serve(async (req) => {
     const userId = userData.user.id;
 
     // Get request body
-    const { application_id } = await req.json();
+    const { application_id, hired_date } = await req.json();
 
     if (!application_id) {
       return new Response(
@@ -52,7 +52,7 @@ serve(async (req) => {
     // Load the application
     const { data: application, error: appError } = await supabase
       .from("applications")
-      .select("id, tenant_id, status, driver_status, personal_info, license_info, submitted_at, current_step")
+      .select("id, tenant_id, status, driver_status, personal_info")
       .eq("id", application_id)
       .single();
 
@@ -78,58 +78,48 @@ serve(async (req) => {
       );
     }
 
-    // Check if application is in a valid state to approve
-    // Valid states: submitted, pending (legacy), in_progress (allow early approval if needed)
-    const approvableStatuses = ["submitted", "pending", "in_progress"];
-    
-    // Already approved?
-    if (application.status === "approved") {
-      return new Response(
-        JSON.stringify({ success: true, message: "Application already approved", already_approved: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Already rejected/archived? Don't allow approval
-    if (application.status === "rejected" || application.status === "archived") {
+    // Check if application is approved
+    if (application.status !== "approved") {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Cannot approve application with status: ${application.status}. Application must be unarchived/unrestricted first.` 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    if (!approvableStatuses.includes(application.status || "")) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Cannot approve application with status: ${application.status}. Must be submitted, pending, or in_progress.` 
+          error: `Cannot hire: application status is "${application.status}". Must be approved first.` 
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update application: status = approved (driver_status remains null until Hired)
+    // Check if already hired
+    if (application.driver_status === "pending" || application.driver_status === "active") {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Driver already hired", 
+          already_hired: true 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Update application: set driver_status = pending and hired_date
     const { error: updateError } = await supabase
       .from("applications")
       .update({
-        status: "approved",
-        // NOTE: driver_status is NOT set here - only when "Hire" action is taken
+        driver_status: "pending",
+        hired_date: hired_date || new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString(),
       })
       .eq("id", application_id);
 
     if (updateError) {
-      console.error("Failed to update application:", updateError);
+      console.error("Failed to hire driver:", updateError);
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to approve application", details: updateError.message }),
+        JSON.stringify({ success: false, error: "Failed to hire driver", details: updateError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Log the approval action
+    // Log the hire action
     const personalInfo = application.personal_info || {};
     const driverName = `${personalInfo.firstName || ""} ${personalInfo.lastName || ""}`.trim();
 
@@ -137,21 +127,22 @@ serve(async (req) => {
       tenant_id: application.tenant_id,
       entity_type: "application",
       entity_id: application_id,
-      action: "approve",
+      action: "hire",
       user_id: userId,
-      notes: `Application approved for ${driverName}. Ready for hiring decision.`,
+      notes: `${driverName} has been hired. Driver status set to pending (awaiting onboarding/activation).`,
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Application approved for ${driverName}. Click "Hire" to add them as a pending driver.`,
+        message: `${driverName} has been hired and added to Pending Drivers.`,
         driver_name: driverName,
+        driver_status: "pending"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in approve-application:", error);
+    console.error("Error in hire-driver:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

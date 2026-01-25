@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   MoreHorizontal,
   Trash2,
+  Briefcase,
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
 import { PDFPreviewDialog } from "./PDFPreviewDialog";
@@ -84,6 +85,7 @@ export function ApplicationsManager() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [hiringId, setHiringId] = useState<string | null>(null);
   
   // Review drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -360,12 +362,35 @@ export function ApplicationsManager() {
         throw new Error(data?.error || "Failed to approve application");
       }
 
-      toast.success(data.message || "Application approved - driver is now pending onboarding");
+      toast.success(data.message || "Application approved - ready for hiring decision");
       await loadApplications();
     } catch (error: any) {
       toast.error("Failed to approve: " + error.message);
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  // Hire an approved applicant - creates pending driver
+  const handleHire = async (applicationId: string) => {
+    setHiringId(applicationId);
+    try {
+      const { data, error } = await supabase.functions.invoke("hire-driver", {
+        body: { application_id: applicationId },
+      });
+
+      if (error) throw error;
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to hire driver");
+      }
+
+      toast.success(data.message || "Driver hired and added to Pending Drivers");
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Failed to hire: " + error.message);
+    } finally {
+      setHiringId(null);
     }
   };
 
@@ -391,7 +416,7 @@ export function ApplicationsManager() {
       }
 
       if (successCount > 0) {
-        toast.success(`${successCount} application(s) approved - drivers now pending onboarding`);
+        toast.success(`${successCount} application(s) approved - ready for hiring decisions`);
       }
       if (errorCount > 0) {
         toast.error(`${errorCount} application(s) failed to approve`);
@@ -861,17 +886,40 @@ export function ApplicationsManager() {
                               </>
                             )}
 
-                            {/* APPROVED: View only (Activate is in Pending Drivers) */}
+                            {/* APPROVED: Show Hire button (if not already hired) or View */}
                             {app.status === "approved" && (
-                              <Button
-                                onClick={() => handleOpenDrawer(app)}
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                title="View Application"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <>
+                                {/* Only show Hire if driver_status is null (not yet hired) */}
+                                {!app.driver_status && (
+                                  <Button
+                                    onClick={() => handleHire(app.id)}
+                                    size="sm"
+                                    className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                                    disabled={hiringId === app.id}
+                                  >
+                                    {hiringId === app.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Briefcase className="h-3 w-3" />
+                                    )}
+                                    Hire
+                                  </Button>
+                                )}
+                                {app.driver_status === "pending" && (
+                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                                    Hired - Pending
+                                  </Badge>
+                                )}
+                                <Button
+                                  onClick={() => handleOpenDrawer(app)}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  title="View Application"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
 
                             {/* REJECTED/ARCHIVED: View only */}
