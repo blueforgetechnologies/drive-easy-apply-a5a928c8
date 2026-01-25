@@ -735,42 +735,43 @@ export default function DriversTab() {
             {/* Spacer - approximately 1 button width */}
             <div className="w-10" />
 
-            {/* Invitations filter - shows all invitations with progress */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchParams({ filter: "invitations" });
-                setSearchQuery("");
-                loadInvitations();
-              }}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-l-full rounded-r-none border-0 ${
-                filter === "invitations" 
-                  ? 'btn-glossy-warning text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              Invitations
-              <span className={`${filter === "invitations" ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{invites.length}</span>
-            </Button>
-            
-            {/* Applications filter */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchParams({ filter: "applications" });
-                setSearchQuery("");
-              }}
-              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-r-full rounded-l-none border-0 ${
-                filter === "applications" 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700'
-              }`}
-            >
-              Applications
-              <span className={`${filter === "applications" ? 'badge-inset-primary' : 'badge-inset-soft-blue'} text-[10px] h-5`}>{statusCounts.applications}</span>
-            </Button>
+            {/* Invitations + Applications filter group */}
+            <div className="flex gap-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchParams({ filter: "invitations" });
+                  setSearchQuery("");
+                  loadInvitations();
+                }}
+                className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-l-full rounded-r-none border-0 ${
+                  filter === "invitations" 
+                    ? 'btn-glossy-warning text-white' 
+                    : 'btn-glossy text-gray-700'
+                }`}
+              >
+                Invitations
+                <span className={`${filter === "invitations" ? 'badge-inset-warning' : 'badge-inset-soft-orange'} text-[10px] h-5`}>{invites.length}</span>
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchParams({ filter: "applications" });
+                  setSearchQuery("");
+                }}
+                className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-r-full rounded-l-none border-0 ${
+                  filter === "applications" 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700'
+                }`}
+              >
+                Applications
+                <span className={`${filter === "applications" ? 'badge-inset-primary' : 'badge-inset-soft-blue'} text-[10px] h-5`}>{statusCounts.applications}</span>
+              </Button>
+            </div>
             
             {/* Export/Import buttons - right aligned */}
             <div className="ml-auto flex gap-1">
