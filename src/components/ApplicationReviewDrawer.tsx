@@ -564,9 +564,8 @@ export function ApplicationReviewDrawer({
                         />
                         {(li.hasDotMedicalCert === "yes" || li.dotMedical) && (
                           <>
-                            <InfoRow label="Medical Card Number" value={li.medicalCardNumber} />
+                            <InfoRow label="National Registry Number" value={li.nationalRegistryNumber || li.medicalCardNumber} />
                             <InfoRow label="Medical Card Expiration Date" value={formatDate(li.medicalCardExpiration)} />
-                            <InfoRow label="Medical Examiner Name" value={li.medicalExaminerName} />
                           </>
                         )}
                       </CardContent>
@@ -592,25 +591,40 @@ export function ApplicationReviewDrawer({
                           </div>
                         </div>
                         
-                        {employment.map((emp: any, idx: number) => (
-                          <div key={idx} className="p-4 bg-muted/30 rounded-lg border space-y-2">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-semibold text-sm">{emp.companyName || emp.employer}</p>
-                                <p className="text-xs text-muted-foreground">{emp.position}</p>
+                        {employment.map((emp: any, idx: number) => {
+                          const formatPayRate = () => {
+                            if (!emp.payType || !emp.payRate) return "Not Provided";
+                            const rate = emp.payRate;
+                            switch (emp.payType) {
+                              case "hourly": return `$${rate}/hour`;
+                              case "salary": return `$${Number(rate).toLocaleString()}/year`;
+                              case "per-mile": return `$${rate}/mile`;
+                              case "percentage": return `${rate}%`;
+                              default: return rate;
+                            }
+                          };
+                          
+                          return (
+                            <div key={idx} className="p-4 bg-muted/30 rounded-lg border space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-semibold text-sm">{emp.companyName || emp.employer}</p>
+                                  <p className="text-xs text-muted-foreground">{emp.position}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  {formatDateShort(emp.startDate)} — {formatDateShort(emp.endDate)}
+                                </Badge>
                               </div>
-                              <Badge variant="outline" className="text-xs">
-                                {formatDateShort(emp.startDate)} — {formatDateShort(emp.endDate)}
-                              </Badge>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                <InfoRow label="Address" value={emp.address} />
+                                <InfoRow label="Phone" value={emp.phone} />
+                                <InfoRow label="Supervisor" value={emp.supervisor} />
+                                <InfoRow label="Compensation" value={formatPayRate()} />
+                              </div>
+                              <InfoRow label="Reason for Leaving" value={emp.reasonForLeaving} />
                             </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                              <InfoRow label="Address" value={emp.address} />
-                              <InfoRow label="Phone" value={emp.phone} />
-                              <InfoRow label="Supervisor" value={emp.supervisor} />
-                            </div>
-                            <InfoRow label="Reason for Leaving" value={emp.reasonForLeaving} />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </CardContent>
                     </Card>
 
