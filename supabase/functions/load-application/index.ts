@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Validate invite exists by public_token (server-side token validation - fail closed)
     const { data: invite, error: inviteError } = await supabaseService
       .from('driver_invites')
-      .select('id, tenant_id, email, name, application_started_at, public_token')
+      .select('id, tenant_id, email, name, application_started_at, public_token, carrier_id')
       .eq('public_token', public_token)
       .maybeSingle();
 
@@ -55,6 +55,17 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Invalid invitation token. Access denied." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Fetch carrier name if carrier_id exists (for branded application display)
+    let carrierName: string | null = null;
+    if (invite.carrier_id) {
+      const { data: carrierData } = await supabaseService
+        .from('carriers')
+        .select('name')
+        .eq('id', invite.carrier_id)
+        .single();
+      carrierName = carrierData?.name || null;
     }
 
     // Load existing application for this invite
@@ -96,6 +107,9 @@ const handler = async (req: Request): Promise<Response> => {
         .eq('tenant_id', invite.tenant_id)
         .maybeSingle();
 
+      // Use carrier name if available, otherwise fall back to tenant company profile
+      const displayName = carrierName || companyProfileForNew?.company_name || null;
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -106,10 +120,10 @@ const handler = async (req: Request): Promise<Response> => {
             name: invite.name,
           },
           application: null,
-          company: companyProfileForNew ? {
-            name: companyProfileForNew.company_name,
-            logo_url: companyProfileForNew.logo_url,
-          } : null,
+          company: {
+            name: displayName,
+            logo_url: companyProfileForNew?.logo_url || null,
+          },
           can_edit: true,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -129,7 +143,10 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('tenant_id', application.tenant_id)
       .maybeSingle();
 
-    console.log(`Loaded application ${application.id} for invite (token validated), step ${application.current_step}`);
+    // Use carrier name if available, otherwise fall back to tenant company profile
+    const displayName = carrierName || companyProfile?.company_name || null;
+
+    console.log(`Loaded application ${application.id} for invite (token validated), step ${application.current_step}, carrier: ${carrierName || 'none'}`);
 
     return new Response(
       JSON.stringify({
@@ -154,10 +171,10 @@ const handler = async (req: Request): Promise<Response> => {
           why_hire_you: application.why_hire_you,
           updated_at: application.updated_at,
         },
-        company: companyProfile ? {
-          name: companyProfile.company_name,
-          logo_url: companyProfile.logo_url,
-        } : null,
+        company: {
+          name: displayName,
+          logo_url: companyProfile?.logo_url || null,
+        },
         can_edit: !isSubmitted,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

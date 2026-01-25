@@ -1215,6 +1215,7 @@ export type Database = {
       driver_invites: {
         Row: {
           application_started_at: string | null
+          carrier_id: string | null
           email: string
           id: string
           invited_at: string | null
@@ -1226,6 +1227,7 @@ export type Database = {
         }
         Insert: {
           application_started_at?: string | null
+          carrier_id?: string | null
           email: string
           id?: string
           invited_at?: string | null
@@ -1237,6 +1239,7 @@ export type Database = {
         }
         Update: {
           application_started_at?: string | null
+          carrier_id?: string | null
           email?: string
           id?: string
           invited_at?: string | null
@@ -1247,6 +1250,13 @@ export type Database = {
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "driver_invites_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "driver_invites_tenant_id_fkey"
             columns: ["tenant_id"]
