@@ -553,21 +553,33 @@ class DriverApplicationPDF {
   private generateLicenseInfo(li: any): void {
     this.addSectionTitle('Section 2: CDL & License Information');
     
-    // Row 1
+    // Name on License (full width)
+    if (li.nameOnLicense) {
+      this.addFormFieldRow([
+        { label: 'Name on License:', value: li.nameOnLicense, width: this.contentWidth - 10 },
+      ]);
+    }
+    
+    // Row 1: DL#, State, Class
     this.addFormFieldRow([
-      { label: 'License Number:', value: li.licenseNumber, width: 60 },
+      { label: 'DL#:', value: li.licenseNumber, width: 60 },
       { label: 'State:', value: li.licenseState, width: 30 },
       { label: 'Class:', value: li.licenseClass, width: 25 },
     ]);
     
-    // Row 2
-    const endorsements = Array.isArray(li.endorsements) ? li.endorsements.join(', ') : li.endorsements;
+    // Row 2: Issued, Expiration
     this.addFormFieldRow([
-      { label: 'Endorsements:', value: endorsements, width: 60 },
-      { label: 'Expiration:', value: this.formatDate(li.expirationDate), width: 50 },
+      { label: 'Issued Date:', value: this.formatDate(li.issuedDate), width: 55 },
+      { label: 'Expiration Date:', value: this.formatDate(li.expirationDate), width: 55 },
     ]);
     
-    // Row 3
+    // Row 3: Endorsements
+    const endorsements = Array.isArray(li.endorsements) ? li.endorsements.join(', ') : li.endorsements;
+    this.addFormFieldRow([
+      { label: 'Endorsements:', value: endorsements, width: this.contentWidth - 10 },
+    ]);
+    
+    // Row 4: Years experience, Medical Card Exp
     this.addFormFieldRow([
       { label: 'Years CDL Experience:', value: li.yearsExperience?.toString(), width: 55 },
       { label: 'Medical Card Exp:', value: this.formatDate(li.medicalCardExpiration), width: 55 },
@@ -583,6 +595,8 @@ class DriverApplicationPDF {
     
     this.yPos += 3;
     
+    // DOT Medical Certificate question
+    this.addYesNoField('Do you possess a DOT Medical Examiner Certificate?', li.hasDotMedicalCert);
     this.addYesNoField('Has your license ever been denied, suspended, or revoked?', li.suspendedRevoked || li.deniedLicense);
     this.addYesNoField('Are you available for team driving?', li.teamDriving);
     
