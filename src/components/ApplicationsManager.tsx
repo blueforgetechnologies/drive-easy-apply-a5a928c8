@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,11 @@ export function ApplicationsManager() {
   const [previewFilename, setPreviewFilename] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewDocuments, setPreviewDocuments] = useState<any>(null);
+  
+  // MVR Preview state
+  const [mvrPreviewOpen, setMvrPreviewOpen] = useState(false);
+  const [mvrPreviewUrl, setMvrPreviewUrl] = useState<string | null>(null);
+  const [mvrPreviewLoading, setMvrPreviewLoading] = useState(false);
   
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
@@ -622,19 +628,33 @@ export function ApplicationsManager() {
       return;
     }
 
+    setMvrPreviewLoading(true);
+    setMvrPreviewOpen(true);
+
     try {
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from("load-documents")
         .createSignedUrl(mvrPath, 3600);
 
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("Could not load MVR document");
+        setMvrPreviewOpen(false);
+        return;
+      }
+
       if (data?.signedUrl) {
-        window.open(data.signedUrl, "_blank");
+        setMvrPreviewUrl(data.signedUrl);
       } else {
         toast.error("Could not generate MVR link");
+        setMvrPreviewOpen(false);
       }
     } catch (error) {
       console.error("Error viewing MVR:", error);
       toast.error("Failed to view MVR");
+      setMvrPreviewOpen(false);
+    } finally {
+      setMvrPreviewLoading(false);
     }
   };
 
@@ -1318,6 +1338,35 @@ export function ApplicationsManager() {
           setDrawerOpen(false);
         }}
       />
+
+      {/* MVR Preview Dialog */}
+      <Dialog open={mvrPreviewOpen} onOpenChange={setMvrPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Motor Vehicle Record (MVR)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-4">
+            {mvrPreviewLoading ? (
+              <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : mvrPreviewUrl ? (
+              <iframe
+                src={mvrPreviewUrl}
+                className="w-full h-[70vh] border rounded-lg"
+                title="MVR Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                No document available
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
