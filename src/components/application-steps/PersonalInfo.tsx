@@ -194,51 +194,6 @@ export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
         </div>
       </div>
 
-      {/* Emergency Contact Section */}
-      <div className="section-scifi">
-        <div className="section-header-scifi">
-          <h3 className="text-sm font-semibold text-scifi-text flex items-center gap-2">
-            <Heart className="w-4 h-4 text-scifi-cyan" />
-            Emergency Contact
-          </h3>
-          <p className="text-xs text-scifi-text-muted mt-0.5">
-            Someone to contact in case of emergency
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-          <div className="form-field-scifi space-y-1">
-            <Label htmlFor="emergencyContactName" className="label-scifi">Full Name *</Label>
-            <Input
-              id="emergencyContactName"
-              className="input-scifi h-9 text-sm"
-              value={formData.emergencyContactName}
-              onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
-            />
-          </div>
-          <div className="form-field-scifi space-y-1">
-            <Label htmlFor="emergencyContactRelationship" className="label-scifi">Relationship *</Label>
-            <Input
-              id="emergencyContactRelationship"
-              placeholder="e.g., Spouse, Parent"
-              className="input-scifi h-9 text-sm"
-              value={formData.emergencyContactRelationship}
-              onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
-            />
-          </div>
-          <div className="form-field-scifi space-y-1">
-            <Label htmlFor="emergencyContactPhone" className="label-scifi">Phone Number *</Label>
-            <Input
-              id="emergencyContactPhone"
-              type="tel"
-              placeholder="(XXX) XXX-XXXX"
-              className="input-scifi h-9 text-sm"
-              value={formData.emergencyContactPhone}
-              onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Background Section */}
       <div className="section-scifi">
