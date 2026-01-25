@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,24 +11,81 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { Mail } from "lucide-react";
 
+interface Carrier {
+  id: string;
+  name: string;
+}
+
 export function InviteDriverDialog() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [driverName, setDriverName] = useState("");
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>("");
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingCarriers, setLoadingCarriers] = useState(false);
   const { toast } = useToast();
   const { effectiveTenant } = useTenantContext();
+
+  // Fetch carriers when dialog opens
+  useEffect(() => {
+    if (open && effectiveTenant?.id) {
+      loadCarriers();
+    }
+  }, [open, effectiveTenant?.id]);
+
+  const loadCarriers = async () => {
+    if (!effectiveTenant?.id) return;
+    
+    setLoadingCarriers(true);
+    try {
+      const { data, error } = await supabase
+        .from("carriers")
+        .select("id, name")
+        .eq("tenant_id", effectiveTenant.id)
+        .eq("status", "active")
+        .order("name");
+
+      if (error) throw error;
+      setCarriers(data || []);
+      
+      // Auto-select first carrier if only one exists
+      if (data && data.length === 1) {
+        setSelectedCarrierId(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error loading carriers:", error);
+    } finally {
+      setLoadingCarriers(false);
+    }
+  };
 
   const handleInvite = async () => {
     if (!email || !email.includes("@")) {
       toast({
         title: "Invalid email",
         description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedCarrierId) {
+      toast({
+        title: "Carrier required",
+        description: "Please select a company for the application.",
         variant: "destructive",
       });
       return;
@@ -44,6 +101,7 @@ export function InviteDriverDialog() {
           email: email.toLowerCase(),
           name: driverName.trim() || undefined,
           tenant_id: effectiveTenant?.id,
+          carrier_id: selectedCarrierId,
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -52,13 +110,15 @@ export function InviteDriverDialog() {
 
       if (error) throw error;
 
+      const selectedCarrier = carriers.find(c => c.id === selectedCarrierId);
       toast({
         title: "Application invite sent!",
-        description: `An application link has been sent to ${email}`,
+        description: `An application link for ${selectedCarrier?.name || 'the company'} has been sent to ${email}`,
       });
 
       setEmail("");
       setDriverName("");
+      setSelectedCarrierId("");
       setOpen(false);
     } catch (error: any) {
       console.error("Error sending driver invite:", error);
@@ -93,6 +153,25 @@ export function InviteDriverDialog() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
+            <Label htmlFor="carrier">Company</Label>
+            <Select 
+              value={selectedCarrierId} 
+              onValueChange={setSelectedCarrierId}
+              disabled={loadingCarriers}
+            >
+              <SelectTrigger id="carrier">
+                <SelectValue placeholder={loadingCarriers ? "Loading..." : "Select a company"} />
+              </SelectTrigger>
+              <SelectContent>
+                {carriers.map((carrier) => (
+                  <SelectItem key={carrier.id} value={carrier.id}>
+                    {carrier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="driverName">Driver Name (Optional)</Label>
             <Input
               id="driverName"
@@ -122,7 +201,7 @@ export function InviteDriverDialog() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleInvite} disabled={loading}>
+          <Button onClick={handleInvite} disabled={loading || !selectedCarrierId}>
             {loading ? "Sending..." : "Send Application Link"}
           </Button>
         </DialogFooter>
