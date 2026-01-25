@@ -912,32 +912,33 @@ export function ApplicationsManager() {
       </CardHeader>
       
       <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
-        {/* Status Filter Toolbar - Clean: All, Completed, Approved, Rejected, Archived */}
-        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          {(["all", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
-            // Label mapping: "submitted" displays as "Completed"
-            const getLabel = (s: StatusFilter) => {
-              if (s === "all") return "All";
-              if (s === "submitted") return "Completed";
-              return s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-            };
-            
-            return (
-              <Button
-                key={status}
-                variant={statusFilter === status ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter(status)}
-                className="h-7 text-xs gap-1"
-              >
-                {getLabel(status)}
-                <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
-                  {statusCounts[status]}
-                </Badge>
-              </Button>
-            );
-          })}
+        {/* Status Filter Toolbar - Glossy style matching Loads */}
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-0">
+          <Filter className="h-4 w-4 text-muted-foreground mr-2" />
+          {[
+            { key: "all" as StatusFilter, label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+            { key: "submitted" as StatusFilter, label: "Completed", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "approved" as StatusFilter, label: "Approved", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "rejected" as StatusFilter, label: "Rejected", activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
+            { key: "archived" as StatusFilter, label: "Archived", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
+          ].map((status) => (
+            <Button
+              key={status.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => setStatusFilter(status.key)}
+              className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
+                statusFilter === status.key 
+                  ? `${status.activeClass} text-white` 
+                  : 'btn-glossy text-gray-700'
+              }`}
+            >
+              {status.label}
+              <span className={`${statusFilter === status.key ? status.badgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                {statusCounts[status.key]}
+              </span>
+            </Button>
+          ))}
         </div>
 
         {/* Search + Bulk Actions + Tip */}
