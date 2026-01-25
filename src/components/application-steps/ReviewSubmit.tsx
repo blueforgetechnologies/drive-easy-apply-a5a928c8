@@ -80,8 +80,8 @@ export const ReviewSubmit = ({ data, onBack }: ReviewSubmitProps) => {
           direct_deposit: directDeposit,
           why_hire_you: data.whyHireYou || {},
           emergency_contacts: data.emergencyContacts || [],
-          status: 'pending',
-          driver_status: 'pending',
+          status: 'submitted',
+          // driver_status left null - admin must approve before driver becomes pending/active
           submitted_at: new Date().toISOString(),
           // Sync top-level driver fields from application data
           driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
