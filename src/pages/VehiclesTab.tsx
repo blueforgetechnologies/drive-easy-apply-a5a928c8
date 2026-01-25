@@ -92,15 +92,6 @@ export default function VehiclesTab() {
     loadData();
   }, [location.key]);
 
-  // Reload data when window regains focus (catches external changes)
-  useEffect(() => {
-    const handleFocus = () => {
-      loadData();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [filter, sortOrder]);
-
   const loadAvailableDriversAndDispatchers = async () => {
     if (shouldFilter && !tenantId) {
       return; // Wait for tenant to load
