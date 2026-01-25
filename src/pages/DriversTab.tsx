@@ -679,7 +679,7 @@ export default function DriversTab() {
             { key: "active", label: "Active", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
             { key: "inactive", label: "Inactive", activeClass: "btn-glossy", badgeClass: "badge-inset", softBadgeClass: "badge-inset" },
             { key: "pending", label: "Pending", activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
-            { key: "applications", label: "Pending Applications", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
+            { key: "applications", label: "Invitations", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
           ].map((status) => (
             <Button
               key={status.key}
