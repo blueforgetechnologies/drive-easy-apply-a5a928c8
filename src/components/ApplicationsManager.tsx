@@ -586,7 +586,7 @@ export function ApplicationsManager() {
         {/* Status Filter Toolbar */}
         <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          {(["all", "invited", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
+          {(["all", "submitted", "approved", "rejected", "archived"] as StatusFilter[]).map((status) => {
             // Custom label mapping - renamed for simplified flow
             const getLabel = (s: StatusFilter) => {
               if (s === "all") return "All";
@@ -611,19 +611,6 @@ export function ApplicationsManager() {
               </Button>
             );
           })}
-          {/* Needs Review Toggle - Distinctive Warning Style */}
-          <Button
-            variant={statusFilter === "needs_review" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter(statusFilter === "needs_review" ? "all" : "needs_review")}
-            className={`h-7 text-xs gap-1 ${statusFilter === "needs_review" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-500 text-amber-600 hover:bg-amber-50"}`}
-          >
-            <AlertTriangle className="h-3 w-3" />
-            Needs Review
-            <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">
-              {statusCounts.needs_review}
-            </Badge>
-          </Button>
         </div>
 
         {/* Search + Bulk Actions + Tip */}
