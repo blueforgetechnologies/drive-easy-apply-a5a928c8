@@ -30,6 +30,7 @@ import {
   MoreHorizontal,
   Trash2,
   Briefcase,
+  Upload,
 } from "lucide-react";
 import { InternalApplicationPreview } from "./InternalApplicationPreview";
 import { PDFPreviewDialog } from "./PDFPreviewDialog";
@@ -86,6 +87,7 @@ export function ApplicationsManager() {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [hiringId, setHiringId] = useState<string | null>(null);
+  const [uploadingMvrId, setUploadingMvrId] = useState<string | null>(null);
   
   // Review drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -548,6 +550,69 @@ export function ApplicationsManager() {
     return missingDocs.length > 0 || (app.current_step || 0) < 9;
   };
 
+  const isMvrMissing = (app: ApplicationRow) => {
+    const docs = app.document_upload || {};
+    return !docs.mvr;
+  };
+
+  const handleUploadMvr = async (applicationId: string, file: File) => {
+    setUploadingMvrId(applicationId);
+    try {
+      // Validate file
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload JPG, PNG, or PDF files only");
+        return;
+      }
+
+      // Upload to storage
+      const ext = file.name.split(".").pop() || "pdf";
+      const storagePath = `${tenantId || "shared"}/applications/${applicationId}/mvr.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("load-documents")
+        .upload(storagePath, file, { upsert: true });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        toast.error("Failed to upload MVR");
+        return;
+      }
+
+      // Update application's document_upload field
+      const app = applications.find((a) => a.id === applicationId);
+      const currentDocs = app?.document_upload || {};
+      
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({
+          document_upload: {
+            ...currentDocs,
+            mvr: storagePath,
+          },
+        })
+        .eq("id", applicationId);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        toast.error("Failed to update application");
+        return;
+      }
+
+      toast.success("MVR uploaded successfully");
+      loadApplications();
+    } catch (error) {
+      console.error("Error uploading MVR:", error);
+      toast.error("Failed to upload MVR");
+    } finally {
+      setUploadingMvrId(null);
+    }
+  };
+
   // Filter applications by status
   const statusFilteredApplications = applications.filter((app) => {
     if (statusFilter === "all") return app.status !== "archived";
@@ -853,9 +918,36 @@ export function ApplicationsManager() {
                               </>
                             )}
 
-                            {/* SUBMITTED/PENDING: Approve (if ready) or View + Reject */}
+                            {/* SUBMITTED/PENDING: Upload MVR (if missing) + Approve (if ready) or View + Reject */}
                             {isSubmittedOrPending && (
                               <>
+                                {/* Upload MVR button - shown when MVR is missing */}
+                                {isMvrMissing(app) && (
+                                  <Button
+                                    onClick={() => {
+                                      const input = document.createElement("input");
+                                      input.type = "file";
+                                      input.accept = ".pdf,.jpg,.jpeg,.png";
+                                      input.onchange = (e) => {
+                                        const file = (e.target as HTMLInputElement).files?.[0];
+                                        if (file) handleUploadMvr(app.id, file);
+                                      };
+                                      input.click();
+                                    }}
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 gap-1 border-amber-500 text-amber-700 hover:bg-amber-50"
+                                    disabled={uploadingMvrId === app.id}
+                                    title="MVR is required for approval"
+                                  >
+                                    {uploadingMvrId === app.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Upload className="h-3 w-3" />
+                                    )}
+                                    Upload MVR
+                                  </Button>
+                                )}
                                 {canApprove ? (
                                   <Button
                                     onClick={() => handleQuickApprove(app.id)}
