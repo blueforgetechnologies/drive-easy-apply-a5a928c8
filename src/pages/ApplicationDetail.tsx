@@ -16,7 +16,8 @@ import {
   ArrowLeft, Save, Trash2, User, CreditCard, FileText, 
   Phone, Mail, Calendar, MapPin, Shield, Briefcase,
   Building2, DollarSign, AlertCircle, Upload, Eye, Clock,
-  TrendingUp, Wallet, MinusCircle, Check, ClipboardList
+  TrendingUp, Wallet, MinusCircle, Check, ClipboardList,
+  Download, Loader2
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +28,7 @@ export default function ApplicationDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
@@ -155,6 +157,57 @@ export default function ApplicationDetail() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={downloadingPdf}
+              onClick={async () => {
+                setDownloadingPdf(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) throw new Error("Not authenticated");
+                  
+                  const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-application-pdf`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session.access_token}`,
+                      },
+                      body: JSON.stringify({ application_id: id }),
+                    }
+                  );
+
+                  if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "Failed to generate PDF");
+                  }
+
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${personalInfo.firstName || "Driver"}_${personalInfo.lastName || "Application"}_Application.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                  toast.success("PDF downloaded successfully");
+                } catch (error: any) {
+                  toast.error("Failed to download PDF: " + error.message);
+                } finally {
+                  setDownloadingPdf(false);
+                }
+              }}
+            >
+              {downloadingPdf ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Download PDF</span>
+            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
