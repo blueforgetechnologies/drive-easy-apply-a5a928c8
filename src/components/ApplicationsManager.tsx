@@ -317,16 +317,22 @@ export function ApplicationsManager() {
     }
   };
 
-  const handleCreateSampleApplication = async () => {
+  const handleCreateSampleApplication = async (profile: 'john_smith' | 'john_wick' | 'donald_trump' = 'john_smith') => {
     if (!tenantId) {
       toast.error("No tenant context available");
       return;
     }
     
+    const profileNames = {
+      john_smith: 'John Smith',
+      john_wick: 'John Wick',
+      donald_trump: 'Donald Trump',
+    };
+    
     setCreatingSample(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-sample-application", {
-        body: { tenant_id: tenantId },
+        body: { tenant_id: tenantId, profile },
       });
 
       // Surface full error details
@@ -344,13 +350,14 @@ export function ApplicationsManager() {
 
       toast.success(
         data.updated 
-          ? "Sample application updated (John Smith)" 
-          : "Sample application created for John Smith"
+          ? `Sample application updated (${profileNames[profile]})` 
+          : `Sample application created for ${profileNames[profile]}`
       );
       
-      // Refresh the list, auto-search for John, and reset to page 1
+      // Refresh the list, auto-search for the name, and reset to page 1
       await loadApplications();
-      setSearchQuery("john");
+      const searchName = profile === 'donald_trump' ? 'donald' : 'john';
+      setSearchQuery(searchName);
       setCurrentPage(1);
       
       // Log the application ID for debugging
@@ -852,23 +859,41 @@ export function ApplicationsManager() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {/* INTERNAL ONLY: Create Sample Application Button */}
+            {/* INTERNAL ONLY: Create Sample Application Dropdown */}
             {canCreateSample && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCreateSampleApplication}
-                disabled={creatingSample}
-                className="gap-2"
-              >
-                {creatingSample ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <UserPlus className="h-4 w-4" />
-                )}
-                Create Sample
-                <Badge variant="secondary" className="ml-1 text-xs">INTERNAL</Badge>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={creatingSample}
+                    className="gap-2"
+                  >
+                    {creatingSample ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    Create Sample
+                    <ChevronDown className="h-3 w-3" />
+                    <Badge variant="secondary" className="ml-1 text-xs">INTERNAL</Badge>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background">
+                  <DropdownMenuItem onClick={() => handleCreateSampleApplication('john_smith')}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    John Smith
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleCreateSampleApplication('john_wick')}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    John Wick
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleCreateSampleApplication('donald_trump')}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Donald Trump
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {/* View Fillable Application Button - Opens application form in preview mode */}
             {canCreateSample && (
