@@ -238,11 +238,11 @@ export default function DriversTab() {
       return;
     }
 
-    // Load applications with invite_id for primary linkage, fallback to email
+    // Load applications that are actually submitted (either by submitted_at or status)
     let applicationsQuery = supabase
       .from("applications")
-      .select("id, invite_id, personal_info, submitted_at, updated_at, driver_status")
-      .not("submitted_at", "is", null);
+      .select("id, invite_id, personal_info, submitted_at, updated_at, driver_status, status")
+      .or("submitted_at.not.is.null,status.eq.submitted");
     
     if (shouldFilter && tenantId) {
       applicationsQuery = applicationsQuery.eq("tenant_id", tenantId);
@@ -254,19 +254,22 @@ export default function DriversTab() {
       console.error("Error loading applications:", appsError);
     }
 
-    // Match invitations with submitted applications using real linkage:
+    // Match invitations with SUBMITTED applications using real linkage:
     // 1. Primary: applications.invite_id === invite.id (FK relationship)
     // 2. Fallback: applications.personal_info.email === invite.email
+    // Only consider applications with status 'submitted' as completed
     const enrichedInvites = (invitesData || []).map((invite) => {
-      // Primary match by invite_id FK
+      // Primary match by invite_id FK - must be submitted
       let matchedApp = (applicationsData || []).find(
-        (app: any) => app.invite_id === invite.id
+        (app: any) => app.invite_id === invite.id && app.status === 'submitted'
       );
       
       // Fallback: match by email if no FK match
       if (!matchedApp) {
         const emailMatches = (applicationsData || []).filter(
-          (app: any) => app.personal_info?.email?.toLowerCase() === invite.email?.toLowerCase()
+          (app: any) => 
+            app.personal_info?.email?.toLowerCase() === invite.email?.toLowerCase() &&
+            app.status === 'submitted'
         );
         // If multiple matches, pick the newest by submitted_at or updated_at
         if (emailMatches.length > 0) {
