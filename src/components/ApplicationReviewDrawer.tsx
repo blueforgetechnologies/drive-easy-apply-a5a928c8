@@ -144,17 +144,18 @@ export function ApplicationReviewDrawer({
   const handleApprove = async () => {
     setIsApproving(true);
     try {
-      const { error } = await supabase
-        .from("applications")
-        .update({
-          driver_status: "active",
-          status: "approved",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", application.id);
+      // Use edge function for proper server-side workflow
+      const { data, error } = await supabase.functions.invoke("approve-application", {
+        body: { application_id: application.id },
+      });
 
       if (error) throw error;
-      toast.success("Application approved - driver set to Active");
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to approve application");
+      }
+      
+      toast.success(data.message || "Application approved - driver is now pending onboarding");
       onStatusChange();
     } catch (error: any) {
       toast.error("Failed to approve: " + error.message);
