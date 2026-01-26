@@ -6943,6 +6943,10 @@ export type Database = {
         Args: { p_integration_key: string; p_tenant_id: string }
         Returns: Json
       }
+      screenshare_claim_session: {
+        Args: { p_session_code: string }
+        Returns: Json
+      }
       should_trigger_hunt_for_fingerprint: {
         Args: {
           p_cooldown_seconds?: number
