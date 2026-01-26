@@ -428,17 +428,28 @@ const ScreenshareTab = () => {
       setDisplaySurface(surface);
       console.log('Capture surface detected:', surface);
       
-      // Warn if browser tab selected
+      // HARD BLOCK: browser tab sharing is unreliable (freezes when switching tabs)
       if (surface === 'browser') {
+        console.warn('Browser tab share blocked - unreliable capture');
+        
+        // Stop tracks and clear stream
+        stream.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+        
+        // Set warning states
         setIsSharingBrowserTab(true);
+        setSharingFrozen(true);
+        
         toast({ 
-          title: "Browser Tab Selected", 
-          description: "Switching tabs will freeze the share. Consider re-sharing as Window or Entire Screen.",
+          title: "Chrome Tab Not Supported", 
+          description: "Chrome Tab share is not supported. Please re-share as Window or Entire Screen.",
           variant: "destructive"
         });
-      } else {
-        setIsSharingBrowserTab(false);
+        
+        return; // Do not create offer or proceed
       }
+      
+      setIsSharingBrowserTab(false);
       
       // Track mute/unmute handlers (for tab switch detection)
       videoTrack.onmute = () => {
