@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Monitor, Phone, PhoneOff, Copy, Users, Eye, Loader2 } from "lucide-react";
+import { useTenantContext } from "@/contexts/TenantContext";
 
 interface ScreenShareSession {
   id: string;
@@ -14,12 +15,14 @@ interface ScreenShareSession {
   initiated_by: string;
   admin_user_id: string | null;
   client_user_id: string | null;
+  tenant_id: string;
   created_at: string;
   connected_at: string | null;
 }
 
 const ScreenshareTab = () => {
   const { toast } = useToast();
+  const { effectiveTenant } = useTenantContext();
   const [sessions, setSessions] = useState<ScreenShareSession[]>([]);
   const [sessionCode, setSessionCode] = useState("");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
@@ -36,7 +39,9 @@ const ScreenshareTab = () => {
     loadCurrentUser();
     loadSessions();
     
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates for active session only (RLS is authoritative)
+    // We subscribe without tenant_id filter - RLS enforces visibility
+    // Filter by session_code when we have an active session
     const channel = supabase
       .channel('screen-share-sessions')
       .on(
@@ -101,6 +106,12 @@ const ScreenshareTab = () => {
   };
 
   const createSession = async (initiatedBy: 'admin' | 'client') => {
+    // Require tenant context for session creation
+    if (!effectiveTenant?.id) {
+      toast({ title: "Error", description: "No tenant selected", variant: "destructive" });
+      return;
+    }
+
     const code = generateSessionCode();
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -109,17 +120,22 @@ const ScreenshareTab = () => {
       return;
     }
 
-    const sessionData: any = {
+    // Build session data with tenant_id and proper participant fields for RLS
+    const sessionData: {
+      session_code: string;
+      initiated_by: 'admin' | 'client';
+      status: string;
+      tenant_id: string;
+      admin_user_id: string | null;
+      client_user_id: string | null;
+    } = {
       session_code: code,
       initiated_by: initiatedBy,
-      status: 'pending'
+      status: 'pending',
+      tenant_id: effectiveTenant.id,
+      admin_user_id: initiatedBy === 'admin' ? user.id : null,
+      client_user_id: initiatedBy === 'client' ? user.id : null,
     };
-
-    if (initiatedBy === 'admin') {
-      sessionData.admin_user_id = user.id;
-    } else {
-      sessionData.client_user_id = user.id;
-    }
 
     const { data, error } = await supabase
       .from('screen_share_sessions')
@@ -128,7 +144,8 @@ const ScreenshareTab = () => {
       .single();
 
     if (error) {
-      toast({ title: "Error", description: "Failed to create session", variant: "destructive" });
+      console.error('Failed to create session:', error);
+      toast({ title: "Error", description: error.message || "Failed to create session", variant: "destructive" });
       return;
     }
 

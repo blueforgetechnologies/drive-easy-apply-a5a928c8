@@ -4905,6 +4905,7 @@ export type Database = {
           initiated_by: string
           session_code: string
           status: string
+          tenant_id: string
         }
         Insert: {
           admin_offer?: string | null
@@ -4920,6 +4921,7 @@ export type Database = {
           initiated_by: string
           session_code: string
           status?: string
+          tenant_id: string
         }
         Update: {
           admin_offer?: string | null
@@ -4935,8 +4937,17 @@ export type Database = {
           initiated_by?: string
           session_code?: string
           status?: string
+          tenant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "screen_share_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       settlement_loads: {
         Row: {
