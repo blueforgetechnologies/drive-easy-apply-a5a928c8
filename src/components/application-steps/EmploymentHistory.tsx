@@ -39,6 +39,9 @@ interface Employment {
 export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false }: EmploymentHistoryProps) => {
   // Check if Test Mode is enabled (set via Applications Manager toggle)
   const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
+  // Debug log to verify test mode
+  console.log('[EmploymentHistory] Test Mode Active:', isTestMode, '(Preview:', isPreviewMode, 'LocalStorage:', localStorage.getItem("app_test_mode"), ')');
 
   const [employmentHistory, setEmploymentHistory] = useState<Employment[]>(
     data?.employmentHistory?.length > 0
@@ -187,7 +190,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.companyName}
                       onChange={(e) => updateEmployment(index, "companyName", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                   <div className="form-field-scifi space-y-1">
@@ -197,7 +200,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.position}
                       onChange={(e) => updateEmployment(index, "position", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                 </div>
@@ -209,7 +212,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                     className="input-scifi h-9 text-sm"
                     value={employment.address}
                     onChange={(e) => updateEmployment(index, "address", e.target.value)}
-                    required
+                    required={!isTestMode}
                   />
                 </div>
 
@@ -225,7 +228,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.phone}
                       onChange={(e) => updateEmployment(index, "phone", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                   <div className="form-field-scifi space-y-1">
@@ -238,7 +241,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.supervisor}
                       onChange={(e) => updateEmployment(index, "supervisor", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                 </div>
@@ -255,7 +258,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.startDate}
                       onChange={(e) => updateEmployment(index, "startDate", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                   <div className="form-field-scifi space-y-1">
@@ -269,7 +272,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.endDate}
                       onChange={(e) => updateEmployment(index, "endDate", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                 </div>
@@ -285,7 +288,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm w-full"
                       value={employment.payType}
                       onChange={(e) => updateEmployment(index, "payType", e.target.value)}
-                      required
+                      required={!isTestMode}
                     >
                       <option value="">Select pay type...</option>
                       <option value="hourly">Hourly</option>
@@ -312,7 +315,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                       className="input-scifi h-9 text-sm"
                       value={employment.payRate}
                       onChange={(e) => updateEmployment(index, "payRate", e.target.value)}
-                      required
+                      required={!isTestMode}
                     />
                   </div>
                 </div>
@@ -324,7 +327,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
                     className="input-scifi text-sm min-h-[60px] resize-y"
                     value={employment.reasonForLeaving}
                     onChange={(e) => updateEmployment(index, "reasonForLeaving", e.target.value)}
-                    required
+                    required={!isTestMode}
                   />
                 </div>
               </div>
