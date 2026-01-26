@@ -78,12 +78,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if application is approved
-    if (application.status !== "approved") {
+    // Check if application has completed training (new workflow) or is approved (legacy)
+    if (application.status !== "training_completed" && application.status !== "approved") {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Cannot hire: application status is "${application.status}". Must be approved first.` 
+          error: `Cannot hire: application status is "${application.status}". Must complete training first.` 
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
