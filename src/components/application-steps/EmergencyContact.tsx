@@ -11,6 +11,7 @@ interface EmergencyContactProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
 interface EmergencyContactData {
@@ -29,9 +30,9 @@ const emptyContact: EmergencyContactData = {
   relationship: ''
 };
 
-export function EmergencyContact({ data, onNext, onBack, isFirstStep }: EmergencyContactProps) {
+export function EmergencyContact({ data, onNext, onBack, isFirstStep, isPreviewMode = false }: EmergencyContactProps) {
   // Check if Test Mode is enabled (set via Applications Manager toggle)
-  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
 
   const [contacts, setContacts] = useState<EmergencyContactData[]>(
     data.emergencyContacts?.length >= 2 
