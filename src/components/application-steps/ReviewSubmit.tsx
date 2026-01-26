@@ -89,87 +89,74 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
         throw new Error("Could not determine tenant. Please refresh the page and try again.");
       }
 
-      const { error: inviteError } = await supabase
-        .from('driver_invites')
-        .update({ application_started_at: new Date().toISOString() })
-        .eq('id', data.inviteId);
-
-      if (inviteError) {
-        console.error("Error marking invite as used:", inviteError);
+      if (!data?.publicToken) {
+        throw new Error("Missing public token. Please refresh and try again.");
       }
 
       const directDeposit = data.directDeposit || {};
       const licenseInfo = data.licenseInfo || {};
 
-      const applicationPayload = {
-        personal_info: data.personalInfo,
-        payroll_policy: {},
-        license_info: licenseInfo,
-        driving_history: data.drivingHistory || {},
-        employment_history: data.employmentHistory || {},
-        document_upload: data.documents || {},
-        drug_alcohol_policy: {},
-        driver_dispatch_sheet: {},
-        no_rider_policy: {},
-        safe_driving_policy: {},
-        contractor_agreement: {},
-        direct_deposit: directDeposit,
-        why_hire_you: data.whyHireYou || {},
-        emergency_contacts: data.emergencyContacts || [],
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
-        cell_phone: data.personalInfo?.phone || null,
-        home_phone: data.personalInfo?.homePhone || null,
-        bank_name: directDeposit.bankName || null,
-        account_name: `${directDeposit.firstName || ''} ${directDeposit.lastName || ''}`.trim() || null,
-        routing_number: directDeposit.routingNumber || null,
-        checking_number: directDeposit.accountNumber || null,
-        account_type: directDeposit.accountType || null,
-        driver_record_expiry: licenseInfo.licenseExpiration || null,
-        medical_card_expiry: licenseInfo.medicalCardExpiration || null,
-      };
-
-      console.log('[ReviewSubmit] Application payload:', { inviteId: data.inviteId, tenantId, status: 'submitted' });
-
-      // Try update first, if no rows affected then upsert
-      const { data: updateResult, error: dbError } = await supabase
-        .from('applications')
-        .update(applicationPayload)
-        .eq('invite_id', data.inviteId)
-        .select('id');
-
-      console.log('[ReviewSubmit] Update result:', { updateResult, dbError });
-
-      // If update returned no rows, create the application
-      if (!dbError && (!updateResult || updateResult.length === 0)) {
-        console.log('[ReviewSubmit] No existing application found, creating new one');
-        const { data: insertResult, error: insertError } = await supabase
-          .from('applications')
-          .insert({
-            ...applicationPayload,
-            invite_id: data.inviteId,
-            tenant_id: tenantId,
-            current_step: 9,
-          })
-          .select('id');
-
-        console.log('[ReviewSubmit] Insert result:', { insertResult, insertError });
-
-        if (insertError) {
-          console.error("Error creating application:", insertError);
-          toast.error("Failed to save application", {
-            description: insertError.message || "Please try again or contact support.",
-          });
-          return;
+      // Use edge function to submit (bypasses RLS via service role)
+      // First, save all the final data using the edge function
+      const { data: saveResult, error: saveError } = await supabase.functions.invoke('save-application-step', {
+        body: {
+          public_token: data.publicToken,
+          step_key: 'personal_info', // Save personal info as the final step
+          current_step: 9,
+          payload: data.personalInfo || {},
         }
-      } else if (dbError) {
-        console.error("Error saving to database:", dbError);
-        toast.error("Failed to save application", {
-          description: dbError.message || "Please try again or contact support.",
-        });
-        return;
+      });
+
+      if (saveError) {
+        console.error('[ReviewSubmit] Edge function error:', saveError);
+        throw new Error(saveError.message || "Failed to save application");
       }
+
+      if (!saveResult?.success) {
+        console.error('[ReviewSubmit] Save failed:', saveResult);
+        throw new Error(saveResult?.error || "Failed to save application");
+      }
+
+      console.log('[ReviewSubmit] Initial save successful:', saveResult);
+
+      // Now call a dedicated submit endpoint to finalize the submission
+      const { data: submitResult, error: submitError } = await supabase.functions.invoke('submit-application', {
+        body: {
+          public_token: data.publicToken,
+          application_data: {
+            personal_info: data.personalInfo,
+            license_info: licenseInfo,
+            driving_history: data.drivingHistory || {},
+            employment_history: data.employmentHistory || {},
+            document_upload: data.documents || {},
+            direct_deposit: directDeposit,
+            why_hire_you: data.whyHireYou || {},
+            emergency_contacts: data.emergencyContacts || [],
+            driver_address: `${data.personalInfo?.address || ''}, ${data.personalInfo?.city || ''}, ${data.personalInfo?.state || ''} ${data.personalInfo?.zip || ''}`.trim(),
+            cell_phone: data.personalInfo?.phone || null,
+            home_phone: data.personalInfo?.homePhone || null,
+            bank_name: directDeposit.bankName || null,
+            account_name: `${directDeposit.firstName || ''} ${directDeposit.lastName || ''}`.trim() || null,
+            routing_number: directDeposit.routingNumber || null,
+            checking_number: directDeposit.accountNumber || null,
+            account_type: directDeposit.accountType || null,
+            driver_record_expiry: licenseInfo.licenseExpiration || null,
+            medical_card_expiry: licenseInfo.medicalCardExpiration || null,
+          }
+        }
+      });
+
+      if (submitError) {
+        console.error('[ReviewSubmit] Submit error:', submitError);
+        throw new Error(submitError.message || "Failed to submit application");
+      }
+
+      if (!submitResult?.success) {
+        console.error('[ReviewSubmit] Submit failed:', submitResult);
+        throw new Error(submitResult?.error || "Failed to submit application");
+      }
+
+      console.log('[ReviewSubmit] Application submitted successfully:', submitResult);
 
       const { error: emailError } = await supabase.functions.invoke('send-application', {
         body: {
