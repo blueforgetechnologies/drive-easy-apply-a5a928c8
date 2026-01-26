@@ -147,6 +147,58 @@ export function ApplicationsManager() {
       loadApplications();
     }
   }, [tenantId, shouldFilter]);
+  
+  // Realtime subscription for live updates when applicants fill out their application
+  useEffect(() => {
+    if (!tenantId && shouldFilter) return;
+    
+    // Subscribe to applications table changes for this tenant
+    const channel = supabase
+      .channel(`applications-realtime-${tenantId || 'all'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+          ...(shouldFilter && tenantId ? { filter: `tenant_id=eq.${tenantId}` } : {}),
+        },
+        (payload) => {
+          console.log('[Realtime] Application change:', payload.eventType, payload.new);
+          
+          if (payload.eventType === 'INSERT') {
+            // New application created - add to list if it matches our filter
+            const newApp = payload.new as ApplicationRow;
+            if (!newApp.driver_status || newApp.driver_status === 'rejected') {
+              setApplications(prev => [newApp, ...prev]);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            // Application updated - update in list or remove if hired
+            const updated = payload.new as ApplicationRow;
+            if (updated.driver_status && updated.driver_status !== 'rejected') {
+              // Driver was hired - remove from applications list
+              setApplications(prev => prev.filter(a => a.id !== updated.id));
+            } else {
+              // Update the application in place
+              setApplications(prev => 
+                prev.map(a => a.id === updated.id ? { ...a, ...updated } : a)
+              );
+            }
+          } else if (payload.eventType === 'DELETE') {
+            // Application deleted - remove from list
+            const deleted = payload.old as { id: string };
+            setApplications(prev => prev.filter(a => a.id !== deleted.id));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Applications subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, shouldFilter]);
 
   const loadApplications = async () => {
     setLoading(true);
