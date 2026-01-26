@@ -516,6 +516,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
               onBack={handleBack}
               isFirstStep={currentStep === 1}
               isLastStep={currentStep === steps.length}
+               isPreviewMode={isPreviewMode}
               onEditStep={(step: number) => {
                 setEditingFromReview(true);
                 setCurrentStep(step);
