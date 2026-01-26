@@ -43,6 +43,7 @@ const ScreenshareTab = () => {
   // Viewer-side freeze detection
   const [viewerFrozen, setViewerFrozen] = useState(false);
   const lastVideoTimeRef = useRef<number>(0);
+  const freezeMissCountRef = useRef<number>(0);
   const freezeCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -380,6 +381,19 @@ const ScreenshareTab = () => {
       peerConnectionRef.current = null;
     }
     
+    // Reset signaling refs
+    hasCreatedAnswerRef.current = false;
+    iceCandidateQueueRef.current = [];
+    processedIceCandidatesRef.current.clear();
+    
+    // CRITICAL: Reset signaling fields in DB so viewer gets fresh SDP/ICE
+    await supabase.from('screen_share_sessions').update({
+      admin_offer: null,
+      client_answer: null,
+      admin_ice_candidates: [],
+      client_ice_candidates: [],
+    }).eq('id', activeSession.id);
+    
     // Restart screen share
     await startScreenShare(activeSession);
   };
@@ -476,23 +490,31 @@ const ScreenshareTab = () => {
     }
     
     lastVideoTimeRef.current = 0;
+    freezeMissCountRef.current = 0;
     setViewerFrozen(false);
     
     freezeCheckIntervalRef.current = setInterval(() => {
       const video = remoteVideoRef.current;
-      if (!video || !hasRemoteStream) return;
+      // Gate on video element and srcObject, NOT on state (avoids stale closure)
+      if (!video || !video.srcObject) return;
       
       const currentTime = video.currentTime;
+      const delta = Math.abs(currentTime - lastVideoTimeRef.current);
       
-      // If currentTime hasn't changed in ~2 seconds, stream is frozen
-      if (currentTime === lastVideoTimeRef.current && currentTime > 0) {
-        setViewerFrozen(true);
+      if (delta < 0.01) {
+        // No meaningful progress
+        freezeMissCountRef.current++;
+        if (freezeMissCountRef.current >= 3 && currentTime > 0) {
+          setViewerFrozen(true);
+        }
       } else {
+        // Stream is progressing
+        freezeMissCountRef.current = 0;
         setViewerFrozen(false);
       }
       
       lastVideoTimeRef.current = currentTime;
-    }, 2000);
+    }, 1000); // Check every 1 second
   };
 
   // Called by the person VIEWING (the admin who generated the code)
