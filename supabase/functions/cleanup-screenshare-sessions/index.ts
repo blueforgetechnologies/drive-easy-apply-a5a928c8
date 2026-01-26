@@ -29,23 +29,38 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find stale sessions:
-    // - Created more than 30 minutes ago OR
-    // - No heartbeat in last 60 seconds (if heartbeat was ever set)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    // Find stale sessions with updated thresholds:
+    // - pending: end if created_at < now() - 10 minutes
+    // - active: end if last_heartbeat_at < now() - 90 seconds
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const ninetySecondsAgo = new Date(Date.now() - 90 * 1000).toISOString();
 
-    // Get sessions to clean up
-    const { data: staleSessions, error: fetchError } = await supabase
+    // Get stale pending sessions (older than 10 minutes)
+    const { data: stalePending, error: pendingError } = await supabase
       .from('screen_share_sessions')
       .select('id, session_code, status, created_at, last_heartbeat_at')
-      .in('status', ['pending', 'active'])
-      .or(`created_at.lt.${thirtyMinutesAgo},and(last_heartbeat_at.not.is.null,last_heartbeat_at.lt.${sixtySecondsAgo})`);
+      .eq('status', 'pending')
+      .lt('created_at', tenMinutesAgo);
 
-    if (fetchError) {
-      console.error('Error fetching stale sessions:', fetchError);
-      throw fetchError;
+    if (pendingError) {
+      console.error('Error fetching stale pending sessions:', pendingError);
+      throw pendingError;
     }
+
+    // Get stale active sessions (no heartbeat in 90 seconds)
+    const { data: staleActive, error: activeError } = await supabase
+      .from('screen_share_sessions')
+      .select('id, session_code, status, created_at, last_heartbeat_at')
+      .eq('status', 'active')
+      .not('last_heartbeat_at', 'is', null)
+      .lt('last_heartbeat_at', ninetySecondsAgo);
+
+    if (activeError) {
+      console.error('Error fetching stale active sessions:', activeError);
+      throw activeError;
+    }
+
+    const staleSessions = [...(stalePending || []), ...(staleActive || [])];
 
     if (!staleSessions || staleSessions.length === 0) {
       console.log('No stale sessions to clean up');
