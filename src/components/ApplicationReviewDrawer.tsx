@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -107,6 +107,7 @@ export function ApplicationReviewDrawer({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
   const [selectedDocName, setSelectedDocName] = useState<string>("");
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
 
   if (!application) return null;
 
@@ -191,20 +192,76 @@ export function ApplicationReviewDrawer({
   };
 
   // Document helpers
-  const getDocumentUrl = (doc: string | File | null | undefined): string | null => {
-    if (!doc) return null;
-    if (doc instanceof File) return URL.createObjectURL(doc);
-    if (typeof doc === "string") {
-      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
-        return doc;
+  // Check if a document value is valid (not empty object or null)
+  const isValidDoc = (doc: any): boolean => {
+    if (!doc) return false;
+    if (doc instanceof File) return true;
+    if (typeof doc === 'string' && doc.trim().length > 0) return true;
+    if (typeof doc === 'object' && Object.keys(doc).length === 0) return false;
+    return false;
+  };
+
+  // Get signed URL for storage path (private bucket)
+  const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("load-documents")
+        .createSignedUrl(storagePath, 3600); // 1 hour expiry
+      
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        return null;
       }
-      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (supabaseUrl && cleanPath) {
-        return `${supabaseUrl}/storage/v1/object/public/load-documents/${cleanPath}`;
-      }
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.error("Failed to get signed URL:", err);
+      return null;
     }
-    return null;
+  }, []);
+
+  // Handle document click - fetch signed URL if needed
+  const handleDocumentClick = useCallback(async (doc: any, label: string) => {
+    // Handle File objects (local)
+    if (doc instanceof File) {
+      setSelectedDocUrl(URL.createObjectURL(doc));
+      setSelectedDocName(label);
+      return;
+    }
+
+    // Handle string paths (storage paths)
+    if (typeof doc === 'string' && doc.trim()) {
+      // Check if already a full URL
+      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
+        setSelectedDocUrl(doc);
+        setSelectedDocName(label);
+        return;
+      }
+
+      // It's a storage path - fetch signed URL
+      setIsLoadingDoc(true);
+      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
+      const signedUrl = await getSignedUrl(cleanPath);
+      setIsLoadingDoc(false);
+
+      if (signedUrl) {
+        setSelectedDocUrl(signedUrl);
+        setSelectedDocName(label);
+      } else {
+        toast.error("Could not load document");
+      }
+      return;
+    }
+
+    toast.error("Document not available");
+  }, [getSignedUrl]);
+
+  const isImagePath = (doc: any): boolean => {
+    if (!doc) return false;
+    const docStr = typeof doc === 'string' ? doc : (doc instanceof File ? doc.name : '');
+    const lowerPath = docStr.toLowerCase();
+    return lowerPath.includes('.jpg') || lowerPath.includes('.jpeg') || 
+           lowerPath.includes('.png') || lowerPath.includes('.gif') ||
+           lowerPath.includes('.webp');
   };
 
   const isImageUrl = (url: string): boolean => {
@@ -215,16 +272,17 @@ export function ApplicationReviewDrawer({
            lowerUrl.startsWith('data:image');
   };
 
-  // Build document list
+  // Build document list - only include valid documents
   const documentList: { key: string; label: string; doc: any }[] = [];
-  if (docs.driversLicense) documentList.push({ key: 'driversLicense', label: "Driver's License", doc: docs.driversLicense });
-  if (docs.socialSecurity) documentList.push({ key: 'socialSecurity', label: 'Social Security Card', doc: docs.socialSecurity });
-  if (docs.medicalCard) documentList.push({ key: 'medicalCard', label: 'DOT Medical Card', doc: docs.medicalCard });
-  if (docs.mvr) documentList.push({ key: 'mvr', label: 'Motor Vehicle Record', doc: docs.mvr });
-  if (docs.twicCard) documentList.push({ key: 'twicCard', label: 'TWIC Card', doc: docs.twicCard });
-  if (docs.passport) documentList.push({ key: 'passport', label: 'Passport', doc: docs.passport });
+  if (isValidDoc(docs.driversLicense)) documentList.push({ key: 'driversLicense', label: "Driver's License", doc: docs.driversLicense });
+  if (isValidDoc(docs.socialSecurity)) documentList.push({ key: 'socialSecurity', label: 'Social Security Card', doc: docs.socialSecurity });
+  if (isValidDoc(docs.medicalCard)) documentList.push({ key: 'medicalCard', label: 'DOT Medical Card', doc: docs.medicalCard });
+  if (isValidDoc(docs.mvr)) documentList.push({ key: 'mvr', label: 'Motor Vehicle Record', doc: docs.mvr });
+  if (isValidDoc(docs.twicCard)) documentList.push({ key: 'twicCard', label: 'TWIC Card', doc: docs.twicCard });
+  if (isValidDoc(docs.passport)) documentList.push({ key: 'passport', label: 'Passport', doc: docs.passport });
   if (docs.other && Array.isArray(docs.other)) {
     docs.other.forEach((doc: any, idx: number) => {
+      if (!isValidDoc(doc)) return;
       const name = typeof doc === 'string' ? doc.split('/').pop() || `Additional Document ${idx + 1}` : doc?.name || `Additional Document ${idx + 1}`;
       documentList.push({ key: `other_${idx}`, label: name, doc });
     });
@@ -383,34 +441,17 @@ export function ApplicationReviewDrawer({
                 <ScrollArea className="flex-1">
                   <div className="p-2 space-y-2">
                     {documentList.map((item) => {
-                      const url = getDocumentUrl(item.doc);
-                      const isImage = url && isImageUrl(url);
+                      const isImage = isImagePath(item.doc);
                       
                       return (
                         <Card
                           key={item.key}
                           className="cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden"
-                          onClick={() => {
-                            if (url) {
-                              setSelectedDocUrl(url);
-                              setSelectedDocName(item.label);
-                            } else {
-                              toast.error("Document not available");
-                            }
-                          }}
+                          onClick={() => handleDocumentClick(item.doc, item.label)}
                         >
-                          {isImage && url ? (
-                            <div className="aspect-[4/3] relative bg-muted overflow-hidden">
-                              <img
-                                src={url}
-                                alt={item.label}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center -z-10">
-                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                              </div>
+                          {isImage ? (
+                            <div className="aspect-[4/3] relative bg-muted overflow-hidden flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             </div>
                           ) : (
                             <div className="aspect-[4/3] flex items-center justify-center bg-muted">
@@ -430,7 +471,15 @@ export function ApplicationReviewDrawer({
 
             {/* Right Panel - Application Details or Document Viewer */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              {selectedDocUrl ? (
+              {isLoadingDoc ? (
+                // Loading state
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Loading document...</p>
+                  </div>
+                </div>
+              ) : selectedDocUrl ? (
                 // Document Full View
                 <ScrollArea className="flex-1">
                   <div className="p-6 flex justify-center">
@@ -442,7 +491,7 @@ export function ApplicationReviewDrawer({
                       />
                     ) : (
                       <iframe
-                        src={selectedDocUrl}
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(selectedDocUrl)}&embedded=true`}
                         className="w-full h-[70vh] border rounded-lg"
                         title={selectedDocName}
                       />
