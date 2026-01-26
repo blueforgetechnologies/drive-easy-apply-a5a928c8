@@ -39,6 +39,7 @@ interface DriverInvite {
   application_started_at: string | null;
   completed?: boolean;
   application_id?: string;
+  current_step?: number; // Track actual application progress
 }
 
 interface VehicleAssignment {
@@ -238,11 +239,10 @@ export default function DriversTab() {
       return;
     }
 
-    // Load applications that are actually submitted (either by submitted_at or status)
+    // Load ALL applications linked to invites (including in_progress) to get their current_step
     let applicationsQuery = supabase
       .from("applications")
-      .select("id, invite_id, personal_info, submitted_at, updated_at, driver_status, status")
-      .or("submitted_at.not.is.null,status.eq.submitted");
+      .select("id, invite_id, personal_info, submitted_at, updated_at, driver_status, status, current_step");
     
     if (shouldFilter && tenantId) {
       applicationsQuery = applicationsQuery.eq("tenant_id", tenantId);
@@ -254,22 +254,20 @@ export default function DriversTab() {
       console.error("Error loading applications:", appsError);
     }
 
-    // Match invitations with SUBMITTED applications using real linkage:
+    // Match invitations with applications:
     // 1. Primary: applications.invite_id === invite.id (FK relationship)
     // 2. Fallback: applications.personal_info.email === invite.email
-    // Only consider applications with status 'submitted' as completed
     const enrichedInvites = (invitesData || []).map((invite) => {
-      // Primary match by invite_id FK - must be submitted
+      // Primary match by invite_id FK
       let matchedApp = (applicationsData || []).find(
-        (app: any) => app.invite_id === invite.id && app.status === 'submitted'
+        (app: any) => app.invite_id === invite.id
       );
       
       // Fallback: match by email if no FK match
       if (!matchedApp) {
         const emailMatches = (applicationsData || []).filter(
           (app: any) => 
-            app.personal_info?.email?.toLowerCase() === invite.email?.toLowerCase() &&
-            app.status === 'submitted'
+            app.personal_info?.email?.toLowerCase() === invite.email?.toLowerCase()
         );
         // If multiple matches, pick the newest by submitted_at or updated_at
         if (emailMatches.length > 0) {
@@ -281,14 +279,20 @@ export default function DriversTab() {
         }
       }
       
+      // An application is "completed" if status is 'submitted' or beyond
+      const isCompleted = matchedApp && 
+        (matchedApp.status === 'submitted' || matchedApp.status === 'approved' || 
+         matchedApp.status === 'training_completed' || matchedApp.status === 'rejected');
+      
       return {
         ...invite,
-        completed: !!matchedApp,
+        completed: isCompleted,
         application_id: matchedApp?.id || null,
+        current_step: matchedApp?.current_step || 0, // Track actual progress
       };
     });
 
-    // Only show invites that are NOT completed (completed ones appear in Applications tab)
+    // Filter out completed invitations - they should appear in Applications tab only
     const pendingInvites = enrichedInvites.filter((inv) => !inv.completed);
     setInvites(pendingInvites);
   };
@@ -852,10 +856,8 @@ export default function DriversTab() {
                 </TableHeader>
                 <TableBody>
                   {filteredInvites.map((invite) => {
-                    // Calculate progress from linked application
-                    const progress = invite.application_started_at && invite.application_id 
-                      ? (invite.completed ? 9 : 1) 
-                      : 0;
+                    // Use actual current_step from application, fallback to 0
+                    const progress = invite.current_step || 0;
                     
                     return (
                       <TableRow key={invite.id}>
@@ -879,7 +881,7 @@ export default function DriversTab() {
                             <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                               <div 
                                 className={`h-full rounded-full transition-all ${
-                                  invite.completed ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                                  progress === 9 ? 'bg-green-500' : progress > 0 ? 'bg-blue-500' : 'bg-gray-300'
                                 }`}
                                 style={{ width: `${(progress / 9) * 100}%` }}
                               />
@@ -890,11 +892,7 @@ export default function DriversTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {invite.completed ? (
-                            <Badge className="bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white !px-3 !py-1 shadow-md">
-                              Completed
-                            </Badge>
-                          ) : invite.application_started_at ? (
+                          {progress > 0 ? (
                             <Badge variant="default">In Progress</Badge>
                           ) : invite.opened_at ? (
                             <Badge variant="secondary">Opened</Badge>
@@ -904,26 +902,15 @@ export default function DriversTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            {invite.completed && invite.application_id ? (
-                              <Button
-                                onClick={() => viewApplication(invite.application_id!)}
-                                size="sm"
-                                className="gap-2 bg-blue-600 hover:bg-blue-700"
-                              >
-                                <FileText className="h-4 w-4" />
-                                View
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => handleResendInvite(invite)}
-                                size="sm"
-                                variant="outline"
-                                className="gap-2"
-                              >
-                                <RotateCw className="h-4 w-4" />
-                                Resend
-                              </Button>
-                            )}
+                            <Button
+                              onClick={() => handleResendInvite(invite)}
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <RotateCw className="h-4 w-4" />
+                              Resend
+                            </Button>
                             <Button
                               onClick={() => handleDeleteInvite(invite.id)}
                               size="sm"
