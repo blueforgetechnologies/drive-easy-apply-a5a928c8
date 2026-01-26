@@ -405,6 +405,35 @@ const ScreenshareTab = () => {
         </div>
       </div>
 
+      {/* Instructions Card */}
+      {!isViewing && (
+        <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">How Screen Share Works:</h3>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2">
+                  <p className="font-medium text-blue-800 dark:text-blue-200">📞 You're providing support:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-300">
+                    <li>Click "Generate Session Code"</li>
+                    <li>Share the 6-digit code with your client (phone/email)</li>
+                    <li>Wait for them to join — you'll see their screen</li>
+                  </ol>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium text-blue-800 dark:text-blue-200">🖥️ You need to share YOUR screen:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-300">
+                    <li>Ask support for a 6-digit code</li>
+                    <li>Enter the code in "Join Session"</li>
+                    <li>Select which screen/window to share</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Active Session View */}
       {isViewing && activeSession && (
         <Card className="border-primary">
