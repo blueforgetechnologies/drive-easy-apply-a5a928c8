@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Configure pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -53,6 +54,8 @@ export function PDFPreviewDialog({
   const [zoom, setZoom] = useState(1.5); // Higher default for sharper rendering
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
   const [selectedDocName, setSelectedDocName] = useState<string>("");
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   
   const cancelledRef = useRef(false);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -197,8 +200,72 @@ export function PDFPreviewDialog({
     setZoom(1.5);
   };
 
-  // Get document URL from various formats
-  const getDocumentUrl = (doc: string | File | null | undefined): string | null => {
+  // Fetch signed URL for private storage paths
+  const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
+    try {
+      const cleanPath = storagePath.startsWith('/') ? storagePath.slice(1) : storagePath;
+      const { data, error } = await supabase.storage
+        .from("load-documents")
+        .createSignedUrl(cleanPath, 3600); // 1 hour expiry
+      
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        return null;
+      }
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.error("Failed to get signed URL:", err);
+      return null;
+    }
+  }, []);
+
+  // Load signed URLs for all documents when dialog opens
+  useEffect(() => {
+    if (!open || !documents) return;
+    
+    const loadSignedUrls = async () => {
+      const urls: Record<string, string> = {};
+      
+      const docsToLoad: { key: string; path: string }[] = [];
+      
+      if (documents.driversLicense && typeof documents.driversLicense === 'string' && !documents.driversLicense.startsWith('http') && !documents.driversLicense.startsWith('blob:') && !documents.driversLicense.startsWith('data:')) {
+        docsToLoad.push({ key: 'driversLicense', path: documents.driversLicense });
+      }
+      if (documents.medicalCard && typeof documents.medicalCard === 'string' && !documents.medicalCard.startsWith('http') && !documents.medicalCard.startsWith('blob:') && !documents.medicalCard.startsWith('data:')) {
+        docsToLoad.push({ key: 'medicalCard', path: documents.medicalCard });
+      }
+      if (documents.socialSecurity && typeof documents.socialSecurity === 'string' && !documents.socialSecurity.startsWith('http') && !documents.socialSecurity.startsWith('blob:') && !documents.socialSecurity.startsWith('data:')) {
+        docsToLoad.push({ key: 'socialSecurity', path: documents.socialSecurity });
+      }
+      if (documents.mvr && typeof documents.mvr === 'string' && !documents.mvr.startsWith('http') && !documents.mvr.startsWith('blob:') && !documents.mvr.startsWith('data:')) {
+        docsToLoad.push({ key: 'mvr', path: documents.mvr });
+      }
+      if (documents.other) {
+        documents.other.forEach((doc, idx) => {
+          if (typeof doc === 'string' && !doc.startsWith('http') && !doc.startsWith('blob:') && !doc.startsWith('data:')) {
+            docsToLoad.push({ key: `other_${idx}`, path: doc });
+          }
+        });
+      }
+      
+      // Fetch all signed URLs in parallel
+      await Promise.all(
+        docsToLoad.map(async ({ key, path }) => {
+          const signedUrl = await getSignedUrl(path);
+          if (signedUrl) {
+            urls[key] = signedUrl;
+          }
+        })
+      );
+      
+      setSignedUrls(urls);
+    };
+    
+    loadSignedUrls();
+  }, [open, documents, getSignedUrl]);
+
+  // Get document URL from various formats (using signed URLs for storage paths)
+  const getDocumentUrl = useCallback((doc: string | File | null | undefined, key?: string): string | null => {
     if (!doc) return null;
     
     // If it's a File object, create object URL
@@ -213,31 +280,59 @@ export function PDFPreviewDialog({
         return doc;
       }
       
-      // It's a storage path - construct full Supabase storage URL
-      // Storage paths look like: "tenant_id/filename.jpg" or "/tenant_id/filename.jpg"
-      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (supabaseUrl && cleanPath) {
-        // Determine bucket - documents are typically in 'load-documents' bucket
-        return `${supabaseUrl}/storage/v1/object/public/load-documents/${cleanPath}`;
+      // It's a storage path - use the pre-fetched signed URL
+      if (key && signedUrls[key]) {
+        return signedUrls[key];
       }
       
+      // Fallback: return null (will show placeholder, signed URL loading)
       return null;
     }
     
     return null;
-  };
+  }, [signedUrls]);
 
   // Document click handler
-  const handleDocumentClick = (doc: string | File | null | undefined, label: string) => {
-    const url = getDocumentUrl(doc);
-    if (url) {
-      setSelectedDocUrl(url);
+  const handleDocumentClick = useCallback(async (doc: string | File | null | undefined, label: string, key?: string) => {
+    // Handle File objects (local)
+    if (doc instanceof File) {
+      setSelectedDocUrl(URL.createObjectURL(doc));
       setSelectedDocName(label);
-    } else {
-      toast.error("Document not available");
+      return;
     }
-  };
+
+    // Handle string paths
+    if (typeof doc === 'string' && doc.trim()) {
+      // Check if already a full URL
+      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
+        setSelectedDocUrl(doc);
+        setSelectedDocName(label);
+        return;
+      }
+
+      // Check if we have a pre-fetched signed URL
+      if (key && signedUrls[key]) {
+        setSelectedDocUrl(signedUrls[key]);
+        setSelectedDocName(label);
+        return;
+      }
+
+      // Fetch signed URL on demand
+      setIsLoadingDoc(true);
+      const signedUrl = await getSignedUrl(doc);
+      setIsLoadingDoc(false);
+
+      if (signedUrl) {
+        setSelectedDocUrl(signedUrl);
+        setSelectedDocName(label);
+      } else {
+        toast.error("Could not load document");
+      }
+      return;
+    }
+
+    toast.error("Document not available");
+  }, [signedUrls, getSignedUrl]);
 
   // Check if a document URL is an image
   const isImageUrl = (url: string): boolean => {
@@ -249,6 +344,21 @@ export function PDFPreviewDialog({
            lowerUrl.includes('.webp') ||
            lowerUrl.startsWith('blob:') || // Blob URLs from File objects
            lowerUrl.startsWith('data:image'); // Data URLs
+  };
+
+  // Check if a path (not URL) is an image based on extension
+  const isImagePath = (doc: string | File | null | undefined): boolean => {
+    if (!doc) return false;
+    if (doc instanceof File) return doc.type.startsWith('image/');
+    if (typeof doc === 'string') {
+      const lowerPath = doc.toLowerCase();
+      return lowerPath.endsWith('.jpg') || 
+             lowerPath.endsWith('.jpeg') || 
+             lowerPath.endsWith('.png') || 
+             lowerPath.endsWith('.gif') ||
+             lowerPath.endsWith('.webp');
+    }
+    return false;
   };
 
   const showLoading = isLoading || (isRendering && pageImages.length === 0);
@@ -360,27 +470,32 @@ export function PDFPreviewDialog({
               <ScrollArea className="h-[calc(90vh-180px)]">
                 <div className="p-3 space-y-2">
                   {documentList.map((item) => {
-                    const url = getDocumentUrl(item.doc);
-                    const isImage = url && isImageUrl(url);
+                    const url = getDocumentUrl(item.doc, item.key);
+                    const isImage = url ? isImageUrl(url) : isImagePath(item.doc);
+                    const hasSignedUrl = !!url;
                     
                     return (
                       <Card
                         key={item.key}
                         className="cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden"
-                        onClick={() => handleDocumentClick(item.doc, item.label)}
+                        onClick={() => handleDocumentClick(item.doc, item.label, item.key)}
                       >
-                        {isImage && url ? (
-                          <div className="aspect-[4/3] relative bg-muted overflow-hidden">
-                            <img
-                              src={url}
-                              alt={item.label}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => {
-                                // Hide broken image, show fallback
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
+                        {isImage ? (
+                          <div className="aspect-[4/3] relative bg-muted overflow-hidden flex items-center justify-center">
+                            {hasSignedUrl ? (
+                              <img
+                                src={url}
+                                alt={item.label}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onError={(e) => {
+                                  // Hide broken image, show fallback
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            )}
                             {/* Fallback icon shown behind image */}
                             <div className="absolute inset-0 flex items-center justify-center -z-10">
                               <ImageIcon className="h-8 w-8 text-muted-foreground" />
