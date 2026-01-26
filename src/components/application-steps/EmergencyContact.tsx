@@ -55,7 +55,7 @@ export function EmergencyContact({ data, onNext, onBack, isFirstStep, isPreviewM
         : [data.emergencyContacts[0] || { ...emptyContact }, data.emergencyContacts[1] || { ...emptyContact }]
       );
     }
-  }, [data?.emergencyContacts]);
+  }, []); // Empty deps - run only once on mount
 
   const updateContact = (index: number, field: string, value: string) => {
     const updatedContacts = [...contacts];

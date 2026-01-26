@@ -39,9 +39,8 @@ export const PersonalInfo = ({ data, onNext, isPreviewMode = false }: PersonalIn
   // Track if this is the initial mount to prevent overwriting user-entered data
   const hasInitialized = useRef(false);
   
-  // Sync form data with prop changes ONLY on initial mount or when returning from another step
+  // Sync form data ONLY on initial mount - never overwrite user's typing
   useEffect(() => {
-    // Only sync if we have data from the parent and it's different from current
     if (data?.personalInfo && !hasInitialized.current) {
       hasInitialized.current = true;
       setFormData({
@@ -64,7 +63,7 @@ export const PersonalInfo = ({ data, onNext, isPreviewMode = false }: PersonalIn
         felonyDetails: data.personalInfo.felonyDetails || "",
       });
     }
-  }, [data?.personalInfo]);
+  }, []); // Empty deps - run only once on mount
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

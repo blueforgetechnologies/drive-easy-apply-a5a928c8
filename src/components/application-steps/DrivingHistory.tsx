@@ -49,7 +49,7 @@ export const DrivingHistory = ({ data, onNext, onBack, isPreviewMode = false }: 
       if (data.drivingHistory.accidents) setAccidents(data.drivingHistory.accidents);
       if (data.drivingHistory.violations) setViolations(data.drivingHistory.violations);
     }
-  }, [data?.drivingHistory]);
+  }, []); // Empty deps - run only once on mount
 
   const addAccident = () => {
     setAccidents([...accidents, { date: "", location: "", description: "", fatalities: 0, injuries: 0 }]);

@@ -32,8 +32,8 @@ interface RealtimeCountsOptions {
 // Map of tables to the query keys they should invalidate
 const TABLE_QUERY_KEY_MAP: Record<string, string[]> = {
   applications: [
-    "business-manager-counts",
-    "applications", // For ApplicationsManager
+    "business-manager-counts", // Only invalidate counts, not the main applications list
+    // Note: "applications" list is handled by ApplicationsManager's own realtime subscription
   ],
   loads: [
     "tenant-loads-count",

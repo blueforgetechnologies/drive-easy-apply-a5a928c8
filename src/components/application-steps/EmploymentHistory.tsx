@@ -71,7 +71,7 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
       hasInitialized.current = true;
       setEmploymentHistory(data.employmentHistory);
     }
-  }, [data?.employmentHistory]);
+  }, []); // Empty deps - run only once on mount
   
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
