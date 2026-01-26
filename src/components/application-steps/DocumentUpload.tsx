@@ -20,7 +20,6 @@ interface UploadedDocument {
   path: string;
   name: string;
   size: number;
-  previewUrl?: string;
 }
 
 export const DocumentUpload = ({ 
@@ -47,7 +46,6 @@ export const DocumentUpload = ({
   });
   
   const [uploadingField, setUploadingField] = useState<string | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   // Get signed URL for viewing
   const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -89,11 +87,6 @@ export const DocumentUpload = ({
         return null;
       }
       
-      // Get signed URL for preview
-      const signedUrl = await getSignedUrl(storagePath);
-      if (signedUrl) {
-        setPreviewUrls(prev => ({ ...prev, [docType]: signedUrl }));
-      }
       
       console.log(`[DocumentUpload] Uploaded ${docType} to:`, storagePath);
       
@@ -101,7 +94,6 @@ export const DocumentUpload = ({
         path: storagePath,
         name: file.name,
         size: file.size,
-        previewUrl: signedUrl || undefined,
       };
     } catch (err) {
       console.error(`Error uploading ${docType}:`, err);
@@ -113,11 +105,6 @@ export const DocumentUpload = ({
   const handleFileChange = async (field: string, file: File | null) => {
     if (!file) {
       setDocuments((prev) => ({ ...prev, [field]: null }));
-      setPreviewUrls(prev => {
-        const newUrls = { ...prev };
-        delete newUrls[field];
-        return newUrls;
-      });
       return;
     }
 
@@ -201,11 +188,6 @@ export const DocumentUpload = ({
 
   const removeDocument = (field: string) => {
     setDocuments((prev) => ({ ...prev, [field]: null }));
-    setPreviewUrls(prev => {
-      const newUrls = { ...prev };
-      delete newUrls[field];
-      return newUrls;
-    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
