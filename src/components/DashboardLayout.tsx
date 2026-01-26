@@ -23,6 +23,7 @@ import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { useUserPermissions, PERMISSION_CODES } from "@/hooks/useUserPermissions";
+import { useRealtimeCounts } from "@/hooks/useRealtimeCounts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 interface DashboardLayoutProps {
@@ -68,6 +69,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const loadHunterGate = useFeatureGate({ featureKey: "load_hunter_enabled", requiresUserGrant: false });
   const developmentGate = useFeatureGate({ featureKey: "development_tools", requiresUserGrant: false });
   const operationsGate = useFeatureGate({ featureKey: "operations_module", requiresUserGrant: false });
+
+  // Enable global realtime count updates - this subscribes to all relevant tables
+  // and automatically invalidates React Query caches when data changes
+  useRealtimeCounts({ enabled: authReady });
 
   // Compute visibility: BOTH tenant feature flag AND user permission required
   // Platform admins bypass permission checks
