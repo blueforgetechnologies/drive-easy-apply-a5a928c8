@@ -80,6 +80,14 @@ export const ReviewSubmit = ({ data, onBack, onEditStep, isPreviewMode = false }
       return;
     }
 
+    // In Test/Preview Mode: Skip actual submission and show success
+    if (isTestMode) {
+      console.log('[ReviewSubmit] Test Mode: Skipping actual submission');
+      toast.success("Test Mode: Application would be submitted successfully");
+      setIsSubmitted(true);
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
