@@ -370,10 +370,17 @@ const ScreenshareTab = () => {
       localStreamRef.current = null;
     }
     
-    // Reset warnings
+    // Reset warnings and UI state
     setIsSharingBrowserTab(false);
     setSharingFrozen(false);
     setDisplaySurface(null);
+    setHasRemoteStream(false);
+    setViewerFrozen(false);
+    
+    // Clear video element
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
     
     // Close existing peer connection
     if (peerConnectionRef.current) {
@@ -387,12 +394,18 @@ const ScreenshareTab = () => {
     processedIceCandidatesRef.current.clear();
     
     // CRITICAL: Reset signaling fields in DB so viewer gets fresh SDP/ICE
-    await supabase.from('screen_share_sessions').update({
+    const { error } = await supabase.from('screen_share_sessions').update({
       admin_offer: null,
       client_answer: null,
       admin_ice_candidates: [],
       client_ice_candidates: [],
     }).eq('id', activeSession.id);
+    
+    if (error) {
+      console.error('Failed to reset signaling fields:', error);
+      toast({ title: "Re-share Failed", description: "Could not reset session. Please end and start a new session.", variant: "destructive" });
+      return;
+    }
     
     // Restart screen share
     await startScreenShare(activeSession);
@@ -497,6 +510,8 @@ const ScreenshareTab = () => {
       const video = remoteVideoRef.current;
       // Gate on video element and srcObject, NOT on state (avoids stale closure)
       if (!video || !video.srcObject) return;
+      // Reduce false positives: skip if video is paused or not ready
+      if (video.paused || video.readyState < 2) return;
       
       const currentTime = video.currentTime;
       const delta = Math.abs(currentTime - lastVideoTimeRef.current);
