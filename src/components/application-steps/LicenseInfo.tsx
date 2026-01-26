@@ -60,7 +60,7 @@ export const LicenseInfo = ({ data, onNext, onBack, isPreviewMode = false }: Lic
         suspendedDetails: data.licenseInfo.suspendedDetails || "",
       });
     }
-  }, [data?.licenseInfo]);
+  }, []); // Empty deps - run only once on mount
 
   const endorsementOptions = [
     { id: "H", label: "H - Hazardous Materials" },
