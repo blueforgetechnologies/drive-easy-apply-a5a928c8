@@ -30,6 +30,9 @@ const emptyContact: EmergencyContactData = {
 };
 
 export function EmergencyContact({ data, onNext, onBack, isFirstStep }: EmergencyContactProps) {
+  // Check if Test Mode is enabled (set via Applications Manager toggle)
+  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+
   const [contacts, setContacts] = useState<EmergencyContactData[]>(
     data.emergencyContacts?.length >= 2 
       ? data.emergencyContacts 
@@ -56,13 +59,16 @@ export function EmergencyContact({ data, onNext, onBack, isFirstStep }: Emergenc
   };
 
   const handleNext = () => {
-    const hasCompleteContact = contacts.some(isContactComplete);
-    
-    if (!hasCompleteContact) {
-      toast.error("At least one emergency contact is required", {
-        description: "Please fill in all fields for at least one emergency contact.",
-      });
-      return;
+    // Skip validation in Test Mode
+    if (!isTestMode) {
+      const hasCompleteContact = contacts.some(isContactComplete);
+      
+      if (!hasCompleteContact) {
+        toast.error("At least one emergency contact is required", {
+          description: "Please fill in all fields for at least one emergency contact.",
+        });
+        return;
+      }
     }
     
     onNext({ emergencyContacts: contacts });
