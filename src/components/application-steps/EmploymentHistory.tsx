@@ -20,6 +20,7 @@ interface EmploymentHistoryProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
 interface Employment {
@@ -35,9 +36,9 @@ interface Employment {
   reasonForLeaving: string;
 }
 
-export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryProps) => {
+export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false }: EmploymentHistoryProps) => {
   // Check if Test Mode is enabled (set via Applications Manager toggle)
-  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
 
   const [employmentHistory, setEmploymentHistory] = useState<Employment[]>(
     data?.employmentHistory?.length > 0
