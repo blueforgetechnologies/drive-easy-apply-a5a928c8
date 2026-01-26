@@ -20,6 +20,8 @@ interface ScreenShareSession {
   connected_at: string | null;
 }
 
+type MyRole = 'admin' | 'client' | null;
+
 const ScreenshareTab = () => {
   const { toast } = useToast();
   const { effectiveTenant } = useTenantContext();
@@ -35,6 +37,15 @@ const ScreenshareTab = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
+  
+  // ICE candidate queue for candidates received before remoteDescription is set
+  const iceCandidateQueueRef = useRef<RTCIceCandidateInit[]>([]);
+  // Track which remote ICE candidates we've already processed (by serialized string)
+  const processedIceCandidatesRef = useRef<Set<string>>(new Set());
+  // My role in the session (determines which ICE column I write to)
+  const myRoleRef = useRef<MyRole>(null);
+  // Track if we've already created an answer (viewer side)
+  const hasCreatedAnswerRef = useRef(false);
 
   // Keep ref in sync with state to avoid stale closure issues
   useEffect(() => {
@@ -107,10 +118,10 @@ const ScreenshareTab = () => {
         userId !== null
       ) {
         console.log('Session became active, checking if should enter viewer mode:', updatedSession.session_code);
-        // Use functional state updates to avoid stale closures
         setActiveSession(prev => {
           if (prev === null) {
             console.log('Auto-entering viewer mode');
+            myRoleRef.current = 'admin'; // I'm the admin (viewer)
             setIsViewing(true);
             setGeneratedCode(null);
             initializeViewer(updatedSession);
@@ -213,6 +224,9 @@ const ScreenshareTab = () => {
 
     const session = result.session!;
     const role = result.role as 'admin' | 'client';
+    
+    // Store my role for ICE candidate writing
+    myRoleRef.current = role;
 
     setActiveSession(session);
     
@@ -230,6 +244,87 @@ const ScreenshareTab = () => {
 
     setSessionCode("");
     setIsConnecting(false);
+  };
+
+  // Write ICE candidate to MY column only (no read-modify-write on shared array)
+  const writeMyIceCandidate = async (sessionId: string, candidate: RTCIceCandidate) => {
+    const role = myRoleRef.current;
+    if (!role) {
+      console.error('Cannot write ICE: role not set');
+      return;
+    }
+
+    const columnName = role === 'admin' ? 'admin_ice_candidates' : 'client_ice_candidates';
+    const candidateJson = JSON.parse(JSON.stringify(candidate.toJSON()));
+
+    // Read current array, append, write back (still per-column, not shared)
+    const { data: currentSession } = await supabase
+      .from('screen_share_sessions')
+      .select(columnName)
+      .eq('id', sessionId)
+      .single();
+
+    const existing = Array.isArray((currentSession as any)?.[columnName]) 
+      ? (currentSession as any)[columnName] as unknown[]
+      : [];
+    
+    const updated = [...existing, candidateJson];
+
+    await supabase
+      .from('screen_share_sessions')
+      .update({ [columnName]: updated })
+      .eq('id', sessionId);
+    
+    console.log(`Wrote ICE candidate to ${columnName}`);
+  };
+
+  // Flush queued ICE candidates after remoteDescription is set
+  const flushIceCandidateQueue = async (pc: RTCPeerConnection) => {
+    const queue = iceCandidateQueueRef.current;
+    console.log(`Flushing ${queue.length} queued ICE candidates`);
+    
+    for (const candidate of queue) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('Flushed queued ICE candidate');
+      } catch (e) {
+        console.warn('Error adding queued ICE candidate:', e);
+      }
+    }
+    
+    iceCandidateQueueRef.current = [];
+  };
+
+  // Process remote ICE candidates (from the OTHER peer's column)
+  const processRemoteIceCandidates = async (session: any, pc: RTCPeerConnection) => {
+    const myRole = myRoleRef.current;
+    if (!myRole) return;
+
+    // Read from the OTHER peer's column
+    const remoteColumn = myRole === 'admin' ? 'client_ice_candidates' : 'admin_ice_candidates';
+    const remoteCandidates = Array.isArray(session[remoteColumn]) ? session[remoteColumn] : [];
+
+    for (const candidate of remoteCandidates) {
+      const key = JSON.stringify(candidate);
+      if (processedIceCandidatesRef.current.has(key)) {
+        continue; // Already processed
+      }
+      processedIceCandidatesRef.current.add(key);
+
+      if (pc.remoteDescription) {
+        // Remote description set, add immediately
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('Added remote ICE candidate');
+        } catch (e) {
+          console.warn('Error adding remote ICE candidate:', e);
+        }
+      } else {
+        // Queue for later
+        console.log('Queuing remote ICE candidate (no remoteDescription yet)');
+        iceCandidateQueueRef.current.push(candidate);
+      }
+    }
   };
 
   // Called by the person SHARING their screen (the joiner when admin initiated)
@@ -251,25 +346,15 @@ const ScreenshareTab = () => {
         pc.addTrack(track, stream);
       });
 
-      // Sharer collects ICE candidates and writes offer
+      // Sharer writes to client_ice_candidates (role is 'client')
       pc.onicecandidate = async (event) => {
         if (event.candidate) {
-          const { data: currentSession } = await supabase
-            .from('screen_share_sessions')
-            .select('ice_candidates')
-            .eq('id', session.id)
-            .single();
-          
-          const existingCandidates = Array.isArray(currentSession?.ice_candidates) 
-            ? (currentSession.ice_candidates as unknown[])
-            : [];
-          const candidates = [...existingCandidates, JSON.parse(JSON.stringify(event.candidate.toJSON()))];
-          
-          await supabase
-            .from('screen_share_sessions')
-            .update({ ice_candidates: candidates })
-            .eq('id', session.id);
+          await writeMyIceCandidate(session.id, event.candidate);
         }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log('Sharer connection state:', pc.connectionState);
       };
 
       // Create and send offer (sharer creates offer)
@@ -280,6 +365,8 @@ const ScreenshareTab = () => {
         .from('screen_share_sessions')
         .update({ admin_offer: JSON.stringify(offer) })
         .eq('id', session.id);
+      
+      console.log('Offer sent');
 
       stream.getVideoTracks()[0].onended = () => {
         endSession(session.id);
@@ -295,6 +382,11 @@ const ScreenshareTab = () => {
 
   // Called by the person VIEWING (the admin who generated the code)
   const initializeViewer = async (session: ScreenShareSession) => {
+    // Reset state for new session
+    hasCreatedAnswerRef.current = false;
+    iceCandidateQueueRef.current = [];
+    processedIceCandidatesRef.current.clear();
+
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
@@ -307,78 +399,104 @@ const ScreenshareTab = () => {
       }
     };
 
+    // Viewer writes to admin_ice_candidates (role is 'admin')
     pc.onicecandidate = async (event) => {
       if (event.candidate) {
-        const { data: currentSession } = await supabase
-          .from('screen_share_sessions')
-          .select('ice_candidates')
-          .eq('id', session.id)
-          .single();
-        
-        const existingCandidates = Array.isArray(currentSession?.ice_candidates) 
-          ? (currentSession.ice_candidates as unknown[])
-          : [];
-        const candidates = [...existingCandidates, JSON.parse(JSON.stringify(event.candidate.toJSON()))];
-        
-        await supabase
-          .from('screen_share_sessions')
-          .update({ ice_candidates: candidates })
-          .eq('id', session.id);
+        await writeMyIceCandidate(session.id, event.candidate);
       }
     };
 
     pc.onconnectionstatechange = () => {
-      console.log('Connection state:', pc.connectionState);
+      console.log('Viewer connection state:', pc.connectionState);
     };
+
+    // Check if offer is already available
+    const { data: currentSession } = await supabase
+      .from('screen_share_sessions')
+      .select('*')
+      .eq('id', session.id)
+      .single();
+
+    if (currentSession?.admin_offer) {
+      await handleViewerOffer(pc, currentSession, session.id);
+    }
+  };
+
+  // Viewer-specific: handle incoming offer and create answer (ONCE)
+  const handleViewerOffer = async (pc: RTCPeerConnection, session: any, sessionId: string) => {
+    if (hasCreatedAnswerRef.current) {
+      console.log('Already created answer, skipping');
+      return;
+    }
+    if (!session.admin_offer) {
+      console.log('No offer yet');
+      return;
+    }
+    if (pc.remoteDescription) {
+      console.log('Remote description already set');
+      return;
+    }
+
+    try {
+      console.log('Viewer: setting remote description from offer');
+      const offer = JSON.parse(session.admin_offer);
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      
+      // Flush any queued ICE candidates now that remoteDescription is set
+      await flushIceCandidateQueue(pc);
+      
+      // Create answer ONCE
+      hasCreatedAnswerRef.current = true;
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      
+      await supabase
+        .from('screen_share_sessions')
+        .update({ client_answer: JSON.stringify(answer) })
+        .eq('id', sessionId);
+      
+      console.log('Viewer: answer sent');
+    } catch (e) {
+      console.error('Error handling offer (viewer):', e);
+      hasCreatedAnswerRef.current = false; // Allow retry on error
+    }
   };
 
   const handleSignaling = async (session: any) => {
     const pc = peerConnectionRef.current;
     if (!pc) return;
 
-    // Viewer receives offer and creates answer
-    if (session.admin_offer && !pc.remoteDescription) {
-      try {
-        console.log('Received offer, creating answer...');
-        const offer = JSON.parse(session.admin_offer);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        
-        await supabase
-          .from('screen_share_sessions')
-          .update({ client_answer: JSON.stringify(answer) })
-          .eq('id', session.id);
-        console.log('Answer sent');
-      } catch (e) {
-        console.error('Error handling offer:', e);
+    const myRole = myRoleRef.current;
+
+    // VIEWER LOGIC: receives offer, creates answer
+    if (myRole === 'admin') {
+      // Viewer only needs to handle the offer (once)
+      if (session.admin_offer && !pc.remoteDescription) {
+        await handleViewerOffer(pc, session, session.id);
       }
+      // Viewer processes remote ICE from client
+      await processRemoteIceCandidates(session, pc);
     }
 
-    // Sharer receives answer
-    if (session.client_answer && pc.localDescription && !pc.remoteDescription) {
-      try {
-        console.log('Received answer...');
-        const answer = JSON.parse(session.client_answer);
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log('Answer applied');
-      } catch (e) {
-        console.error('Error handling answer:', e);
-      }
-    }
-
-    // Both sides process ICE candidates
-    if (session.ice_candidates && session.ice_candidates.length > 0) {
-      for (const candidate of session.ice_candidates) {
+    // SHARER LOGIC: receives answer
+    if (myRole === 'client') {
+      // Sharer receives answer
+      if (session.client_answer && pc.localDescription && !pc.remoteDescription) {
         try {
-          if (pc.remoteDescription) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          }
+          console.log('Sharer: setting remote description from answer');
+          const answer = JSON.parse(session.client_answer);
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          
+          // Flush any queued ICE candidates
+          await flushIceCandidateQueue(pc);
+          
+          console.log('Sharer: answer applied');
         } catch (e) {
-          // Ignore duplicate candidate errors
+          console.error('Error handling answer (sharer):', e);
         }
       }
+      // Sharer processes remote ICE from admin
+      await processRemoteIceCandidates(session, pc);
     }
   };
 
@@ -407,6 +525,11 @@ const ScreenshareTab = () => {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
+    // Reset signaling state
+    myRoleRef.current = null;
+    hasCreatedAnswerRef.current = false;
+    iceCandidateQueueRef.current = [];
+    processedIceCandidatesRef.current.clear();
   };
 
   const copyCode = (code: string) => {
