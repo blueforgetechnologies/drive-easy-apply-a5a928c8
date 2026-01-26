@@ -32,6 +32,7 @@ const ScreenshareTab = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [hasRemoteStream, setHasRemoteStream] = useState(false);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -52,12 +53,13 @@ const ScreenshareTab = () => {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
 
+  // General subscription for session list (pending/active sessions overview)
   useEffect(() => {
     loadCurrentUser();
     loadSessions();
     
     const channel = supabase
-      .channel('screen-share-sessions')
+      .channel('screen-share-sessions-list')
       .on(
         'postgres_changes',
         {
@@ -66,8 +68,37 @@ const ScreenshareTab = () => {
           table: 'screen_share_sessions'
         },
         (payload) => {
-          console.log('Screen share session update:', payload);
-          handleRealtimeUpdate(payload);
+          console.log('Session list update:', payload);
+          // Update session list
+          if (payload.eventType === 'INSERT') {
+            setSessions(prev => [payload.new as ScreenShareSession, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setSessions(prev => prev.map(s => s.id === payload.new.id ? payload.new as ScreenShareSession : s));
+          } else if (payload.eventType === 'DELETE') {
+            setSessions(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+          
+          // Auto-enter viewer mode when session becomes active and I'm the admin
+          const updatedSession = payload.new as ScreenShareSession;
+          const userId = currentUserIdRef.current;
+          if (
+            payload.eventType === 'UPDATE' &&
+            updatedSession.status === 'active' && 
+            updatedSession.admin_user_id === userId &&
+            userId !== null
+          ) {
+            setActiveSession(prev => {
+              if (prev === null) {
+                console.log('Auto-entering viewer mode');
+                myRoleRef.current = 'admin';
+                setIsViewing(true);
+                setGeneratedCode(null);
+                initializeViewer(updatedSession);
+                return updatedSession;
+              }
+              return prev;
+            });
+          }
         }
       )
       .subscribe();
@@ -77,6 +108,45 @@ const ScreenshareTab = () => {
       cleanupConnection();
     };
   }, []);
+
+  // Filtered subscription for active session signaling (only when we have an active session)
+  const activeSessionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  
+  useEffect(() => {
+    if (!activeSession) {
+      // Cleanup existing channel if session ends
+      if (activeSessionChannelRef.current) {
+        supabase.removeChannel(activeSessionChannelRef.current);
+        activeSessionChannelRef.current = null;
+      }
+      return;
+    }
+
+    // Subscribe to only this specific session for signaling
+    const channel = supabase
+      .channel(`screen-share-signaling-${activeSession.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'screen_share_sessions',
+          filter: `id=eq.${activeSession.id}`
+        },
+        (payload) => {
+          console.log('Signaling update for active session:', payload);
+          handleSignaling(payload.new);
+        }
+      )
+      .subscribe();
+
+    activeSessionChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      activeSessionChannelRef.current = null;
+    };
+  }, [activeSession?.id]);
 
   const loadCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -101,47 +171,6 @@ const ScreenshareTab = () => {
     setSessions(data || []);
   };
 
-  const handleRealtimeUpdate = useCallback(async (payload: any) => {
-    if (payload.eventType === 'INSERT') {
-      setSessions(prev => [payload.new, ...prev]);
-    } else if (payload.eventType === 'UPDATE') {
-      setSessions(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
-      
-      const updatedSession = payload.new as ScreenShareSession;
-      const userId = currentUserIdRef.current;
-      
-      // If session becomes active and I'm the creator (admin who generated the code), 
-      // auto-switch to viewer mode
-      if (
-        updatedSession.status === 'active' && 
-        updatedSession.admin_user_id === userId &&
-        userId !== null
-      ) {
-        console.log('Session became active, checking if should enter viewer mode:', updatedSession.session_code);
-        setActiveSession(prev => {
-          if (prev === null) {
-            console.log('Auto-entering viewer mode');
-            myRoleRef.current = 'admin'; // I'm the admin (viewer)
-            setIsViewing(true);
-            setGeneratedCode(null);
-            initializeViewer(updatedSession);
-            return updatedSession;
-          }
-          return prev;
-        });
-      }
-      
-      // Handle WebRTC signaling for active session
-      setActiveSession(prev => {
-        if (prev?.id === payload.new.id) {
-          handleSignaling(payload.new);
-        }
-        return prev;
-      });
-    } else if (payload.eventType === 'DELETE') {
-      setSessions(prev => prev.filter(s => s.id !== payload.old.id));
-    }
-  }, []);
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -246,7 +275,7 @@ const ScreenshareTab = () => {
     setIsConnecting(false);
   };
 
-  // Write ICE candidate to MY column only (no read-modify-write on shared array)
+  // Write ICE candidate atomically via RPC (no read-modify-write race)
   const writeMyIceCandidate = async (sessionId: string, candidate: RTCIceCandidate) => {
     const role = myRoleRef.current;
     if (!role) {
@@ -254,28 +283,20 @@ const ScreenshareTab = () => {
       return;
     }
 
-    const columnName = role === 'admin' ? 'admin_ice_candidates' : 'client_ice_candidates';
     const candidateJson = JSON.parse(JSON.stringify(candidate.toJSON()));
 
-    // Read current array, append, write back (still per-column, not shared)
-    const { data: currentSession } = await supabase
-      .from('screen_share_sessions')
-      .select(columnName)
-      .eq('id', sessionId)
-      .single();
+    const { data, error } = await supabase.rpc('screenshare_append_ice', {
+      p_session_id: sessionId,
+      p_role: role,
+      p_candidate: candidateJson
+    });
 
-    const existing = Array.isArray((currentSession as any)?.[columnName]) 
-      ? (currentSession as any)[columnName] as unknown[]
-      : [];
-    
-    const updated = [...existing, candidateJson];
+    if (error) {
+      console.error('Error appending ICE candidate:', error);
+      return;
+    }
 
-    await supabase
-      .from('screen_share_sessions')
-      .update({ [columnName]: updated })
-      .eq('id', sessionId);
-    
-    console.log(`Wrote ICE candidate to ${columnName}`);
+    console.log(`Atomically appended ICE candidate for role ${role}`);
   };
 
   // Flush queued ICE candidates after remoteDescription is set
@@ -397,6 +418,7 @@ const ScreenshareTab = () => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
+      setHasRemoteStream(true);
     };
 
     // Viewer writes to admin_ice_candidates (role is 'admin')
@@ -530,6 +552,7 @@ const ScreenshareTab = () => {
     hasCreatedAnswerRef.current = false;
     iceCandidateQueueRef.current = [];
     processedIceCandidatesRef.current.clear();
+    setHasRemoteStream(false);
   };
 
   const copyCode = (code: string) => {
@@ -612,7 +635,7 @@ const ScreenshareTab = () => {
                 playsInline
                 className="w-full h-full rounded-lg"
               />
-              {!remoteVideoRef.current?.srcObject && (
+              {!hasRemoteStream && (
                 <div className="absolute text-white flex flex-col items-center gap-2">
                   <Loader2 className="h-8 w-8 animate-spin" />
                   <span>Waiting for screen share...</span>
