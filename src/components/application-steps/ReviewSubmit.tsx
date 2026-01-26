@@ -263,28 +263,26 @@ export const ReviewSubmit = ({ data, onBack, onEditStep, isPreviewMode = false }
           </p>
         </div>
 
-        <Card className="bg-scifi-card/50 border-scifi-border max-w-md w-full">
-          <CardContent className="p-6 space-y-4">
-            <h3 className="font-semibold text-scifi-text flex items-center gap-2">
-              <Mail className="h-4 w-4 text-scifi-purple" />
-              What happens next?
-            </h3>
-            <ul className="text-sm text-scifi-text-muted space-y-3 text-left">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">1</span>
-                <span>Our team will review your application within 1-3 business days.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">2</span>
-                <span>We may contact you for additional information or to schedule an interview.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-purple/20 text-scifi-purple text-xs font-bold flex items-center justify-center">3</span>
-                <span>You'll receive an email notification once a decision has been made.</span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="section-scifi max-w-md w-full p-6 space-y-4">
+          <h3 className="font-semibold text-scifi-text flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4 text-scifi-purple" />
+            What happens next?
+          </h3>
+          <ul className="text-sm text-scifi-text-muted space-y-3 text-left">
+            <li className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-cyan/20 text-scifi-cyan text-xs font-bold flex items-center justify-center border border-scifi-cyan/30">1</span>
+              <span>Our team will review your application within 1-3 business days.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-cyan/20 text-scifi-cyan text-xs font-bold flex items-center justify-center border border-scifi-cyan/30">2</span>
+              <span>We may contact you for additional information or to schedule an interview.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-scifi-cyan/20 text-scifi-cyan text-xs font-bold flex items-center justify-center border border-scifi-cyan/30">3</span>
+              <span>You'll receive an email notification once a decision has been made.</span>
+            </li>
+          </ul>
+        </div>
 
         <div className="flex items-center gap-2 text-sm text-scifi-text-muted">
           <Phone className="h-4 w-4" />
