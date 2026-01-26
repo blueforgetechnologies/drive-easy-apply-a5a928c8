@@ -375,7 +375,14 @@ export function ApplicationsManager() {
     }
 
     // Use /apply?token= path, NOT just /?token=
-    const url = `${window.location.origin}/apply?token=${invite.public_token}`;
+    // Append &preview=true if Test Mode is enabled
+    const baseUrl = `${window.location.origin}/apply?token=${invite.public_token}`;
+    const url = testModeEnabled ? `${baseUrl}&preview=true` : baseUrl;
+    
+    if (testModeEnabled) {
+      toast.info("Opening in Test Mode - validation disabled");
+    }
+    
     window.open(url, "_blank");
   };
 
