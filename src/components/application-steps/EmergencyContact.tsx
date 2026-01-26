@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,20 @@ export function EmergencyContact({ data, onNext, onBack, isFirstStep, isPreviewM
           data.emergencyContacts?.[1] || { ...emptyContact }
         ]
   );
+  
+  // Track if this is the initial mount to prevent overwriting user-entered data
+  const hasInitialized = useRef(false);
+  
+  // Sync form data with prop changes ONLY on initial mount
+  useEffect(() => {
+    if (data?.emergencyContacts?.length > 0 && !hasInitialized.current) {
+      hasInitialized.current = true;
+      setContacts(data.emergencyContacts.length >= 2 
+        ? data.emergencyContacts 
+        : [data.emergencyContacts[0] || { ...emptyContact }, data.emergencyContacts[1] || { ...emptyContact }]
+      );
+    }
+  }, [data?.emergencyContacts]);
 
   const updateContact = (index: number, field: string, value: string) => {
     const updatedContacts = [...contacts];

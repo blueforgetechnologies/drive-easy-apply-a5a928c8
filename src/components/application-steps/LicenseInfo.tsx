@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,33 @@ export const LicenseInfo = ({ data, onNext, onBack, isPreviewMode = false }: Lic
     deniedDetails: data?.licenseInfo?.deniedDetails || "",
     suspendedDetails: data?.licenseInfo?.suspendedDetails || "",
   });
+  
+  // Track if this is the initial mount to prevent overwriting user-entered data
+  const hasInitialized = useRef(false);
+  
+  // Sync form data with prop changes ONLY on initial mount
+  useEffect(() => {
+    if (data?.licenseInfo && !hasInitialized.current) {
+      hasInitialized.current = true;
+      setFormData({
+        nameOnLicense: data.licenseInfo.nameOnLicense || "",
+        licenseNumber: data.licenseInfo.licenseNumber || "",
+        licenseState: data.licenseInfo.licenseState || "",
+        licenseClass: data.licenseInfo.licenseClass || "",
+        endorsements: data.licenseInfo.endorsements || [],
+        issuedDate: data.licenseInfo.issuedDate || "",
+        expirationDate: data.licenseInfo.expirationDate || "",
+        hasDotMedicalCert: data.licenseInfo.hasDotMedicalCert || "",
+        nationalRegistryNumber: data.licenseInfo.nationalRegistryNumber || "",
+        medicalCardExpiration: data.licenseInfo.medicalCardExpiration || "",
+        yearsExperience: data.licenseInfo.yearsExperience || "",
+        deniedLicense: data.licenseInfo.deniedLicense || "",
+        suspendedRevoked: data.licenseInfo.suspendedRevoked || "",
+        deniedDetails: data.licenseInfo.deniedDetails || "",
+        suspendedDetails: data.licenseInfo.suspendedDetails || "",
+      });
+    }
+  }, [data?.licenseInfo]);
 
   const endorsementOptions = [
     { id: "H", label: "H - Hazardous Materials" },
@@ -55,6 +82,7 @@ export const LicenseInfo = ({ data, onNext, onBack, isPreviewMode = false }: Lic
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
     onNext({ licenseInfo: formData });
   };
 
