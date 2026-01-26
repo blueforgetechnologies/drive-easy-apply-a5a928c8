@@ -10,6 +10,7 @@ interface PersonalInfoProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
 export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
