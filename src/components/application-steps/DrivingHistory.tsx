@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,18 @@ export const DrivingHistory = ({ data, onNext, onBack, isPreviewMode = false }: 
   const [violations, setViolations] = useState<Violation[]>(
     data?.drivingHistory?.violations || []
   );
+  
+  // Track if this is the initial mount to prevent overwriting user-entered data
+  const hasInitialized = useRef(false);
+  
+  // Sync form data with prop changes ONLY on initial mount
+  useEffect(() => {
+    if (data?.drivingHistory && !hasInitialized.current) {
+      hasInitialized.current = true;
+      if (data.drivingHistory.accidents) setAccidents(data.drivingHistory.accidents);
+      if (data.drivingHistory.violations) setViolations(data.drivingHistory.violations);
+    }
+  }, [data?.drivingHistory]);
 
   const addAccident = () => {
     setAccidents([...accidents, { date: "", location: "", description: "", fatalities: 0, injuries: 0 }]);
@@ -57,6 +69,7 @@ export const DrivingHistory = ({ data, onNext, onBack, isPreviewMode = false }: 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
     onNext({ drivingHistory: { accidents, violations } });
   };
 

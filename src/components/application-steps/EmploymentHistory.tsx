@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,18 @@ export const EmploymentHistory = ({ data, onNext, onBack, isPreviewMode = false 
           },
         ]
   );
+  
+  // Track if this is the initial mount to prevent overwriting user-entered data
+  const hasInitialized = useRef(false);
+  
+  // Sync form data with prop changes ONLY on initial mount
+  useEffect(() => {
+    if (data?.employmentHistory?.length > 0 && !hasInitialized.current) {
+      hasInitialized.current = true;
+      setEmploymentHistory(data.employmentHistory);
+    }
+  }, [data?.employmentHistory]);
+  
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
 

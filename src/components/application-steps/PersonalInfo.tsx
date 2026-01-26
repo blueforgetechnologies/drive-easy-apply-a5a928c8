@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +35,40 @@ export const PersonalInfo = ({ data, onNext, isPreviewMode = false }: PersonalIn
     felonyConviction: data?.personalInfo?.felonyConviction || "",
     felonyDetails: data?.personalInfo?.felonyDetails || "",
   });
+  
+  // Track if this is the initial mount to prevent overwriting user-entered data
+  const hasInitialized = useRef(false);
+  
+  // Sync form data with prop changes ONLY on initial mount or when returning from another step
+  useEffect(() => {
+    // Only sync if we have data from the parent and it's different from current
+    if (data?.personalInfo && !hasInitialized.current) {
+      hasInitialized.current = true;
+      setFormData({
+        firstName: data.personalInfo.firstName || "",
+        lastName: data.personalInfo.lastName || "",
+        middleName: data.personalInfo.middleName || "",
+        ssn: data.personalInfo.ssn || "",
+        dob: data.personalInfo.dob || "",
+        phone: data.personalInfo.phone || "",
+        email: data.personalInfo.email || "",
+        address: data.personalInfo.address || "",
+        city: data.personalInfo.city || "",
+        state: data.personalInfo.state || "",
+        zip: data.personalInfo.zip || "",
+        emergencyContactName: data.personalInfo.emergencyContactName || "",
+        emergencyContactRelationship: data.personalInfo.emergencyContactRelationship || "",
+        emergencyContactPhone: data.personalInfo.emergencyContactPhone || "",
+        legallyAuthorized: data.personalInfo.legallyAuthorized || "",
+        felonyConviction: data.personalInfo.felonyConviction || "",
+        felonyDetails: data.personalInfo.felonyDetails || "",
+      });
+    }
+  }, [data?.personalInfo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling that might cause double submission
     onNext({ personalInfo: formData });
   };
 
