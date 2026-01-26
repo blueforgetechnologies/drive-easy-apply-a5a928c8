@@ -215,11 +215,19 @@ const ScreenshareTab = () => {
       updateData.client_user_id = user.id;
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('screen_share_sessions')
       .update(updateData)
       .eq('id', session.id);
 
+    if (updateError) {
+      console.error('Failed to update session:', updateError);
+      toast({ title: "Error", description: "Failed to join session: " + updateError.message, variant: "destructive" });
+      setIsConnecting(false);
+      return;
+    }
+
+    console.log('Successfully joined session:', session.session_code);
     setActiveSession({ ...session, ...updateData });
     
     // If client joining admin's session, start screen share
