@@ -254,6 +254,69 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
     loadApplication();
   }, [publicToken, isPreviewMode]);
 
+  // Upload a single file to storage and return the path
+  const uploadDocumentToStorage = useCallback(async (
+    file: File,
+    docType: string,
+    tenantId: string,
+    applicationId: string
+  ): Promise<string | null> => {
+    try {
+      const ext = file.name.split('.').pop() || 'pdf';
+      const storagePath = `${tenantId}/applications/${applicationId}/${docType}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('load-documents')
+        .upload(storagePath, file, { upsert: true });
+      
+      if (uploadError) {
+        console.error(`Failed to upload ${docType}:`, uploadError);
+        return null;
+      }
+      
+      console.log(`[ApplicationForm] Uploaded ${docType} to:`, storagePath);
+      return storagePath;
+    } catch (err) {
+      console.error(`Error uploading ${docType}:`, err);
+      return null;
+    }
+  }, []);
+
+  // Process document uploads - upload files to storage and return paths
+  const processDocumentUploads = useCallback(async (
+    documents: Record<string, any>,
+    tenantId: string,
+    applicationId: string
+  ): Promise<Record<string, any>> => {
+    const processed: Record<string, any> = {};
+    
+    for (const [key, value] of Object.entries(documents)) {
+      if (value instanceof File) {
+        // Upload to storage
+        const path = await uploadDocumentToStorage(value, key, tenantId, applicationId);
+        processed[key] = path || null;
+      } else if (Array.isArray(value)) {
+        // Handle array of files (like 'other' documents)
+        const uploadedPaths: string[] = [];
+        for (let i = 0; i < value.length; i++) {
+          const item = value[i];
+          if (item instanceof File) {
+            const path = await uploadDocumentToStorage(item, `${key}_${i}`, tenantId, applicationId);
+            if (path) uploadedPaths.push(path);
+          } else if (typeof item === 'string') {
+            uploadedPaths.push(item); // Already a path
+          }
+        }
+        processed[key] = uploadedPaths;
+      } else {
+        // Keep existing value (string path or null)
+        processed[key] = value;
+      }
+    }
+    
+    return processed;
+  }, [uploadDocumentToStorage]);
+
   // Autosave function
   const saveStep = useCallback(async (stepKey: string, payload: any, step: number) => {
     // PREVIEW MODE: Skip saving entirely
@@ -284,7 +347,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
     } finally {
       setIsSaving(false);
     }
-  }, [publicToken, canEdit]);
+  }, [publicToken, canEdit, isPreviewMode]);
 
   // Debounced autosave
   const debouncedSave = useCallback((stepKey: string, payload: any, step: number) => {
@@ -301,13 +364,36 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
   const currentStepKey = steps[currentStep - 1].stepKey;
 
   const handleNext = async (data: any) => {
-    const newData = { ...applicationData, ...data };
+    let processedData = { ...data };
+    
+    // Special handling for document uploads - upload files to storage first
+    if (currentStepKey === 'document_upload' && data.documents) {
+      const tenantId = applicationData.tenantId;
+      const inviteId = applicationData.inviteId;
+      
+      if (tenantId && inviteId) {
+        toast.info('Uploading documents...');
+        try {
+          // Use inviteId as application ID since we may not have app ID yet
+          const processedDocs = await processDocumentUploads(data.documents, tenantId, inviteId);
+          processedData = { documents: processedDocs };
+          toast.success('Documents uploaded successfully');
+        } catch (err) {
+          console.error('Failed to upload documents:', err);
+          toast.error('Failed to upload some documents');
+        }
+      } else {
+        console.warn('[ApplicationForm] Missing tenantId or inviteId for document upload');
+      }
+    }
+    
+    const newData = { ...applicationData, ...processedData };
     setApplicationData(newData);
 
     // Save current step data
     if (currentStepKey && canEdit) {
-      const dataKey = Object.keys(data)[0];
-      const payload = data[dataKey];
+      const dataKey = Object.keys(processedData)[0];
+      const payload = processedData[dataKey];
       await saveStep(currentStepKey, payload, editingFromReview ? steps.length : currentStep + 1);
     }
 
@@ -346,7 +432,22 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
       why_hire_you: applicationData.whyHireYou,
     };
 
-    const payload = stepDataMap[currentStepKey];
+    let payload = stepDataMap[currentStepKey];
+    
+    // Special handling for document uploads
+    if (currentStepKey === 'document_upload' && payload) {
+      const tenantId = applicationData.tenantId;
+      const inviteId = applicationData.inviteId;
+      
+      if (tenantId && inviteId) {
+        try {
+          payload = await processDocumentUploads(payload, tenantId, inviteId);
+        } catch (err) {
+          console.error('Failed to upload documents:', err);
+        }
+      }
+    }
+    
     if (payload) {
       await saveStep(currentStepKey, payload, currentStep);
       toast.success('Progress saved! You can return anytime to continue.');
