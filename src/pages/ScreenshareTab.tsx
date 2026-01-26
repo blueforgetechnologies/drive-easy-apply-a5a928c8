@@ -38,6 +38,7 @@ const ScreenshareTab = () => {
   // Sharer-side capture surface detection
   const [displaySurface, setDisplaySurface] = useState<string | null>(null);
   const [isSharingBrowserTab, setIsSharingBrowserTab] = useState(false);
+  const [isSharingChromeWindow, setIsSharingChromeWindow] = useState(false);
   const [sharingFrozen, setSharingFrozen] = useState(false);
   
   // Viewer-side freeze detection
@@ -45,6 +46,9 @@ const ScreenshareTab = () => {
   const lastVideoTimeRef = useRef<number>(0);
   const freezeMissCountRef = useRef<number>(0);
   const freezeCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Heartbeat interval ref
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -463,6 +467,26 @@ const ScreenshareTab = () => {
         return; // Do not create offer or proceed
       }
       
+      // Check for Chrome/Edge/Firefox window - warn but don't block
+      const trackLabel = videoTrack.label || '';
+      const isBrowserWindow = surface === 'window' && 
+        (trackLabel.toLowerCase().includes('chrome') || 
+         trackLabel.toLowerCase().includes('google chrome') ||
+         trackLabel.toLowerCase().includes('edge') ||
+         trackLabel.toLowerCase().includes('firefox'));
+      
+      if (isBrowserWindow) {
+        console.warn('Browser window detected - may freeze on tab switch:', trackLabel);
+        setIsSharingChromeWindow(true);
+        toast({ 
+          title: "Browser Window Detected", 
+          description: "Switching browser tabs may freeze the share. Entire Screen is recommended.",
+          variant: "destructive"
+        });
+      } else {
+        setIsSharingChromeWindow(false);
+      }
+      
       setIsSharingBrowserTab(false);
       
       // Track mute/unmute handlers (for tab switch detection)
@@ -513,6 +537,12 @@ const ScreenshareTab = () => {
       };
 
       setIsViewing(true);
+      
+      // Start heartbeat for session keep-alive
+      if (currentUserIdRef.current) {
+        startHeartbeat(session.id, currentUserIdRef.current);
+      }
+      
       toast({ title: "Screen Sharing", description: "Your screen is now being shared" });
     } catch (error) {
       console.error('Error starting screen share:', error);
@@ -578,6 +608,11 @@ const ScreenshareTab = () => {
         startViewerFreezeDetection();
       }
       setHasRemoteStream(true);
+      
+      // Start heartbeat for viewer
+      if (currentUserIdRef.current && activeSession) {
+        startHeartbeat(activeSession.id, currentUserIdRef.current);
+      }
     };
 
     // Viewer writes to admin_ice_candidates (role is 'admin')
@@ -682,11 +717,16 @@ const ScreenshareTab = () => {
   };
 
   const endSession = async (sessionId: string) => {
+    // Clear signaling fields and end session
     await supabase
       .from('screen_share_sessions')
       .update({ 
         status: 'ended',
-        ended_at: new Date().toISOString()
+        ended_at: new Date().toISOString(),
+        admin_offer: null,
+        client_answer: null,
+        admin_ice_candidates: [],
+        client_ice_candidates: [],
       })
       .eq('id', sessionId);
 
@@ -702,6 +742,12 @@ const ScreenshareTab = () => {
     if (freezeCheckIntervalRef.current) {
       clearInterval(freezeCheckIntervalRef.current);
       freezeCheckIntervalRef.current = null;
+    }
+    
+    // Clear heartbeat interval
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
     }
     
     if (localStreamRef.current) {
@@ -722,8 +768,41 @@ const ScreenshareTab = () => {
     // Reset sharer warnings
     setDisplaySurface(null);
     setIsSharingBrowserTab(false);
+    setIsSharingChromeWindow(false);
     setSharingFrozen(false);
     setViewerFrozen(false);
+  };
+  
+  // Start heartbeat when session becomes active
+  const startHeartbeat = (sessionId: string, userId: string) => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+    
+    // Send initial heartbeat
+    supabase.from('screen_share_sessions')
+      .update({ 
+        last_heartbeat_at: new Date().toISOString(),
+        last_heartbeat_by: userId 
+      })
+      .eq('id', sessionId)
+      .then(() => console.log('Initial heartbeat sent'));
+    
+    // Send heartbeat every 15 seconds
+    heartbeatIntervalRef.current = setInterval(async () => {
+      const { error } = await supabase.from('screen_share_sessions')
+        .update({ 
+          last_heartbeat_at: new Date().toISOString(),
+          last_heartbeat_by: userId 
+        })
+        .eq('id', sessionId);
+      
+      if (error) {
+        console.warn('Heartbeat failed:', error);
+      } else {
+        console.log('Heartbeat sent');
+      }
+    }, 15000);
   };
 
   const copyCode = (code: string) => {
@@ -765,12 +844,14 @@ const ScreenshareTab = () => {
                   <ol className="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-300">
                     <li>Ask support for a 6-digit code</li>
                     <li>Enter the code in "Join Session"</li>
-                    <li><strong>Choose Window (TMS) or Entire Screen</strong> — do NOT choose Chrome Tab</li>
+                    <li><strong>Choose Entire Screen</strong> (recommended)</li>
+                    <li>If available, choose the TMS App/PWA window</li>
+                    <li><strong>Do NOT choose Chrome Tab</strong></li>
                   </ol>
                 </div>
               </div>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                ⚠️ Tip: Sharing a Chrome Tab may freeze when switching tabs. For best results, share your entire window or screen.
+                ⚠️ Important: Avoid Chrome Window (switching tabs may freeze). Entire Screen is most reliable.
               </p>
             </div>
           </CardContent>
@@ -840,7 +921,21 @@ const ScreenshareTab = () => {
               <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300">
-                  Screen share paused/frozen — ask user to re-share as Window/Entire Screen.
+                  Share is frozen (likely tab switch). Ask the user to click Re-share and choose Entire Screen.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Sharer: Chrome window warning */}
+            {isSharingChromeWindow && myRoleRef.current === 'client' && !sharingFrozen && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="flex items-center justify-between text-amber-700 dark:text-amber-300">
+                  <span>You're sharing a browser window. Switching tabs may freeze. Entire Screen is recommended.</span>
+                  <Button size="sm" variant="outline" onClick={handleReShare} className="ml-2 border-amber-500 text-amber-700">
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Re-share as Entire Screen
+                  </Button>
                 </AlertDescription>
               </Alert>
             )}
@@ -963,13 +1058,26 @@ const ScreenshareTab = () => {
                       {session.status === 'pending' ? 'Awaiting client' : 'Connected'}
                     </span>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => copyCode(session.session_code)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => copyCode(session.session_code)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    {/* End button visible to participants */}
+                    {(session.admin_user_id === currentUserId || session.client_user_id === currentUserId) && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => endSession(session.id)}
+                      >
+                        <PhoneOff className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
