@@ -10,9 +10,12 @@ interface DocumentUploadProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
-export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) => {
+export const DocumentUpload = ({ data, onNext, onBack, isPreviewMode = false }: DocumentUploadProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [documents, setDocuments] = useState({
     socialSecurity: data?.documents?.socialSecurity || null,
     driversLicense: data?.documents?.driversLicense || null,
@@ -78,7 +81,8 @@ export const DocumentUpload = ({ data, onNext, onBack }: DocumentUploadProps) =>
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!documents.driversLicense) {
+    // Skip validation in Test Mode
+    if (!isTestMode && !documents.driversLicense) {
       toast.error("Driver's License is required", {
         description: "Please upload a copy of your driver's license to continue.",
       });

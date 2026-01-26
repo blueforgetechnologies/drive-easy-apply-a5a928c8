@@ -13,7 +13,9 @@ interface PersonalInfoProps {
   isPreviewMode?: boolean;
 }
 
-export const PersonalInfo = ({ data, onNext }: PersonalInfoProps) => {
+export const PersonalInfo = ({ data, onNext, isPreviewMode = false }: PersonalInfoProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [formData, setFormData] = useState({
     firstName: data?.personalInfo?.firstName || "",
     lastName: data?.personalInfo?.lastName || "",

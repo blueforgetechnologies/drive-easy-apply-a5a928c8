@@ -13,6 +13,7 @@ interface ReviewSubmitProps {
   isLastStep: boolean;
   onNext?: (data: any) => void;
   onEditStep?: (step: number) => void;
+  isPreviewMode?: boolean;
 }
 
 interface ValidationError {
@@ -21,7 +22,7 @@ interface ValidationError {
   message: string;
 }
 
-export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) => {
+export const ReviewSubmit = ({ data, onBack, onEditStep, isPreviewMode = false }: ReviewSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -31,7 +32,10 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
   const tenantId = data?.tenantId;
 
   // Check if Test Mode is enabled (set via Applications Manager toggle)
-  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
+  // Debug log to verify test mode
+  console.log('[ReviewSubmit] Test Mode Active:', isTestMode, '(Preview:', isPreviewMode, 'LocalStorage:', localStorage.getItem("app_test_mode"), ')');
 
   // Validation logic - disabled when Test Mode is ON
   const validationErrors = useMemo(() => {

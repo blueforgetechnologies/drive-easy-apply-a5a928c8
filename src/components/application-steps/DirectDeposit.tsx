@@ -10,9 +10,12 @@ interface DirectDepositProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
-export const DirectDeposit = ({ data, onNext, onBack }: DirectDepositProps) => {
+export const DirectDeposit = ({ data, onNext, onBack, isPreviewMode = false }: DirectDepositProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [formData, setFormData] = useState({
     firstName: data?.directDeposit?.firstName || "",
     lastName: data?.directDeposit?.lastName || "",
