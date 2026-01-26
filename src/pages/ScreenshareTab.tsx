@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Monitor, Phone, PhoneOff, Copy, Users, Eye, Loader2 } from "lucide-react";
+import { Monitor, Phone, PhoneOff, Copy, Users, Eye, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTenantContext } from "@/contexts/TenantContext";
 
 interface ScreenShareSession {
@@ -33,6 +34,16 @@ const ScreenshareTab = () => {
   const [isViewing, setIsViewing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [hasRemoteStream, setHasRemoteStream] = useState(false);
+  
+  // Sharer-side capture surface detection
+  const [displaySurface, setDisplaySurface] = useState<string | null>(null);
+  const [isSharingBrowserTab, setIsSharingBrowserTab] = useState(false);
+  const [sharingFrozen, setSharingFrozen] = useState(false);
+  
+  // Viewer-side freeze detection
+  const [viewerFrozen, setViewerFrozen] = useState(false);
+  const lastVideoTimeRef = useRef<number>(0);
+  const freezeCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -348,6 +359,31 @@ const ScreenshareTab = () => {
     }
   };
 
+  // Re-share handler for sharer (stops tracks and restarts getDisplayMedia)
+  const handleReShare = async () => {
+    if (!activeSession) return;
+    
+    // Stop existing tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    // Reset warnings
+    setIsSharingBrowserTab(false);
+    setSharingFrozen(false);
+    setDisplaySurface(null);
+    
+    // Close existing peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    
+    // Restart screen share
+    await startScreenShare(activeSession);
+  };
+
   // Called by the person SHARING their screen (the joiner when admin initiated)
   const startScreenShare = async (session: ScreenShareSession) => {
     try {
@@ -357,6 +393,36 @@ const ScreenshareTab = () => {
       });
       
       localStreamRef.current = stream;
+      
+      // Detect capture surface
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings() as MediaTrackSettings & { displaySurface?: string };
+      const surface = settings.displaySurface || 'unknown';
+      setDisplaySurface(surface);
+      console.log('Capture surface detected:', surface);
+      
+      // Warn if browser tab selected
+      if (surface === 'browser') {
+        setIsSharingBrowserTab(true);
+        toast({ 
+          title: "Browser Tab Selected", 
+          description: "Switching tabs will freeze the share. Consider re-sharing as Window or Entire Screen.",
+          variant: "destructive"
+        });
+      } else {
+        setIsSharingBrowserTab(false);
+      }
+      
+      // Track mute/unmute handlers (for tab switch detection)
+      videoTrack.onmute = () => {
+        console.log('Video track muted (likely tab switched)');
+        setSharingFrozen(true);
+      };
+      
+      videoTrack.onunmute = () => {
+        console.log('Video track unmuted');
+        setSharingFrozen(false);
+      };
       
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -389,7 +455,8 @@ const ScreenshareTab = () => {
       
       console.log('Offer sent');
 
-      stream.getVideoTracks()[0].onended = () => {
+      // Track ended handler
+      videoTrack.onended = () => {
         endSession(session.id);
       };
 
@@ -399,6 +466,33 @@ const ScreenshareTab = () => {
       console.error('Error starting screen share:', error);
       toast({ title: "Error", description: "Failed to start screen share", variant: "destructive" });
     }
+  };
+
+  // Viewer-side freeze detection: monitors video currentTime to detect stall
+  const startViewerFreezeDetection = () => {
+    // Clear any existing interval
+    if (freezeCheckIntervalRef.current) {
+      clearInterval(freezeCheckIntervalRef.current);
+    }
+    
+    lastVideoTimeRef.current = 0;
+    setViewerFrozen(false);
+    
+    freezeCheckIntervalRef.current = setInterval(() => {
+      const video = remoteVideoRef.current;
+      if (!video || !hasRemoteStream) return;
+      
+      const currentTime = video.currentTime;
+      
+      // If currentTime hasn't changed in ~2 seconds, stream is frozen
+      if (currentTime === lastVideoTimeRef.current && currentTime > 0) {
+        setViewerFrozen(true);
+      } else {
+        setViewerFrozen(false);
+      }
+      
+      lastVideoTimeRef.current = currentTime;
+    }, 2000);
   };
 
   // Called by the person VIEWING (the admin who generated the code)
@@ -417,6 +511,9 @@ const ScreenshareTab = () => {
       console.log('Received track:', event.track.kind);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
+        
+        // Start viewer freeze detection after stream is attached
+        startViewerFreezeDetection();
       }
       setHasRemoteStream(true);
     };
@@ -539,6 +636,12 @@ const ScreenshareTab = () => {
   };
 
   const cleanupConnection = () => {
+    // Clear freeze detection interval
+    if (freezeCheckIntervalRef.current) {
+      clearInterval(freezeCheckIntervalRef.current);
+      freezeCheckIntervalRef.current = null;
+    }
+    
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -553,6 +656,12 @@ const ScreenshareTab = () => {
     iceCandidateQueueRef.current = [];
     processedIceCandidatesRef.current.clear();
     setHasRemoteStream(false);
+    
+    // Reset sharer warnings
+    setDisplaySurface(null);
+    setIsSharingBrowserTab(false);
+    setSharingFrozen(false);
+    setViewerFrozen(false);
   };
 
   const copyCode = (code: string) => {
@@ -594,10 +703,13 @@ const ScreenshareTab = () => {
                   <ol className="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-300">
                     <li>Ask support for a 6-digit code</li>
                     <li>Enter the code in "Join Session"</li>
-                    <li>Select which screen/window to share</li>
+                    <li><strong>Choose Window (TMS) or Entire Screen</strong> — do NOT choose Chrome Tab</li>
                   </ol>
                 </div>
               </div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                ⚠️ Tip: Sharing a Chrome Tab may freeze when switching tabs. For best results, share your entire window or screen.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -616,6 +728,11 @@ const ScreenshareTab = () => {
                 <span className="text-sm text-muted-foreground">
                   Session: {activeSession.session_code}
                 </span>
+                {displaySurface && (
+                  <Badge variant="outline" className="text-xs">
+                    {displaySurface}
+                  </Badge>
+                )}
               </div>
               <Button 
                 variant="destructive" 
@@ -627,7 +744,45 @@ const ScreenshareTab = () => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {/* Sharer: Browser tab warning */}
+            {isSharingBrowserTab && myRoleRef.current === 'client' && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>You shared a browser tab. Switching tabs will freeze for support. Please re-share as Window or Entire Screen.</span>
+                  <Button size="sm" variant="outline" onClick={handleReShare} className="ml-2">
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Re-share
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Sharer: Muted/frozen warning */}
+            {sharingFrozen && myRoleRef.current === 'client' && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Sharing paused/frozen (likely tab switched). Click Re-share.</span>
+                  <Button size="sm" variant="outline" onClick={handleReShare} className="ml-2">
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Re-share
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Viewer: Freeze detection warning */}
+            {viewerFrozen && myRoleRef.current === 'admin' && hasRemoteStream && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  Screen share paused/frozen — ask user to re-share as Window/Entire Screen.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="bg-black rounded-lg aspect-video flex items-center justify-center relative">
               <video 
                 ref={remoteVideoRef}
