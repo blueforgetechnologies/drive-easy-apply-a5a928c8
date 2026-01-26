@@ -109,6 +109,61 @@ export function ApplicationReviewDrawer({
   const [selectedDocName, setSelectedDocName] = useState<string>("");
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
 
+  // Get signed URL for storage path (private bucket) - must be before early return
+  const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("load-documents")
+        .createSignedUrl(storagePath, 3600); // 1 hour expiry
+      
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        return null;
+      }
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.error("Failed to get signed URL:", err);
+      return null;
+    }
+  }, []);
+
+  // Handle document click - fetch signed URL if needed - must be before early return
+  const handleDocumentClick = useCallback(async (doc: any, label: string) => {
+    // Handle File objects (local)
+    if (doc instanceof File) {
+      setSelectedDocUrl(URL.createObjectURL(doc));
+      setSelectedDocName(label);
+      return;
+    }
+
+    // Handle string paths (storage paths)
+    if (typeof doc === 'string' && doc.trim()) {
+      // Check if already a full URL
+      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
+        setSelectedDocUrl(doc);
+        setSelectedDocName(label);
+        return;
+      }
+
+      // It's a storage path - fetch signed URL
+      setIsLoadingDoc(true);
+      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
+      const signedUrl = await getSignedUrl(cleanPath);
+      setIsLoadingDoc(false);
+
+      if (signedUrl) {
+        setSelectedDocUrl(signedUrl);
+        setSelectedDocName(label);
+      } else {
+        toast.error("Could not load document");
+      }
+      return;
+    }
+
+    toast.error("Document not available");
+  }, [getSignedUrl]);
+
+  // Early return AFTER all hooks
   if (!application) return null;
 
   const pi = application.personal_info || {};
@@ -200,60 +255,6 @@ export function ApplicationReviewDrawer({
     if (typeof doc === 'object' && Object.keys(doc).length === 0) return false;
     return false;
   };
-
-  // Get signed URL for storage path (private bucket)
-  const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
-    try {
-      const { data, error } = await supabase.storage
-        .from("load-documents")
-        .createSignedUrl(storagePath, 3600); // 1 hour expiry
-      
-      if (error) {
-        console.error("Error creating signed URL:", error);
-        return null;
-      }
-      return data?.signedUrl || null;
-    } catch (err) {
-      console.error("Failed to get signed URL:", err);
-      return null;
-    }
-  }, []);
-
-  // Handle document click - fetch signed URL if needed
-  const handleDocumentClick = useCallback(async (doc: any, label: string) => {
-    // Handle File objects (local)
-    if (doc instanceof File) {
-      setSelectedDocUrl(URL.createObjectURL(doc));
-      setSelectedDocName(label);
-      return;
-    }
-
-    // Handle string paths (storage paths)
-    if (typeof doc === 'string' && doc.trim()) {
-      // Check if already a full URL
-      if (doc.startsWith("http://") || doc.startsWith("https://") || doc.startsWith("blob:") || doc.startsWith("data:")) {
-        setSelectedDocUrl(doc);
-        setSelectedDocName(label);
-        return;
-      }
-
-      // It's a storage path - fetch signed URL
-      setIsLoadingDoc(true);
-      const cleanPath = doc.startsWith('/') ? doc.slice(1) : doc;
-      const signedUrl = await getSignedUrl(cleanPath);
-      setIsLoadingDoc(false);
-
-      if (signedUrl) {
-        setSelectedDocUrl(signedUrl);
-        setSelectedDocName(label);
-      } else {
-        toast.error("Could not load document");
-      }
-      return;
-    }
-
-    toast.error("Document not available");
-  }, [getSignedUrl]);
 
   const isImagePath = (doc: any): boolean => {
     if (!doc) return false;
