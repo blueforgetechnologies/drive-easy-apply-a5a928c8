@@ -82,7 +82,7 @@ interface PendingInvite {
   opened_at: string | null;
 }
 
-type StatusFilter = "all" | "in_progress" | "submitted" | "approved" | "rejected" | "archived" | "needs_review";
+type StatusFilter = "all" | "in_progress" | "submitted" | "approved" | "training_completed" | "rejected" | "archived" | "needs_review";
 
 export function ApplicationsManager() {
   const navigate = useNavigate();
@@ -105,6 +105,7 @@ export function ApplicationsManager() {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [hiringId, setHiringId] = useState<string | null>(null);
+  const [trainingCompletedId, setTrainingCompletedId] = useState<string | null>(null);
   const [uploadingMvrId, setUploadingMvrId] = useState<string | null>(null);
   
   // Review drawer state
@@ -491,7 +492,30 @@ export function ApplicationsManager() {
     }
   };
 
-  // Hire an approved applicant - creates pending driver
+  // Mark training as completed - moves from "Ready for Training" (approved) to "Ready to Hire" (training_completed)
+  const handleTrainingCompleted = async (applicationId: string) => {
+    setTrainingCompletedId(applicationId);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ 
+          status: "training_completed",
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", applicationId);
+
+      if (error) throw error;
+      
+      toast.success("Training marked as completed - driver is now ready to hire");
+      await loadApplications();
+    } catch (error: any) {
+      toast.error("Failed to update: " + error.message);
+    } finally {
+      setTrainingCompletedId(null);
+    }
+  };
+
+  // Hire an applicant with completed training - creates pending driver
   const handleHire = async (applicationId: string) => {
     setHiringId(applicationId);
     try {
@@ -620,8 +644,11 @@ export function ApplicationsManager() {
   };
 
   const getStatusBadge = (app: ApplicationRow) => {
+    if (app.status === "training_completed") {
+      return <Badge className="bg-purple-600">Ready to Hire</Badge>;
+    }
     if (app.status === "approved") {
-      return <Badge className="bg-green-600">Approved</Badge>;
+      return <Badge className="bg-green-600">Ready for Training</Badge>;
     }
     if (app.status === "rejected") {
       return <Badge variant="destructive">Rejected</Badge>;
@@ -908,6 +935,7 @@ export function ApplicationsManager() {
       const isSubmittedStatus = app.status === "submitted" || app.status === "pending";
       return isSubmittedStatus && app.current_step === 9;
     }
+    if (statusFilter === "training_completed") return app.status === "training_completed";
     return app.status === statusFilter;
   });
 
@@ -938,6 +966,7 @@ export function ApplicationsManager() {
     in_progress: nonInvitedApps.filter((a) => a.status === "in_progress").length,
     submitted: nonInvitedApps.filter((a) => (a.status === "submitted" || a.status === "pending") && a.current_step === 9).length,
     approved: nonInvitedApps.filter((a) => a.status === "approved").length,
+    training_completed: nonInvitedApps.filter((a) => a.status === "training_completed").length,
     rejected: nonInvitedApps.filter((a) => a.status === "rejected").length,
     archived: nonInvitedApps.filter((a) => a.status === "archived").length,
     needs_review: nonInvitedApps.filter((a) => needsReview(a) && a.status !== "archived").length,
@@ -1050,7 +1079,8 @@ export function ApplicationsManager() {
           {[
             { key: "all" as StatusFilter, label: "All", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
             { key: "submitted" as StatusFilter, label: "Completed", activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
-            { key: "approved" as StatusFilter, label: "Approved", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "approved" as StatusFilter, label: "Ready for Training", activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
+            { key: "training_completed" as StatusFilter, label: "Ready to Hire", activeClass: "btn-glossy-violet", badgeClass: "badge-inset-violet", softBadgeClass: "badge-inset-soft-violet" },
             { key: "rejected" as StatusFilter, label: "Rejected", activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
             { key: "archived" as StatusFilter, label: "Archived", activeClass: "btn-glossy-dark", badgeClass: "badge-inset-dark", softBadgeClass: "badge-inset" },
           ].map((status) => (
@@ -1349,8 +1379,39 @@ export function ApplicationsManager() {
                               </>
                             )}
 
-                            {/* APPROVED: Show Hire button (if not already hired) or View */}
+                            {/* APPROVED (Ready for Training): Show Training Completed button or View */}
                             {app.status === "approved" && (
+                              <>
+                                {/* Only show Training Completed if driver_status is null (not yet hired) */}
+                                {!app.driver_status && (
+                                  <Button
+                                    onClick={() => handleTrainingCompleted(app.id)}
+                                    size="sm"
+                                    className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white gap-1"
+                                    disabled={trainingCompletedId === app.id}
+                                  >
+                                    {trainingCompletedId === app.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    )}
+                                    Training Completed
+                                  </Button>
+                                )}
+                                <Button
+                                  onClick={() => handleOpenDrawer(app)}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  title="View Application"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+
+                            {/* TRAINING_COMPLETED (Ready to Hire): Show Hire button */}
+                            {app.status === "training_completed" && (
                               <>
                                 {/* Only show Hire if driver_status is null (not yet hired) */}
                                 {!app.driver_status && (
