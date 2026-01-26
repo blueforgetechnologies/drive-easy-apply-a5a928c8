@@ -47,6 +47,8 @@ const ScreenshareTab = () => {
   const myRoleRef = useRef<MyRole>(null);
   // Track if we've already created an answer (viewer side)
   const hasCreatedAnswerRef = useRef(false);
+  // Filtered channel for active session signaling
+  const activeSessionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Keep ref in sync with state to avoid stale closure issues
   useEffect(() => {
@@ -110,8 +112,6 @@ const ScreenshareTab = () => {
   }, []);
 
   // Filtered subscription for active session signaling (only when we have an active session)
-  const activeSessionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  
   useEffect(() => {
     if (!activeSession) {
       // Cleanup existing channel if session ends
