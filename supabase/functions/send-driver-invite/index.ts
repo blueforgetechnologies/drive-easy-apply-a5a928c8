@@ -14,6 +14,7 @@ interface DriverInviteRequest {
   name?: string;
   tenant_id?: string;
   carrier_id?: string; // Optional carrier for company name in email
+  test_mode?: boolean; // Pass true to append &preview=true to invitation URL
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -53,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, name, tenant_id, carrier_id }: DriverInviteRequest = await req.json();
+    const { email, name, tenant_id, carrier_id, test_mode }: DriverInviteRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -165,7 +166,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build application URL
     const appUrl = "https://drive-easy-apply.lovable.app";
-    const applicationUrl = `${appUrl}/apply?token=${inviteData.public_token}`;
+    const applicationUrl = test_mode === true
+      ? `${appUrl}/apply?token=${inviteData.public_token}&preview=true`
+      : `${appUrl}/apply?token=${inviteData.public_token}`;
 
     const greeting = name ? `Hi ${name},` : "Hello,";
 
