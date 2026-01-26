@@ -436,9 +436,23 @@ const ScreenshareTab = () => {
         stream.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
         
+        // Close and null peer connection if exists
+        if (peerConnectionRef.current) {
+          peerConnectionRef.current.close();
+          peerConnectionRef.current = null;
+        }
+        
         // Set warning states
         setIsSharingBrowserTab(true);
         setSharingFrozen(true);
+        
+        // Reset session signaling fields in DB to avoid stale viewer state
+        await supabase.from('screen_share_sessions').update({
+          admin_offer: null,
+          client_answer: null,
+          admin_ice_candidates: [],
+          client_ice_candidates: [],
+        }).eq('id', session.id);
         
         toast({ 
           title: "Chrome Tab Not Supported", 
