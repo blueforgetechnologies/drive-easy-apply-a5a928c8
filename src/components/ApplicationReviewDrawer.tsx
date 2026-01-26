@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -108,6 +108,7 @@ export function ApplicationReviewDrawer({
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
   const [selectedDocName, setSelectedDocName] = useState<string>("");
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
 
   // Get signed URL for storage path (private bucket) - must be before early return
   const getSignedUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -162,6 +163,52 @@ export function ApplicationReviewDrawer({
 
     toast.error("Document not available");
   }, [getSignedUrl]);
+
+  // Pre-fetch signed URLs for document thumbnails
+  useEffect(() => {
+    if (!open || !application) {
+      setThumbnailUrls({});
+      return;
+    }
+
+    const docs = application.document_upload || {};
+    const docsToFetch: { key: string; path: string }[] = [];
+    
+    const checkAndAdd = (key: string, doc: any) => {
+      if (doc && typeof doc === 'string' && doc.trim() && 
+          !doc.startsWith('http') && !doc.startsWith('blob:') && !doc.startsWith('data:')) {
+        docsToFetch.push({ key, path: doc.startsWith('/') ? doc.slice(1) : doc });
+      }
+    };
+
+    checkAndAdd('driversLicense', docs.driversLicense);
+    checkAndAdd('medicalCard', docs.medicalCard);
+    checkAndAdd('socialSecurity', docs.socialSecurity);
+    checkAndAdd('mvr', docs.mvr);
+    
+    if (docs.other && Array.isArray(docs.other)) {
+      docs.other.forEach((doc: any, idx: number) => {
+        checkAndAdd(`other_${idx}`, doc);
+      });
+    }
+
+    if (docsToFetch.length === 0) return;
+
+    const fetchUrls = async () => {
+      const urls: Record<string, string> = {};
+      await Promise.all(
+        docsToFetch.map(async ({ key, path }) => {
+          const signedUrl = await getSignedUrl(path);
+          if (signedUrl) {
+            urls[key] = signedUrl;
+          }
+        })
+      );
+      setThumbnailUrls(urls);
+    };
+
+    fetchUrls();
+  }, [open, application, getSignedUrl]);
 
   // Early return AFTER all hooks
   if (!application) return null;
@@ -443,6 +490,7 @@ export function ApplicationReviewDrawer({
                   <div className="p-2 space-y-2">
                     {documentList.map((item) => {
                       const isImage = isImagePath(item.doc);
+                      const thumbnailUrl = thumbnailUrls[item.key];
                       
                       return (
                         <Card
@@ -452,7 +500,23 @@ export function ApplicationReviewDrawer({
                         >
                           {isImage ? (
                             <div className="aspect-[4/3] relative bg-muted overflow-hidden flex items-center justify-center">
-                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              {thumbnailUrl ? (
+                                <img
+                                  src={thumbnailUrl}
+                                  alt={item.label}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                              )}
+                              {/* Fallback icon behind */}
+                              <div className="absolute inset-0 flex items-center justify-center -z-10">
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              </div>
                             </div>
                           ) : (
                             <div className="aspect-[4/3] flex items-center justify-center bg-muted">
