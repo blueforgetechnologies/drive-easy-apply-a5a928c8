@@ -43,9 +43,13 @@ const ScreenshareTab = () => {
   
   // Viewer-side freeze detection
   const [viewerFrozen, setViewerFrozen] = useState(false);
+  const [viewerFrozenCount, setViewerFrozenCount] = useState(0); // Track consecutive freeze checks
   const lastVideoTimeRef = useRef<number>(0);
   const freezeMissCountRef = useRef<number>(0);
   const freezeCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Sharer-side track pause detection (beyond mute events)
+  const sharerPauseCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Heartbeat interval ref
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -205,6 +209,23 @@ const ScreenshareTab = () => {
       toast({ title: "Error", description: "You must be logged in", variant: "destructive" });
       return;
     }
+
+    // D) Auto-end any previous pending sessions by this admin in last 10 minutes (prevent pile-up)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    await supabase
+      .from('screen_share_sessions')
+      .update({ 
+        status: 'ended', 
+        ended_at: new Date().toISOString(),
+        admin_offer: null,
+        client_answer: null,
+        admin_ice_candidates: [],
+        client_ice_candidates: [],
+      })
+      .eq('status', 'pending')
+      .eq('admin_user_id', user.id)
+      .eq('tenant_id', effectiveTenant.id)
+      .gte('created_at', tenMinutesAgo);
 
     const sessionData = {
       session_code: code,
@@ -500,6 +521,27 @@ const ScreenshareTab = () => {
         setSharingFrozen(false);
       };
       
+      // A) Sharer-side "capture paused" detector (beyond displaySurface)
+      // Detect if track.muted OR track.readyState !== "live" for >2s
+      const detectPaused = () => videoTrack.muted || videoTrack.readyState !== 'live';
+      
+      if (sharerPauseCheckRef.current) {
+        clearInterval(sharerPauseCheckRef.current);
+      }
+      
+      let pauseCheckCount = 0;
+      sharerPauseCheckRef.current = setInterval(() => {
+        if (detectPaused()) {
+          pauseCheckCount++;
+          if (pauseCheckCount >= 2) { // 2 seconds threshold (1s interval)
+            setSharingFrozen(true);
+          }
+        } else {
+          pauseCheckCount = 0;
+          setSharingFrozen(false);
+        }
+      }, 1000);
+      
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
@@ -533,6 +575,10 @@ const ScreenshareTab = () => {
 
       // Track ended handler
       videoTrack.onended = () => {
+        if (sharerPauseCheckRef.current) {
+          clearInterval(sharerPauseCheckRef.current);
+          sharerPauseCheckRef.current = null;
+        }
         endSession(session.id);
       };
 
@@ -560,6 +606,7 @@ const ScreenshareTab = () => {
     lastVideoTimeRef.current = 0;
     freezeMissCountRef.current = 0;
     setViewerFrozen(false);
+    setViewerFrozenCount(0);
     
     freezeCheckIntervalRef.current = setInterval(() => {
       const video = remoteVideoRef.current;
@@ -576,11 +623,13 @@ const ScreenshareTab = () => {
         freezeMissCountRef.current++;
         if (freezeMissCountRef.current >= 3 && currentTime > 0) {
           setViewerFrozen(true);
+          setViewerFrozenCount(prev => prev + 1); // B) Track consecutive freeze checks
         }
       } else {
         // Stream is progressing
         freezeMissCountRef.current = 0;
         setViewerFrozen(false);
+        setViewerFrozenCount(0);
       }
       
       lastVideoTimeRef.current = currentTime;
@@ -750,6 +799,12 @@ const ScreenshareTab = () => {
       heartbeatIntervalRef.current = null;
     }
     
+    // Clear sharer pause detection
+    if (sharerPauseCheckRef.current) {
+      clearInterval(sharerPauseCheckRef.current);
+      sharerPauseCheckRef.current = null;
+    }
+    
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -771,6 +826,7 @@ const ScreenshareTab = () => {
     setIsSharingChromeWindow(false);
     setSharingFrozen(false);
     setViewerFrozen(false);
+    setViewerFrozenCount(0);
   };
   
   // Start heartbeat when session becomes active
@@ -916,12 +972,26 @@ const ScreenshareTab = () => {
               </Alert>
             )}
             
-            {/* Viewer: Freeze detection warning */}
+            {/* Viewer: Freeze detection warning with "Request re-share" after 3+ checks */}
             {viewerFrozen && myRoleRef.current === 'admin' && hasRemoteStream && (
               <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700 dark:text-amber-300">
-                  Share is frozen (likely tab switch). Ask the user to click Re-share and choose Entire Screen.
+                <AlertDescription className="flex items-center justify-between text-amber-700 dark:text-amber-300">
+                  <span>Share is frozen (likely tab switch). Ask the user to click Re-share and choose Entire Screen.</span>
+                  {viewerFrozenCount >= 3 && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="ml-2 border-amber-500 text-amber-700"
+                      onClick={() => {
+                        navigator.clipboard.writeText("Please click Re-share and choose Entire Screen.");
+                        toast({ title: "Copied", description: "Message copied to clipboard. Send it to the sharer." });
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy Re-share Request
+                    </Button>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
