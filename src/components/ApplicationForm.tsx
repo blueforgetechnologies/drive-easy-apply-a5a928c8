@@ -134,6 +134,7 @@ export interface ApplicationData {
   }>;
   inviteId?: string;
   tenantId?: string;
+  publicToken?: string;
 }
 
 const steps = [
@@ -213,6 +214,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
           setApplicationData({
             inviteId: data.invite?.id,
             tenantId: data.invite?.tenant_id,
+            publicToken: publicToken, // Pass token for submission
             personalInfo: app.personal_info || {},
             licenseInfo: app.license_info || {},
             employmentHistory: Array.isArray(app.employment_history) ? app.employment_history : [],
@@ -233,6 +235,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
           setApplicationData({
             inviteId: data.invite.id,
             tenantId: data.invite.tenant_id,
+            publicToken: publicToken, // Pass token for submission
             personalInfo: {
               email: data.invite.email || '',
               firstName: data.invite.name?.split(' ')[0] || '',
