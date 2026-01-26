@@ -129,6 +129,11 @@ export function ApplicationsManager() {
   const [rejectReason, setRejectReason] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
   
+  // Test Mode toggle - disables mandatory field validation for testing
+  const [testModeEnabled, setTestModeEnabled] = useState(() => {
+    return localStorage.getItem("app_test_mode") === "true";
+  });
+  
   const ROWS_PER_PAGE = 25;
   const { tenantId, shouldFilter } = useTenantFilter();
   const { isPlatformAdmin, effectiveTenant } = useTenantContext();
@@ -1002,6 +1007,26 @@ export function ApplicationsManager() {
               >
                 <Eye className="h-4 w-4" />
                 View Fillable Application
+              </Button>
+            )}
+            {/* Test Mode Toggle - Disables mandatory field validation globally */}
+            {canCreateSample && (
+              <Button
+                variant={testModeEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  const newValue = !testModeEnabled;
+                  setTestModeEnabled(newValue);
+                  localStorage.setItem("app_test_mode", newValue ? "true" : "false");
+                  toast.success(newValue 
+                    ? "Test Mode ON - Mandatory field validation disabled" 
+                    : "Test Mode OFF - Mandatory field validation restored"
+                  );
+                }}
+                className={`gap-2 ${testModeEnabled ? "bg-amber-500 hover:bg-amber-600 border-amber-600" : ""}`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Test Mode {testModeEnabled ? "ON" : "OFF"}
               </Button>
             )}
           </div>

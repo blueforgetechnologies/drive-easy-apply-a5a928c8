@@ -30,14 +30,18 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
   // tenantId is now passed directly from ApplicationForm via data.tenantId
   const tenantId = data?.tenantId;
 
-  // Validation logic - TEMPORARILY DISABLED FOR TESTING
-  // TODO: Re-enable validation before production
+  // Check if Test Mode is enabled (set via Applications Manager toggle)
+  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+
+  // Validation logic - disabled when Test Mode is ON
   const validationErrors = useMemo(() => {
+    // Test Mode: Skip all validation
+    if (isTestMode) {
+      return [];
+    }
+    
     const errors: ValidationError[] = [];
     
-    // TEMPORARILY DISABLED FOR TESTING
-    // Uncomment below to re-enable validation:
-    /*
     // Step 1: Personal Info validation
     const pi = data?.personalInfo;
     if (!pi?.firstName?.trim()) errors.push({ step: 1, field: 'First Name', message: 'First name is required' });
@@ -57,22 +61,20 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
     if (!ec || ec.length === 0 || !ec[0]?.firstName?.trim()) {
       errors.push({ step: 5, field: 'Emergency Contact', message: 'At least one emergency contact is required' });
     }
-    */
     
     return errors;
-  }, [data]);
+  }, [data, isTestMode]);
 
-  // TEMPORARILY SET TO TRUE FOR TESTING
-  const isValid = true; // validationErrors.length === 0;
+  const isValid = validationErrors.length === 0;
 
   const handleSubmit = async () => {
-    // Block submission if validation fails (TEMPORARILY DISABLED)
-    // if (!isValid) {
-    //   toast.error("Please complete all required fields", {
-    //     description: `${validationErrors.length} required field(s) are missing.`,
-    //   });
-    //   return;
-    // }
+    // Block submission if validation fails (skipped when Test Mode is ON)
+    if (!isValid) {
+      toast.error("Please complete all required fields", {
+        description: `${validationErrors.length} required field(s) are missing.`,
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     
