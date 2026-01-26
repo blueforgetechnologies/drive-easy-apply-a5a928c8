@@ -4905,6 +4905,8 @@ export type Database = {
           ice_candidates: Json | null
           id: string
           initiated_by: string
+          last_heartbeat_at: string | null
+          last_heartbeat_by: string | null
           session_code: string
           status: string
           tenant_id: string
@@ -4923,6 +4925,8 @@ export type Database = {
           ice_candidates?: Json | null
           id?: string
           initiated_by: string
+          last_heartbeat_at?: string | null
+          last_heartbeat_by?: string | null
           session_code: string
           status?: string
           tenant_id: string
@@ -4941,6 +4945,8 @@ export type Database = {
           ice_candidates?: Json | null
           id?: string
           initiated_by?: string
+          last_heartbeat_at?: string | null
+          last_heartbeat_by?: string | null
           session_code?: string
           status?: string
           tenant_id?: string
