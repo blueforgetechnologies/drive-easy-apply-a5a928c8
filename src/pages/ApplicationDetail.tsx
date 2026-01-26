@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,23 @@ import {
   Phone, Mail, Calendar, MapPin, Shield, Briefcase,
   Building2, DollarSign, AlertCircle, Upload, Eye, Clock,
   TrendingUp, Wallet, MinusCircle, Check, ClipboardList,
-  Download, Loader2
+  Download, Loader2, X
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ApplicationViewer } from "@/components/driver/ApplicationViewer";
+
+// Document type configuration for easy management
+const DOCUMENT_TYPES = {
+  driversLicense: { label: "Driver License", color: "emerald", icon: CreditCard },
+  socialSecurityCard: { label: "Social Security", color: "sky", icon: Shield },
+  medicalCard: { label: "Medical Card", color: "pink", icon: FileText },
+  mvr: { label: "Driver Record", color: "orange", icon: FileText },
+  workPermit: { label: "Work Permit", color: "teal", icon: FileText },
+  greenCard: { label: "Green Card", color: "green", icon: FileText },
+} as const;
+
+type DocType = keyof typeof DOCUMENT_TYPES;
 
 export default function ApplicationDetail() {
   const { id } = useParams();
@@ -36,6 +48,15 @@ export default function ApplicationDetail() {
   const [mvrPreviewOpen, setMvrPreviewOpen] = useState(false);
   const [mvrPreviewUrl, setMvrPreviewUrl] = useState<string | null>(null);
   const [mvrPreviewLoading, setMvrPreviewLoading] = useState(false);
+  
+  // Document management state
+  const [docPreviewOpen, setDocPreviewOpen] = useState(false);
+  const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
+  const [docPreviewType, setDocPreviewType] = useState<string>("");
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<DocType | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<DocType | null>(null);
+  const fileInputRefs = useRef<Record<DocType, HTMLInputElement | null>>({} as Record<DocType, HTMLInputElement | null>);
 
   useEffect(() => {
     loadApplication();
@@ -151,6 +172,149 @@ export default function ApplicationDetail() {
   };
 
   const hasMvrUploaded = !!(formData.document_upload?.mvr);
+  
+  // Generic document viewer
+  const handleViewDocument = async (docType: DocType) => {
+    const documentUpload = formData.document_upload || {};
+    const docPath = documentUpload[docType];
+    
+    if (!docPath) {
+      toast.error(`No ${DOCUMENT_TYPES[docType].label} uploaded`);
+      return;
+    }
+
+    setDocPreviewLoading(true);
+    setDocPreviewType(DOCUMENT_TYPES[docType].label);
+    setDocPreviewOpen(true);
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("load-documents")
+        .createSignedUrl(docPath, 3600);
+
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error(`Could not load ${DOCUMENT_TYPES[docType].label}`);
+        setDocPreviewOpen(false);
+        return;
+      }
+
+      if (data?.signedUrl) {
+        setDocPreviewUrl(data.signedUrl);
+      } else {
+        toast.error("Could not generate document link");
+        setDocPreviewOpen(false);
+      }
+    } catch (error) {
+      console.error("Error viewing document:", error);
+      toast.error("Failed to view document");
+      setDocPreviewOpen(false);
+    } finally {
+      setDocPreviewLoading(false);
+    }
+  };
+
+  // Upload/replace document
+  const handleUploadDocument = async (docType: DocType, file: File) => {
+    if (!formData.tenant_id || !formData.invite_id) {
+      toast.error("Missing application context");
+      return;
+    }
+
+    setUploadingDoc(docType);
+    
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+      const storagePath = `${formData.tenant_id}/applications/${formData.invite_id}/${docType}.${ext}`;
+      
+      // Delete existing file if it exists
+      const existingPath = formData.document_upload?.[docType];
+      if (existingPath) {
+        await supabase.storage.from("load-documents").remove([existingPath]);
+      }
+
+      // Upload new file
+      const { error: uploadError } = await supabase.storage
+        .from("load-documents")
+        .upload(storagePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Update formData
+      const updatedDocUpload = { ...(formData.document_upload || {}), [docType]: storagePath };
+      setFormData((prev: any) => ({ ...prev, document_upload: updatedDocUpload }));
+
+      // Save to database
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({ document_upload: updatedDocUpload })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`${DOCUMENT_TYPES[docType].label} uploaded successfully`);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error(`Failed to upload ${DOCUMENT_TYPES[docType].label}: ${error.message}`);
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  // Delete document
+  const handleDeleteDocument = async (docType: DocType) => {
+    const docPath = formData.document_upload?.[docType];
+    if (!docPath) return;
+
+    setDeletingDoc(docType);
+
+    try {
+      // Delete from storage
+      const { error: deleteError } = await supabase.storage
+        .from("load-documents")
+        .remove([docPath]);
+
+      if (deleteError) throw deleteError;
+
+      // Update formData
+      const updatedDocUpload = { ...(formData.document_upload || {}) };
+      delete updatedDocUpload[docType];
+      setFormData((prev: any) => ({ ...prev, document_upload: updatedDocUpload }));
+
+      // Save to database
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({ document_upload: updatedDocUpload })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`${DOCUMENT_TYPES[docType].label} deleted successfully`);
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error(`Failed to delete ${DOCUMENT_TYPES[docType].label}: ${error.message}`);
+    } finally {
+      setDeletingDoc(null);
+    }
+  };
+
+  // Check if document exists
+  const hasDocument = (docType: DocType) => !!(formData.document_upload?.[docType]);
+
+  // Trigger file input
+  const triggerFileInput = (docType: DocType) => {
+    fileInputRefs.current[docType]?.click();
+  };
+
+  // File input change handler
+  const onFileChange = (docType: DocType) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleUploadDocument(docType, file);
+    }
+    // Reset input
+    if (e.target) e.target.value = '';
+  };
 
   if (loading) {
     return (
@@ -438,6 +602,18 @@ export default function ApplicationDetail() {
 
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">
+            {/* Hidden file inputs */}
+            {(Object.keys(DOCUMENT_TYPES) as DocType[]).map((docType) => (
+              <input
+                key={docType}
+                type="file"
+                ref={(el) => { fileInputRefs.current[docType] = el; }}
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                onChange={onFileChange(docType)}
+              />
+            ))}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Driver License */}
               <Card className="border-l-4 border-l-emerald-500 shadow-sm">
@@ -447,9 +623,55 @@ export default function ApplicationDetail() {
                       <CreditCard className="w-5 h-5" />
                       Driver License
                     </span>
-                    <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700">
-                      <Upload className="w-4 h-4 mr-1" /> Upload
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasDocument('driversLicense') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-emerald-600 hover:text-emerald-700"
+                            onClick={() => handleViewDocument('driversLicense')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'driversLicense'}
+                              >
+                                {deletingDoc === 'driversLicense' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Driver License?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('driversLicense')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-emerald-600 hover:text-emerald-700"
+                        onClick={() => triggerFileInput('driversLicense')}
+                        disabled={uploadingDoc === 'driversLicense'}
+                      >
+                        {uploadingDoc === 'driversLicense' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -507,6 +729,11 @@ export default function ApplicationDetail() {
                       />
                     </div>
                   </div>
+                  {hasDocument('driversLicense') && (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
 
@@ -518,9 +745,55 @@ export default function ApplicationDetail() {
                       <Shield className="w-5 h-5" />
                       Social Security
                     </span>
-                    <Button variant="ghost" size="sm" className="text-sky-600 hover:text-sky-700">
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasDocument('socialSecurityCard') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-sky-600 hover:text-sky-700"
+                            onClick={() => handleViewDocument('socialSecurityCard')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'socialSecurityCard'}
+                              >
+                                {deletingDoc === 'socialSecurityCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Social Security Card?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('socialSecurityCard')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-sky-600 hover:text-sky-700"
+                        onClick={() => triggerFileInput('socialSecurityCard')}
+                        disabled={uploadingDoc === 'socialSecurityCard'}
+                      >
+                        {uploadingDoc === 'socialSecurityCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -533,6 +806,11 @@ export default function ApplicationDetail() {
                       type="password"
                     />
                   </div>
+                  {hasDocument('socialSecurityCard') && (
+                    <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
 
@@ -544,9 +822,55 @@ export default function ApplicationDetail() {
                       <FileText className="w-5 h-5" />
                       Medical Card
                     </span>
-                    <Button variant="ghost" size="sm" className="text-pink-600 hover:text-pink-700">
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasDocument('medicalCard') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-pink-600 hover:text-pink-700"
+                            onClick={() => handleViewDocument('medicalCard')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'medicalCard'}
+                              >
+                                {deletingDoc === 'medicalCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Medical Card?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('medicalCard')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-pink-600 hover:text-pink-700"
+                        onClick={() => triggerFileInput('medicalCard')}
+                        disabled={uploadingDoc === 'medicalCard'}
+                      >
+                        {uploadingDoc === 'medicalCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -559,10 +883,15 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-pink-500"
                     />
                   </div>
+                  {hasDocument('medicalCard') && (
+                    <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Driver Record */}
+              {/* Driver Record (MVR) */}
               <Card className="border-l-4 border-l-orange-500 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between">
@@ -571,18 +900,52 @@ export default function ApplicationDetail() {
                       Driver Record
                     </span>
                     <div className="flex items-center gap-1">
-                      {hasMvrUploaded && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-orange-600 hover:text-orange-700"
-                          onClick={handleViewMvr}
-                        >
-                          <Eye className="w-4 h-4 mr-1" /> View
-                        </Button>
+                      {hasDocument('mvr') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-orange-600 hover:text-orange-700"
+                            onClick={() => handleViewDocument('mvr')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'mvr'}
+                              >
+                                {deletingDoc === 'mvr' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Driver Record?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('mvr')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
                       )}
-                      <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700">
-                        <Upload className="w-4 h-4 mr-1" /> Upload
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-orange-600 hover:text-orange-700"
+                        onClick={() => triggerFileInput('mvr')}
+                        disabled={uploadingDoc === 'mvr'}
+                      >
+                        {uploadingDoc === 'mvr' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                       </Button>
                     </div>
                   </CardTitle>
@@ -613,6 +976,11 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-orange-500"
                     />
                   </div>
+                  {hasDocument('mvr') && (
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
 
@@ -624,9 +992,55 @@ export default function ApplicationDetail() {
                       <FileText className="w-5 h-5" />
                       Work Permit
                     </span>
-                    <Button variant="ghost" size="sm" className="text-teal-600 hover:text-teal-700">
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasDocument('workPermit') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-teal-600 hover:text-teal-700"
+                            onClick={() => handleViewDocument('workPermit')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'workPermit'}
+                              >
+                                {deletingDoc === 'workPermit' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Work Permit?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('workPermit')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-teal-600 hover:text-teal-700"
+                        onClick={() => triggerFileInput('workPermit')}
+                        disabled={uploadingDoc === 'workPermit'}
+                      >
+                        {uploadingDoc === 'workPermit' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -639,6 +1053,11 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-teal-500"
                     />
                   </div>
+                  {hasDocument('workPermit') && (
+                    <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
 
@@ -650,9 +1069,55 @@ export default function ApplicationDetail() {
                       <FileText className="w-5 h-5" />
                       Green Card
                     </span>
-                    <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {hasDocument('greenCard') && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-green-600 hover:text-green-700"
+                            onClick={() => handleViewDocument('greenCard')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingDoc === 'greenCard'}
+                              >
+                                {deletingDoc === 'greenCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Green Card?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the uploaded document. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteDocument('greenCard')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-green-600 hover:text-green-700"
+                        onClick={() => triggerFileInput('greenCard')}
+                        disabled={uploadingDoc === 'greenCard'}
+                      >
+                        {uploadingDoc === 'greenCard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -665,9 +1130,57 @@ export default function ApplicationDetail() {
                       className="border-slate-200 focus:border-green-500"
                     />
                   </div>
+                  {hasDocument('greenCard') && (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <Check className="w-3 h-3 mr-1" /> Document Uploaded
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
             </div>
+            
+            {/* Document Preview Dialog */}
+            <Dialog open={docPreviewOpen} onOpenChange={setDocPreviewOpen}>
+              <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center justify-between">
+                    <span>{docPreviewType}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setDocPreviewOpen(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                  {docPreviewLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : docPreviewUrl ? (
+                    docPreviewUrl.match(/\.(jpg|jpeg|png|gif|webp)/i) ? (
+                      <img 
+                        src={docPreviewUrl} 
+                        alt={docPreviewType}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(docPreviewUrl)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title={docPreviewType}
+                      />
+                    )
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No document to display
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Financial Tab */}
