@@ -102,6 +102,7 @@ export function InviteDriverDialog() {
           name: driverName.trim() || undefined,
           tenant_id: effectiveTenant?.id,
           carrier_id: selectedCarrierId,
+          test_mode: localStorage.getItem("app_test_mode") === "true",
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -111,9 +112,13 @@ export function InviteDriverDialog() {
       if (error) throw error;
 
       const selectedCarrier = carriers.find(c => c.id === selectedCarrierId);
+      const testMode = localStorage.getItem("app_test_mode") === "true";
+      
       toast({
-        title: "Application invite sent!",
-        description: `An application link for ${selectedCarrier?.name || 'the company'} has been sent to ${email}`,
+        title: testMode ? "🧪 Test invitation sent!" : "Application invite sent!",
+        description: testMode 
+          ? `Test mode active: Link includes validation bypass. Application link for ${selectedCarrier?.name || 'the company'} has been sent to ${email}`
+          : `An application link for ${selectedCarrier?.name || 'the company'} has been sent to ${email}`,
       });
 
       setEmail("");

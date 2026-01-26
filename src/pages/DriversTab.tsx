@@ -322,6 +322,7 @@ export default function DriversTab() {
       const { data, error } = await supabase.functions.invoke("resend-driver-invite", {
         body: {
           invite_id: invite.id,
+          test_mode: localStorage.getItem("app_test_mode") === "true",
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,

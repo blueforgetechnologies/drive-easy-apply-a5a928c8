@@ -253,7 +253,10 @@ export function ApplicationsManager() {
     setResendingId(invite.id);
     try {
       const { data, error } = await supabase.functions.invoke("resend-driver-invite", {
-        body: { invite_id: invite.id },
+        body: { 
+          invite_id: invite.id,
+          test_mode: testModeEnabled,
+        },
       });
       
       if (error) throw error;

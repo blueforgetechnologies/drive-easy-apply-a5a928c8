@@ -13,6 +13,7 @@ const corsHeaders = {
 interface ResendInviteRequest {
   invite_id?: string;
   application_id?: string;
+  test_mode?: boolean;
 }
 
 /**
@@ -37,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { invite_id, application_id }: ResendInviteRequest = await req.json();
+    const { invite_id, application_id, test_mode }: ResendInviteRequest = await req.json();
 
     if (!invite_id && !application_id) {
       return new Response(
@@ -125,7 +126,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build the application URL using the EXISTING public_token
     const appUrl = "https://drive-easy-apply.lovable.app";
-    const applicationUrl = `${appUrl}/apply?token=${invite.public_token}`;
+    const applicationUrl = test_mode === true
+      ? `${appUrl}/apply?token=${invite.public_token}&preview=true`
+      : `${appUrl}/apply?token=${invite.public_token}`;
 
     const greeting = invite.name ? `Hi ${invite.name},` : "Hello,";
 
