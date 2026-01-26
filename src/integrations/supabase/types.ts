@@ -6949,6 +6949,10 @@ export type Database = {
         Args: { p_integration_key: string; p_tenant_id: string }
         Returns: Json
       }
+      screenshare_append_ice: {
+        Args: { p_candidate: Json; p_role: string; p_session_id: string }
+        Returns: Json
+      }
       screenshare_claim_session: {
         Args: { p_session_code: string }
         Returns: Json
