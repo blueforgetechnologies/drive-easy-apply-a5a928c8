@@ -36,6 +36,9 @@ interface Employment {
 }
 
 export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryProps) => {
+  // Check if Test Mode is enabled (set via Applications Manager toggle)
+  const isTestMode = typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true";
+
   const [employmentHistory, setEmploymentHistory] = useState<Employment[]>(
     data?.employmentHistory?.length > 0
       ? data.employmentHistory
@@ -107,14 +110,17 @@ export const EmploymentHistory = ({ data, onNext, onBack }: EmploymentHistoryPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const totalYears = calculateTotalYears();
-    
-    if (totalYears < 3) {
-      setAlertMessage(
-        `Your employment history covers approximately ${totalYears.toFixed(1)} years. DOT regulations require a minimum of 3 years of employment history. Please add more employment records to continue.`
-      );
-      setShowAlert(true);
-      return;
+    // Skip validation in Test Mode
+    if (!isTestMode) {
+      const totalYears = calculateTotalYears();
+      
+      if (totalYears < 3) {
+        setAlertMessage(
+          `Your employment history covers approximately ${totalYears.toFixed(1)} years. DOT regulations require a minimum of 3 years of employment history. Please add more employment records to continue.`
+        );
+        setShowAlert(true);
+        return;
+      }
     }
     
     onNext({ employmentHistory });
