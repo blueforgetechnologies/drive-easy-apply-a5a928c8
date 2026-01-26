@@ -6964,6 +6964,10 @@ export type Database = {
         }
         Returns: Json
       }
+      validate_driver_invite_storage_path: {
+        Args: { p_invite_id: string; p_tenant_id: string }
+        Returns: boolean
+      }
       worker_heartbeat: {
         Args: {
           p_current_batch_size?: number
