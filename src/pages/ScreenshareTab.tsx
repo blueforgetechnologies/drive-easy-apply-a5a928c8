@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,14 +34,17 @@ const ScreenshareTab = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync with state to avoid stale closure issues
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
 
   useEffect(() => {
     loadCurrentUser();
     loadSessions();
     
-    // Subscribe to realtime updates for active session only (RLS is authoritative)
-    // We subscribe without tenant_id filter - RLS enforces visibility
-    // Filter by session_code when we have an active session
     const channel = supabase
       .channel('screen-share-sessions')
       .on(
@@ -68,6 +71,7 @@ const ScreenshareTab = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
+      currentUserIdRef.current = user.id;
     }
   };
 
@@ -86,44 +90,53 @@ const ScreenshareTab = () => {
     setSessions(data || []);
   };
 
-  const handleRealtimeUpdate = async (payload: any) => {
+  const handleRealtimeUpdate = useCallback(async (payload: any) => {
     if (payload.eventType === 'INSERT') {
       setSessions(prev => [payload.new, ...prev]);
     } else if (payload.eventType === 'UPDATE') {
       setSessions(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
       
       const updatedSession = payload.new as ScreenShareSession;
+      const userId = currentUserIdRef.current;
       
       // If session becomes active and I'm the creator (admin who generated the code), 
       // auto-switch to viewer mode
       if (
         updatedSession.status === 'active' && 
-        updatedSession.admin_user_id === currentUserId &&
-        !activeSession &&
-        !isViewing
+        updatedSession.admin_user_id === userId &&
+        userId !== null
       ) {
-        console.log('Session became active, auto-entering viewer mode:', updatedSession.session_code);
-        setActiveSession(updatedSession);
-        setIsViewing(true);
-        setGeneratedCode(null);
-        initializeViewer(updatedSession);
+        console.log('Session became active, checking if should enter viewer mode:', updatedSession.session_code);
+        // Use functional state updates to avoid stale closures
+        setActiveSession(prev => {
+          if (prev === null) {
+            console.log('Auto-entering viewer mode');
+            setIsViewing(true);
+            setGeneratedCode(null);
+            initializeViewer(updatedSession);
+            return updatedSession;
+          }
+          return prev;
+        });
       }
       
       // Handle WebRTC signaling for active session
-      if (activeSession?.id === payload.new.id) {
-        handleSignaling(payload.new);
-      }
+      setActiveSession(prev => {
+        if (prev?.id === payload.new.id) {
+          handleSignaling(payload.new);
+        }
+        return prev;
+      });
     } else if (payload.eventType === 'DELETE') {
       setSessions(prev => prev.filter(s => s.id !== payload.old.id));
     }
-  };
+  }, []);
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const createSession = async (initiatedBy: 'admin' | 'client') => {
-    // Require tenant context for session creation
     if (!effectiveTenant?.id) {
       toast({ title: "Error", description: "No tenant selected", variant: "destructive" });
       return;
@@ -137,15 +150,7 @@ const ScreenshareTab = () => {
       return;
     }
 
-    // Build session data with tenant_id and proper participant fields for RLS
-    const sessionData: {
-      session_code: string;
-      initiated_by: 'admin' | 'client';
-      status: string;
-      tenant_id: string;
-      admin_user_id: string | null;
-      client_user_id: string | null;
-    } = {
+    const sessionData = {
       session_code: code,
       initiated_by: initiatedBy,
       status: 'pending',
@@ -173,6 +178,7 @@ const ScreenshareTab = () => {
     });
   };
 
+  // Use SECURITY DEFINER RPC to claim session - bypasses RLS safely
   const joinSession = async () => {
     if (!sessionCode.trim()) {
       toast({ title: "Error", description: "Please enter a session code", variant: "destructive" });
@@ -181,59 +187,43 @@ const ScreenshareTab = () => {
 
     setIsConnecting(true);
 
-    const { data: session, error } = await supabase
-      .from('screen_share_sessions')
-      .select('*')
-      .eq('session_code', sessionCode.toUpperCase())
-      .eq('status', 'pending')
-      .single();
+    // Call the RPC that handles all validation server-side
+    const { data: rawResult, error: rpcError } = await supabase.rpc('screenshare_claim_session', {
+      p_session_code: sessionCode.toUpperCase()
+    });
 
-    if (error || !session) {
-      toast({ title: "Error", description: "Session not found or expired", variant: "destructive" });
+    if (rpcError) {
+      console.error('RPC error:', rpcError);
+      toast({ title: "Error", description: rpcError.message, variant: "destructive" });
       setIsConnecting(false);
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in", variant: "destructive" });
+    // Cast the result to the expected shape
+    const result = rawResult as unknown as { success: boolean; error?: string; session?: ScreenShareSession; role?: string } | null;
+
+    if (!result?.success) {
+      console.error('Claim failed:', result?.error);
+      toast({ title: "Error", description: result?.error || "Failed to join session", variant: "destructive" });
       setIsConnecting(false);
       return;
     }
 
-    // Determine role based on who initiated
-    const isAdmin = session.initiated_by === 'client';
+    console.log('Successfully claimed session:', result);
+
+    const session = result.session!;
+    const role = result.role as 'admin' | 'client';
+
+    setActiveSession(session);
     
-    const updateData: any = {
-      status: 'active',
-      connected_at: new Date().toISOString()
-    };
-
-    if (isAdmin) {
-      updateData.admin_user_id = user.id;
-    } else {
-      updateData.client_user_id = user.id;
-    }
-
-    const { error: updateError } = await supabase
-      .from('screen_share_sessions')
-      .update(updateData)
-      .eq('id', session.id);
-
-    if (updateError) {
-      console.error('Failed to update session:', updateError);
-      toast({ title: "Error", description: "Failed to join session: " + updateError.message, variant: "destructive" });
-      setIsConnecting(false);
-      return;
-    }
-
-    console.log('Successfully joined session:', session.session_code);
-    setActiveSession({ ...session, ...updateData });
-    
-    // If client joining admin's session, start screen share
-    if (!isAdmin) {
+    // Role determines who shares vs who views:
+    // - 'client' role (joiner when admin initiated) -> shares screen (calls getDisplayMedia)
+    // - 'admin' role (joiner when client initiated) -> views screen
+    if (role === 'client') {
+      // I'm the client joining admin's session -> I share my screen
       startScreenShare(session);
     } else {
+      // I'm the admin joining client's session -> I view their screen
       setIsViewing(true);
       initializeViewer(session);
     }
@@ -242,6 +232,7 @@ const ScreenshareTab = () => {
     setIsConnecting(false);
   };
 
+  // Called by the person SHARING their screen (the joiner when admin initiated)
   const startScreenShare = async (session: ScreenShareSession) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -251,18 +242,16 @@ const ScreenshareTab = () => {
       
       localStreamRef.current = stream;
       
-      // Create peer connection
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
       peerConnectionRef.current = pc;
 
-      // Add stream tracks
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream);
       });
 
-      // Handle ICE candidates
+      // Sharer collects ICE candidates and writes offer
       pc.onicecandidate = async (event) => {
         if (event.candidate) {
           const { data: currentSession } = await supabase
@@ -283,7 +272,7 @@ const ScreenshareTab = () => {
         }
       };
 
-      // Create and send offer
+      // Create and send offer (sharer creates offer)
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       
@@ -292,7 +281,6 @@ const ScreenshareTab = () => {
         .update({ admin_offer: JSON.stringify(offer) })
         .eq('id', session.id);
 
-      // Handle stream end
       stream.getVideoTracks()[0].onended = () => {
         endSession(session.id);
       };
@@ -305,6 +293,7 @@ const ScreenshareTab = () => {
     }
   };
 
+  // Called by the person VIEWING (the admin who generated the code)
   const initializeViewer = async (session: ScreenShareSession) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -312,6 +301,7 @@ const ScreenshareTab = () => {
     peerConnectionRef.current = pc;
 
     pc.ontrack = (event) => {
+      console.log('Received track:', event.track.kind);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
@@ -336,15 +326,20 @@ const ScreenshareTab = () => {
           .eq('id', session.id);
       }
     };
+
+    pc.onconnectionstatechange = () => {
+      console.log('Connection state:', pc.connectionState);
+    };
   };
 
   const handleSignaling = async (session: any) => {
     const pc = peerConnectionRef.current;
     if (!pc) return;
 
-    // Handle offer (viewer side)
+    // Viewer receives offer and creates answer
     if (session.admin_offer && !pc.remoteDescription) {
       try {
+        console.log('Received offer, creating answer...');
         const offer = JSON.parse(session.admin_offer);
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         
@@ -355,22 +350,25 @@ const ScreenshareTab = () => {
           .from('screen_share_sessions')
           .update({ client_answer: JSON.stringify(answer) })
           .eq('id', session.id);
+        console.log('Answer sent');
       } catch (e) {
         console.error('Error handling offer:', e);
       }
     }
 
-    // Handle answer (sharer side)
+    // Sharer receives answer
     if (session.client_answer && pc.localDescription && !pc.remoteDescription) {
       try {
+        console.log('Received answer...');
         const answer = JSON.parse(session.client_answer);
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log('Answer applied');
       } catch (e) {
         console.error('Error handling answer:', e);
       }
     }
 
-    // Handle ICE candidates
+    // Both sides process ICE candidates
     if (session.ice_candidates && session.ice_candidates.length > 0) {
       for (const candidate of session.ice_candidates) {
         try {
@@ -378,7 +376,7 @@ const ScreenshareTab = () => {
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
           }
         } catch (e) {
-          console.error('Error adding ICE candidate:', e);
+          // Ignore duplicate candidate errors
         }
       }
     }
@@ -484,7 +482,7 @@ const ScreenshareTab = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="bg-black rounded-lg aspect-video flex items-center justify-center">
+            <div className="bg-black rounded-lg aspect-video flex items-center justify-center relative">
               <video 
                 ref={remoteVideoRef}
                 autoPlay 
@@ -565,18 +563,14 @@ const ScreenshareTab = () => {
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Enter 6-digit code"
+                  placeholder="ENTER 6-DIGIT CODE"
                   value={sessionCode}
                   onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
                   maxLength={6}
-                  className="font-mono text-lg tracking-widest uppercase"
+                  className="font-mono text-center tracking-widest"
                 />
                 <Button onClick={joinSession} disabled={isConnecting}>
-                  {isConnecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Join"
-                  )}
+                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join"}
                 </Button>
               </div>
             </CardContent>
@@ -585,7 +579,7 @@ const ScreenshareTab = () => {
       )}
 
       {/* Active Sessions List */}
-      {sessions.length > 0 && !isViewing && (
+      {!isViewing && sessions.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Active Sessions</CardTitle>
@@ -601,35 +595,18 @@ const ScreenshareTab = () => {
                     <Badge variant={session.status === 'active' ? 'default' : 'secondary'}>
                       {session.status}
                     </Badge>
-                    <span className="font-mono">{session.session_code}</span>
+                    <span className="font-mono font-medium">{session.session_code}</span>
                     <span className="text-sm text-muted-foreground">
-                      {session.initiated_by === 'admin' ? 'Awaiting client' : 'Client waiting'}
+                      {session.status === 'pending' ? 'Awaiting client' : 'Connected'}
                     </span>
                   </div>
-                  <div className="flex gap-2">
-                    {session.status === 'pending' && session.admin_user_id === currentUserId && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => copyCode(session.session_code)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {session.status === 'active' && (
-                      <Button 
-                        size="sm"
-                        onClick={() => {
-                          setActiveSession(session);
-                          setIsViewing(true);
-                          initializeViewer(session);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    )}
-                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => copyCode(session.session_code)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
