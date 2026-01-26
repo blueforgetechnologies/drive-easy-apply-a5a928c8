@@ -86,13 +86,30 @@ const ScreenshareTab = () => {
     setSessions(data || []);
   };
 
-  const handleRealtimeUpdate = (payload: any) => {
+  const handleRealtimeUpdate = async (payload: any) => {
     if (payload.eventType === 'INSERT') {
       setSessions(prev => [payload.new, ...prev]);
     } else if (payload.eventType === 'UPDATE') {
       setSessions(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
       
-      // Handle WebRTC signaling
+      const updatedSession = payload.new as ScreenShareSession;
+      
+      // If session becomes active and I'm the creator (admin who generated the code), 
+      // auto-switch to viewer mode
+      if (
+        updatedSession.status === 'active' && 
+        updatedSession.admin_user_id === currentUserId &&
+        !activeSession &&
+        !isViewing
+      ) {
+        console.log('Session became active, auto-entering viewer mode:', updatedSession.session_code);
+        setActiveSession(updatedSession);
+        setIsViewing(true);
+        setGeneratedCode(null);
+        initializeViewer(updatedSession);
+      }
+      
+      // Handle WebRTC signaling for active session
       if (activeSession?.id === payload.new.id) {
         handleSignaling(payload.new);
       }
