@@ -10,9 +10,12 @@ interface WhyHireYouProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
-export const WhyHireYou = ({ data, onNext, onBack }: WhyHireYouProps) => {
+export const WhyHireYou = ({ data, onNext, onBack, isPreviewMode = false }: WhyHireYouProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [statement, setStatement] = useState(data?.whyHireYou?.statement || "");
 
   const handleSubmit = (e: React.FormEvent) => {

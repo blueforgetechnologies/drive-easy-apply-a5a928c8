@@ -11,6 +11,7 @@ interface DrivingHistoryProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
 interface Accident {
@@ -28,7 +29,9 @@ interface Violation {
   penalty: string;
 }
 
-export const DrivingHistory = ({ data, onNext, onBack }: DrivingHistoryProps) => {
+export const DrivingHistory = ({ data, onNext, onBack, isPreviewMode = false }: DrivingHistoryProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [accidents, setAccidents] = useState<Accident[]>(
     data?.drivingHistory?.accidents || []
   );

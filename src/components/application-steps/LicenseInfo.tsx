@@ -11,9 +11,12 @@ interface LicenseInfoProps {
   onBack: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isPreviewMode?: boolean;
 }
 
-export const LicenseInfo = ({ data, onNext, onBack }: LicenseInfoProps) => {
+export const LicenseInfo = ({ data, onNext, onBack, isPreviewMode = false }: LicenseInfoProps) => {
+  const isTestMode = isPreviewMode || (typeof window !== 'undefined' && localStorage.getItem("app_test_mode") === "true");
+  
   const [formData, setFormData] = useState({
     nameOnLicense: data?.licenseInfo?.nameOnLicense || "",
     licenseNumber: data?.licenseInfo?.licenseNumber || "",
