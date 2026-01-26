@@ -4892,9 +4892,11 @@ export type Database = {
       }
       screen_share_sessions: {
         Row: {
+          admin_ice_candidates: Json | null
           admin_offer: string | null
           admin_user_id: string | null
           client_answer: string | null
+          client_ice_candidates: Json | null
           client_user_id: string | null
           connected_at: string | null
           created_at: string
@@ -4908,9 +4910,11 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          admin_ice_candidates?: Json | null
           admin_offer?: string | null
           admin_user_id?: string | null
           client_answer?: string | null
+          client_ice_candidates?: Json | null
           client_user_id?: string | null
           connected_at?: string | null
           created_at?: string
@@ -4924,9 +4928,11 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          admin_ice_candidates?: Json | null
           admin_offer?: string | null
           admin_user_id?: string | null
           client_answer?: string | null
+          client_ice_candidates?: Json | null
           client_user_id?: string | null
           connected_at?: string | null
           created_at?: string
