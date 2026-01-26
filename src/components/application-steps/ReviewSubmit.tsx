@@ -96,8 +96,10 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
       const directDeposit = data.directDeposit || {};
       const licenseInfo = data.licenseInfo || {};
 
-      // Use edge function to submit (bypasses RLS via service role)
-      // First, save all the final data using the edge function
+       // Use edge function to submit (bypasses RLS via service role)
+       console.log('[ReviewSubmit] Starting submission with publicToken:', data.publicToken?.substring(0, 8) + '...');
+       
+       // First, save all the final data using the edge function
       const { data: saveResult, error: saveError } = await supabase.functions.invoke('save-application-step', {
         body: {
           public_token: data.publicToken,
@@ -107,6 +109,8 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
         }
       });
 
+       console.log('[ReviewSubmit] save-application-step response:', { saveResult, saveError });
+ 
       if (saveError) {
         console.error('[ReviewSubmit] Edge function error:', saveError);
         throw new Error(saveError.message || "Failed to save application");
@@ -117,7 +121,7 @@ export const ReviewSubmit = ({ data, onBack, onEditStep }: ReviewSubmitProps) =>
         throw new Error(saveResult?.error || "Failed to save application");
       }
 
-      console.log('[ReviewSubmit] Initial save successful:', saveResult);
+       console.log('[ReviewSubmit] Initial save successful, calling submit-application now...');
 
       // Now call a dedicated submit endpoint to finalize the submission
       const { data: submitResult, error: submitError } = await supabase.functions.invoke('submit-application', {
