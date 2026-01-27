@@ -4722,6 +4722,27 @@ export type Database = {
         }
         Relationships: []
       }
+      pubsub_dedup: {
+        Row: {
+          created_at: string
+          email_address: string
+          history_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email_address: string
+          history_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email_address?: string
+          history_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       pubsub_tracking: {
         Row: {
           created_at: string
