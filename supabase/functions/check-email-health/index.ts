@@ -68,25 +68,31 @@ serve(async (req: Request) => {
     // GUARD: Exit immediately if no tenants have load_hunter_enabled
     // This avoids expensive health checks when Load Hunter is not in use
     // ============================================================================
-    const { count: loadHunterTenantCount, error: guardError } = await supabase
-      .from('tenant_feature_flags')
-      .select('id', { count: 'exact', head: true })
-      .eq('enabled', true)
-      .in('feature_flag_id', 
-        supabase.from('feature_flags').select('id').eq('key', 'load_hunter_enabled')
-      );
+    
+    // Step 1: Get the feature_flag_id for load_hunter_enabled
+    const { data: featureFlag } = await supabase
+      .from('feature_flags')
+      .select('id')
+      .eq('key', 'load_hunter_enabled')
+      .maybeSingle();
 
-    // Fallback: if complex query fails, try simpler check
-    let hasLoadHunterTenants = true; // fail-open
-    if (guardError) {
-      console.error('[check-email-health] Guard query error, using fallback:', guardError);
-      // Simple fallback: check if any gmail_tokens exist (proxy for Load Hunter usage)
+    let hasLoadHunterTenants = true; // fail-open default
+
+    if (featureFlag?.id) {
+      // Step 2: Check if any tenant has this feature enabled
+      const { count: enabledCount } = await supabase
+        .from('tenant_feature_flags')
+        .select('id', { count: 'exact', head: true })
+        .eq('feature_flag_id', featureFlag.id)
+        .eq('enabled', true);
+      
+      hasLoadHunterTenants = (enabledCount || 0) > 0;
+    } else {
+      // Fallback: if feature flag doesn't exist, check for gmail_tokens as proxy
       const { count: tokenCount } = await supabase
         .from('gmail_tokens')
         .select('id', { count: 'exact', head: true });
       hasLoadHunterTenants = (tokenCount || 0) > 0;
-    } else {
-      hasLoadHunterTenants = (loadHunterTenantCount || 0) > 0;
     }
 
     if (!hasLoadHunterTenants) {
@@ -101,7 +107,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[check-email-health] Found ${loadHunterTenantCount || 'some'} Load Hunter tenant(s), proceeding with health check`);
+    console.log('[check-email-health] Load Hunter tenants found, proceeding with health check');
 
     const now = new Date();
     const isBizHours = isBusinessHours(now);
