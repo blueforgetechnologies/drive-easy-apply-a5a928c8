@@ -626,15 +626,47 @@ serve(async (req) => {
     // Pub/Sub usage can be estimated from load_emails count (1 email ≈ 4 notifications)
     // This saves ~300K writes/week at current volume
 
-    // Parse Pub/Sub message for historyId
+    // Parse Pub/Sub message for historyId and emailAddress
+    let pubsubEmailAddress: string | null = null;
     try {
       if (body.message?.data) {
         const decoded = JSON.parse(atob(body.message.data));
         historyId = decoded.historyId;
-        console.log('Pub/Sub historyId:', historyId);
+        pubsubEmailAddress = decoded.emailAddress || null;
+        console.log('Pub/Sub historyId:', historyId, 'emailAddress:', pubsubEmailAddress);
       }
     } catch (e) {
       console.log('Could not decode Pub/Sub data');
+    }
+
+    // ============================================================================
+    // HARD DEDUP: Check if this (emailAddress, historyId) was already processed
+    // This happens BEFORE any Gmail API calls to minimize work on duplicates
+    // ============================================================================
+    if (pubsubEmailAddress && historyId) {
+      const { data: insertResult, error: dedupError } = await supabase
+        .from('pubsub_dedup')
+        .insert({
+          email_address: pubsubEmailAddress,
+          history_id: historyId,
+        })
+        .select('id')
+        .maybeSingle();
+
+      if (dedupError) {
+        // Check if it's a unique constraint violation (duplicate)
+        if (dedupError.code === '23505' || dedupError.message?.includes('duplicate') || dedupError.message?.includes('unique')) {
+          console.log(`[gmail-webhook] ⚡ DEDUP: Skipping duplicate Pub/Sub (${pubsubEmailAddress}, ${historyId})`);
+          return new Response(
+            JSON.stringify({ duplicate: true, historyId, emailAddress: pubsubEmailAddress }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        // Other errors - log but continue (fail-open for non-dedup errors)
+        console.error('[gmail-webhook] Dedup check error:', dedupError);
+      } else if (insertResult) {
+        console.log(`[gmail-webhook] ✅ NEW Pub/Sub notification (${pubsubEmailAddress}, ${historyId})`);
+      }
     }
 
     // Get access token
