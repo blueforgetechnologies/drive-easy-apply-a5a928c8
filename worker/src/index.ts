@@ -19,10 +19,9 @@
 
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { claimBatch, claimInboundBatch, claimStubBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
+import { claimBatch, claimInboundBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
 import { processQueueItem } from './process.js';
 import { processInboundEmail } from './inbound.js';
-import { processStubItem } from './stub-processor.js';
 import { supabase } from './supabase.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -544,46 +543,15 @@ async function workerLoop(): Promise<void> {
       // Claim a batch of OUTBOUND items atomically
       const batch = await claimBatch(currentConfig.batch_size);
 
-      // Claim STUB items (from enqueue-only webhook) for Gmail API fetch
-      const stubBatch = await claimStubBatch(5);
-
       // Also claim INBOUND emails for parsing (load emails)
       const inboundBatch = await claimInboundBatch(50);
 
-      if (batch.length === 0 && inboundBatch.length === 0 && stubBatch.length === 0) {
+      if (batch.length === 0 && inboundBatch.length === 0) {
         await sleep(currentConfig.loop_interval_ms);
         continue;
       }
 
-      // Process STUB items first (highest priority - triggers Gmail API fetch)
-      if (stubBatch.length > 0) {
-        log('info', `Processing ${stubBatch.length} stub items (Gmail fetch)`);
-        const stubStart = Date.now();
-        
-        for (const stub of stubBatch) {
-          try {
-            const result = await processStubItem(stub);
-            if (result.success) {
-              log('debug', `Stub processed`, { 
-                historyId: stub.gmail_history_id,
-                messagesQueued: result.messagesQueued,
-              });
-            } else {
-              log('warn', `Stub failed`, { historyId: stub.gmail_history_id, error: result.error });
-            }
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            log('error', `Stub exception`, { historyId: stub.gmail_history_id, error: errorMessage });
-          }
-        }
-        
-        log('info', `Stub batch complete`, { 
-          size: stubBatch.length, 
-          duration_ms: Date.now() - stubStart 
-        });
-      }
-
-      // Process INBOUND emails (higher priority - time sensitive)
+      // Process INBOUND emails first (higher priority - time sensitive)
       if (inboundBatch.length > 0) {
         log('info', `Processing ${inboundBatch.length} inbound load emails`);
         const inboundStart = Date.now();

@@ -32,18 +32,6 @@ export interface InboundQueueItem {
 }
 
 /**
- * Stub item from enqueue-only webhook.
- * Has gmail_history_id but NO payload_url - needs Gmail API fetch.
- */
-export interface StubQueueItem {
-  id: string;
-  gmail_history_id: string;
-  from_email: string; // The inbox email address (for token lookup)
-  attempts: number;
-  queued_at: string;
-}
-
-/**
  * Atomically claim a batch of OUTBOUND email queue items using FOR UPDATE SKIP LOCKED.
  * These are emails with to_email populated (sent via Resend).
  */
@@ -82,47 +70,6 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
 
   console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
   return (data || []) as InboundQueueItem[];
-}
-
-/**
- * Claim STUB items that need Gmail API fetch.
- * STUB = gmail_history_id IS NOT NULL AND payload_url IS NULL AND subject IS NULL
- * These are from the enqueue-only webhook.
- */
-export async function claimStubBatch(batchSize: number = 10): Promise<StubQueueItem[]> {
-  // First, find pending stubs
-  const { data: stubs, error: selectError } = await supabase
-    .from('email_queue')
-    .select('id, gmail_history_id, from_email, attempts, queued_at')
-    .eq('status', 'pending')
-    .not('gmail_history_id', 'is', null)
-    .is('payload_url', null)
-    .is('subject', null)
-    .lt('attempts', 10)
-    .order('queued_at', { ascending: true })
-    .limit(batchSize);
-
-  if (selectError || !stubs || stubs.length === 0) {
-    return [];
-  }
-
-  // Claim them by updating status
-  const ids = stubs.map(s => s.id);
-  const { error: updateError } = await supabase
-    .from('email_queue')
-    .update({
-      status: 'processing',
-      processing_started_at: new Date().toISOString(),
-    })
-    .in('id', ids);
-
-  if (updateError) {
-    console.error('[claim] Error claiming stubs:', updateError);
-    return [];
-  }
-
-  console.log(`[claim] Claimed ${stubs.length} stub items for Gmail fetch`);
-  return stubs.filter(s => s.gmail_history_id && s.from_email) as StubQueueItem[];
 }
 
 /**
