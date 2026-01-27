@@ -34,7 +34,7 @@ async function sendMatchNotification(
           origin_state: parsedData.origin_state,
           destination_city: parsedData.destination_city,
           destination_state: parsedData.destination_state,
-          rate: parsedData.rate,
+          posted_amount: parsedData.posted_amount,
           weight: parsedData.weight,
           vehicle_type: parsedData.vehicle_type,
           pickup_date: parsedData.pickup_date,
@@ -49,7 +49,7 @@ async function sendMatchNotification(
       const errorText = await response.text();
       console.log(`[matching] Notification send failed (non-blocking): ${errorText}`);
     } else {
-      const result = await response.json();
+      const result = await response.json() as { success?: boolean; skipped?: boolean };
       console.log(`[matching] Notification sent: ${result.success ? 'success' : result.skipped ? 'skipped' : 'unknown'}`);
     }
   } catch (error) {
