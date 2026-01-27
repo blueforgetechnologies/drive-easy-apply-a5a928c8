@@ -17,6 +17,27 @@ serve(async (req) => {
   }
 
   try {
+    // ============================================================================
+    // GUARD: Exit immediately if no tenants have Samsara integration enabled
+    // This avoids any Samsara API calls when no integrations exist
+    // ============================================================================
+    const guardClient = getServiceClient();
+    const { count: samsaraIntegrationCount } = await guardClient
+      .from('tenant_integrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider', 'samsara')
+      .eq('is_enabled', true);
+
+    if ((samsaraIntegrationCount || 0) === 0) {
+      console.log('[sync-vehicles-samsara] ⚡ GUARD: No tenants with Samsara enabled, exiting early');
+      return new Response(
+        JSON.stringify({ guarded: true, message: 'No Samsara integrations configured' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[sync-vehicles-samsara] Found ${samsaraIntegrationCount} Samsara integration(s), proceeding`);
+
     // Parse request body
     let requestedTenantId: string | undefined;
     try {
