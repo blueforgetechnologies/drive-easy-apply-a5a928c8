@@ -64,6 +64,45 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+    // ============================================================================
+    // GUARD: Exit immediately if no tenants have load_hunter_enabled
+    // This avoids expensive health checks when Load Hunter is not in use
+    // ============================================================================
+    const { count: loadHunterTenantCount, error: guardError } = await supabase
+      .from('tenant_feature_flags')
+      .select('id', { count: 'exact', head: true })
+      .eq('enabled', true)
+      .in('feature_flag_id', 
+        supabase.from('feature_flags').select('id').eq('key', 'load_hunter_enabled')
+      );
+
+    // Fallback: if complex query fails, try simpler check
+    let hasLoadHunterTenants = true; // fail-open
+    if (guardError) {
+      console.error('[check-email-health] Guard query error, using fallback:', guardError);
+      // Simple fallback: check if any gmail_tokens exist (proxy for Load Hunter usage)
+      const { count: tokenCount } = await supabase
+        .from('gmail_tokens')
+        .select('id', { count: 'exact', head: true });
+      hasLoadHunterTenants = (tokenCount || 0) > 0;
+    } else {
+      hasLoadHunterTenants = (loadHunterTenantCount || 0) > 0;
+    }
+
+    if (!hasLoadHunterTenants) {
+      console.log('[check-email-health] ⚡ GUARD: No tenants with Load Hunter enabled, exiting early');
+      return new Response(
+        JSON.stringify({ 
+          guarded: true, 
+          message: 'No Load Hunter tenants configured',
+          checked_at: new Date().toISOString()
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[check-email-health] Found ${loadHunterTenantCount || 'some'} Load Hunter tenant(s), proceeding with health check`);
+
     const now = new Date();
     const isBizHours = isBusinessHours(now);
     const thresholdMinutes = getThresholdMinutes(now);
