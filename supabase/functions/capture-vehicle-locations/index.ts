@@ -59,13 +59,49 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚛 Starting smart vehicle location capture...');
+    // ============================================================================
+    // GUARD 1: Exit immediately if no vehicles with location data exist
+    // ============================================================================
+    const { count: vehicleCount } = await supabase
+      .from('vehicles')
+      .select('id', { count: 'exact', head: true })
+      .not('last_location', 'is', null);
 
-    // Fetch all vehicles with their current location data
+    if ((vehicleCount || 0) === 0) {
+      console.log('[capture-vehicle-locations] ⚡ GUARD: No vehicles with location data, exiting early');
+      return new Response(
+        JSON.stringify({ guarded: true, message: 'No vehicles with location data' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ============================================================================
+    // GUARD 2: Get tenants with Samsara integration enabled, exit if none
+    // ============================================================================
+    const { data: samsaraTenants } = await supabase
+      .from('tenant_integrations')
+      .select('tenant_id')
+      .eq('provider', 'samsara')
+      .eq('is_enabled', true);
+
+    const samsaraTenantIds = samsaraTenants?.map(t => t.tenant_id) || [];
+
+    if (samsaraTenantIds.length === 0) {
+      console.log('[capture-vehicle-locations] ⚡ GUARD: No tenants with Samsara enabled, exiting early');
+      return new Response(
+        JSON.stringify({ guarded: true, message: 'No Samsara integrations configured' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🚛 Starting vehicle location capture for ${samsaraTenantIds.length} Samsara-enabled tenant(s)...`);
+
+    // Fetch vehicles with location data, SCOPED to Samsara-enabled tenants only
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('id, vehicle_number, last_location, speed, odometer, vin, provider_id')
-      .not('last_location', 'is', null);
+      .select('id, vehicle_number, last_location, speed, odometer, vin, provider_id, tenant_id')
+      .not('last_location', 'is', null)
+      .in('tenant_id', samsaraTenantIds);
 
     if (vehiclesError) {
       console.error('Error fetching vehicles:', vehiclesError);
