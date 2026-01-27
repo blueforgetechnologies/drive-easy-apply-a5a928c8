@@ -29,6 +29,28 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ============================================================================
+    // GUARD: Exit immediately if no pending/active sessions exist
+    // This avoids expensive cleanup queries when there's no work to do
+    // ============================================================================
+    const { count, error: guardError } = await supabase
+      .from('screen_share_sessions')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['pending', 'active']);
+
+    if (guardError) {
+      console.error('Guard query error:', guardError);
+      // Fail-open: continue to cleanup logic if guard query fails
+    } else if (count === 0) {
+      console.log('[cleanup-screenshare] ⚡ GUARD: No active/pending sessions, exiting early');
+      return new Response(
+        JSON.stringify({ guarded: true, message: 'No sessions to check', cleaned: 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      console.log(`[cleanup-screenshare] Found ${count} active/pending sessions, proceeding with cleanup check`);
+    }
+
     // Find stale sessions with updated thresholds:
     // - pending: end if created_at < now() - 10 minutes
     // - active: end if last_heartbeat_at < now() - 90 seconds
