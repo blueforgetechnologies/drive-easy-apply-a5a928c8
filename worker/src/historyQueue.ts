@@ -398,14 +398,19 @@ function extractAliasFromHeaders(headers: GmailMessageHeader[]): { alias: string
 
 /**
  * Resolve tenant from alias using tenant_inbound_addresses table.
+ * The table stores full plus-addresses in `email_address` column (e.g., p.d+talbi@talbilogistics.com).
+ * We match by looking for addresses containing the +alias pattern.
  */
 async function resolveTenantFromAlias(alias: string): Promise<string | null> {
-  // Try direct alias lookup
+  log('debug', 'Resolving tenant from alias', { alias });
+  
+  // Query tenant_inbound_addresses by email_address containing the +alias pattern
+  // e.g., alias "talbi" matches "p.d+talbi@talbilogistics.com"
   const { data, error } = await supabase
     .from('tenant_inbound_addresses')
-    .select('tenant_id')
-    .eq('alias', alias)
+    .select('tenant_id, email_address')
     .eq('is_active', true)
+    .ilike('email_address', `%+${alias}@%`)
     .maybeSingle();
 
   if (error) {
@@ -414,6 +419,11 @@ async function resolveTenantFromAlias(alias: string): Promise<string | null> {
   }
 
   if (data?.tenant_id) {
+    log('info', 'Tenant resolved via inbound address', { 
+      alias, 
+      email_address: data.email_address,
+      tenant_id: data.tenant_id 
+    });
     return data.tenant_id;
   }
 
@@ -423,6 +433,12 @@ async function resolveTenantFromAlias(alias: string): Promise<string | null> {
     .select('id')
     .or(`slug.eq.${alias},name.ilike.%${alias}%`)
     .maybeSingle();
+
+  if (tenantData?.id) {
+    log('info', 'Tenant resolved via slug/name fallback', { alias, tenant_id: tenantData.id });
+  } else {
+    log('warn', 'No tenant found for alias', { alias });
+  }
 
   return tenantData?.id || null;
 }
