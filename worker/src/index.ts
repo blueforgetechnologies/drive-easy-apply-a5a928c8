@@ -19,9 +19,10 @@
 
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { claimBatch, claimInboundBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
+import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
 import { processQueueItem } from './process.js';
 import { processInboundEmail } from './inbound.js';
+import { processHistoryItem } from './historyQueue.js';
 import { supabase } from './supabase.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -546,12 +547,55 @@ async function workerLoop(): Promise<void> {
       // Also claim INBOUND emails for parsing (load emails)
       const inboundBatch = await claimInboundBatch(50);
 
-      if (batch.length === 0 && inboundBatch.length === 0) {
+      // Claim gmail_history_queue stubs (Phase 7B - ENQUEUE_ONLY mode)
+      const historyBatch = await claimHistoryBatch(25);
+
+      if (batch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
         await sleep(currentConfig.loop_interval_ms);
         continue;
       }
 
-      // Process INBOUND emails first (higher priority - time sensitive)
+      // Process HISTORY QUEUE stubs first (highest priority - webhook offload)
+      if (historyBatch.length > 0) {
+        log('info', `Processing ${historyBatch.length} gmail history stubs`);
+        const historyStart = Date.now();
+        let historySuccess = 0;
+        let historyFailed = 0;
+        let messagesQueued = 0;
+
+        for (const item of historyBatch) {
+          try {
+            const result = await processHistoryItem(item);
+            if (result.success) {
+              historySuccess++;
+              messagesQueued += result.messagesProcessed;
+            } else {
+              historyFailed++;
+              log('warn', `History stub failed`, { 
+                id: item.id.substring(0, 8), 
+                error: result.error 
+              });
+            }
+          } catch (error) {
+            historyFailed++;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            log('error', `History stub exception`, { 
+              id: item.id.substring(0, 8), 
+              error: errorMessage 
+            });
+          }
+        }
+
+        log('info', `History batch complete`, {
+          size: historyBatch.length,
+          success: historySuccess,
+          failed: historyFailed,
+          messagesQueued,
+          duration_ms: Date.now() - historyStart,
+        });
+      }
+
+      // Process INBOUND emails second (high priority - time sensitive)
       if (inboundBatch.length > 0) {
         log('info', `Processing ${inboundBatch.length} inbound load emails`);
         const inboundStart = Date.now();
@@ -769,6 +813,11 @@ function validateEnv(): void {
   // Optional but recommended
   if (!process.env.RESEND_FROM_EMAIL) {
     console.warn('RESEND_FROM_EMAIL not set, will use default sender');
+  }
+
+  // Gmail credentials for history queue processing (Phase 7B)
+  if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET) {
+    console.warn('GMAIL_CLIENT_ID/SECRET not set - history queue processing will fail token refresh');
   }
 }
 
