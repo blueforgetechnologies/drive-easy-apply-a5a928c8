@@ -164,3 +164,68 @@ export async function resetStaleItems(): Promise<number> {
 
   return data as number;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GMAIL HISTORY QUEUE (Phase 7B - ENQUEUE_ONLY mode)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface HistoryQueueItem {
+  id: string;
+  email_address: string;
+  history_id: string;
+  status: string;
+  attempts: number;
+  queued_at: string;
+  last_error: string | null;
+}
+
+/**
+ * Atomically claim a batch of gmail_history_queue items for processing.
+ * Uses FOR UPDATE SKIP LOCKED to prevent race conditions between workers.
+ */
+export async function claimHistoryBatch(batchSize: number = 25): Promise<HistoryQueueItem[]> {
+  const { data, error } = await supabase.rpc('claim_gmail_history_batch', {
+    p_batch_size: batchSize,
+  });
+
+  if (error) {
+    console.error('[claim] Error claiming history batch:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  console.log(`[claim] Claimed ${data.length} history stubs for processing`);
+  return (data || []) as HistoryQueueItem[];
+}
+
+/**
+ * Mark a gmail_history_queue item as completed.
+ */
+export async function completeHistoryItem(id: string): Promise<void> {
+  const { error } = await supabase.rpc('complete_gmail_history_item', {
+    p_id: id,
+  });
+
+  if (error) {
+    console.error(`[claim] Error completing history item ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Mark a gmail_history_queue item as failed with error message.
+ */
+export async function failHistoryItem(id: string, errorMessage: string): Promise<void> {
+  const { error } = await supabase.rpc('fail_gmail_history_item', {
+    p_id: id,
+    p_error: errorMessage,
+  });
+
+  if (error) {
+    console.error(`[claim] Error failing history item ${id}:`, error);
+    throw error;
+  }
+}
