@@ -667,6 +667,64 @@ serve(async (req) => {
       } else if (insertResult) {
         console.log(`[gmail-webhook] ✅ NEW Pub/Sub notification (${pubsubEmailAddress}, ${historyId})`);
       }
+      
+      // ========================================================================
+      // ENQUEUE-ONLY MODE CHECK (Phase 7A)
+      // If enabled, write stub to gmail_history_queue and return immediately.
+      // Worker will process stubs via Gmail history.list API later.
+      // FAIL-OPEN: If flag check fails, continue with FULL mode.
+      // ========================================================================
+      let enqueueOnlyMode = false;
+      try {
+        const { data: flagData, error: flagError } = await supabase
+          .from('feature_flags')
+          .select('default_enabled')
+          .eq('key', 'gmail_webhook_enqueue_only')
+          .maybeSingle();
+        
+        if (!flagError && flagData && flagData.default_enabled === true) {
+          enqueueOnlyMode = true;
+        }
+        // FAIL-OPEN: if error or no data, enqueueOnlyMode stays false (FULL mode)
+      } catch (flagCheckErr) {
+        console.error('[gmail-webhook] Flag check exception, defaulting to FULL mode:', flagCheckErr);
+        // FAIL-OPEN: continue with FULL mode
+      }
+      
+      if (enqueueOnlyMode) {
+        console.log(`[gmail-webhook] 🚀 ENQUEUE_ONLY mode: queueing stub for ${pubsubEmailAddress}/${historyId}`);
+        
+        try {
+          const { error: queueError } = await supabase
+            .from('gmail_history_queue')
+            .upsert(
+              { email_address: pubsubEmailAddress, history_id: historyId },
+              { onConflict: 'email_address,history_id', ignoreDuplicates: true }
+            );
+          
+          if (queueError) {
+            console.error('[gmail-webhook] ENQUEUE_ONLY insert failed, falling through to FULL mode:', queueError);
+            // FALL THROUGH to FULL mode - do NOT return
+          } else {
+            // Success - return immediately
+            const elapsed = Date.now() - startTime;
+            console.log(`[gmail-webhook] ✅ ENQUEUE_ONLY: queued stub in ${elapsed}ms`);
+            return new Response(
+              JSON.stringify({ 
+                mode: 'enqueue_only', 
+                queued: true, 
+                email_address: pubsubEmailAddress,
+                history_id: historyId,
+                elapsed 
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } catch (insertErr) {
+          console.error('[gmail-webhook] ENQUEUE_ONLY exception, falling through to FULL mode:', insertErr);
+          // FALL THROUGH to FULL mode
+        }
+      }
     }
 
     // Get access token

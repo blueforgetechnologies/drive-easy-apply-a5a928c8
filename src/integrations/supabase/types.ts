@@ -1964,6 +1964,42 @@ export type Database = {
         }
         Relationships: []
       }
+      gmail_history_queue: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          email_address: string
+          error: string | null
+          history_id: string
+          id: string
+          processed_at: string | null
+          queued_at: string
+          status: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          email_address: string
+          error?: string | null
+          history_id: string
+          id?: string
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          email_address?: string
+          error?: string | null
+          history_id?: string
+          id?: string
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       gmail_tokens: {
         Row: {
           access_token: string
@@ -6857,6 +6893,15 @@ export type Database = {
           to_email: string
         }[]
       }
+      claim_gmail_history_batch: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          email_address: string
+          history_id: string
+          id: string
+          queued_at: string
+        }[]
+      }
       claim_inbound_email_queue_batch: {
         Args: { p_batch_size?: number }
         Returns: {
@@ -6882,8 +6927,16 @@ export type Database = {
         Args: { p_id: string; p_status?: string }
         Returns: undefined
       }
+      complete_gmail_history_item: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       fail_email_queue_item: {
         Args: { p_attempts: number; p_error: string; p_id: string }
+        Returns: undefined
+      }
+      fail_gmail_history_item: {
+        Args: { p_error: string; p_id: string }
         Returns: undefined
       }
       generate_load_id_for_date: {
