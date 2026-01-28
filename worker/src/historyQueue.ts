@@ -403,9 +403,7 @@ function extractAliasFromHeaders(headers: GmailMessageHeader[]): { alias: string
  */
 async function resolveTenantFromAlias(alias: string): Promise<string | null> {
   log('debug', 'Resolving tenant from alias', { alias });
-  
-  // Query tenant_inbound_addresses by email_address containing the +alias pattern
-  // e.g., alias "talbi" matches "p.d+talbi@talbilogistics.com"
+
   const { data, error } = await supabase
     .from('tenant_inbound_addresses')
     .select('tenant_id, email_address')
@@ -419,28 +417,31 @@ async function resolveTenantFromAlias(alias: string): Promise<string | null> {
   }
 
   if (data?.tenant_id) {
-    log('info', 'Tenant resolved via inbound address', { 
-      alias, 
+    log('info', 'Tenant resolved via inbound address', {
+      alias,
       email_address: data.email_address,
-      tenant_id: data.tenant_id 
+      tenant_id: data.tenant_id,
     });
     return data.tenant_id;
   }
 
-  // Fallback: check if alias matches a tenant name/slug
+  // Fallback: check if alias matches a tenant slug/name
+  // Minimal sanitization to avoid breaking the `.or()` filter string
+  const safeAlias = alias.replace(/[,]/g, '').trim();
+
   const { data: tenantData } = await supabase
     .from('tenants')
     .select('id')
-    .or(`slug.eq.${alias},name.ilike.%${alias}%`)
+    .or(`slug.eq.${safeAlias},name.ilike.%${safeAlias}%`)
     .maybeSingle();
 
   if (tenantData?.id) {
-    log('info', 'Tenant resolved via slug/name fallback', { alias, tenant_id: tenantData.id });
-  } else {
-    log('warn', 'No tenant found for alias', { alias });
+    log('info', 'Tenant resolved via slug/name fallback', { alias: safeAlias, tenant_id: tenantData.id });
+    return tenantData.id;
   }
 
-  return tenantData?.id || null;
+  log('warn', 'No tenant found for alias', { alias: safeAlias });
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
