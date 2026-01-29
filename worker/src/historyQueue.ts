@@ -472,29 +472,22 @@ function generateContentHash(message: GmailMessage): string {
 }
 
 /**
- * Storage result with bucket and path for reliable download later.
- */
-interface StorageResult {
-  bucket: string;
-  path: string;
-}
-
-/**
  * Store message payload to Supabase Storage.
- * Returns bucket + path (not a URL) so inbound.ts can use download() directly.
+ * Returns the storage path (NOT a URL) so inbound.ts can use download() directly.
  */
-async function storePayload(message: GmailMessage, tenantId: string): Promise<StorageResult | null> {
+async function storePayload(message: GmailMessage, tenantId: string): Promise<string | null> {
   const bucket = 'email-content';
   const hash = generateContentHash(message);
   const path = `gmail/${hash.substring(0, 2)}/${hash}.json`;
 
   try {
     const payload = JSON.stringify(message, null, 2);
-    const blob = new Blob([payload], { type: 'application/json' });
+    // Use Uint8Array instead of Blob for Node.js compatibility
+    const payloadBytes = new TextEncoder().encode(payload);
 
     const { error } = await supabase.storage
       .from(bucket)
-      .upload(path, blob, {
+      .upload(path, payloadBytes, {
         contentType: 'application/json',
         upsert: false, // Don't overwrite existing
       });
@@ -504,10 +497,10 @@ async function storePayload(message: GmailMessage, tenantId: string): Promise<St
       return null;
     }
 
-    log('debug', 'Payload stored successfully', { bucket, path });
+    log('info', 'Payload stored successfully', { bucket, path, messageId: message.id });
     
-    // Return bucket + path (NOT a URL) for reliable download
-    return { bucket, path };
+    // Return ONLY the path (not a URL) - inbound.ts will use download(path)
+    return path;
   } catch (error) {
     log('error', 'Payload storage exception', { 
       bucket,
@@ -568,12 +561,13 @@ function getHeader(headers: GmailMessageHeader[], name: string): string | null {
  * - payload_url IS NOT NULL (so the inbound processor can fetch content)
  * 
  * Do NOT populate subject here - the inbound processor will extract it during parsing.
+ * payload_url stores the STORAGE PATH (e.g., "gmail/ab/hash.json") - NOT a URL.
  */
 async function insertToEmailQueue(
   message: GmailMessage,
   headers: GmailMessageHeader[],
   tenantId: string,
-  storageResult: StorageResult,
+  storagePath: string,
   alias: string,
   routingSource: string
 ): Promise<boolean> {
@@ -588,11 +582,8 @@ async function insertToEmailQueue(
       gmail_message_id: message.id,
       gmail_history_id: message.historyId || null,
       tenant_id: tenantId,
-      // Store bucket + path for reliable download (NOT a URL)
-      storage_bucket: storageResult.bucket,
-      storage_path: storageResult.path,
-      // Keep payload_url for backward compatibility (store the path, not URL)
-      payload_url: storageResult.path,
+      // Store the path ONLY (NOT a URL) - inbound.ts will download from 'email-content' bucket
+      payload_url: storagePath,
       status: 'pending',
       attempts: 0,
       queued_at: new Date().toISOString(),
@@ -621,8 +612,7 @@ async function insertToEmailQueue(
       messageId: message.id, 
       tenantId, 
       alias,
-      bucket: storageResult.bucket,
-      path: storageResult.path,
+      payload_url: storagePath,
     });
     return true;
   } catch (error) {
@@ -776,18 +766,18 @@ export async function processHistoryItem(item: HistoryQueueItem): Promise<Histor
         }
 
         // 4e. Store payload to Supabase Storage
-        const storageResult = await storePayload(fullMessage, tenantId);
-        if (!storageResult) {
+        const storagePath = await storePayload(fullMessage, tenantId);
+        if (!storagePath) {
           errors++;
           continue;
         }
 
-        // 4f. Insert into email_queue with bucket + path (not URL)
+        // 4f. Insert into email_queue with path (not URL)
         const inserted = await insertToEmailQueue(
           fullMessage,
           mergedHeaders,
           tenantId,
-          storageResult,
+          storagePath,
           alias || 'fallback',
           source || 'token_tenant'
         );
