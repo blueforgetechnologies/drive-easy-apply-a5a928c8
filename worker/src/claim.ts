@@ -1,5 +1,19 @@
 import { supabase } from './supabase.js';
 
+/**
+ * Wrap a promise-like (thenable) with a timeout to prevent indefinite hangs.
+ * Accepts PromiseLike<T> to support Supabase query builders which are awaitable
+ * but not typed as Promise.
+ */
+function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 export interface QueueItem {
   id: string;
   tenant_id: string | null;
