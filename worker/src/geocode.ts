@@ -7,8 +7,14 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface CityStateResult {
+  city: string;
+  state: string;
+}
+
 /**
  * Geocode a city/state location using Mapbox, with caching.
+ * Returns coordinates or null if geocoding fails.
  */
 export async function geocodeLocation(
   city: string,
@@ -78,11 +84,12 @@ export async function geocodeLocation(
 
 /**
  * Lookup city from zip code using Mapbox.
+ * Returns { city, state } or null if lookup fails.
  */
 export async function lookupCityFromZip(
   zipCode: string,
   state?: string
-): Promise<{ city: string; state: string } | null> {
+): Promise<CityStateResult | null> {
   if (!MAPBOX_TOKEN || !zipCode) return null;
 
   try {

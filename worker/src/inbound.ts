@@ -12,12 +12,13 @@
 import { supabase } from './supabase.js';
 import { parseSylectusEmail, parseSubjectLine, type ParsedEmailData } from './parsers/sylectus.js';
 import { parseFullCircleTMSEmail } from './parsers/fullcircle.js';
-import { geocodeLocation, lookupCityFromZip } from './geocode.js';
+import { geocodeLocation, lookupCityFromZip, type Coordinates } from './geocode.js';
 import {
   computeParsedLoadFingerprint,
   generateContentHash,
   FINGERPRINT_VERSION,
 } from './fingerprint.js';
+import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
 
 export interface InboundQueueItem {
   id: string;
@@ -265,12 +266,11 @@ const STEP_TIMEOUT_MS = 30_000; // 30 seconds per step
 
 /**
  * Wrap a promise-like (thenable) with a timeout to prevent indefinite hangs.
- * Uses 'any' type because Supabase query builders (PostgrestBuilder, etc.)
- * are awaitable at runtime but TypeScript doesn't recognize them as PromiseLike.
+ * Accepts PromiseLike<T> to support Supabase query builders which are awaitable.
+ * The generic T should be the full response type (e.g., PostgrestResponse<Row>).
  */
 async function withTimeout<T>(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  promiseLike: any,
+  promiseLike: PromiseLike<T>,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
@@ -288,7 +288,7 @@ async function withTimeout<T>(
       timeoutPromise,
     ]);
     if (timeoutId) clearTimeout(timeoutId);
-    return result as T;
+    return result;
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
     throw e;
@@ -316,7 +316,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // STEP 1: Mark as processing
     // ─────────────────────────────────────────────────────────────────────────
     logStep('1-mark-processing-start');
-    await withTimeout(
+    await withTimeout<PostgrestResponse<null>>(
       supabase
         .from('email_queue')
         .update({ status: 'processing', attempts: item.attempts + 1, processing_started_at: new Date().toISOString() })
@@ -330,7 +330,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // STEP 2: Check if already processed
     // ─────────────────────────────────────────────────────────────────────────
     logStep('2-check-existing-start');
-    const { count } = await withTimeout<{ count: number | null }>(
+    const existingCheckResult = await withTimeout<PostgrestResponse<{ id: string }[]>>(
       supabase
         .from('load_emails')
         .select('id', { count: 'exact', head: true })
@@ -338,11 +338,12 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       STEP_TIMEOUT_MS,
       'check-existing'
     );
-    logStep('2-check-existing-done', { count });
+    const existingCount = existingCheckResult.count;
+    logStep('2-check-existing-done', { count: existingCount });
     
-    if (count && count > 0) {
+    if (existingCount && existingCount > 0) {
       logStep('2-already-processed-marking-complete');
-      await withTimeout(
+      await withTimeout<PostgrestResponse<null>>(
         supabase
           .from('email_queue')
           .update({ status: 'completed', processed_at: new Date().toISOString() })
@@ -379,22 +380,23 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       console.log(`[inbound] Attempting storage download: bucket=${STORAGE_BUCKET} path=${storagePath} messageId=${item.gmail_message_id}`);
       
       try {
-        const { data: payloadData, error: storageError } = await withTimeout<{ data: Blob | null; error: Error | null }>(
+        // Storage download returns { data: Blob | null; error: StorageError | null }
+        const downloadResult = await withTimeout<{ data: Blob | null; error: Error | null }>(
           supabase.storage.from(STORAGE_BUCKET).download(storagePath),
           STEP_TIMEOUT_MS,
           'storage-download'
         );
         
-        if (storageError) {
-          logStep('3-storage-download-error', { error: storageError.message });
+        if (downloadResult.error) {
+          logStep('3-storage-download-error', { error: downloadResult.error.message });
           console.error(`[inbound] Storage download FAILED:`, JSON.stringify({
             bucket: STORAGE_BUCKET,
             path: storagePath,
-            errorMessage: storageError.message,
+            errorMessage: downloadResult.error.message,
           }));
-        } else if (payloadData) {
+        } else if (downloadResult.data) {
           logStep('3-storage-download-success-parsing-json');
-          const payloadText = await payloadData.text();
+          const payloadText = await downloadResult.data.text();
           message = JSON.parse(payloadText);
           console.log(`[inbound] Successfully loaded message from storage: bucket=${STORAGE_BUCKET} path=${storagePath}`);
           logStep('3-storage-download-done', { payloadSize: payloadText.length });
@@ -499,11 +501,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Lookup city from zip if needed
     if (!parsedData.origin_city && parsedData.origin_zip) {
-      const cityData = await withTimeout<{ city: string; state: string } | null>(
-        lookupCityFromZip(parsedData.origin_zip, parsedData.origin_state),
-        STEP_TIMEOUT_MS,
-        'lookup-origin-zip'
-      );
+      const cityData = await lookupCityFromZip(parsedData.origin_zip, parsedData.origin_state);
       if (cityData) {
         parsedData.origin_city = cityData.city;
         parsedData.origin_state = cityData.state;
@@ -511,11 +509,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     }
     
     if (!parsedData.destination_city && parsedData.destination_zip) {
-      const cityData = await withTimeout<{ city: string; state: string } | null>(
-        lookupCityFromZip(parsedData.destination_zip, parsedData.destination_state),
-        STEP_TIMEOUT_MS,
-        'lookup-dest-zip'
-      );
+      const cityData = await lookupCityFromZip(parsedData.destination_zip, parsedData.destination_state);
       if (cityData) {
         parsedData.destination_city = cityData.city;
         parsedData.destination_state = cityData.state;
@@ -528,11 +522,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (parsedData.origin_city && parsedData.origin_state) {
       geocodingWasAttempted = true;
-      const coords = await withTimeout<{ lat: number; lng: number } | null>(
-        geocodeLocation(parsedData.origin_city, parsedData.origin_state),
-        STEP_TIMEOUT_MS,
-        'geocode-origin'
-      );
+      const coords = await geocodeLocation(parsedData.origin_city, parsedData.origin_state);
       if (coords) {
         parsedData.pickup_coordinates = coords;
       } else {
@@ -570,7 +560,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       logStep('6-fullcircle-customer-upsert-start');
       const customerName = parsedData.broker_company;
       
-      const customerResult = await withTimeout<{ data: { id: string; mc_number: string | null } | null; error: any }>(
+      const customerResult = await withTimeout<PostgrestSingleResponse<{ id: string; mc_number: string | null }>>(
         supabase
           .from('customers')
           .select('id, mc_number')
@@ -580,18 +570,18 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         STEP_TIMEOUT_MS,
         'customer-lookup'
       );
-      const existingCustomer = customerResult?.data;
+      const existingCustomer = customerResult.data;
       
       if (existingCustomer) {
         if (!existingCustomer.mc_number && parsedData.mc_number) {
-          await withTimeout(
+          await withTimeout<PostgrestResponse<null>>(
             supabase.from('customers').update({ mc_number: parsedData.mc_number }).eq('id', existingCustomer.id),
             STEP_TIMEOUT_MS,
             'customer-update'
           );
         }
       } else {
-        await withTimeout(
+        await withTimeout<PostgrestResponse<null>>(
           supabase.from('customers').insert({
             name: customerName,
             mc_number: parsedData.mc_number || null,
@@ -632,11 +622,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (dedupEligible && parsedLoadFingerprint && canonicalPayload) {
       logStep('7-check-duplicate-start');
-      const existingDuplicate = await withTimeout<{ id: string; load_id: string; received_at: string } | null>(
-        findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168),
-        STEP_TIMEOUT_MS,
-        'find-duplicate'
-      );
+      const existingDuplicate = await findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168);
       
       if (existingDuplicate) {
         isDuplicate = true;
@@ -649,7 +635,8 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       const canonicalPayloadJson = JSON.stringify(canonicalPayload);
       const sizeBytes = Buffer.byteLength(canonicalPayloadJson, 'utf8');
       
-      const upsertResult = await withTimeout<{ data: any; error: any }>(
+      // RPC returns { data: JsonValue, error: PostgrestError | null }
+      const upsertResult = await withTimeout<PostgrestSingleResponse<any>>(
         supabase.rpc('upsert_load_content', {
           p_fingerprint: parsedLoadFingerprint,
           p_canonical_payload: canonicalPayload,
@@ -660,10 +647,9 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         STEP_TIMEOUT_MS,
         'upsert-load-content'
       );
-      const upsertError = upsertResult?.error;
       
-      if (upsertError) {
-        logStep('7-load-content-upsert-error', { error: upsertError.message });
+      if (upsertResult.error) {
+        logStep('7-load-content-upsert-error', { error: upsertResult.error.message });
         loadContentMissingReason = 'load_content_upsert_failed';
       } else {
         loadContentFingerprint = parsedLoadFingerprint;
@@ -674,11 +660,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Check for updates (legacy content hash)
     logStep('7-check-similar-start');
-    const existingSimilarLoad = await withTimeout<{ id: string; load_id: string; received_at: string } | null>(
-      findExistingSimilarLoad(contentHash, tenantId, 48),
-      STEP_TIMEOUT_MS,
-      'find-similar'
-    );
+    const existingSimilarLoad = await findExistingSimilarLoad(contentHash, tenantId, 48);
     
     let isUpdate = false;
     let parentEmailId: string | null = null;
@@ -724,7 +706,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // ─────────────────────────────────────────────────────────────────────────
     logStep('9-load-emails-insert-start');
     
-    const insertResult = await withTimeout<{ data: { id: string; load_id: string; received_at: string } | null; error: any }>(
+    const insertResult = await withTimeout<PostgrestSingleResponse<{ id: string; load_id: string; received_at: string }>>(
       supabase
         .from('load_emails')
         .upsert({
@@ -765,14 +747,13 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       STEP_TIMEOUT_MS,
       'load-emails-upsert'
     );
-    const insertedEmail = insertResult?.data;
-    const insertError = insertResult?.error;
     
-    if (insertError) {
-      logStep('9-load-emails-insert-error', { error: insertError.message });
-      throw insertError;
+    if (insertResult.error) {
+      logStep('9-load-emails-insert-error', { error: insertResult.error.message });
+      throw insertResult.error;
     }
     
+    const insertedEmail = insertResult.data;
     logStep('9-load-emails-insert-done', { loadId: insertedEmail?.load_id });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -780,7 +761,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // ─────────────────────────────────────────────────────────────────────────
     logStep('10-mark-completed-start');
     
-    await withTimeout(
+    await withTimeout<PostgrestResponse<null>>(
       supabase
         .from('email_queue')
         .update({ 
@@ -863,60 +844,58 @@ export async function verifyStorageAccess(): Promise<void> {
   const STORAGE_BUCKET = 'email-content';
   
   // Get 3 newest items with payload_url
-  const { data: items, error: queryError } = await supabase
+  const { data: testItems, error: queryError } = await supabase
     .from('email_queue')
-    .select('id, gmail_message_id, payload_url')
+    .select('id, payload_url')
     .not('payload_url', 'is', null)
-    .is('to_email', null)
     .order('queued_at', { ascending: false })
     .limit(3);
   
   if (queryError) {
-    console.error('[inbound] Storage verification query failed:', queryError.message);
+    console.error('[inbound] Storage verification FAILED - query error:', queryError.message);
     return;
   }
   
-  if (!items || items.length === 0) {
-    console.log('[inbound] No items to verify storage access');
+  if (!testItems || testItems.length === 0) {
+    console.log('[inbound] Storage verification: No items with payload_url found, skipping');
     return;
   }
   
-  console.log(`[inbound] Verifying ${items.length} storage objects in bucket=${STORAGE_BUCKET}...`);
+  let successCount = 0;
   
-  for (const item of items) {
-    const path = item.payload_url;
+  for (const item of testItems) {
+    const rawPayloadUrl = item.payload_url;
+    let storagePath: string | null = null;
     
-    if (!path) {
-      console.warn(`[inbound] VERIFY: ${item.gmail_message_id} - no payload_url available`);
+    if (rawPayloadUrl?.startsWith('http')) {
+      const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+      const markerIndex = rawPayloadUrl.indexOf(marker);
+      if (markerIndex !== -1) {
+        storagePath = rawPayloadUrl.substring(markerIndex + marker.length);
+      }
+    } else if (rawPayloadUrl) {
+      storagePath = rawPayloadUrl;
+    }
+    
+    if (!storagePath) {
+      console.log(`[inbound] Verification: Could not extract path from: ${rawPayloadUrl?.substring(0, 60)}`);
       continue;
     }
     
-    try {
-      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(path);
-      
-      if (error) {
-        console.error(`[inbound] VERIFY FAILED: ${item.gmail_message_id}`, JSON.stringify({
-          bucket: STORAGE_BUCKET,
-          path,
-          errorMessage: error.message || 'No message',
-          errorName: error.name || 'Unknown',
-          errorCode: (error as any).statusCode || (error as any).code || null,
-        }, null, 2));
-      } else if (data) {
-        const size = await data.arrayBuffer().then(b => b.byteLength);
-        console.log(`[inbound] VERIFY OK: ${item.gmail_message_id} - bucket=${STORAGE_BUCKET} path=${path} size=${size} bytes`);
-      } else {
-        console.warn(`[inbound] VERIFY EMPTY: ${item.gmail_message_id} - bucket=${STORAGE_BUCKET} path=${path} - no data returned`);
-      }
-    } catch (e) {
-      console.error(`[inbound] VERIFY EXCEPTION: ${item.gmail_message_id}`, JSON.stringify({
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(storagePath);
+    
+    if (error) {
+      console.error(`[inbound] Verification FAILED for ${storagePath.substring(0, 40)}:`, JSON.stringify({
         bucket: STORAGE_BUCKET,
-        path,
-        error: e instanceof Error ? e.message : String(e),
-        stack: e instanceof Error ? e.stack : undefined,
-      }, null, 2));
+        path: storagePath,
+        error: error.message,
+      }));
+    } else if (data) {
+      const size = data.size;
+      console.log(`[inbound] Verification SUCCESS: ${storagePath.substring(0, 40)}... (${size} bytes)`);
+      successCount++;
     }
   }
   
-  console.log('[inbound] Storage verification complete');
+  console.log(`[inbound] Storage verification complete: ${successCount}/${testItems.length} downloads succeeded`);
 }
