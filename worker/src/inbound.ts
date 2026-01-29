@@ -263,24 +263,33 @@ async function matchLoadToHunts(
 // ═══════════════════════════════════════════════════════════════════════════
 const STEP_TIMEOUT_MS = 30_000; // 30 seconds per step
 
+/**
+ * Wrap a promise-like (thenable) with a timeout to prevent indefinite hangs.
+ * Accepts PromiseLike<T> | T to support Supabase query builders which are
+ * awaitable but not typed as Promise.
+ */
 async function withTimeout<T>(
-  promise: Promise<T>,
+  promiseLike: PromiseLike<T> | T,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout>;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       reject(new Error(`TIMEOUT (${timeoutMs}ms) at step: ${stepName}`));
     }, timeoutMs);
   });
-  
+
   try {
-    const result = await Promise.race([promise, timeoutPromise]);
-    clearTimeout(timeoutId!);
-    return result;
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result as T;
   } catch (e) {
-    clearTimeout(timeoutId!);
+    if (timeoutId) clearTimeout(timeoutId);
     throw e;
   }
 }
