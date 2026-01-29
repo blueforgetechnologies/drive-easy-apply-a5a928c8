@@ -1373,6 +1373,7 @@ export type Database = {
           gmail_message_id: string
           id: string
           last_error: string | null
+          parsed_at: string | null
           payload_url: string | null
           processed_at: string | null
           processing_started_at: string | null
@@ -1398,6 +1399,7 @@ export type Database = {
           gmail_message_id: string
           id?: string
           last_error?: string | null
+          parsed_at?: string | null
           payload_url?: string | null
           processed_at?: string | null
           processing_started_at?: string | null
@@ -1423,6 +1425,7 @@ export type Database = {
           gmail_message_id?: string
           id?: string
           last_error?: string | null
+          parsed_at?: string | null
           payload_url?: string | null
           processed_at?: string | null
           processing_started_at?: string | null
@@ -6918,6 +6921,7 @@ export type Database = {
           gmail_message_id: string
           id: string
           last_error: string | null
+          parsed_at: string | null
           payload_url: string | null
           processed_at: string | null
           processing_started_at: string | null
