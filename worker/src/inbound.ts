@@ -289,7 +289,34 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Fixed bucket name for all email payloads
     const STORAGE_BUCKET = 'email-content';
-    const storagePath = item.payload_url;
+    
+    // Support both full public URLs and relative paths
+    // Full URL example: https://xxx.supabase.co/storage/v1/object/public/email-content/gmail/ab/hash.json
+    // Relative path example: gmail/ab/hash.json
+    let storagePath: string | null = null;
+    const rawPayloadUrl = item.payload_url;
+    
+    if (rawPayloadUrl) {
+      if (rawPayloadUrl.startsWith('http')) {
+        // Extract path after /storage/v1/object/public/email-content/
+        const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+        const markerIndex = rawPayloadUrl.indexOf(marker);
+        if (markerIndex !== -1) {
+          storagePath = rawPayloadUrl.substring(markerIndex + marker.length);
+          console.log(`[inbound] Extracted path from full URL: ${storagePath}`);
+        } else {
+          console.error(`[inbound] Failed to extract path from URL - marker not found:`, JSON.stringify({
+            bucket: STORAGE_BUCKET,
+            payload_url: rawPayloadUrl,
+            extractedPath: null,
+            marker,
+          }));
+        }
+      } else {
+        // Already a relative path
+        storagePath = rawPayloadUrl;
+      }
+    }
     
     if (storagePath) {
       console.log(`[inbound] Attempting storage download: bucket=${STORAGE_BUCKET} path=${storagePath} messageId=${item.gmail_message_id}`);
@@ -304,7 +331,8 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
           // Log the FULL error object for debugging
           console.error(`[inbound] Storage download FAILED for ${item.gmail_message_id}:`, JSON.stringify({
             bucket: STORAGE_BUCKET,
-            path: storagePath,
+            payload_url: rawPayloadUrl,
+            extractedPath: storagePath,
             errorMessage: storageError.message || 'No message',
             errorName: storageError.name || 'Unknown',
             errorCause: (storageError as any).cause || null,
@@ -322,7 +350,8 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         const errorMsg = e instanceof Error ? e.message : String(e);
         console.error(`[inbound] Storage download exception for ${item.gmail_message_id}:`, JSON.stringify({
           bucket: STORAGE_BUCKET,
-          path: storagePath,
+          payload_url: rawPayloadUrl,
+          extractedPath: storagePath,
           error: errorMsg,
           stack: e instanceof Error ? e.stack : undefined,
         }, null, 2));
