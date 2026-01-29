@@ -1381,6 +1381,8 @@ export type Database = {
           receipt_id: string | null
           routing_method: string | null
           status: string
+          storage_bucket: string | null
+          storage_path: string | null
           subject: string | null
           tenant_id: string | null
           to_email: string | null
@@ -1407,6 +1409,8 @@ export type Database = {
           receipt_id?: string | null
           routing_method?: string | null
           status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
           subject?: string | null
           tenant_id?: string | null
           to_email?: string | null
@@ -1433,6 +1437,8 @@ export type Database = {
           receipt_id?: string | null
           routing_method?: string | null
           status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
           subject?: string | null
           tenant_id?: string | null
           to_email?: string | null
@@ -6929,6 +6935,8 @@ export type Database = {
           receipt_id: string | null
           routing_method: string | null
           status: string
+          storage_bucket: string | null
+          storage_path: string | null
           subject: string | null
           tenant_id: string | null
           to_email: string | null

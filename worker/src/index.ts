@@ -21,7 +21,7 @@ import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
 import { processQueueItem } from './process.js';
-import { processInboundEmail } from './inbound.js';
+import { processInboundEmail, verifyStorageAccess } from './inbound.js';
 import { processHistoryItem } from './historyQueue.js';
 import { supabase } from './supabase.js';
 
@@ -453,6 +453,9 @@ async function workerLoop(): Promise<void> {
     concurrent: currentConfig.concurrent_limit,
     config_source: METRICS.configSource,
   });
+
+  // One-time storage verification on startup
+  await verifyStorageAccess();
 
   // Log heartbeat every minute and report to database
   const heartbeatInterval = setInterval(async () => {
