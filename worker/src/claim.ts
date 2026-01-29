@@ -22,10 +22,7 @@ export interface InboundQueueItem {
   tenant_id: string | null;
   gmail_message_id: string;
   gmail_history_id: string | null;
-  payload_url: string | null;
-  // New storage columns for reliable access
-  storage_bucket: string | null;
-  storage_path: string | null;
+  payload_url: string | null; // Storage path (e.g., "gmail/ab/hash.json") - NOT a URL
   attempts: number;
   queued_at: string;
   subject: string | null;
