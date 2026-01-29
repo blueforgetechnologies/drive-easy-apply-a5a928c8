@@ -223,6 +223,31 @@ async function getValidAccessToken(token: GmailToken): Promise<string | null> {
 // GMAIL API CALLS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Gmail API fetch timeout (15 seconds) to prevent hangs blocking the worker loop
+const GMAIL_FETCH_TIMEOUT_MS = 15000;
+
+/**
+ * Helper to fetch with AbortController timeout.
+ */
+async function fetchWithTimeout(
+  url: string, 
+  options: RequestInit, 
+  timeoutMs: number = GMAIL_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Fetch history entries starting from a given historyId.
  */
@@ -243,7 +268,7 @@ async function fetchGmailHistory(
         url.searchParams.set('pageToken', pageToken);
       }
 
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -278,6 +303,11 @@ async function fetchGmailHistory(
     log('info', 'History fetched', { email: emailAddress, messageCount: messageIds.length });
     return messageIds;
   } catch (error) {
+    // Handle AbortError specifically for timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      log('error', 'History fetch TIMEOUT (15s)', { email: emailAddress });
+      return [];
+    }
     log('error', 'History fetch exception', { 
       email: emailAddress, 
       error: error instanceof Error ? error.message : String(error) 
@@ -305,7 +335,7 @@ async function fetchMessageMetadata(
     url.searchParams.append('metadataHeaders', 'Subject');
     url.searchParams.append('metadataHeaders', 'Return-Path');
 
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithTimeout(url.toString(), {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -322,6 +352,11 @@ async function fetchMessageMetadata(
     const data = await response.json() as GmailMessage;
     return data.payload?.headers || [];
   } catch (error) {
+    // Handle AbortError specifically for timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      log('error', 'Message metadata fetch TIMEOUT (15s)', { messageId });
+      return null;
+    }
     log('error', 'Message metadata fetch exception', { 
       messageId, 
       error: error instanceof Error ? error.message : String(error) 
@@ -341,7 +376,7 @@ async function fetchMessageFull(
   try {
     const url = `https://gmail.googleapis.com/gmail/v1/users/${emailAddress}/messages/${messageId}?format=full`;
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -357,6 +392,11 @@ async function fetchMessageFull(
 
     return await response.json() as GmailMessage;
   } catch (error) {
+    // Handle AbortError specifically for timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      log('error', 'Message full fetch TIMEOUT (15s)', { messageId });
+      return null;
+    }
     log('error', 'Message full fetch exception', { 
       messageId, 
       error: error instanceof Error ? error.message : String(error) 
