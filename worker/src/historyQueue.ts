@@ -551,6 +551,12 @@ function getHeader(headers: GmailMessageHeader[], name: string): string | null {
 
 /**
  * Insert message into email_queue for processing by existing inbound pipeline.
+ * 
+ * CRITICAL: The inbound claim contract requires:
+ * - subject IS NULL (so the inbound processor can claim and parse it)
+ * - payload_url IS NOT NULL (so the inbound processor can fetch content)
+ * 
+ * Do NOT populate subject here - the inbound processor will extract it during parsing.
  */
 async function insertToEmailQueue(
   message: GmailMessage,
@@ -560,10 +566,11 @@ async function insertToEmailQueue(
   alias: string,
   routingSource: string
 ): Promise<boolean> {
-  const { html, text } = extractBody(message);
-  const subject = getHeader(headers, 'Subject');
-  const fromEmail = getHeader(headers, 'From');
+  // Note: We intentionally do NOT extract subject/body here.
+  // The inbound processor (claim_inbound_email_queue_batch) requires subject IS NULL
+  // to identify emails that need parsing. The inbound.ts will extract subject/body from payload_url.
   const deliveredTo = getHeader(headers, 'Delivered-To');
+  const fromEmail = getHeader(headers, 'From');
 
   try {
     const { error } = await supabase.from('email_queue').insert({
@@ -574,10 +581,12 @@ async function insertToEmailQueue(
       status: 'pending',
       attempts: 0,
       queued_at: new Date().toISOString(),
-      subject,
+      // IMPORTANT: subject must be NULL for claim_inbound_email_queue_batch to pick it up
+      subject: null,
       from_email: fromEmail,
-      body_html: html,
-      body_text: text,
+      // Body will be extracted by inbound processor from payload_url
+      body_html: null,
+      body_text: null,
       delivered_to_header: deliveredTo,
       extracted_alias: alias,
       routing_method: `worker_history_${routingSource}`,
