@@ -618,10 +618,15 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (insertError) throw insertError;
     
-    // Mark queue item as completed
+    // Mark queue item as completed with parsed_at timestamp
+    // parsed_at is set ONLY here after: payload fetch + parsing + load_emails upsert all succeeded
     await supabase
       .from('email_queue')
-      .update({ status: 'completed', processed_at: new Date().toISOString() })
+      .update({ 
+        status: 'completed', 
+        processed_at: new Date().toISOString(),
+        parsed_at: new Date().toISOString(),
+      })
       .eq('id', item.id);
     
     // Hunt matching
