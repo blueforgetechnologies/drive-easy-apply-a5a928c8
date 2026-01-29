@@ -262,6 +262,9 @@ async function matchLoadToHunts(
  * Process a single inbound email from the queue
  */
 export async function processInboundEmail(item: InboundQueueItem): Promise<InboundProcessResult> {
+  // Entry breadcrumb: logged BEFORE any await, so if we see it, we know the function was called
+  console.log(`[inbound] ENTRY processInboundEmail id=${item.id.substring(0, 8)} gmail=${item.gmail_message_id} payload_url=${item.payload_url?.substring(0, 50) ?? 'NULL'}`);
+  
   try {
     // Mark as processing
     await supabase
