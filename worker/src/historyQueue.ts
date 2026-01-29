@@ -472,9 +472,18 @@ function generateContentHash(message: GmailMessage): string {
 }
 
 /**
- * Store message payload to Supabase Storage.
+ * Storage result with bucket and path for reliable download later.
  */
-async function storePayload(message: GmailMessage, tenantId: string): Promise<string | null> {
+interface StorageResult {
+  bucket: string;
+  path: string;
+}
+
+/**
+ * Store message payload to Supabase Storage.
+ * Returns bucket + path (not a URL) so inbound.ts can use download() directly.
+ */
+async function storePayload(message: GmailMessage, tenantId: string): Promise<StorageResult | null> {
   const bucket = 'email-content';
   const hash = generateContentHash(message);
   const path = `gmail/${hash.substring(0, 2)}/${hash}.json`;
@@ -491,15 +500,17 @@ async function storePayload(message: GmailMessage, tenantId: string): Promise<st
       });
 
     if (error && !error.message.includes('already exists')) {
-      log('error', 'Payload storage failed', { path, error: error.message });
+      log('error', 'Payload storage failed', { bucket, path, error: error.message });
       return null;
     }
 
-    // Return public URL
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
-    return urlData?.publicUrl || path;
+    log('debug', 'Payload stored successfully', { bucket, path });
+    
+    // Return bucket + path (NOT a URL) for reliable download
+    return { bucket, path };
   } catch (error) {
     log('error', 'Payload storage exception', { 
+      bucket,
       path, 
       error: error instanceof Error ? error.message : String(error) 
     });
@@ -562,13 +573,13 @@ async function insertToEmailQueue(
   message: GmailMessage,
   headers: GmailMessageHeader[],
   tenantId: string,
-  payloadUrl: string,
+  storageResult: StorageResult,
   alias: string,
   routingSource: string
 ): Promise<boolean> {
   // Note: We intentionally do NOT extract subject/body here.
   // The inbound processor (claim_inbound_email_queue_batch) requires subject IS NULL
-  // to identify emails that need parsing. The inbound.ts will extract subject/body from payload_url.
+  // to identify emails that need parsing. The inbound.ts will extract subject/body from storage.
   const deliveredTo = getHeader(headers, 'Delivered-To');
   const fromEmail = getHeader(headers, 'From');
 
@@ -577,14 +588,18 @@ async function insertToEmailQueue(
       gmail_message_id: message.id,
       gmail_history_id: message.historyId || null,
       tenant_id: tenantId,
-      payload_url: payloadUrl,
+      // Store bucket + path for reliable download (NOT a URL)
+      storage_bucket: storageResult.bucket,
+      storage_path: storageResult.path,
+      // Keep payload_url for backward compatibility (store the path, not URL)
+      payload_url: storageResult.path,
       status: 'pending',
       attempts: 0,
       queued_at: new Date().toISOString(),
       // IMPORTANT: subject must be NULL for claim_inbound_email_queue_batch to pick it up
       subject: null,
       from_email: fromEmail,
-      // Body will be extracted by inbound processor from payload_url
+      // Body will be extracted by inbound processor from storage
       body_html: null,
       body_text: null,
       delivered_to_header: deliveredTo,
@@ -605,7 +620,9 @@ async function insertToEmailQueue(
     log('info', 'Email queued for inbound processing', { 
       messageId: message.id, 
       tenantId, 
-      alias 
+      alias,
+      bucket: storageResult.bucket,
+      path: storageResult.path,
     });
     return true;
   } catch (error) {
@@ -759,18 +776,18 @@ export async function processHistoryItem(item: HistoryQueueItem): Promise<Histor
         }
 
         // 4e. Store payload to Supabase Storage
-        const payloadUrl = await storePayload(fullMessage, tenantId);
-        if (!payloadUrl) {
+        const storageResult = await storePayload(fullMessage, tenantId);
+        if (!storageResult) {
           errors++;
           continue;
         }
 
-        // 4f. Insert into email_queue
+        // 4f. Insert into email_queue with bucket + path (not URL)
         const inserted = await insertToEmailQueue(
           fullMessage,
           mergedHeaders,
           tenantId,
-          payloadUrl,
+          storageResult,
           alias || 'fallback',
           source || 'token_tenant'
         );

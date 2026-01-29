@@ -25,6 +25,9 @@ export interface InboundQueueItem {
   gmail_message_id: string;
   gmail_history_id: string | null;
   payload_url: string | null;
+  // New storage columns for reliable access
+  storage_bucket: string | null;
+  storage_path: string | null;
   attempts: number;
   queued_at: string;
   subject: string | null;
@@ -284,32 +287,56 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     }
     
     // Load the email payload from storage
+    // Priority: use storage_bucket + storage_path if available, fallback to payload_url
     let message: any = null;
     
-    if (item.payload_url) {
+    // Determine bucket and path
+    const bucket = item.storage_bucket || 'email-content';
+    const storagePath = item.storage_path || item.payload_url;
+    
+    if (storagePath) {
+      console.log(`[inbound] Attempting storage download: bucket=${bucket} path=${storagePath} messageId=${item.gmail_message_id}`);
+      
       try {
         const { data: payloadData, error: storageError } = await supabase
           .storage
-          .from('email-payloads')
-          .download(item.payload_url);
+          .from(bucket)
+          .download(storagePath);
         
         if (storageError) {
-          console.warn(`[inbound] Storage error for ${item.gmail_message_id}: ${storageError.message}`);
+          // Log the FULL error object for debugging
+          console.error(`[inbound] Storage download failed for ${item.gmail_message_id}:`, {
+            bucket,
+            path: storagePath,
+            errorMessage: storageError.message,
+            errorName: storageError.name,
+            errorCause: (storageError as any).cause,
+            fullError: JSON.stringify(storageError, null, 2),
+          });
         } else if (payloadData) {
           const payloadText = await payloadData.text();
           message = JSON.parse(payloadText);
-          console.log(`[inbound] Loaded message from stored payload: ${item.gmail_message_id}`);
+          console.log(`[inbound] Successfully loaded message from storage: bucket=${bucket} path=${storagePath}`);
+        } else {
+          console.warn(`[inbound] Storage returned no data: bucket=${bucket} path=${storagePath}`);
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        console.warn(`[inbound] Failed to load stored payload for ${item.gmail_message_id}: ${errorMsg}`);
+        console.error(`[inbound] Storage download exception for ${item.gmail_message_id}:`, {
+          bucket,
+          path: storagePath,
+          error: errorMsg,
+          stack: e instanceof Error ? e.stack : undefined,
+        });
       }
+    } else {
+      console.warn(`[inbound] No storage path available for ${item.gmail_message_id}`);
     }
     
     if (!message) {
       // No stored payload - need to fail gracefully
       // (VPS doesn't have Gmail API access like Edge Functions)
-      throw new Error('No stored payload available and VPS cannot access Gmail API directly');
+      throw new Error(`No stored payload available for ${item.gmail_message_id}. bucket=${bucket} path=${storagePath}. VPS cannot access Gmail API directly.`);
     }
     
     // Guard: Validate message structure before processing
@@ -665,4 +692,69 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     console.error(`[inbound] Error processing ${item.gmail_message_id}:`, errorMessage);
     return { success: false, error: errorMessage };
   }
+}
+
+/**
+ * One-time verification: Check if storage is accessible for newest queue items.
+ * Call this once at worker startup to confirm storage connectivity.
+ */
+export async function verifyStorageAccess(): Promise<void> {
+  console.log('[inbound] Running storage access verification...');
+  
+  // Get 3 newest items with storage info
+  const { data: items, error: queryError } = await supabase
+    .from('email_queue')
+    .select('id, gmail_message_id, payload_url, storage_bucket, storage_path')
+    .not('payload_url', 'is', null)
+    .is('to_email', null)
+    .order('queued_at', { ascending: false })
+    .limit(3);
+  
+  if (queryError) {
+    console.error('[inbound] Storage verification query failed:', queryError.message);
+    return;
+  }
+  
+  if (!items || items.length === 0) {
+    console.log('[inbound] No items to verify storage access');
+    return;
+  }
+  
+  console.log(`[inbound] Verifying ${items.length} storage objects...`);
+  
+  for (const item of items) {
+    const bucket = item.storage_bucket || 'email-content';
+    const path = item.storage_path || item.payload_url;
+    
+    if (!path) {
+      console.warn(`[inbound] VERIFY: ${item.gmail_message_id} - no path available`);
+      continue;
+    }
+    
+    try {
+      const { data, error } = await supabase.storage.from(bucket).download(path);
+      
+      if (error) {
+        console.error(`[inbound] VERIFY FAILED: ${item.gmail_message_id}`, {
+          bucket,
+          path,
+          error: error.message,
+          errorName: error.name,
+        });
+      } else if (data) {
+        const size = await data.arrayBuffer().then(b => b.byteLength);
+        console.log(`[inbound] VERIFY OK: ${item.gmail_message_id} - bucket=${bucket} path=${path} size=${size} bytes`);
+      } else {
+        console.warn(`[inbound] VERIFY EMPTY: ${item.gmail_message_id} - no data returned`);
+      }
+    } catch (e) {
+      console.error(`[inbound] VERIFY EXCEPTION: ${item.gmail_message_id}`, {
+        bucket,
+        path,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  
+  console.log('[inbound] Storage verification complete');
 }
