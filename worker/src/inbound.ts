@@ -330,7 +330,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // STEP 2: Check if already processed
     // ─────────────────────────────────────────────────────────────────────────
     logStep('2-check-existing-start');
-    const { count } = await withTimeout(
+    const { count } = await withTimeout<{ count: number | null }>(
       supabase
         .from('load_emails')
         .select('id', { count: 'exact', head: true })
@@ -379,7 +379,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       console.log(`[inbound] Attempting storage download: bucket=${STORAGE_BUCKET} path=${storagePath} messageId=${item.gmail_message_id}`);
       
       try {
-        const { data: payloadData, error: storageError } = await withTimeout(
+        const { data: payloadData, error: storageError } = await withTimeout<{ data: Blob | null; error: Error | null }>(
           supabase.storage.from(STORAGE_BUCKET).download(storagePath),
           STEP_TIMEOUT_MS,
           'storage-download'
@@ -499,7 +499,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Lookup city from zip if needed
     if (!parsedData.origin_city && parsedData.origin_zip) {
-      const cityData = await withTimeout(
+      const cityData = await withTimeout<{ city: string; state: string } | null>(
         lookupCityFromZip(parsedData.origin_zip, parsedData.origin_state),
         STEP_TIMEOUT_MS,
         'lookup-origin-zip'
@@ -511,7 +511,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     }
     
     if (!parsedData.destination_city && parsedData.destination_zip) {
-      const cityData = await withTimeout(
+      const cityData = await withTimeout<{ city: string; state: string } | null>(
         lookupCityFromZip(parsedData.destination_zip, parsedData.destination_state),
         STEP_TIMEOUT_MS,
         'lookup-dest-zip'
@@ -528,7 +528,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (parsedData.origin_city && parsedData.origin_state) {
       geocodingWasAttempted = true;
-      const coords = await withTimeout(
+      const coords = await withTimeout<{ lat: number; lng: number } | null>(
         geocodeLocation(parsedData.origin_city, parsedData.origin_state),
         STEP_TIMEOUT_MS,
         'geocode-origin'
@@ -570,7 +570,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       logStep('6-fullcircle-customer-upsert-start');
       const customerName = parsedData.broker_company;
       
-      const { data: existingCustomer } = await withTimeout(
+      const customerResult = await withTimeout<{ data: { id: string; mc_number: string | null } | null; error: any }>(
         supabase
           .from('customers')
           .select('id, mc_number')
@@ -580,6 +580,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         STEP_TIMEOUT_MS,
         'customer-lookup'
       );
+      const existingCustomer = customerResult?.data;
       
       if (existingCustomer) {
         if (!existingCustomer.mc_number && parsedData.mc_number) {
@@ -631,7 +632,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (dedupEligible && parsedLoadFingerprint && canonicalPayload) {
       logStep('7-check-duplicate-start');
-      const existingDuplicate = await withTimeout(
+      const existingDuplicate = await withTimeout<{ id: string; load_id: string; received_at: string } | null>(
         findExistingByFingerprint(parsedLoadFingerprint, tenantId, 168),
         STEP_TIMEOUT_MS,
         'find-duplicate'
@@ -648,7 +649,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       const canonicalPayloadJson = JSON.stringify(canonicalPayload);
       const sizeBytes = Buffer.byteLength(canonicalPayloadJson, 'utf8');
       
-      const { error: upsertError } = await withTimeout(
+      const upsertResult = await withTimeout<{ data: any; error: any }>(
         supabase.rpc('upsert_load_content', {
           p_fingerprint: parsedLoadFingerprint,
           p_canonical_payload: canonicalPayload,
@@ -659,6 +660,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         STEP_TIMEOUT_MS,
         'upsert-load-content'
       );
+      const upsertError = upsertResult?.error;
       
       if (upsertError) {
         logStep('7-load-content-upsert-error', { error: upsertError.message });
@@ -672,7 +674,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     // Check for updates (legacy content hash)
     logStep('7-check-similar-start');
-    const existingSimilarLoad = await withTimeout(
+    const existingSimilarLoad = await withTimeout<{ id: string; load_id: string; received_at: string } | null>(
       findExistingSimilarLoad(contentHash, tenantId, 48),
       STEP_TIMEOUT_MS,
       'find-similar'
@@ -722,7 +724,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // ─────────────────────────────────────────────────────────────────────────
     logStep('9-load-emails-insert-start');
     
-    const { data: insertedEmail, error: insertError } = await withTimeout(
+    const insertResult = await withTimeout<{ data: { id: string; load_id: string; received_at: string } | null; error: any }>(
       supabase
         .from('load_emails')
         .upsert({
@@ -763,6 +765,8 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       STEP_TIMEOUT_MS,
       'load-emails-upsert'
     );
+    const insertedEmail = insertResult?.data;
+    const insertError = insertResult?.error;
     
     if (insertError) {
       logStep('9-load-emails-insert-error', { error: insertError.message });
