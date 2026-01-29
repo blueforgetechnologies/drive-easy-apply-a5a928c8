@@ -547,20 +547,55 @@ async function workerLoop(): Promise<void> {
       // Claim a batch of OUTBOUND items atomically
       const batch = await claimBatch(currentConfig.batch_size);
 
-      // Also claim INBOUND emails for parsing (load emails)
+      // Also claim INBOUND emails for parsing (load emails) - HIGHEST PRIORITY
       const inboundBatch = await claimInboundBatch(50);
 
       // Claim gmail_history_queue stubs (Phase 7B - ENQUEUE_ONLY mode)
-      const historyBatch = await claimHistoryBatch(25);
+      // CAPPED to prevent starvation of inbound processing
+      const HISTORY_CAP_PER_LOOP = 5;
+      const historyBatch = await claimHistoryBatch(HISTORY_CAP_PER_LOOP);
 
       if (batch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
         await sleep(currentConfig.loop_interval_ms);
         continue;
       }
 
-      // Process HISTORY QUEUE stubs first (highest priority - webhook offload)
+      // ═══════════════════════════════════════════════════════════════════════
+      // INBOUND FIRST: Process inbound before history to prevent starvation
+      // ═══════════════════════════════════════════════════════════════════════
+      if (inboundBatch.length > 0) {
+        log('info', `Processing ${inboundBatch.length} inbound load emails (PRIORITY)`);
+        const inboundStart = Date.now();
+        
+        for (const item of inboundBatch) {
+          try {
+            const result = await processInboundEmail(item);
+            if (result.success) {
+              log('debug', `Inbound processed`, { 
+                id: item.id.substring(0, 8), 
+                loadId: result.loadId,
+                isDuplicate: result.isDuplicate 
+              });
+            } else {
+              log('warn', `Inbound failed`, { id: item.id.substring(0, 8), error: result.error });
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            log('error', `Inbound exception`, { id: item.id.substring(0, 8), error: errorMessage });
+          }
+        }
+        
+        log('info', `Inbound batch complete`, { 
+          size: inboundBatch.length, 
+          duration_ms: Date.now() - inboundStart 
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // HISTORY QUEUE: Process after inbound, capped to prevent blocking
+      // ═══════════════════════════════════════════════════════════════════════
       if (historyBatch.length > 0) {
-        log('info', `Processing ${historyBatch.length} gmail history stubs`);
+        log('info', `Processing ${historyBatch.length} gmail history stubs (capped at ${HISTORY_CAP_PER_LOOP})`);
         const historyStart = Date.now();
         let historySuccess = 0;
         let historyFailed = 0;
@@ -595,35 +630,6 @@ async function workerLoop(): Promise<void> {
           failed: historyFailed,
           messagesQueued,
           duration_ms: Date.now() - historyStart,
-        });
-      }
-
-      // Process INBOUND emails second (high priority - time sensitive)
-      if (inboundBatch.length > 0) {
-        log('info', `Processing ${inboundBatch.length} inbound load emails`);
-        const inboundStart = Date.now();
-        
-        for (const item of inboundBatch) {
-          try {
-            const result = await processInboundEmail(item);
-            if (result.success) {
-              log('debug', `Inbound processed`, { 
-                id: item.id.substring(0, 8), 
-                loadId: result.loadId,
-                isDuplicate: result.isDuplicate 
-              });
-            } else {
-              log('warn', `Inbound failed`, { id: item.id.substring(0, 8), error: result.error });
-            }
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            log('error', `Inbound exception`, { id: item.id.substring(0, 8), error: errorMessage });
-          }
-        }
-        
-        log('info', `Inbound batch complete`, { 
-          size: inboundBatch.length, 
-          duration_ms: Date.now() - inboundStart 
         });
       }
 
