@@ -562,31 +562,76 @@ async function workerLoop(): Promise<void> {
 
       // ═══════════════════════════════════════════════════════════════════════
       // INBOUND FIRST: Process inbound before history to prevent starvation
+      // Includes dedupe: if multiple rows share the same gmail_message_id,
+      // process one and mark the rest as completed (duplicates)
       // ═══════════════════════════════════════════════════════════════════════
       if (inboundBatch.length > 0) {
         log('info', `Processing ${inboundBatch.length} inbound load emails (PRIORITY)`);
         const inboundStart = Date.now();
         
+        // Dedupe: Group by gmail_message_id, process first, mark rest as duplicates
+        const byMessageId = new Map<string, typeof inboundBatch>();
         for (const item of inboundBatch) {
+          const key = item.gmail_message_id;
+          if (!byMessageId.has(key)) {
+            byMessageId.set(key, []);
+          }
+          byMessageId.get(key)!.push(item);
+        }
+        
+        let processedCount = 0;
+        let dedupedCount = 0;
+        
+        for (const [messageId, items] of byMessageId.entries()) {
+          // Process the first item
+          const primary = items[0];
           try {
-            const result = await processInboundEmail(item);
+            const result = await processInboundEmail(primary);
+            processedCount++;
             if (result.success) {
               log('debug', `Inbound processed`, { 
-                id: item.id.substring(0, 8), 
+                id: primary.id.substring(0, 8), 
                 loadId: result.loadId,
                 isDuplicate: result.isDuplicate 
               });
             } else {
-              log('warn', `Inbound failed`, { id: item.id.substring(0, 8), error: result.error });
+              log('warn', `Inbound failed`, { id: primary.id.substring(0, 8), error: result.error });
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            log('error', `Inbound exception`, { id: item.id.substring(0, 8), error: errorMessage });
+            log('error', `Inbound exception`, { id: primary.id.substring(0, 8), error: errorMessage });
+          }
+          
+          // Mark remaining items with same gmail_message_id as completed (dedupe)
+          if (items.length > 1) {
+            const duplicateIds = items.slice(1).map(i => i.id);
+            try {
+              await supabase
+                .from('email_queue')
+                .update({ 
+                  status: 'completed', 
+                  processed_at: new Date().toISOString(),
+                  last_error: `Deduped: same gmail_message_id as ${primary.id.substring(0, 8)}`
+                })
+                .in('id', duplicateIds);
+              dedupedCount += duplicateIds.length;
+              log('info', `Deduped ${duplicateIds.length} queue items with same gmail_message_id`, {
+                messageId: messageId.substring(0, 12),
+                primaryId: primary.id.substring(0, 8),
+              });
+            } catch (e) {
+              log('warn', `Failed to mark duplicates as completed`, { 
+                messageId: messageId.substring(0, 12), 
+                error: e instanceof Error ? e.message : String(e) 
+              });
+            }
           }
         }
         
         log('info', `Inbound batch complete`, { 
           size: inboundBatch.length, 
+          processed: processedCount,
+          deduped: dedupedCount,
           duration_ms: Date.now() - inboundStart 
         });
       }

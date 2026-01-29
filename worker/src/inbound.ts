@@ -358,13 +358,14 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     }
     
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 3: Load email payload from storage
+    // STEP 3: Load email payload from storage or direct HTTP fetch
     // ─────────────────────────────────────────────────────────────────────────
     let message: any = null;
     const STORAGE_BUCKET = 'email-content';
     let storagePath: string | null = null;
     const rawPayloadUrl = item.payload_url;
     
+    // Try to extract storage path from URL
     if (rawPayloadUrl) {
       if (rawPayloadUrl.startsWith('http')) {
         const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
@@ -377,12 +378,12 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       }
     }
     
-    if (storagePath) {
+    // Strategy 1: Try storage SDK download if we have a path
+    if (storagePath && !message) {
       logStep('3-storage-download-start', { bucket: STORAGE_BUCKET, path: storagePath });
       console.log(`[inbound] Attempting storage download: bucket=${STORAGE_BUCKET} path=${storagePath} messageId=${item.gmail_message_id}`);
       
       try {
-        // Storage download returns { data: Blob | null; error: StorageError | null }
         const downloadResult = await withTimeout<{ data: Blob | null; error: Error | null }>(
           supabase.storage.from(STORAGE_BUCKET).download(storagePath),
           STEP_TIMEOUT_MS,
@@ -391,27 +392,71 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
         
         if (downloadResult.error) {
           logStep('3-storage-download-error', { error: downloadResult.error.message });
-          console.error(`[inbound] Storage download FAILED:`, JSON.stringify({
-            bucket: STORAGE_BUCKET,
-            path: storagePath,
-            errorMessage: downloadResult.error.message,
-          }));
+          console.warn(`[inbound] Storage SDK download failed, will try direct HTTP:`, downloadResult.error.message);
         } else if (downloadResult.data) {
           logStep('3-storage-download-success-parsing-json');
           const payloadText = await downloadResult.data.text();
           message = JSON.parse(payloadText);
-          console.log(`[inbound] Successfully loaded message from storage: bucket=${STORAGE_BUCKET} path=${storagePath}`);
+          console.log(`[inbound] Successfully loaded message from storage SDK: bucket=${STORAGE_BUCKET} path=${storagePath}`);
           logStep('3-storage-download-done', { payloadSize: payloadText.length });
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e);
         logStep('3-storage-download-exception', { error: errorMsg });
-        throw new Error(`Storage download failed: ${errorMsg}`);
+        console.warn(`[inbound] Storage SDK exception, will try direct HTTP: ${errorMsg}`);
+      }
+    }
+    
+    // Strategy 2: Direct HTTP fetch from payload_url (with retry)
+    if (!message && rawPayloadUrl && rawPayloadUrl.startsWith('http')) {
+      logStep('3-http-fetch-start', { url: rawPayloadUrl.substring(0, 80) });
+      console.log(`[inbound] Attempting direct HTTP fetch: ${rawPayloadUrl.substring(0, 80)}...`);
+      
+      const MAX_RETRIES = 2;
+      const FETCH_TIMEOUT_MS = 15000;
+      
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+          
+          const response = await fetch(rawPayloadUrl, {
+            method: 'GET',
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json' },
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const payloadText = await response.text();
+          message = JSON.parse(payloadText);
+          
+          logStep('3-http-fetch-success', { attempt, payloadSize: payloadText.length });
+          console.log(`[inbound] Successfully loaded message via HTTP fetch (attempt ${attempt}): ${payloadText.length} bytes`);
+          break; // Success, exit retry loop
+          
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          const isAbort = errorMsg.includes('aborted') || errorMsg.includes('abort');
+          logStep('3-http-fetch-error', { attempt, error: errorMsg, isTimeout: isAbort });
+          console.warn(`[inbound] HTTP fetch attempt ${attempt}/${MAX_RETRIES} failed: ${errorMsg}`);
+          
+          if (attempt === MAX_RETRIES) {
+            console.error(`[inbound] All HTTP fetch attempts exhausted for ${item.gmail_message_id}`);
+          } else {
+            // Brief delay before retry
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
       }
     }
     
     if (!message) {
-      throw new Error(`No stored payload available for ${item.gmail_message_id}`);
+      throw new Error(`No stored payload available for ${item.gmail_message_id} (tried storage SDK and direct HTTP)`);
     }
     
     // Validate message structure
