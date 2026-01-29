@@ -6906,17 +6906,35 @@ export type Database = {
         Args: { p_batch_size?: number }
         Returns: {
           attempts: number
-          body_html: string
-          body_text: string
-          from_email: string
-          gmail_history_id: string
+          body_html: string | null
+          body_text: string | null
+          content_id: string | null
+          dedupe_key: string | null
+          delivered_to_header: string | null
+          extracted_alias: string | null
+          from_email: string | null
+          from_name: string | null
+          gmail_history_id: string | null
           gmail_message_id: string
           id: string
-          payload_url: string
+          last_error: string | null
+          payload_url: string | null
+          processed_at: string | null
+          processing_started_at: string | null
           queued_at: string
-          subject: string
-          tenant_id: string
+          receipt_id: string | null
+          routing_method: string | null
+          status: string
+          subject: string | null
+          tenant_id: string | null
+          to_email: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
