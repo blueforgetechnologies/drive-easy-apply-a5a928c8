@@ -18,7 +18,7 @@ import {
   generateContentHash,
   FINGERPRINT_VERSION,
 } from './fingerprint.js';
-import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
+import type { PostgrestSingleResponse } from '@supabase/supabase-js';
 
 export interface InboundQueueItem {
   id: string;
@@ -316,7 +316,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // STEP 1: Mark as processing
     // ─────────────────────────────────────────────────────────────────────────
     logStep('1-mark-processing-start');
-    await withTimeout<PostgrestResponse<null>>(
+    await withTimeout<PostgrestSingleResponse<null>>(
       supabase
         .from('email_queue')
         .update({ status: 'processing', attempts: item.attempts + 1, processing_started_at: new Date().toISOString() })
@@ -330,7 +330,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // STEP 2: Check if already processed
     // ─────────────────────────────────────────────────────────────────────────
     logStep('2-check-existing-start');
-    const existingCheckResult = await withTimeout<PostgrestResponse<{ id: string }[]>>(
+    const existingCheckResult = await withTimeout<PostgrestSingleResponse<{ id: string }[]>>(
       supabase
         .from('load_emails')
         .select('id', { count: 'exact', head: true })
@@ -343,7 +343,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     
     if (existingCount && existingCount > 0) {
       logStep('2-already-processed-marking-complete');
-      await withTimeout<PostgrestResponse<null>>(
+      await withTimeout<PostgrestSingleResponse<null>>(
         supabase
           .from('email_queue')
           .update({ status: 'completed', processed_at: new Date().toISOString() })
@@ -560,7 +560,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       logStep('6-fullcircle-customer-upsert-start');
       const customerName = parsedData.broker_company;
       
-      const customerResult = await withTimeout<PostgrestSingleResponse<{ id: string; mc_number: string | null }>>(
+      const customerResult = await withTimeout<PostgrestSingleResponse<{ id: string; mc_number: string | null } | null>>(
         supabase
           .from('customers')
           .select('id, mc_number')
@@ -574,14 +574,14 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       
       if (existingCustomer) {
         if (!existingCustomer.mc_number && parsedData.mc_number) {
-          await withTimeout<PostgrestResponse<null>>(
+          await withTimeout<PostgrestSingleResponse<null>>(
             supabase.from('customers').update({ mc_number: parsedData.mc_number }).eq('id', existingCustomer.id),
             STEP_TIMEOUT_MS,
             'customer-update'
           );
         }
       } else {
-        await withTimeout<PostgrestResponse<null>>(
+        await withTimeout<PostgrestSingleResponse<null>>(
           supabase.from('customers').insert({
             name: customerName,
             mc_number: parsedData.mc_number || null,
@@ -761,7 +761,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     // ─────────────────────────────────────────────────────────────────────────
     logStep('10-mark-completed-start');
     
-    await withTimeout<PostgrestResponse<null>>(
+    await withTimeout<PostgrestSingleResponse<null>>(
       supabase
         .from('email_queue')
         .update({ 
