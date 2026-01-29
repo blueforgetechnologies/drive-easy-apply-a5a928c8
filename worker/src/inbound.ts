@@ -265,11 +265,12 @@ const STEP_TIMEOUT_MS = 30_000; // 30 seconds per step
 
 /**
  * Wrap a promise-like (thenable) with a timeout to prevent indefinite hangs.
- * Accepts PromiseLike<T> | T to support Supabase query builders which are
- * awaitable but not typed as Promise.
+ * Uses 'any' type because Supabase query builders (PostgrestBuilder, etc.)
+ * are awaitable at runtime but TypeScript doesn't recognize them as PromiseLike.
  */
 async function withTimeout<T>(
-  promiseLike: PromiseLike<T> | T,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  promiseLike: any,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
