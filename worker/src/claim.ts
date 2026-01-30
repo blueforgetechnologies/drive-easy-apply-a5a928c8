@@ -75,16 +75,28 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
     });
 
     if (error) {
-      // Enhanced error logging for PostgrestError
+      // Check for auth-related failures
+      const isAuthFailure = 
+        error.code === '401' || 
+        error.code === '403' || 
+        (error as any).status === 401 ||
+        (error as any).status === 403 ||
+        error.message?.includes('UNAUTHENTICATED') ||
+        error.message?.includes('Invalid API key') ||
+        error.message?.includes('JWT');
+
       console.error('[claim] Error claiming inbound batch:', {
         message: error.message,
         code: error.code,
         details: error.details,
         hint: error.hint,
-        // @ts-ignore - status may exist on some error types
-        status: error.status,
-        fullError: JSON.stringify(error),
+        status: (error as any).status,
       });
+
+      if (isAuthFailure) {
+        console.error('[claim] AUTH_FAILURE - check service role key configuration');
+      }
+
       throw error;
     }
 
@@ -95,14 +107,27 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
     console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
     return (data || []) as InboundQueueItem[];
   } catch (err: any) {
-    // Catch any unexpected errors including network/auth issues
+    // Check for auth-related failures in catch block
+    const isAuthFailure = 
+      err?.code === '401' || 
+      err?.code === '403' || 
+      err?.status === 401 ||
+      err?.status === 403 ||
+      err?.message?.includes('UNAUTHENTICATED') ||
+      err?.message?.includes('Invalid API key') ||
+      err?.message?.includes('JWT');
+
     console.error('[claim] Unexpected error in claimInboundBatch:', {
       name: err?.name,
       message: err?.message,
       code: err?.code,
       status: err?.status,
-      stack: err?.stack?.split('\n').slice(0, 3).join('\n'),
     });
+
+    if (isAuthFailure) {
+      console.error('[claim] AUTH_FAILURE - check service role key configuration');
+    }
+
     throw err;
   }
 }
