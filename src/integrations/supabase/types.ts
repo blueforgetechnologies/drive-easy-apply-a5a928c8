@@ -2047,6 +2047,38 @@ export type Database = {
         }
         Relationships: []
       }
+      gmail_inboxes: {
+        Row: {
+          created_at: string
+          email_address: string
+          id: string
+          is_active: boolean
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_address: string
+          id?: string
+          is_active?: boolean
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          email_address?: string
+          id?: string
+          is_active?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_inboxes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gmail_stubs: {
         Row: {
           attempts: number
