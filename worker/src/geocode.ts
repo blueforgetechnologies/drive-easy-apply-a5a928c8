@@ -16,6 +16,35 @@ export interface CityStateResult {
 }
 
 /**
+ * Helper to wrap a promise with a timeout using Promise.race
+ */
+async function withGeoTimeout<T>(
+  promiseLike: PromiseLike<T> | Promise<T>,
+  timeoutMs: number,
+  stepName: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`TIMEOUT (${timeoutMs}ms) at ${stepName}`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result;
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
+/**
  * Geocode a city/state location using Mapbox, with caching.
  * Returns coordinates or null if geocoding fails.
  * Now includes timeout protection to prevent indefinite hangs.
@@ -30,23 +59,21 @@ export async function geocodeLocation(
 
   try {
     // Check cache first with timeout
-    const cacheController = new AbortController();
-    const cacheTimeoutId = setTimeout(() => cacheController.abort(), GEOCODE_TIMEOUT_MS);
-    
     let cached: { latitude: number; longitude: number; id: string; hit_count: number } | null = null;
     try {
-      const { data } = await supabase
-        .from('geocode_cache')
-        .select('latitude, longitude, id, hit_count')
-        .eq('location_key', locationKey)
-        .maybeSingle()
-        .abortSignal(cacheController.signal);
+      const { data } = await withGeoTimeout(
+        supabase
+          .from('geocode_cache')
+          .select('latitude, longitude, id, hit_count')
+          .eq('location_key', locationKey)
+          .maybeSingle() as Promise<{ data: { latitude: number; longitude: number; id: string; hit_count: number } | null }>,
+        GEOCODE_TIMEOUT_MS,
+        'geocode-cache-lookup'
+      );
       cached = data;
-      clearTimeout(cacheTimeoutId);
     } catch (e) {
-      clearTimeout(cacheTimeoutId);
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('abort')) {
+      if (msg.includes('TIMEOUT')) {
         console.error(`[geocode] Cache lookup TIMEOUT for ${city}, ${state}`);
         return null;
       }
@@ -67,13 +94,13 @@ export async function geocodeLocation(
 
     // Cache miss - call Mapbox API with timeout
     const query = encodeURIComponent(`${city}, ${state}, USA`);
-    const fetchController = new AbortController();
-    const fetchTimeoutId = setTimeout(() => fetchController.abort(), GEOCODE_TIMEOUT_MS);
+    const controller = new AbortController();
+    const fetchTimeoutId = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
     
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=1`,
-        { signal: fetchController.signal }
+        { signal: controller.signal }
       );
       clearTimeout(fetchTimeoutId);
 
@@ -97,7 +124,7 @@ export async function geocodeLocation(
               month_created: currentMonth,
             },
             { onConflict: 'location_key' }
-          ).then(() => {}).catch(() => {});
+          ).then(() => {});
 
           console.log(`[geocode] Cache MISS (stored): ${city}, ${state}`);
           return coords;

@@ -45,6 +45,36 @@ export interface InboundProcessResult {
 // Timeout for helper queries (shorter than main step timeout)
 const HELPER_TIMEOUT_MS = 15_000;
 
+/**
+ * Helper to wrap a promise with a timeout using Promise.race
+ * (Supabase query builders don't support .abortSignal())
+ */
+async function withHelperTimeout<T>(
+  promiseLike: PromiseLike<T> | Promise<T>,
+  timeoutMs: number,
+  stepName: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`TIMEOUT (${timeoutMs}ms) at ${stepName}`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result;
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
 // Check for existing load with same fingerprint in same tenant
 async function findExistingByFingerprint(
   fingerprint: string,
@@ -55,12 +85,8 @@ async function findExistingByFingerprint(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  // Add timeout to prevent hanging
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
-  
-  try {
-    const { data: existingLoad } = await supabase
+  const { data: existingLoad } = await withHelperTimeout(
+    supabase
       .from('load_emails')
       .select('id, load_id, received_at')
       .eq('parsed_load_fingerprint', fingerprint)
@@ -69,19 +95,12 @@ async function findExistingByFingerprint(
       .gte('received_at', windowStart)
       .order('received_at', { ascending: true })
       .limit(1)
-      .maybeSingle()
-      .abortSignal(controller.signal);
-    
-    clearTimeout(timeoutId);
-    return existingLoad;
-  } catch (e) {
-    clearTimeout(timeoutId);
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('abort')) {
-      throw new Error(`TIMEOUT (${HELPER_TIMEOUT_MS}ms) at findExistingByFingerprint`);
-    }
-    throw e;
-  }
+      .maybeSingle() as Promise<{ data: { id: string; load_id: string; received_at: string } | null }>,
+    HELPER_TIMEOUT_MS,
+    'findExistingByFingerprint'
+  );
+  
+  return existingLoad;
 }
 
 // Check for existing similar load (legacy content hash)
@@ -94,12 +113,8 @@ async function findExistingSimilarLoad(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  // Add timeout to prevent hanging
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
-  
-  try {
-    const { data: existingLoad } = await supabase
+  const { data: existingLoad } = await withHelperTimeout(
+    supabase
       .from('load_emails')
       .select('id, load_id, received_at')
       .eq('content_hash', contentHash)
@@ -108,19 +123,12 @@ async function findExistingSimilarLoad(
       .gte('received_at', windowStart)
       .order('received_at', { ascending: true })
       .limit(1)
-      .maybeSingle()
-      .abortSignal(controller.signal);
-    
-    clearTimeout(timeoutId);
-    return existingLoad;
-  } catch (e) {
-    clearTimeout(timeoutId);
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('abort')) {
-      throw new Error(`TIMEOUT (${HELPER_TIMEOUT_MS}ms) at findExistingSimilarLoad`);
-    }
-    throw e;
-  }
+      .maybeSingle() as Promise<{ data: { id: string; load_id: string; received_at: string } | null }>,
+    HELPER_TIMEOUT_MS,
+    'findExistingSimilarLoad'
+  );
+  
+  return existingLoad;
 }
 
 // Haversine distance calculation
