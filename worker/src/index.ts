@@ -90,6 +90,8 @@ interface WorkerMetrics {
   rateLimitBackoffUntil: number;
   configSource: 'database' | 'default';
   lastConfigRefresh: Date | null;
+  // Circuit breaker stall detector: tracks when we last successfully processed something
+  lastProcessedAt: Date | null;
 }
 
 const METRICS: WorkerMetrics = {
@@ -105,6 +107,7 @@ const METRICS: WorkerMetrics = {
   rateLimitBackoffUntil: 0,
   configSource: 'default',
   lastConfigRefresh: null,
+  lastProcessedAt: null,
 };
 
 let isShuttingDown = false;
@@ -260,6 +263,8 @@ async function reportHeartbeat(): Promise<void> {
           : null,
       p_error_message: null,
       p_host_info: payload.host_info,
+      // Circuit breaker stall detector: Report when we last processed something
+      p_last_processed_at: METRICS.lastProcessedAt?.toISOString() || null,
     });
 
     if (error) {
@@ -619,6 +624,8 @@ async function workerLoop(): Promise<void> {
           try {
             const result = await processInboundEmail(primary);
             processedCount++;
+            // Update last_processed_at for circuit breaker stall detection
+            METRICS.lastProcessedAt = new Date();
             if (result.success) {
               log('debug', `Inbound processed`, { 
                 id: primary.id.substring(0, 8), 
@@ -789,6 +796,8 @@ async function workerLoop(): Promise<void> {
                 } else {
                   await completeItem(item.id, 'sent');
                   METRICS.emailsSent++;
+                  // Update last_processed_at for circuit breaker stall detection
+                  METRICS.lastProcessedAt = new Date();
                   log('info', `Email sent`, {
                     id: item.id.substring(0, 8),
                     to: item.to_email,

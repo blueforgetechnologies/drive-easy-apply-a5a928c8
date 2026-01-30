@@ -56,6 +56,8 @@ export const TENANT_OWNED_TABLES = [
   "audit_logs",
   // Feature access control
   "tenant_feature_access",
+  // Cost-elimination architecture (Phase 1)
+  "gmail_stubs",
 ] as const;
 
 export type TenantOwnedTable = typeof TENANT_OWNED_TABLES[number];
