@@ -3,6 +3,35 @@ import { supabase } from './supabase.js';
 const MAINTENANCE_TIMEOUT_MS = 15_000;
 
 /**
+ * Helper to wrap a promise with a timeout using Promise.race
+ */
+async function withMaintenanceTimeout<T>(
+  promiseLike: PromiseLike<T> | Promise<T>,
+  timeoutMs: number,
+  stepName: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`TIMEOUT (${timeoutMs}ms) at ${stepName}`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result;
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
+/**
  * Reset stuck processing rows in email_queue.
  *
  * This is a worker-side failsafe for cases where the worker claims rows (status=processing)
@@ -13,23 +42,21 @@ const MAINTENANCE_TIMEOUT_MS = 15_000;
 export async function resetStuckProcessingRows(stuckAgeMinutes: number = 5): Promise<number> {
   const cutoff = new Date(Date.now() - stuckAgeMinutes * 60 * 1000).toISOString();
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), MAINTENANCE_TIMEOUT_MS);
-
   try {
-    const { data, error } = await supabase
-      .from('email_queue')
-      .update({
-        status: 'pending',
-        processing_started_at: null,
-        last_error: 'reset_stuck_processing',
-      })
-      .eq('status', 'processing')
-      .lt('processing_started_at', cutoff)
-      .select('id')
-      .abortSignal(controller.signal);
-
-    clearTimeout(timeoutId);
+    const { data, error } = await withMaintenanceTimeout(
+      supabase
+        .from('email_queue')
+        .update({
+          status: 'pending',
+          processing_started_at: null,
+          last_error: 'reset_stuck_processing',
+        })
+        .eq('status', 'processing')
+        .lt('processing_started_at', cutoff)
+        .select('id') as Promise<{ data: { id: string }[] | null; error: Error | null }>,
+      MAINTENANCE_TIMEOUT_MS,
+      'reset-stuck-processing'
+    );
 
     if (error) {
       console.error('[maintenance] Failed to reset stuck processing rows', {
@@ -41,9 +68,8 @@ export async function resetStuckProcessingRows(stuckAgeMinutes: number = 5): Pro
 
     return data?.length || 0;
   } catch (e) {
-    clearTimeout(timeoutId);
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('abort')) {
+    if (msg.includes('TIMEOUT')) {
       console.error('[maintenance] TIMEOUT resetting stuck rows - Supabase may be unresponsive');
       return 0;
     }
