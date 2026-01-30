@@ -659,10 +659,11 @@ serve(async (req) => {
 
     // ========================================================================
     // STUB-ONLY MODE (Phase 1 - Canonical Cost-Elimination Architecture)
+    // CRITICAL: This check MUST happen BEFORE any pubsub_dedup writes!
     // When enabled, ONLY inserts minimal stubs - NO Gmail API, NO Storage
     // ========================================================================
     if (WEBHOOK_STUB_ONLY_MODE) {
-      console.log('[gmail-webhook] 🚀 STUB_ONLY_MODE active');
+      console.log('[gmail-webhook] 🚀 STUB_ONLY_MODE active (v2-fixed)');
       
       if (!pubsubEmailAddress || !historyId) {
         console.log('[gmail-webhook] Missing email/historyId - returning 200');
@@ -671,15 +672,23 @@ serve(async (req) => {
             mode: 'stub_only', 
             error: 'missing_pubsub_data',
             email_address: pubsubEmailAddress,
-            history_id: historyId
+            history_id: historyId,
+            _version: 'v2-fixed'
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       // Delegate to stub-only handler (I1-I5 compliant)
+      // NO pubsub_dedup insert, NO legacy paths
       return await handleStubOnlyMode(pubsubEmailAddress, historyId, startTime);
     }
+    
+    // ========================================================================
+    // LEGACY MODE WARNING
+    // If we reach here, WEBHOOK_STUB_ONLY_MODE is NOT enabled
+    // ========================================================================
+    console.log('[gmail-webhook] ⚠️ LEGACY MODE - WEBHOOK_STUB_ONLY_MODE not enabled (violates I1-I5)');
 
     // ========================================================================
     // LEGACY MODE (WEBHOOK_STUB_ONLY_MODE=false)
