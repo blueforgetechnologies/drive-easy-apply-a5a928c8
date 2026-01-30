@@ -16,10 +16,12 @@ export interface CityStateResult {
 }
 
 /**
- * Helper to wrap a promise with a timeout using Promise.race
+ * Helper to wrap a promise-like with a timeout using Promise.race
+ * Uses 'any' to handle Supabase query builder thenables
  */
-async function withGeoTimeout<T>(
-  promiseLike: PromiseLike<T> | Promise<T>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function withGeoTimeout<T = any>(
+  promiseLike: any,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
@@ -37,7 +39,7 @@ async function withGeoTimeout<T>(
       timeoutPromise,
     ]);
     if (timeoutId) clearTimeout(timeoutId);
-    return result;
+    return result as T;
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
     throw e;
@@ -59,18 +61,18 @@ export async function geocodeLocation(
 
   try {
     // Check cache first with timeout
-    let cached: { latitude: number; longitude: number; id: string; hit_count: number } | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let cacheResult: any = null;
     try {
-      const { data } = await withGeoTimeout(
+      cacheResult = await withGeoTimeout(
         supabase
           .from('geocode_cache')
           .select('latitude, longitude, id, hit_count')
           .eq('location_key', locationKey)
-          .maybeSingle() as Promise<{ data: { latitude: number; longitude: number; id: string; hit_count: number } | null }>,
+          .maybeSingle(),
         GEOCODE_TIMEOUT_MS,
         'geocode-cache-lookup'
       );
-      cached = data;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('TIMEOUT')) {
@@ -80,13 +82,13 @@ export async function geocodeLocation(
       throw e;
     }
 
+    const cached = cacheResult?.data;
     if (cached) {
-      // Increment hit count (fire and forget - no timeout needed)
-      supabase
+      // Increment hit count (fire and forget - no await, no .catch needed)
+      void supabase
         .from('geocode_cache')
         .update({ hit_count: (cached.hit_count || 1) + 1 })
-        .eq('id', cached.id)
-        .then(() => {});
+        .eq('id', cached.id);
 
       console.log(`[geocode] Cache HIT: ${city}, ${state}`);
       return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
@@ -112,9 +114,9 @@ export async function geocodeLocation(
             lat: data.features[0].center[1],
           };
 
-          // Store in cache (fire and forget - no timeout needed for cache write)
+          // Store in cache (fire and forget)
           const currentMonth = new Date().toISOString().slice(0, 7);
-          supabase.from('geocode_cache').upsert(
+          void supabase.from('geocode_cache').upsert(
             {
               location_key: locationKey,
               city: city.trim(),
@@ -124,7 +126,7 @@ export async function geocodeLocation(
               month_created: currentMonth,
             },
             { onConflict: 'location_key' }
-          ).then(() => {});
+          );
 
           console.log(`[geocode] Cache MISS (stored): ${city}, ${state}`);
           return coords;
