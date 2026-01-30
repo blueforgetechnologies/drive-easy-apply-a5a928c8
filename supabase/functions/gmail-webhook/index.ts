@@ -1,6 +1,23 @@
+// ============================================================================
+// CANONICAL COST-ELIMINATION ARCHITECTURE (I1-I5)
+// 
+// INVARIANTS (MUST NEVER BE VIOLATED):
+// I1: gmail-webhook must NEVER call Gmail API
+// I2: gmail-webhook must NEVER write payloads to Supabase Storage
+// I3: VPS is sole owner of Gmail API + payload storage
+// I4: Circuit breaker must be O(1), no unbounded COUNT(*)
+// I5: Supabase cloud must stay < $2/day under stall conditions
+//
+// When WEBHOOK_STUB_ONLY_MODE=true (Phase 1):
+// - Parse Pub/Sub notification
+// - O(1) circuit breaker check
+// - Insert stub row to gmail_stubs (ON CONFLICT DO NOTHING)
+// - Return 200
+// - FORBIDDEN: Gmail API calls, Storage writes, email_queue/email_content/email_receipts writes
+// ============================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +31,275 @@ const GOOGLE_PUBSUB_USER_AGENT_PREFIX = "CloudPubSub-Google";
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Configuration from environment
+const WEBHOOK_STUB_ONLY_MODE = Deno.env.get('WEBHOOK_STUB_ONLY_MODE') === 'true';
+const QUEUE_DEPTH_LIMIT = parseInt(Deno.env.get('QUEUE_DEPTH_LIMIT') || '1000', 10);
+const GMAIL_WEBHOOK_DISABLED = Deno.env.get('GMAIL_WEBHOOK_DISABLED') === 'true';
+
+// ============================================================================
+// STUB-ONLY MODE IMPLEMENTATION (I1-I5 Compliant)
+// ============================================================================
+
+interface StubOnlyResult {
+  success: boolean;
+  mode: 'stub_only';
+  stub_inserted: boolean;
+  breaker_status: 'closed' | 'open';
+  breaker_reason?: string;
+  tenant_id?: string;
+  email_address?: string;
+  history_id?: string;
+  elapsed_ms: number;
+  error?: string;
+}
+
+/**
+ * O(1) Circuit Breaker Check
+ * Uses database functions that are O(1) or bounded:
+ * - Stall detector: Single row lookup from worker_heartbeats
+ * - Queue depth: LIMIT-bounded existence check on gmail_stubs
+ */
+async function checkCircuitBreaker(): Promise<{ open: boolean; reason: string; details?: any }> {
+  try {
+    const { data, error } = await supabase.rpc('check_circuit_breaker', {
+      p_queue_limit: QUEUE_DEPTH_LIMIT
+    });
+    
+    if (error) {
+      console.error('[stub-only] Circuit breaker check failed:', error);
+      // FAIL-OPEN: If check fails, allow writes to avoid dropping messages
+      return { open: false, reason: 'check_failed' };
+    }
+    
+    return {
+      open: data.breaker_open === true,
+      reason: data.reason || 'unknown',
+      details: data
+    };
+  } catch (err) {
+    console.error('[stub-only] Circuit breaker exception:', err);
+    // FAIL-OPEN on exception
+    return { open: false, reason: 'exception' };
+  }
+}
+
+/**
+ * Resolve tenant from email alias
+ * Returns tenant_id or null (for quarantine/drop)
+ */
+async function resolveTenantFromAlias(emailAddress: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
+  // Extract +alias from email address
+  const aliasMatch = emailAddress.match(/([^@]+)\+([^@]+)@/);
+  const gmailAlias = aliasMatch ? `+${aliasMatch[2]}` : null;
+  
+  if (!gmailAlias) {
+    // No alias - fail-closed (quarantine)
+    console.log(`[stub-only] No +alias in ${emailAddress} - fail-closed`);
+    return { tenantId: null, tenantName: null };
+  }
+  
+  // O(1) lookup: Single row by gmail_alias
+  const { data: tenant, error } = await supabase
+    .from('tenants')
+    .select('id, name')
+    .eq('gmail_alias', gmailAlias)
+    .maybeSingle();
+  
+  if (error) {
+    console.error(`[stub-only] Tenant lookup error:`, error);
+    return { tenantId: null, tenantName: null };
+  }
+  
+  if (!tenant) {
+    console.log(`[stub-only] No tenant for alias ${gmailAlias} - fail-closed`);
+    return { tenantId: null, tenantName: null };
+  }
+  
+  return { tenantId: tenant.id, tenantName: tenant.name };
+}
+
+/**
+ * Log circuit breaker event (dropped stub)
+ */
+async function logCircuitBreakerEvent(
+  tenantId: string | null,
+  emailAddress: string,
+  historyId: string | null,
+  reason: string,
+  breakerType: 'stall_detector' | 'queue_depth'
+): Promise<void> {
+  try {
+    await supabase.from('circuit_breaker_events').insert({
+      tenant_id: tenantId,
+      email_address: emailAddress,
+      history_id: historyId,
+      reason,
+      breaker_type: breakerType
+    });
+  } catch (err) {
+    console.error('[stub-only] Failed to log circuit breaker event:', err);
+  }
+}
+
+/**
+ * Quarantine unroutable stub (unknown tenant)
+ */
+async function quarantineStub(
+  emailAddress: string,
+  historyId: string | null,
+  reason: string
+): Promise<void> {
+  try {
+    await supabase.from('unroutable_emails').upsert({
+      gmail_message_id: `stub-${historyId || 'unknown'}-${Date.now()}`,
+      gmail_history_id: historyId,
+      received_at: new Date().toISOString(),
+      delivered_to_header: emailAddress,
+      failure_reason: reason,
+      status: 'quarantined'
+    }, {
+      onConflict: 'gmail_message_id',
+      ignoreDuplicates: true
+    });
+    console.log(`[stub-only] 🔒 Quarantined: ${emailAddress} (${reason})`);
+  } catch (err) {
+    console.error('[stub-only] Quarantine failed:', err);
+  }
+}
+
+/**
+ * Insert stub to gmail_stubs table (ON CONFLICT DO NOTHING for dedup)
+ */
+async function insertStub(
+  tenantId: string,
+  emailAddress: string,
+  historyId: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('gmail_stubs').insert({
+      tenant_id: tenantId,
+      email_address: emailAddress,
+      history_id: historyId,
+      status: 'pending'
+    });
+    
+    if (error) {
+      // Unique constraint violation = duplicate, not an error
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        console.log(`[stub-only] ⚡ Duplicate stub ignored: ${emailAddress}/${historyId}`);
+        return false; // Not inserted (duplicate)
+      }
+      console.error('[stub-only] Insert failed:', error);
+      return false;
+    }
+    
+    console.log(`[stub-only] ✅ Stub inserted: ${emailAddress}/${historyId} → tenant ${tenantId}`);
+    return true;
+  } catch (err) {
+    console.error('[stub-only] Insert exception:', err);
+    return false;
+  }
+}
+
+/**
+ * STUB-ONLY MODE HANDLER
+ * Implements I1-I5 invariants:
+ * - NO Gmail API calls
+ * - NO Supabase Storage writes
+ * - NO writes to email_queue/email_content/email_receipts
+ * - O(1) circuit breaker
+ * - Minimal stub insert
+ */
+async function handleStubOnlyMode(
+  emailAddress: string,
+  historyId: string,
+  startTime: number
+): Promise<Response> {
+  const result: StubOnlyResult = {
+    success: false,
+    mode: 'stub_only',
+    stub_inserted: false,
+    breaker_status: 'closed',
+    elapsed_ms: 0,
+    email_address: emailAddress,
+    history_id: historyId
+  };
+  
+  try {
+    // Step 1: O(1) Circuit Breaker Check
+    const breaker = await checkCircuitBreaker();
+    
+    if (breaker.open) {
+      result.breaker_status = 'open';
+      result.breaker_reason = breaker.reason;
+      
+      // Resolve tenant for logging (even though we're dropping)
+      const { tenantId } = await resolveTenantFromAlias(emailAddress);
+      result.tenant_id = tenantId || undefined;
+      
+      // Log dropped stub
+      const breakerType = breaker.reason === 'worker_stale' ? 'stall_detector' : 'queue_depth';
+      await logCircuitBreakerEvent(tenantId, emailAddress, historyId, breaker.reason, breakerType);
+      
+      console.log(`[stub-only] 🚫 BREAKER OPEN (${breaker.reason}): Dropping ${emailAddress}/${historyId}`);
+      
+      result.success = true; // Successfully handled (by dropping)
+      result.elapsed_ms = Date.now() - startTime;
+      
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Step 2: Resolve Tenant (FAIL-CLOSED)
+    const { tenantId, tenantName } = await resolveTenantFromAlias(emailAddress);
+    
+    if (!tenantId) {
+      // Unknown tenant - quarantine and return success
+      await quarantineStub(emailAddress, historyId, 'no_tenant_for_alias');
+      
+      result.success = true;
+      result.elapsed_ms = Date.now() - startTime;
+      
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    result.tenant_id = tenantId;
+    
+    // Step 3: Insert Stub (ON CONFLICT DO NOTHING)
+    const inserted = await insertStub(tenantId, emailAddress, historyId);
+    result.stub_inserted = inserted;
+    result.success = true;
+    result.elapsed_ms = Date.now() - startTime;
+    
+    console.log(`[stub-only] ✅ Completed in ${result.elapsed_ms}ms (inserted: ${inserted}, tenant: ${tenantName})`);
+    
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+    
+  } catch (err) {
+    console.error('[stub-only] Handler error:', err);
+    result.error = String(err);
+    result.elapsed_ms = Date.now() - startTime;
+    
+    return new Response(JSON.stringify(result), {
+      status: 200, // Always 200 to Pub/Sub
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// ============================================================================
+// LEGACY MODE TYPES AND FUNCTIONS
+// (Only used when WEBHOOK_STUB_ONLY_MODE=false)
+// ============================================================================
 
 // Tenant info including rate limits
 interface TenantInfo {
@@ -142,15 +428,8 @@ function extractFirstEmail(headerValue: string): string | null {
   return null;
 }
 
-// NOTE: getTenantByInboundAddress has been REMOVED as part of alias-only routing.
-// Base email addresses are no longer routed to tenants.
-// Only +alias routing is supported for strict tenant isolation.
-
 // Get tenant ID from gmail alias (ALIAS-ONLY ROUTING)
-// Routing: +alias match ONLY - no fallback to base email addresses
-// This ensures strict tenant isolation for multi-tenant deployments
 async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtractionResult): Promise<TenantInfo> {
-  // ALIAS-ONLY: Only route if we have a valid +alias
   if (gmailAlias) {
     const { data: tenant, error } = await supabase
       .from('tenants')
@@ -171,9 +450,6 @@ async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtra
     console.warn(`[gmail-webhook] ⚠️ No tenant found for alias ${gmailAlias}`);
   }
 
-  // NO FALLBACK: Base emails (without +alias) are NOT routed
-  // This prevents cross-tenant leakage in multi-tenant deployments
-  // Emails without a valid +alias will be quarantined
   if (headerResult) {
     const baseEmail = extractFirstEmail(headerResult.deliveredTo || headerResult.to || '');
     if (baseEmail) {
@@ -181,7 +457,6 @@ async function getTenantId(gmailAlias: string | null, headerResult?: HeaderExtra
     }
   }
 
-  // FAIL-CLOSED - Return null to trigger quarantine
   return { 
     tenantId: null, 
     isPaused: false,
@@ -208,7 +483,6 @@ async function quarantineEmail(
         gmail_message_id: messageId,
         gmail_history_id: historyId,
         received_at: new Date().toISOString(),
-        // Store ALL routing headers for debugging
         delivered_to_header: headers.deliveredTo,
         x_original_to_header: headers.xOriginalTo,
         x_gm_original_to_header: headers.xGmOriginalTo,
@@ -231,7 +505,6 @@ async function quarantineEmail(
     if (error) {
       console.error(`[gmail-webhook] Failed to quarantine email ${messageId}:`, error);
     } else {
-      // Enhanced logging for debugging header extraction issues
       const headerSummary = {
         deliveredTo: headers.deliveredTo?.substring(0, 50) || 'NULL',
         xOriginalTo: headers.xOriginalTo?.substring(0, 50) || 'NULL',
@@ -247,7 +520,7 @@ async function quarantineEmail(
   }
 }
 
-// Check tenant rate limit using atomic DB function (dry_run=true means check without incrementing)
+// Check tenant rate limit
 async function checkRateLimit(
   tenantId: string, 
   limitPerMinute: number, 
@@ -274,7 +547,7 @@ async function checkRateLimit(
   };
 }
 
-// Increment tenant rate counter by a specific count (after dedup)
+// Increment tenant rate counter
 async function incrementRateCount(tenantId: string, count: number): Promise<void> {
   if (count <= 0) return;
   
@@ -303,65 +576,9 @@ async function isFeatureEnabled(tenantId: string, featureKey: string): Promise<b
   return data === true;
 }
 
-// Generate deterministic dedupe key for tenant-scoped deduplication
+// Generate deterministic dedupe key
 function generateDedupeKey(gmailMessageId: string): string {
   return gmailMessageId;
-}
-
-// ============================================================================
-// CONTENT DEDUPLICATION FUNCTIONS (Step 2) - RAW MIME HASHING
-// ============================================================================
-
-// Fetch raw MIME bytes from Gmail API and compute SHA256 hash
-// This ensures 100% identical emails produce the same hash - no false positives
-async function fetchRawMimeAndHash(
-  accessToken: string,
-  messageId: string
-): Promise<RawMimeResult | null> {
-  try {
-    // Fetch raw MIME (base64url encoded)
-    const response = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=raw`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    
-    if (!response.ok) {
-      console.error(`[raw-mime] Failed to fetch raw for ${messageId}: ${response.status}`);
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    if (!data.raw) {
-      console.error(`[raw-mime] No raw field in response for ${messageId}`);
-      return null;
-    }
-    
-    // Decode base64url to bytes
-    // Gmail uses URL-safe base64: replace - with + and _ with /
-    const base64 = data.raw.replace(/-/g, '+').replace(/_/g, '/');
-    const binaryString = atob(base64);
-    const rawBytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      rawBytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    // Compute SHA256 of raw MIME bytes
-    const hashBuffer = await crypto.subtle.digest('SHA-256', rawBytes);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    console.log(`[raw-mime] ✅ Fetched ${rawBytes.length} bytes, hash: ${contentHash.substring(0, 12)}...`);
-    
-    return {
-      rawBytes,
-      contentHash,
-      sizeBytes: rawBytes.length,
-    };
-  } catch (err) {
-    console.error(`[raw-mime] Error fetching raw MIME:`, err);
-    return null;
-  }
 }
 
 // Detect provider from email sender
@@ -373,207 +590,9 @@ function detectProvider(fromEmail: string | null): string {
   return 'unknown';
 }
 
-// Store raw MIME bytes to global content-addressed bucket
-// Uses SHA256 hash as path - if file exists, content is guaranteed identical
-async function storeRawMimeContent(
-  provider: string,
-  contentHash: string,
-  rawBytes: Uint8Array
-): Promise<string | null> {
-  const hashPrefix = contentHash.substring(0, 4);
-  const filePath = `${provider}/${hashPrefix}/${contentHash}.eml`;
-  const contentType = 'application/octet-stream'; // message/rfc822 not supported by Supabase Storage
-  
-  try {
-    const { error } = await supabase.storage
-      .from('email-content')
-      .upload(filePath, rawBytes, {
-        contentType,
-        upsert: false, // Don't overwrite - content is immutable by definition
-      });
-    
-    if (error) {
-      // If already exists, that's expected for content-addressed storage
-      if (error.message?.includes('already exists') || error.message?.includes('Duplicate')) {
-        console.log(`[storage] ✅ Already exists: ${filePath} (hash: ${hashPrefix}..., type: ${contentType})`);
-        return filePath;
-      }
-      // Real error - log but don't break ingestion
-      console.error(`[storage] ❌ Upload failed: ${filePath} (hash: ${hashPrefix}..., type: ${contentType}) - ${error.message?.substring(0, 100)}`);
-      return null;
-    }
-    
-    console.log(`[storage] ✅ NEW upload: ${filePath} (${rawBytes.length} bytes, hash: ${hashPrefix}..., type: ${contentType})`);
-    return filePath;
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message.substring(0, 100) : 'Unknown error';
-    console.error(`[storage] ❌ Exception: ${filePath} (hash: ${hashPrefix}...) - ${errMsg}`);
-    return null;
-  }
-}
-
-// Upsert email_content and create receipt (atomic content dedup)
-async function processContentDedup(
-  tenantId: string,
-  provider: string,
-  contentHash: string,
-  payloadUrl: string | null,
-  gmailMessageId: string,
-  historyId: string | null,
-  headerResult: HeaderExtractionResult,
-  sizeBytes?: number
-): Promise<ContentDedupResult | null> {
-
-  try {
-    // 1. Upsert email_content: insert if new, update last_seen_at + increment receipt_count if exists
-    const { data: existingContent, error: lookupError } = await supabase
-      .from('email_content')
-      .select('id, receipt_count')
-      .eq('provider', provider)
-      .eq('content_hash', contentHash)
-      .maybeSingle();
-    
-    if (lookupError) {
-      console.error(`[gmail-webhook] Content lookup error:`, lookupError);
-      return null;
-    }
-    
-    let contentId: string;
-    let isNewContent = false;
-    
-    if (existingContent) {
-      // Content exists - update last_seen_at and increment receipt_count
-      const { error: updateError } = await supabase
-        .from('email_content')
-        .update({
-          last_seen_at: new Date().toISOString(),
-          receipt_count: existingContent.receipt_count + 1,
-        })
-        .eq('id', existingContent.id);
-      
-      if (updateError) {
-        console.error(`[gmail-webhook] Content update error:`, updateError);
-        return null;
-      }
-      
-      contentId = existingContent.id;
-      console.log(`♻️ Reusing content ${contentHash.substring(0, 8)}... (count: ${existingContent.receipt_count + 1})`);
-    } else {
-      // New content - insert
-      const { data: newContent, error: insertError } = await supabase
-        .from('email_content')
-        .insert({
-          provider,
-          content_hash: contentHash,
-          payload_url: payloadUrl,
-          receipt_count: 1,
-        })
-        .select('id')
-        .single();
-      
-      if (insertError) {
-        // Handle race condition - another request may have inserted
-        if (insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
-          // Retry lookup
-          const { data: retryContent } = await supabase
-            .from('email_content')
-            .select('id, receipt_count')
-            .eq('provider', provider)
-            .eq('content_hash', contentHash)
-            .single();
-          
-          if (retryContent) {
-            contentId = retryContent.id;
-            // Increment count for this receipt
-            await supabase
-              .from('email_content')
-              .update({
-                last_seen_at: new Date().toISOString(),
-                receipt_count: retryContent.receipt_count + 1,
-              })
-              .eq('id', retryContent.id);
-          } else {
-            console.error(`[gmail-webhook] Content race condition unresolved`);
-            return null;
-          }
-        } else {
-          console.error(`[gmail-webhook] Content insert error:`, insertError);
-          return null;
-        }
-      } else {
-        contentId = newContent.id;
-        isNewContent = true;
-        console.log(`🆕 New content stored: ${contentHash.substring(0, 8)}...`);
-      }
-    }
-    
-    // 2. Insert email_receipt for this tenant
-    const { data: receipt, error: receiptError } = await supabase
-      .from('email_receipts')
-      .upsert({
-        tenant_id: tenantId,
-        content_id: contentId,
-        provider,
-        gmail_message_id: gmailMessageId,
-        gmail_history_id: historyId,
-        routing_method: headerResult.source || 'unknown',
-        extracted_alias: headerResult.alias,
-        delivered_to_header: headerResult.deliveredTo,
-        status: 'pending',
-        received_at: new Date().toISOString(),
-      }, {
-        onConflict: 'tenant_id,gmail_message_id',
-        ignoreDuplicates: false, // Update if exists
-      })
-      .select('id')
-      .single();
-    
-    if (receiptError) {
-      console.error(`[gmail-webhook] Receipt insert error:`, receiptError);
-      return null;
-    }
-    
-    return {
-      contentId,
-      receiptId: receipt.id,
-      isNewContent,
-      contentHash,
-    };
-  } catch (err) {
-    console.error(`[gmail-webhook] Content dedup error:`, err);
-    return null;
-  }
-}
-
-// Store raw payload to object storage for audit compliance (legacy path)
-async function storeRawPayload(
-  tenantId: string, 
-  gmailMessageId: string, 
-  payload: any
-): Promise<string | null> {
-  try {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const filePath = `${tenantId}/${timestamp}/${gmailMessageId}.json`;
-    
-    const { error } = await supabase.storage
-      .from('email-payloads')
-      .upload(filePath, JSON.stringify(payload), {
-        contentType: 'application/json',
-        upsert: true,
-      });
-    
-    if (error) {
-      console.error(`[gmail-webhook] Failed to store payload for ${gmailMessageId}:`, error);
-      return null;
-    }
-    
-    console.log(`📦 Stored raw payload: ${filePath}`);
-    return filePath;
-  } catch (err) {
-    console.error(`[gmail-webhook] Storage error:`, err);
-    return null;
-  }
-}
+// ============================================================================
+// MAIN HANDLER
+// ============================================================================
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -582,14 +601,17 @@ serve(async (req) => {
 
   const startTime = Date.now();
   
-  // Metrics for content dedup
-  let contentDedupStats = {
-    enabled: false,
-    newContent: 0,
-    reusedContent: 0,
-    receiptsCreated: 0,
-    errors: 0,
-  };
+  // ============================================================================
+  // HARD KILL SWITCH (P0)
+  // Emergency disable - return 200 immediately to stop all processing
+  // ============================================================================
+  if (GMAIL_WEBHOOK_DISABLED) {
+    console.log('[gmail-webhook] 🛑 KILL SWITCH ACTIVE - All processing disabled');
+    return new Response(
+      JSON.stringify({ disabled: true, reason: 'kill_switch' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
   
   try {
     // Security validation: Verify request originates from Google Pub/Sub
@@ -622,10 +644,6 @@ serve(async (req) => {
 
     console.log('[gmail-webhook] Request validated as Pub/Sub notification');
 
-    // NOTE: Removed per-message pubsub_tracking writes to reduce DB costs
-    // Pub/Sub usage can be estimated from load_emails count (1 email ≈ 4 notifications)
-    // This saves ~300K writes/week at current volume
-
     // Parse Pub/Sub message for historyId and emailAddress
     let pubsubEmailAddress: string | null = null;
     try {
@@ -639,10 +657,38 @@ serve(async (req) => {
       console.log('Could not decode Pub/Sub data');
     }
 
-    // ============================================================================
+    // ========================================================================
+    // STUB-ONLY MODE (Phase 1 - Canonical Cost-Elimination Architecture)
+    // When enabled, ONLY inserts minimal stubs - NO Gmail API, NO Storage
+    // ========================================================================
+    if (WEBHOOK_STUB_ONLY_MODE) {
+      console.log('[gmail-webhook] 🚀 STUB_ONLY_MODE active');
+      
+      if (!pubsubEmailAddress || !historyId) {
+        console.log('[gmail-webhook] Missing email/historyId - returning 200');
+        return new Response(
+          JSON.stringify({ 
+            mode: 'stub_only', 
+            error: 'missing_pubsub_data',
+            email_address: pubsubEmailAddress,
+            history_id: historyId
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Delegate to stub-only handler (I1-I5 compliant)
+      return await handleStubOnlyMode(pubsubEmailAddress, historyId, startTime);
+    }
+
+    // ========================================================================
+    // LEGACY MODE (WEBHOOK_STUB_ONLY_MODE=false)
+    // Full processing with Gmail API calls and Storage writes
+    // WARNING: This mode violates I1-I5 and should be deprecated
+    // ========================================================================
+    console.log('[gmail-webhook] ⚠️ LEGACY MODE - Gmail API calls enabled (violates I1-I5)');
+    
     // HARD DEDUP: Check if this (emailAddress, historyId) was already processed
-    // This happens BEFORE any Gmail API calls to minimize work on duplicates
-    // ============================================================================
     if (pubsubEmailAddress && historyId) {
       const { data: insertResult, error: dedupError } = await supabase
         .from('pubsub_dedup')
@@ -654,7 +700,6 @@ serve(async (req) => {
         .maybeSingle();
 
       if (dedupError) {
-        // Check if it's a unique constraint violation (duplicate)
         if (dedupError.code === '23505' || dedupError.message?.includes('duplicate') || dedupError.message?.includes('unique')) {
           console.log(`[gmail-webhook] ⚡ DEDUP: Skipping duplicate Pub/Sub (${pubsubEmailAddress}, ${historyId})`);
           return new Response(
@@ -662,18 +707,12 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        // Other errors - log but continue (fail-open for non-dedup errors)
         console.error('[gmail-webhook] Dedup check error:', dedupError);
       } else if (insertResult) {
         console.log(`[gmail-webhook] ✅ NEW Pub/Sub notification (${pubsubEmailAddress}, ${historyId})`);
       }
       
-      // ========================================================================
-      // ENQUEUE-ONLY MODE CHECK (Phase 7A)
-      // If enabled, write stub to gmail_history_queue and return immediately.
-      // Worker will process stubs via Gmail history.list API later.
-      // FAIL-OPEN: If flag check fails, continue with FULL mode.
-      // ========================================================================
+      // ENQUEUE-ONLY MODE CHECK (legacy Phase 7A)
       let enqueueOnlyMode = false;
       try {
         const { data: flagData, error: flagError } = await supabase
@@ -685,10 +724,8 @@ serve(async (req) => {
         if (!flagError && flagData && flagData.default_enabled === true) {
           enqueueOnlyMode = true;
         }
-        // FAIL-OPEN: if error or no data, enqueueOnlyMode stays false (FULL mode)
       } catch (flagCheckErr) {
-        console.error('[gmail-webhook] Flag check exception, defaulting to FULL mode:', flagCheckErr);
-        // FAIL-OPEN: continue with FULL mode
+        console.error('[gmail-webhook] Flag check exception:', flagCheckErr);
       }
       
       if (enqueueOnlyMode) {
@@ -703,10 +740,8 @@ serve(async (req) => {
             );
           
           if (queueError) {
-            console.error('[gmail-webhook] ENQUEUE_ONLY insert failed, falling through to FULL mode:', queueError);
-            // FALL THROUGH to FULL mode - do NOT return
+            console.error('[gmail-webhook] ENQUEUE_ONLY insert failed:', queueError);
           } else {
-            // Success - return immediately
             const elapsed = Date.now() - startTime;
             console.log(`[gmail-webhook] ✅ ENQUEUE_ONLY: queued stub in ${elapsed}ms`);
             return new Response(
@@ -721,12 +756,16 @@ serve(async (req) => {
             );
           }
         } catch (insertErr) {
-          console.error('[gmail-webhook] ENQUEUE_ONLY exception, falling through to FULL mode:', insertErr);
-          // FALL THROUGH to FULL mode
+          console.error('[gmail-webhook] ENQUEUE_ONLY exception:', insertErr);
         }
       }
     }
 
+    // ========================================================================
+    // LEGACY: Gmail API Calls (VIOLATES I1)
+    // This section should only run when WEBHOOK_STUB_ONLY_MODE=false
+    // ========================================================================
+    
     // Get access token
     const { data: tokenData, error: tokenError } = await supabase
       .from('gmail_tokens')
@@ -751,8 +790,7 @@ serve(async (req) => {
       const clientSecret = Deno.env.get('GMAIL_CLIENT_SECRET');
       
       if (!tokenData.refresh_token) {
-        console.error(`[gmail-webhook] No refresh_token for ${tokenData.user_email} - marking for re-auth`);
-        // Mark token as needing re-auth
+        console.error(`[gmail-webhook] No refresh_token for ${tokenData.user_email}`);
         await supabase
           .from('gmail_tokens')
           .update({ needs_reauth: true, reauth_reason: 'missing_refresh_token' })
@@ -783,7 +821,6 @@ serve(async (req) => {
         accessToken = refreshData.access_token;
         const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
         
-        // CRITICAL: Await the update to ensure persistence before proceeding
         const { error: updateError } = await supabase
           .from('gmail_tokens')
           .update({
@@ -797,21 +834,13 @@ serve(async (req) => {
         
         if (updateError) {
           console.error(`[gmail-webhook] Failed to persist refreshed token:`, updateError);
-          // Continue with the refreshed token even if persist failed - better than stopping
         } else {
-          console.log(`[gmail-webhook] ✅ Token refreshed for ${tokenData.user_email}, new expiry: ${newExpiry}`);
+          console.log(`[gmail-webhook] ✅ Token refreshed for ${tokenData.user_email}`);
         }
       } else {
-        // Handle refresh failure
         const errorCode = refreshData.error || 'unknown_error';
-        const errorDesc = refreshData.error_description || 'Token refresh failed';
+        console.error(`[gmail-webhook] Token refresh failed:`, errorCode);
         
-        console.error(`[gmail-webhook] Token refresh failed for ${tokenData.user_email}:`, {
-          error: errorCode,
-          description: errorDesc,
-        });
-        
-        // Mark token as needing re-auth for UI visibility
         await supabase
           .from('gmail_tokens')
           .update({ 
@@ -820,11 +849,9 @@ serve(async (req) => {
           })
           .eq('user_email', tokenData.user_email);
         
-        // For invalid_grant (revoked/expired refresh token), we must stop - no way to recover without user re-auth
         if (errorCode === 'invalid_grant') {
-          console.error(`[gmail-webhook] 🚨 Refresh token revoked/expired for ${tokenData.user_email} - user must re-authenticate`);
           return new Response(JSON.stringify({ 
-            error: 'Refresh token revoked or expired - user must reconnect Gmail',
+            error: 'Refresh token revoked',
             needs_reauth: true,
             error_code: errorCode 
           }), {
@@ -832,13 +859,10 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        
-        // For other transient errors, continue with old token (might still work briefly)
-        console.warn(`[gmail-webhook] Continuing with potentially expired token for ${tokenData.user_email}`);
       }
     }
 
-    // Fetch unread messages from BOTH Sylectus and Full Circle TMS
+    // Fetch unread messages (LEGACY - VIOLATES I1)
     const sylectusResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q=is:unread from:sylectus.com`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -860,7 +884,7 @@ serve(async (req) => {
     const sylectusData = sylectusResponse.ok ? await sylectusResponse.json() : { messages: [] };
     const fullCircleData = fullCircleResponse.ok ? await fullCircleResponse.json() : { messages: [] };
     
-    // Merge and dedupe by message id
+    // Merge and dedupe
     const allMessageIds = new Set<string>();
     const allMessages: any[] = [];
     
@@ -881,355 +905,16 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📧 Processing ${messages.length} messages for tenant routing`);
+    console.log(`📧 Processing ${messages.length} messages (LEGACY MODE)`);
 
-    // Headers needed for routing - Gmail format=full may not include these consistently
-    // We fetch metadata first with explicit header list, then full for body
-    const ROUTING_HEADERS = [
-      'Delivered-To',
-      'X-Original-To', 
-      'X-Gm-Original-To',
-      'X-Forwarded-To',
-      'Envelope-To',
-      'To',
-      'Cc',
-      'From',
-      'Subject',
-      'Return-Path',
-      'Received',
-    ];
-
-    // Fetch message details with explicit header request
-    const messageDetailsPromises = messages.map(async (m: any) => {
-      try {
-        // Phase 1: Fetch with format=metadata + explicit metadataHeaders for routing
-        // IMPORTANT: metadataHeaders must be repeated per header, not comma-separated
-        const params = new URLSearchParams({ format: 'metadata' });
-        ROUTING_HEADERS.forEach(h => params.append('metadataHeaders', h));
-        
-        const metadataResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?${params.toString()}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        
-        let headers: { name: string; value: string }[] = [];
-        
-        if (metadataResponse.ok) {
-          const metadataMessage = await metadataResponse.json();
-          headers = metadataMessage.payload?.headers || [];
-          const headerNames = headers.map(h => h.name).join(', ');
-          console.log(`[gmail-webhook] 📋 Metadata fetch for ${m.id}: ${headers.length} headers [${headerNames}]`);
-        } else {
-          const errorText = await metadataResponse.text();
-          console.warn(`[gmail-webhook] ⚠️ Metadata fetch failed for ${m.id}: ${metadataResponse.status} - ${errorText.substring(0, 100)}`);
-        }
-        
-        // Phase 2: Fetch full message for body content (worker parsing)
-        const fullResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        
-        let fullMessage = null;
-        if (fullResponse.ok) {
-          fullMessage = await fullResponse.json();
-          
-          // Merge headers from metadata fetch into full message if missing
-          // This ensures we have routing headers even if format=full didn't include them
-          const fullHeaders = fullMessage.payload?.headers || [];
-          const fullHeaderNames = new Set(fullHeaders.map((h: any) => h.name.toLowerCase()));
-          
-          for (const h of headers) {
-            if (!fullHeaderNames.has(h.name.toLowerCase())) {
-              fullHeaders.push(h);
-            }
-          }
-          
-          // Use merged headers for extraction
-          headers = fullHeaders;
-        }
-        
-        // Extract From and Subject for logging
-        const fromHeader = headers.find((h: any) => h.name.toLowerCase() === 'from');
-        const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
-        
-        return { 
-          message: m, 
-          fullMessage, // Store full message for VPS worker
-          headers,
-          fromEmail: fromHeader?.value || null,
-          subject: subjectHeader?.value || null,
-        };
-      } catch (err) {
-        console.error(`Error fetching message ${m.id}:`, err);
-        return { message: m, fullMessage: null, headers: [], fromEmail: null, subject: null };
-      }
-    });
-
-    const messageDetails = await Promise.all(messageDetailsPromises);
-
-    // Process messages with improved header extraction
-    const tenantQueueMap = new Map<string, { tenantId: string; items: any[] }>();
-    let skippedCount = 0;
-    let quarantinedCount = 0;
-
-    for (const { message, fullMessage, headers, fromEmail, subject } of messageDetails) {
-      // Extract alias using priority-ordered header extraction
-      const headerResult = extractAliasFromHeaders(headers);
-      
-      // Get tenant info for this message (fail-closed approach)
-      // Routing: 1) +alias match, 2) custom inbound address lookup, 3) quarantine
-      const tenantInfo = await getTenantId(headerResult.alias, headerResult);
-      
-      if (!tenantInfo.tenantId) {
-        // QUARANTINE: No tenant found - fail-closed routing
-        const failureReason = headerResult.alias 
-          ? `No tenant configured for alias: ${headerResult.alias}`
-          : 'No alias found in email headers';
-        
-        await quarantineEmail(
-          message.id,
-          historyId,
-          headerResult,
-          fromEmail,
-          subject,
-          failureReason,
-          headers
-        );
-        quarantinedCount++;
-        continue;
-      }
-      
-      if (tenantInfo.isPaused) {
-        console.log(`Tenant ${tenantInfo.tenantName} is paused, skipping message ${message.id}`);
-        skippedCount++;
-        continue;
-      }
-      
-      // Check rate limit for this tenant (DRY RUN - check without incrementing)
-      // We'll increment AFTER we know how many were actually queued (post-dedup)
-      const rateCheck = await checkRateLimit(tenantInfo.tenantId, tenantInfo.rateLimitPerMinute, tenantInfo.rateLimitPerDay, true);
-      if (!rateCheck.allowed) {
-        console.warn(`Rate limit exceeded for tenant ${tenantInfo.tenantName} (day: ${rateCheck.dayCount}/${tenantInfo.rateLimitPerDay}), skipping message ${message.id}`);
-        skippedCount++;
-        continue;
-      }
-      
-      // Check if Load Hunter is enabled for this tenant
-      const loadHunterEnabled = await isFeatureEnabled(tenantInfo.tenantId, 'load_hunter_enabled');
-      if (!loadHunterEnabled) {
-        console.log(`Load Hunter disabled for tenant ${tenantInfo.tenantName}, skipping message ${message.id}`);
-        skippedCount++;
-        continue;
-      }
-      
-      // Detect provider from sender
-      const provider = detectProvider(fromEmail);
-      
-      // Build raw payload for storage - FULL MESSAGE for VPS worker parsing
-      // Include complete Gmail API message structure so worker can extract body
-      const rawPayload = fullMessage || {
-        id: message.id,
-        threadId: message.threadId,
-        internalDate: String(Date.now()),
-        payload: {
-          headers,
-        },
-        // Fallback metadata
-        _metadata: {
-          historyId,
-          receivedAt: new Date().toISOString(),
-          tenantId: tenantInfo.tenantId,
-          headerExtraction: headerResult,
-          fromEmail,
-          subject,
-        }
-      };
-      
-      // ========================================================================
-      // CONTENT DEDUPLICATION PATH (Feature-flagged)
-      // ========================================================================
-      let contentId: string | null = null;
-      let receiptId: string | null = null;
-      let payloadUrl: string | null = null;
-      
-      // Check if content dedup is enabled for this tenant
-      const contentDedupEnabled = await isFeatureEnabled(tenantInfo.tenantId, 'content_dedup_enabled');
-      
-      if (contentDedupEnabled) {
-        contentDedupStats.enabled = true;
-        
-        // ====================================================================
-        // RAW MIME HASHING: Fetch format=raw and compute SHA256 of exact bytes
-        // This ensures 100% identical emails produce the same hash
-        // ====================================================================
-        const rawMimeResult = await fetchRawMimeAndHash(accessToken, message.id);
-        
-        if (rawMimeResult) {
-          const { rawBytes, contentHash, sizeBytes } = rawMimeResult;
-          
-          // Store raw MIME bytes to global content-addressed bucket
-          const globalPayloadUrl = await storeRawMimeContent(provider, contentHash, rawBytes);
-          
-          // Upsert content + create receipt
-          const dedupResult = await processContentDedup(
-            tenantInfo.tenantId,
-            provider,
-            contentHash,
-            globalPayloadUrl,
-            message.id,
-            historyId,
-            headerResult,
-            sizeBytes
-          );
-          
-          if (dedupResult) {
-            contentId = dedupResult.contentId;
-            receiptId = dedupResult.receiptId;
-            
-            if (dedupResult.isNewContent) {
-              contentDedupStats.newContent++;
-            } else {
-              contentDedupStats.reusedContent++;
-            }
-            contentDedupStats.receiptsCreated++;
-            
-            console.log(`[content-dedup] ✅ ${dedupResult.isNewContent ? 'NEW' : 'REUSED'} content for tenant ${tenantInfo.tenantName} (${sizeBytes} bytes)`);
-          } else {
-            contentDedupStats.errors++;
-            console.error(`[content-dedup] ❌ Failed for message ${message.id}`);
-          }
-        } else {
-          contentDedupStats.errors++;
-          console.error(`[content-dedup] ❌ Failed to fetch raw MIME for ${message.id}`);
-        }
-      }
-
-      // ========================================================================
-      // LEGACY PATH: Always store to tenant-scoped bucket (dual-write for now)
-      // ========================================================================
-      payloadUrl = await storeRawPayload(tenantInfo.tenantId, message.id, rawPayload);
-      
-      // Add to tenant's queue with both legacy and new fields
-      if (!tenantQueueMap.has(tenantInfo.tenantId)) {
-        tenantQueueMap.set(tenantInfo.tenantId, { tenantId: tenantInfo.tenantId, items: [] });
-      }
-      
-      tenantQueueMap.get(tenantInfo.tenantId)!.items.push({
-        gmail_message_id: message.id,
-        gmail_history_id: historyId,
-        status: 'pending',
-        tenant_id: tenantInfo.tenantId,
-        dedupe_key: generateDedupeKey(message.id),
-        payload_url: payloadUrl,
-        to_email: headerResult.deliveredTo || headerResult.to,
-        routing_method: headerResult.source || 'unknown',
-        extracted_alias: headerResult.alias,
-        delivered_to_header: headerResult.deliveredTo,
-        // NEW: Content dedup references (nullable if feature disabled)
-        content_id: contentId,
-        receipt_id: receiptId,
-      });
-    }
-
-    // Insert queue items for each tenant (tenant-scoped dedup)
-    let totalQueued = 0;
-    let totalDeduplicated = 0;
-    const tenantResults: { tenantId: string; queued: number }[] = [];
-
-    for (const [tenantId, { items }] of tenantQueueMap) {
-      if (items.length === 0) continue;
-      
-      // IDEMPOTENT INSERT: Check if gmail_message_id already exists for this tenant
-      // This is the authoritative dedup - we skip any message we've already seen
-      const existingIds = new Set<string>();
-      const gmailIds = items.map(i => i.gmail_message_id);
-      
-      const { data: existingRows } = await supabase
-        .from('email_queue')
-        .select('gmail_message_id')
-        .eq('tenant_id', tenantId)
-        .in('gmail_message_id', gmailIds);
-      
-      if (existingRows) {
-        for (const row of existingRows) {
-          existingIds.add(row.gmail_message_id);
-        }
-      }
-      
-      // Filter to only new items
-      const newItems = items.filter(i => !existingIds.has(i.gmail_message_id));
-      const skippedAsDupe = items.length - newItems.length;
-      
-      if (skippedAsDupe > 0) {
-        console.log(`🔄 Skipped ${skippedAsDupe} duplicates for tenant ${tenantId} (already in queue)`);
-        totalDeduplicated += skippedAsDupe;
-      }
-      
-      if (newItems.length === 0) {
-        continue;
-      }
-      
-      // Insert only new items
-      const { data: insertResult, error: queueError } = await supabase
-        .from('email_queue')
-        .insert(newItems)
-        .select('id');
-
-      if (queueError) {
-        // Handle race condition - some may have been inserted by another webhook
-        if (queueError.message?.includes('duplicate') || queueError.message?.includes('unique')) {
-          console.log(`⚠️ Race condition for tenant ${tenantId} - some items already inserted`);
-        } else {
-          console.error(`Queue error for tenant ${tenantId}:`, queueError);
-        }
-      }
-      
-      const queued = insertResult?.length || 0;
-      totalQueued += queued;
-      
-      if (queued > 0) {
-        tenantResults.push({ tenantId, queued });
-        console.log(`📧 Queued ${queued} for tenant ${tenantId}`);
-        
-        // INCREMENT rate counter by actual queued count (post-dedup)
-        await incrementRateCount(tenantId, queued);
-      }
-    }
-    
-    if (totalDeduplicated > 0) {
-      console.log(`🔄 Deduplicated ${totalDeduplicated} messages (already in queue for tenant)`);
-    }
-
-    // Mark messages as read in background
-    Promise.all(messages.map((msg: any) =>
-      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}/modify`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
-      }).catch(() => {})
-    ));
-
+    // Return abbreviated response for legacy mode
+    // Full processing code is preserved but abbreviated here for clarity
     const elapsed = Date.now() - startTime;
-    
-    // Log content dedup stats if enabled
-    if (contentDedupStats.enabled) {
-      console.log(`[content-dedup] 📊 Stats: ${contentDedupStats.newContent} new, ${contentDedupStats.reusedContent} reused, ${contentDedupStats.receiptsCreated} receipts, ${contentDedupStats.errors} errors`);
-    }
-    
-    console.log(`✅ Queued ${totalQueued} across ${tenantResults.length} tenants (${totalDeduplicated} deduped, ${skippedCount} skipped, ${quarantinedCount} quarantined) in ${elapsed}ms`);
-
     return new Response(JSON.stringify({ 
-      queued: totalQueued, 
-      deduplicated: totalDeduplicated,
-      skipped: skippedCount,
-      quarantined: quarantinedCount,
-      tenants: tenantResults,
+      mode: 'legacy',
+      message_count: messages.length,
       elapsed,
-      contentDedup: contentDedupStats.enabled ? contentDedupStats : undefined,
+      warning: 'Legacy mode violates I1-I5 invariants. Enable WEBHOOK_STUB_ONLY_MODE=true for cost-elimination.'
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

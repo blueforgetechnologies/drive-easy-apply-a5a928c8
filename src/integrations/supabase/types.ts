@@ -711,6 +711,44 @@ export type Database = {
           },
         ]
       }
+      circuit_breaker_events: {
+        Row: {
+          breaker_type: string
+          created_at: string
+          email_address: string
+          history_id: string | null
+          id: string
+          reason: string
+          tenant_id: string | null
+        }
+        Insert: {
+          breaker_type: string
+          created_at?: string
+          email_address: string
+          history_id?: string | null
+          id?: string
+          reason: string
+          tenant_id?: string | null
+        }
+        Update: {
+          breaker_type?: string
+          created_at?: string
+          email_address?: string
+          history_id?: string | null
+          id?: string
+          reason?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_breaker_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleanup_job_logs: {
         Row: {
           duration_ms: number | null
@@ -2008,6 +2046,56 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      gmail_stubs: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          email_address: string
+          error: string | null
+          history_id: string
+          id: string
+          processed_at: string | null
+          queued_at: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          email_address: string
+          error?: string | null
+          history_id: string
+          id?: string
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          email_address?: string
+          error?: string | null
+          history_id?: string
+          id?: string
+          processed_at?: string | null
+          queued_at?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_stubs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gmail_tokens: {
         Row: {
@@ -6647,6 +6735,7 @@ export type Database = {
           host_info: Json | null
           id: string
           last_heartbeat: string
+          last_processed_at: string | null
           loops_completed: number
           rate_limit_until: string | null
           status: string
@@ -6660,6 +6749,7 @@ export type Database = {
           host_info?: Json | null
           id: string
           last_heartbeat?: string
+          last_processed_at?: string | null
           loops_completed?: number
           rate_limit_until?: string | null
           status?: string
@@ -6673,6 +6763,7 @@ export type Database = {
           host_info?: Json | null
           id?: string
           last_heartbeat?: string
+          last_processed_at?: string | null
           loops_completed?: number
           rate_limit_until?: string | null
           status?: string
@@ -6862,6 +6953,9 @@ export type Database = {
         Returns: boolean
       }
       can_manage_roles: { Args: { _user_id: string }; Returns: boolean }
+      check_circuit_breaker: { Args: { p_queue_limit?: number }; Returns: Json }
+      check_circuit_breaker_depth: { Args: { p_limit?: number }; Returns: Json }
+      check_circuit_breaker_stall: { Args: never; Returns: Json }
       check_plan_feature_access: {
         Args: { p_feature_key: string; p_tenant_id: string }
         Returns: Json
@@ -6910,6 +7004,28 @@ export type Database = {
           id: string
           queued_at: string
         }[]
+      }
+      claim_gmail_stubs_batch: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          email_address: string
+          error: string | null
+          history_id: string
+          id: string
+          processed_at: string | null
+          queued_at: string
+          status: string
+          tenant_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "gmail_stubs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       claim_inbound_email_queue_batch: {
         Args: { p_batch_size?: number }
