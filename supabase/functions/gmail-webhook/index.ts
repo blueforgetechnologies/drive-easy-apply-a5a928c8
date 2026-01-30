@@ -1140,30 +1140,59 @@ serve(async (req) => {
     for (const [tenantId, { items }] of tenantQueueMap) {
       if (items.length === 0) continue;
       
-      // Use tenant-scoped dedup: UNIQUE(tenant_id, dedupe_key)
-      const { data: upsertResult, error: queueError } = await supabase
+      // IDEMPOTENT INSERT: Check if gmail_message_id already exists for this tenant
+      // This is the authoritative dedup - we skip any message we've already seen
+      const existingIds = new Set<string>();
+      const gmailIds = items.map(i => i.gmail_message_id);
+      
+      const { data: existingRows } = await supabase
         .from('email_queue')
-        .upsert(items, { 
-          onConflict: 'tenant_id,dedupe_key', 
-          ignoreDuplicates: true 
-        })
+        .select('gmail_message_id')
+        .eq('tenant_id', tenantId)
+        .in('gmail_message_id', gmailIds);
+      
+      if (existingRows) {
+        for (const row of existingRows) {
+          existingIds.add(row.gmail_message_id);
+        }
+      }
+      
+      // Filter to only new items
+      const newItems = items.filter(i => !existingIds.has(i.gmail_message_id));
+      const skippedAsDupe = items.length - newItems.length;
+      
+      if (skippedAsDupe > 0) {
+        console.log(`🔄 Skipped ${skippedAsDupe} duplicates for tenant ${tenantId} (already in queue)`);
+        totalDeduplicated += skippedAsDupe;
+      }
+      
+      if (newItems.length === 0) {
+        continue;
+      }
+      
+      // Insert only new items
+      const { data: insertResult, error: queueError } = await supabase
+        .from('email_queue')
+        .insert(newItems)
         .select('id');
 
       if (queueError) {
-        console.error(`Queue error for tenant ${tenantId}:`, queueError);
+        // Handle race condition - some may have been inserted by another webhook
+        if (queueError.message?.includes('duplicate') || queueError.message?.includes('unique')) {
+          console.log(`⚠️ Race condition for tenant ${tenantId} - some items already inserted`);
+        } else {
+          console.error(`Queue error for tenant ${tenantId}:`, queueError);
+        }
       }
       
-      const queued = upsertResult?.length || 0;
-      const deduped = items.length - queued;
+      const queued = insertResult?.length || 0;
       totalQueued += queued;
-      totalDeduplicated += deduped;
       
       if (queued > 0) {
         tenantResults.push({ tenantId, queued });
         console.log(`📧 Queued ${queued} for tenant ${tenantId}`);
         
         // INCREMENT rate counter by actual queued count (post-dedup)
-        // This ensures we only count emails that were actually processed, not duplicates
         await incrementRateCount(tenantId, queued);
       }
     }
