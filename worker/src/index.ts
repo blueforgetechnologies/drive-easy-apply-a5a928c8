@@ -23,7 +23,7 @@ import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failIte
 import { processQueueItem } from './process.js';
 import { processInboundEmail, verifyStorageAccess } from './inbound.js';
 import { processHistoryItem } from './historyQueue.js';
-import { supabase } from './supabase.js';
+import { supabase, verifySelfCheck } from './supabase.js';
 import { resetStuckProcessingRows } from './maintenance.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -926,7 +926,13 @@ validateEnv();
 setupShutdownHandlers();
 startHealthServer();
 
-workerLoop()
+// Self-check: verify Supabase connectivity before starting the loop
+// This blocks startup until we can successfully query the database
+verifySelfCheck()
+  .then(() => {
+    log('info', 'Self-check passed, starting worker loop');
+    return workerLoop();
+  })
   .then(() => {
     log('info', 'Worker stopped gracefully');
     process.exit(0);
