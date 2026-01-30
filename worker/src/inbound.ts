@@ -348,7 +348,13 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       await withTimeout(
         supabase
           .from('email_queue')
-          .update({ status: 'completed', processed_at: new Date().toISOString() })
+          .update({
+            status: 'completed',
+            processed_at: new Date().toISOString(),
+            parsed_at: new Date().toISOString(),
+            processing_started_at: null,
+            last_error: 'skipped_duplicate_existing',
+          })
           .eq('id', item.id),
         STEP_TIMEOUT_MS,
         'mark-already-complete'
@@ -814,6 +820,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
           status: 'completed', 
           processed_at: new Date().toISOString(),
           parsed_at: new Date().toISOString(),
+          processing_started_at: null,
         })
         .eq('id', item.id),
       STEP_TIMEOUT_MS,

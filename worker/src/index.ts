@@ -19,11 +19,12 @@
 
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failItem, resetStaleItems, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
+import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failItem, markStuckEmailsAsFailed, getStuckEmailCount } from './claim.js';
 import { processQueueItem } from './process.js';
 import { processInboundEmail, verifyStorageAccess } from './inbound.js';
 import { processHistoryItem } from './historyQueue.js';
 import { supabase } from './supabase.js';
+import { resetStuckProcessingRows } from './maintenance.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION (defaults, can be overridden by database)
@@ -457,6 +458,14 @@ async function workerLoop(): Promise<void> {
   // One-time storage verification on startup
   await verifyStorageAccess();
 
+  // CRITICAL: reset any rows left in `processing` by a previous crash/hang.
+  // This runs immediately on startup (not waiting for the periodic interval).
+  const startupResetCount = await resetStuckProcessingRows(5);
+  if (startupResetCount > 0) {
+    log('warn', 'Reset stuck processing email_queue rows on startup', { count: startupResetCount });
+    METRICS.staleResetCount += startupResetCount;
+  }
+
   // Log heartbeat every minute and report to database
   const heartbeatInterval = setInterval(async () => {
     METRICS.lastHeartbeat = new Date();
@@ -519,7 +528,7 @@ async function workerLoop(): Promise<void> {
 
       // Reset stale items and check for stuck emails periodically
       if (Date.now() - lastStaleReset >= STATIC_CONFIG.STALE_RESET_INTERVAL_MS) {
-        const resetCount = await resetStaleItems();
+        const resetCount = await resetStuckProcessingRows(5);
         if (resetCount > 0) {
           log('warn', `Reset stale items`, { count: resetCount });
           METRICS.staleResetCount += resetCount;
@@ -600,6 +609,24 @@ async function workerLoop(): Promise<void> {
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log('error', `Inbound exception`, { id: primary.id.substring(0, 8), error: errorMessage });
+
+            // Fail-closed: never leave the queue row in `processing` when we catch an exception here.
+            // (processInboundEmail should also do its own try/catch, but this is a belt-and-suspenders guard.)
+            try {
+              await supabase
+                .from('email_queue')
+                .update({
+                  status: 'pending',
+                  processing_started_at: null,
+                  last_error: `inbound_exception: ${errorMessage.substring(0, 900)}`,
+                })
+                .eq('id', primary.id);
+            } catch (updateErr) {
+              log('warn', 'Failed to reset queue row after inbound exception', {
+                id: primary.id.substring(0, 8),
+                error: updateErr instanceof Error ? updateErr.message : String(updateErr),
+              });
+            }
           }
           
           // Mark remaining items with same gmail_message_id as completed (dedupe)
@@ -611,6 +638,8 @@ async function workerLoop(): Promise<void> {
                 .update({ 
                   status: 'completed', 
                   processed_at: new Date().toISOString(),
+                  parsed_at: new Date().toISOString(),
+                  processing_started_at: null,
                   last_error: `Deduped: same gmail_message_id as ${primary.id.substring(0, 8)}`
                 })
                 .in('id', duplicateIds);
@@ -624,6 +653,24 @@ async function workerLoop(): Promise<void> {
                 messageId: messageId.substring(0, 12), 
                 error: e instanceof Error ? e.message : String(e) 
               });
+
+              // Fail-closed: if we can't mark them completed, at least reset them
+              // so they don't remain stuck in `processing` forever.
+              try {
+                await supabase
+                  .from('email_queue')
+                  .update({
+                    status: 'pending',
+                    processing_started_at: null,
+                    last_error: 'dedupe_mark_failed_reset',
+                  })
+                  .in('id', duplicateIds);
+              } catch (resetErr) {
+                log('warn', 'Failed to reset duplicates after dedupe mark failure', {
+                  messageId: messageId.substring(0, 12),
+                  error: resetErr instanceof Error ? resetErr.message : String(resetErr),
+                });
+              }
             }
           }
         }
