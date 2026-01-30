@@ -1,5 +1,5 @@
 /**
- * Email Queue Worker
+ * Email Queue Worker - v2 force sync
  * 
  * High-performance outbound email processor for multi-tenant TMS.
  * Sends emails via Resend API.

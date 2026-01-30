@@ -1,5 +1,5 @@
 /**
- * Gmail History Queue Processor (Phase 7B)
+ * Gmail History Queue Processor (Phase 7B) - v2 force sync
  * 
  * Processes stubs from gmail_history_queue created by ENQUEUE_ONLY mode.
  * For each stub: refreshes tokens, fetches messages via Gmail API,
