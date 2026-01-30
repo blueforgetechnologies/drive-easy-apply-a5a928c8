@@ -311,10 +311,10 @@ async function createLoadFromMessage(
   const fingerprintResult = computeParsedLoadFingerprint(fingerprintBasis);
   const fingerprint = fingerprintResult.fingerprint;
 
-  // Insert load_email record
+  // Insert load_email record with ON CONFLICT handling for concurrency safety
   const { data: inserted, error: insertError } = await supabase
     .from('load_emails')
-    .insert({
+    .upsert({
       tenant_id: tenantId,
       email_id: messageId,
       thread_id: message.threadId,
@@ -332,13 +332,28 @@ async function createLoadFromMessage(
       fingerprint_version: FINGERPRINT_VERSION,
       dedup_eligible: !!fingerprint,
       dedup_eligible_reason: fingerprint ? 'has_fingerprint' : 'missing_fingerprint',
+    }, { 
+      onConflict: 'email_id',
+      ignoreDuplicates: true 
     })
     .select('id, load_id')
-    .single();
+    .maybeSingle();
 
+  // Handle conflict as success (another worker already processed this)
   if (insertError) {
+    // Check if it's a duplicate key error - treat as success
+    if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
+      log('debug', 'Duplicate email_id, already processed by another worker', { messageId });
+      return { success: true, loadId: undefined };
+    }
     log('error', 'Failed to insert load_email', { error: insertError.message, messageId });
     return { success: false, error: insertError.message };
+  }
+
+  // If no row returned (conflict with ignoreDuplicates), treat as success
+  if (!inserted) {
+    log('debug', 'Email already exists (upsert returned null)', { messageId });
+    return { success: true, loadId: undefined };
   }
 
   log('info', 'Created load_email', { 
