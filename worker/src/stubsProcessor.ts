@@ -250,29 +250,38 @@ async function createLoadFromMessage(
     return { success: true, loadId: undefined };
   }
 
-  // Determine email source and parse
-  let parsedData: ParsedEmailData | null = null;
+  // Step 1: Always parse subject line first for route/load data
+  const subjectData = parseSubjectLine(subject);
+  
+  // Step 2: Determine email source and parse body with correct arguments
+  let bodyData: ParsedEmailData | null = null;
   let emailSource = 'unknown';
 
   if (subject?.toLowerCase().includes('sylectus') || 
       bodyText?.toLowerCase().includes('sylectus') ||
       bodyHtml?.toLowerCase().includes('sylectus')) {
-    parsedData = parseSylectusEmail(bodyHtml || '', bodyText || '');
+    // FIXED: parseSylectusEmail expects (subject, bodyText), NOT (bodyHtml, bodyText)
+    bodyData = parseSylectusEmail(subject, bodyText || '');
     emailSource = 'sylectus';
   } else if (subject?.toLowerCase().includes('fullcircle') ||
              subject?.toLowerCase().includes('full circle') ||
              bodyText?.toLowerCase().includes('fullcircletms') ||
              bodyHtml?.toLowerCase().includes('fullcircletms')) {
-    parsedData = parseFullCircleTMSEmail(bodyHtml || '', bodyText || '');
+    bodyData = parseFullCircleTMSEmail(bodyHtml || '', bodyText || '');
     emailSource = 'fullcircle';
   } else {
-    // Fallback: try parsing subject line for basic load info
-    parsedData = parseSubjectLine(subject);
     emailSource = 'generic';
   }
 
-  if (!parsedData) {
-    log('warn', 'Could not parse email', { messageId, subject: subject?.substring(0, 50) });
+  // Step 3: Merge results - body data overrides subject data where present
+  const parsedData: ParsedEmailData = {
+    ...subjectData,
+    ...bodyData,
+  };
+
+  // Check if we got any meaningful data
+  if (!parsedData.origin_city && !parsedData.destination_city && !parsedData.pickup_date) {
+    log('warn', 'Could not parse email - no route data found', { messageId, subject: subject?.substring(0, 50) });
     return { success: false, error: 'parse_failed' };
   }
 
