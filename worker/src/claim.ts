@@ -69,21 +69,42 @@ export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
  * These are load emails from Gmail that need parsing, NOT outbound sends.
  */
 export async function claimInboundBatch(batchSize: number = 50): Promise<InboundQueueItem[]> {
-  const { data, error } = await supabase.rpc('claim_inbound_email_queue_batch', {
-    p_batch_size: batchSize,
-  });
+  try {
+    const { data, error } = await supabase.rpc('claim_inbound_email_queue_batch', {
+      p_batch_size: batchSize,
+    });
 
-  if (error) {
-    console.error('[claim] Error claiming inbound batch:', error);
-    throw error;
+    if (error) {
+      // Enhanced error logging for PostgrestError
+      console.error('[claim] Error claiming inbound batch:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        // @ts-ignore - status may exist on some error types
+        status: error.status,
+        fullError: JSON.stringify(error),
+      });
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
+    return (data || []) as InboundQueueItem[];
+  } catch (err: any) {
+    // Catch any unexpected errors including network/auth issues
+    console.error('[claim] Unexpected error in claimInboundBatch:', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      status: err?.status,
+      stack: err?.stack?.split('\n').slice(0, 3).join('\n'),
+    });
+    throw err;
   }
-
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
-  return (data || []) as InboundQueueItem[];
 }
 
 /**
