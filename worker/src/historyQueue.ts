@@ -10,10 +10,10 @@ import { supabase } from './supabase.js';
 import { HistoryQueueItem, completeHistoryItem, failHistoryItem } from './claim.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES
+// TYPES (exported for use by stubsProcessor.ts)
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface GmailToken {
+export interface GmailToken {
   id: string;
   user_email: string;
   tenant_id: string;
@@ -38,7 +38,7 @@ interface GmailHistoryResponse {
   nextPageToken?: string;
 }
 
-interface GmailMessageHeader {
+export interface GmailMessageHeader {
   name: string;
   value: string;
 }
@@ -56,7 +56,7 @@ interface GmailMessagePart {
   parts?: GmailMessagePart[];
 }
 
-interface GmailMessage {
+export interface GmailMessage {
   id: string;
   threadId: string;
   historyId?: string;
@@ -103,8 +103,9 @@ function log(level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?:
 
 /**
  * Load Gmail token for an email address.
+ * Exported for use by stubsProcessor.ts
  */
-async function loadGmailToken(emailAddress: string): Promise<GmailToken | null> {
+export async function loadGmailToken(emailAddress: string): Promise<GmailToken | null> {
   const { data, error } = await supabase
     .from('gmail_tokens')
     .select('id, user_email, tenant_id, access_token, refresh_token, token_expiry')
@@ -209,8 +210,9 @@ async function refreshGmailToken(token: GmailToken): Promise<string | null> {
 
 /**
  * Get a valid access token (refresh if needed).
+ * Exported for use by stubsProcessor.ts
  */
-async function getValidAccessToken(token: GmailToken): Promise<string | null> {
+export async function getValidAccessToken(token: GmailToken): Promise<string | null> {
   if (!isTokenExpired(token)) {
     return token.access_token;
   }
@@ -250,8 +252,9 @@ async function fetchWithTimeout(
 
 /**
  * Fetch history entries starting from a given historyId.
+ * Exported for use by stubsProcessor.ts
  */
-async function fetchGmailHistory(
+export async function fetchGmailHistory(
   accessToken: string, 
   emailAddress: string, 
   startHistoryId: string
@@ -367,8 +370,9 @@ async function fetchMessageMetadata(
 
 /**
  * Fetch full message body.
+ * Exported for use by stubsProcessor.ts
  */
-async function fetchMessageFull(
+export async function fetchMessageFull(
   accessToken: string, 
   emailAddress: string, 
   messageId: string
@@ -422,8 +426,9 @@ function extractAliasFromValue(value: string): string | null {
 /**
  * Extract alias from message headers.
  * Checks headers in priority order.
+ * Exported for use by stubsProcessor.ts
  */
-function extractAliasFromHeaders(headers: GmailMessageHeader[]): { alias: string | null; source: string | null } {
+export function extractAliasFromHeaders(headers: GmailMessageHeader[]): { alias: string | null; source: string | null } {
   for (const headerName of ROUTING_HEADERS) {
     const header = headers.find(h => h.name.toLowerCase() === headerName.toLowerCase());
     if (header?.value) {
@@ -474,8 +479,9 @@ async function withTenantTimeout<T = any>(
  * The table stores full plus-addresses in `email_address` column (e.g., p.d+talbi@talbilogistics.com).
  * We match by looking for addresses containing the +alias pattern.
  * Includes timeout protection to prevent Cloudflare 500 errors from blocking the loop.
+ * Exported for use by stubsProcessor.ts
  */
-async function resolveTenantFromAlias(alias: string): Promise<string | null> {
+export async function resolveTenantFromAlias(alias: string): Promise<string | null> {
   log('debug', 'Resolving tenant from alias', { alias });
 
   try {

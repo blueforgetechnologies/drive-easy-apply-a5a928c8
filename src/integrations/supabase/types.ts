@@ -7109,11 +7109,16 @@ export type Database = {
         Args: { p_id: string }
         Returns: undefined
       }
+      complete_gmail_stub: { Args: { p_id: string }; Returns: undefined }
       fail_email_queue_item: {
         Args: { p_attempts: number; p_error: string; p_id: string }
         Returns: undefined
       }
       fail_gmail_history_item: {
+        Args: { p_error: string; p_id: string }
+        Returns: undefined
+      }
+      fail_gmail_stub: {
         Args: { p_error: string; p_id: string }
         Returns: undefined
       }
@@ -7240,36 +7245,21 @@ export type Database = {
         Args: { p_invite_id: string; p_tenant_id: string }
         Returns: boolean
       }
-      worker_heartbeat:
-        | {
-            Args: {
-              p_current_batch_size?: number
-              p_emails_failed?: number
-              p_emails_sent?: number
-              p_error_message?: string
-              p_host_info?: Json
-              p_loops_completed?: number
-              p_rate_limit_until?: string
-              p_status?: string
-              p_worker_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_current_batch_size?: number
-              p_emails_failed?: number
-              p_emails_sent?: number
-              p_error_message?: string
-              p_host_info?: Json
-              p_last_processed_at?: string
-              p_loops_completed?: number
-              p_rate_limit_until?: string
-              p_status?: string
-              p_worker_id: string
-            }
-            Returns: undefined
-          }
+      worker_heartbeat: {
+        Args: {
+          p_current_batch_size?: number
+          p_emails_failed?: number
+          p_emails_sent?: number
+          p_error_message?: string
+          p_host_info?: Json
+          p_last_processed_at?: string
+          p_loops_completed?: number
+          p_rate_limit_until?: string
+          p_status?: string
+          p_worker_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "dispatcher" | "driver"

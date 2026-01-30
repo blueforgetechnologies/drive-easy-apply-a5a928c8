@@ -250,6 +250,15 @@ async function handleStubOnlyMode(
     history_id: historyId
   };
   
+  // Structured log entry (will be emitted at end)
+  const structuredLog: Record<string, any> = {
+    mode: 'stub_only',
+    email_address: emailAddress,
+    history_id: historyId,
+    resolved_tenant: false,
+    reason: 'pending',
+  };
+  
   try {
     // Step 1: O(1) Circuit Breaker Check
     const breaker = await checkCircuitBreaker();
@@ -257,19 +266,25 @@ async function handleStubOnlyMode(
     if (breaker.open) {
       result.breaker_status = 'open';
       result.breaker_reason = breaker.reason;
+      structuredLog.reason = `breaker_open:${breaker.reason}`;
       
       // Resolve tenant for logging (even though we're dropping)
       const { tenantId } = await resolveTenantFromAlias(emailAddress);
       result.tenant_id = tenantId || undefined;
+      structuredLog.resolved_tenant = !!tenantId;
+      structuredLog.tenant_id = tenantId;
       
       // Log dropped stub
       const breakerType = breaker.reason === 'worker_stale' ? 'stall_detector' : 'queue_depth';
       await logCircuitBreakerEvent(tenantId, emailAddress, historyId, breaker.reason, breakerType);
       
-      console.log(`[stub-only] 🚫 BREAKER OPEN (${breaker.reason}): Dropping ${emailAddress}/${historyId}`);
-      
       result.success = true; // Successfully handled (by dropping)
       result.elapsed_ms = Date.now() - startTime;
+      structuredLog.elapsed_ms = result.elapsed_ms;
+      structuredLog.action = 'dropped';
+      
+      // Emit structured log
+      console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
       
       return new Response(JSON.stringify(result), {
         status: 200,
@@ -279,13 +294,22 @@ async function handleStubOnlyMode(
     
     // Step 2: Resolve Tenant (FAIL-CLOSED)
     const { tenantId, tenantName } = await resolveTenantFromAlias(emailAddress);
+    structuredLog.resolved_tenant = !!tenantId;
+    structuredLog.tenant_id = tenantId;
+    structuredLog.tenant_name = tenantName;
     
     if (!tenantId) {
       // Unknown tenant - quarantine and return success
+      structuredLog.reason = 'no_tenant_for_alias';
+      structuredLog.action = 'quarantined';
       await quarantineStub(emailAddress, historyId, 'no_tenant_for_alias');
       
       result.success = true;
       result.elapsed_ms = Date.now() - startTime;
+      structuredLog.elapsed_ms = result.elapsed_ms;
+      
+      // Emit structured log
+      console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
       
       return new Response(JSON.stringify(result), {
         status: 200,
@@ -301,7 +325,13 @@ async function handleStubOnlyMode(
     result.success = true;
     result.elapsed_ms = Date.now() - startTime;
     
-    console.log(`[stub-only] ✅ Completed in ${result.elapsed_ms}ms (inserted: ${inserted}, tenant: ${tenantName})`);
+    structuredLog.stub_inserted = inserted;
+    structuredLog.reason = inserted ? 'stub_inserted' : 'stub_duplicate';
+    structuredLog.action = inserted ? 'inserted' : 'dedupe_skipped';
+    structuredLog.elapsed_ms = result.elapsed_ms;
+    
+    // Emit structured log
+    console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
     
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -312,6 +342,14 @@ async function handleStubOnlyMode(
     console.error('[stub-only] Handler error:', err);
     result.error = String(err);
     result.elapsed_ms = Date.now() - startTime;
+    
+    structuredLog.reason = 'error';
+    structuredLog.error = String(err);
+    structuredLog.elapsed_ms = result.elapsed_ms;
+    structuredLog.action = 'error';
+    
+    // Emit structured log even on error
+    console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
     
     return new Response(JSON.stringify(result), {
       status: 200, // Always 200 to Pub/Sub

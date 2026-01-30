@@ -23,6 +23,7 @@ import { claimBatch, claimInboundBatch, claimHistoryBatch, completeItem, failIte
 import { processQueueItem } from './process.js';
 import { processInboundEmail, verifyStorageAccess } from './inbound.js';
 import { processHistoryItem } from './historyQueue.js';
+import { claimStubsBatch, processStub } from './stubsProcessor.js';
 import { supabase, verifySelfCheck } from './supabase.js';
 import { resetStuckProcessingRows } from './maintenance.js';
 import { 
@@ -585,7 +586,16 @@ async function workerLoop(): Promise<void> {
       // Claim a batch of OUTBOUND items atomically
       const batch = await claimBatch(currentConfig.batch_size);
 
-      // Also claim INBOUND emails for parsing (load emails) - HIGHEST PRIORITY
+      // ═══════════════════════════════════════════════════════════════════════
+      // GMAIL STUBS: Phase 2 stub-only mode consumer (gated by ENABLE_GMAIL_STUBS)
+      // This is the primary path when webhook is in stub-only mode
+      // ═══════════════════════════════════════════════════════════════════════
+      const GMAIL_STUBS_ENABLED = process.env.ENABLE_GMAIL_STUBS === 'true';
+      const STUBS_CAP_PER_LOOP = 25;
+      const stubsBatch = GMAIL_STUBS_ENABLED ? await claimStubsBatch(STUBS_CAP_PER_LOOP) : [];
+
+      // Also claim INBOUND emails for parsing (load emails) - LEGACY PATH
+      // When ENABLE_GMAIL_STUBS=true, inbound queue should be empty (webhook writes stubs instead)
       const inboundBatch = await claimInboundBatch(50);
 
       // DISABLED: History queue processing temporarily disabled to unblock worker loop
@@ -597,12 +607,13 @@ async function workerLoop(): Promise<void> {
       // Log claim results ALWAYS for debugging stalls
       log('debug', 'Claim results', {
         outbound: batch.length,
+        stubs: stubsBatch.length,
         inbound: inboundBatch.length,
         history: historyBatch.length,
-        totalClaimed: batch.length + inboundBatch.length + historyBatch.length,
+        totalClaimed: batch.length + stubsBatch.length + inboundBatch.length + historyBatch.length,
       });
 
-      if (batch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
+      if (batch.length === 0 && stubsBatch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
         // Increment loop counter BEFORE sleeping on empty batch
         METRICS.loopCount++;
         log('debug', 'No work claimed, sleeping', { 
@@ -611,6 +622,54 @@ async function workerLoop(): Promise<void> {
         });
         await sleep(currentConfig.loop_interval_ms);
         continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // GMAIL STUBS FIRST: Process stubs before legacy inbound (Phase 2 priority)
+      // Each stub triggers Gmail API fetch + parsing + matching
+      // ═══════════════════════════════════════════════════════════════════════
+      if (stubsBatch.length > 0) {
+        log('info', `Processing ${stubsBatch.length} gmail stubs (PHASE 2 PRIORITY)`);
+        const stubsStart = Date.now();
+        let stubsSuccess = 0;
+        let stubsFailed = 0;
+        let messagesProcessed = 0;
+        let loadsCreated = 0;
+
+        for (const stub of stubsBatch) {
+          try {
+            const result = await processStub(stub);
+            if (result.success) {
+              stubsSuccess++;
+              messagesProcessed += result.messagesProcessed;
+              loadsCreated += result.loadsCreated;
+              // Update last_processed_at for circuit breaker stall detection
+              METRICS.lastProcessedAt = new Date();
+            } else {
+              stubsFailed++;
+              log('warn', `Stub failed`, { 
+                id: stub.id.substring(0, 8), 
+                error: result.error 
+              });
+            }
+          } catch (error) {
+            stubsFailed++;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            log('error', `Stub exception`, { 
+              id: stub.id.substring(0, 8), 
+              error: errorMessage 
+            });
+          }
+        }
+
+        log('info', `Stubs batch complete`, {
+          size: stubsBatch.length,
+          success: stubsSuccess,
+          failed: stubsFailed,
+          messagesProcessed,
+          loadsCreated,
+          duration_ms: Date.now() - stubsStart,
+        });
       }
 
       // ═══════════════════════════════════════════════════════════════════════
