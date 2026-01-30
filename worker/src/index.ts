@@ -523,7 +523,14 @@ async function workerLoop(): Promise<void> {
         continue;
       }
 
-      METRICS.loopCount++;
+      // Log start of loop iteration for observability (loop counter at END of iteration)
+      const loopStartTime = Date.now();
+      log('debug', 'Loop iteration starting', { 
+        currentLoopNumber: METRICS.loopCount + 1,
+        configEnabled: currentConfig.enabled,
+        configPaused: currentConfig.paused,
+      });
+
       METRICS.isHealthy = true;
 
       // Reset stale items and check for stuck emails periodically
@@ -564,7 +571,21 @@ async function workerLoop(): Promise<void> {
       const HISTORY_CAP_PER_LOOP = 5;
       const historyBatch = await claimHistoryBatch(HISTORY_CAP_PER_LOOP);
 
+      // Log claim results ALWAYS for debugging stalls
+      log('debug', 'Claim results', {
+        outbound: batch.length,
+        inbound: inboundBatch.length,
+        history: historyBatch.length,
+        totalClaimed: batch.length + inboundBatch.length + historyBatch.length,
+      });
+
       if (batch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
+        // Increment loop counter BEFORE sleeping on empty batch
+        METRICS.loopCount++;
+        log('debug', 'No work claimed, sleeping', { 
+          loopNumber: METRICS.loopCount,
+          loopDuration_ms: Date.now() - loopStartTime,
+        });
         await sleep(currentConfig.loop_interval_ms);
         continue;
       }
@@ -844,9 +865,19 @@ async function workerLoop(): Promise<void> {
         avg_ms: Math.round(METRICS.lastBatchTime / batch.length),
       });
 
+      // Increment loop counter at END of successful iteration
+      METRICS.loopCount++;
+      log('debug', 'Loop iteration complete', {
+        loopNumber: METRICS.loopCount,
+        loopDuration_ms: Date.now() - loopStartTime,
+        itemsProcessed: batch.length + inboundBatch.length + historyBatch.length,
+      });
+
       // Small delay between batches to prevent CPU hogging
       await sleep(500);
     } catch (error) {
+      // Increment loop counter even on error to track attempts
+      METRICS.loopCount++;
       METRICS.isHealthy = false;
       // Log full error details instead of [object Object]
       const errorDetails = error instanceof Error 
@@ -854,7 +885,7 @@ async function workerLoop(): Promise<void> {
         : typeof error === 'object' && error !== null
           ? JSON.parse(JSON.stringify(error))
           : { raw: String(error) };
-      log('error', 'Loop error', errorDetails);
+      log('error', 'Loop error', { loopNumber: METRICS.loopCount, ...errorDetails });
       await sleep(5000); // Wait longer on errors
     }
   }
