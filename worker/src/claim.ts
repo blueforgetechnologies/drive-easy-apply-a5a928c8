@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 
-// Timeout constants for different operations
+// Timeout constants for different operations - v2 force sync
 const CLAIM_RPC_TIMEOUT_MS = 30_000; // 30 seconds for claim RPCs
 const GENERAL_TIMEOUT_MS = 15_000;   // 15 seconds for general operations
 
