@@ -90,38 +90,57 @@ async function checkCircuitBreaker(): Promise<{ open: boolean; reason: string; d
 }
 
 /**
- * Resolve tenant from email alias
- * Returns tenant_id or null (for quarantine/drop)
+ * Resolve tenant from email - uses 3-tier resolution:
+ * 1. +alias routing (e.g., p.d+talbi@domain.com → tenants.gmail_alias = '+talbi')
+ * 2. gmail_inboxes mapping (exact email_address match for base emails)
+ * 3. Fail-closed: quarantine if no match
  */
 async function resolveTenantFromAlias(emailAddress: string): Promise<{ tenantId: string | null; tenantName: string | null }> {
-  // Extract +alias from email address
-  const aliasMatch = emailAddress.match(/([^@]+)\+([^@]+)@/);
+  const normalizedEmail = emailAddress.toLowerCase().trim();
+  
+  // TIER 1: Extract +alias from email address (e.g., p.d+talbi@... → '+talbi')
+  const aliasMatch = normalizedEmail.match(/([^@]+)\+([^@]+)@/);
   const gmailAlias = aliasMatch ? `+${aliasMatch[2]}` : null;
   
-  if (!gmailAlias) {
-    // No alias - fail-closed (quarantine)
-    console.log(`[stub-only] No +alias in ${emailAddress} - fail-closed`);
-    return { tenantId: null, tenantName: null };
+  if (gmailAlias) {
+    // O(1) lookup: Single row by gmail_alias in tenants table
+    const { data: tenant, error } = await supabase
+      .from('tenants')
+      .select('id, name')
+      .eq('gmail_alias', gmailAlias)
+      .maybeSingle();
+    
+    if (error) {
+      console.error(`[stub-only] Tenant alias lookup error:`, error);
+    } else if (tenant) {
+      console.log(`[stub-only] ✅ Resolved via +alias ${gmailAlias} → ${tenant.name}`);
+      return { tenantId: tenant.id, tenantName: tenant.name };
+    } else {
+      console.log(`[stub-only] No tenant for alias ${gmailAlias}, trying gmail_inboxes fallback`);
+    }
+  } else {
+    console.log(`[stub-only] No +alias in ${normalizedEmail}, trying gmail_inboxes fallback`);
   }
   
-  // O(1) lookup: Single row by gmail_alias
-  const { data: tenant, error } = await supabase
-    .from('tenants')
-    .select('id, name')
-    .eq('gmail_alias', gmailAlias)
+  // TIER 2: gmail_inboxes fallback (exact email_address match)
+  const { data: inbox, error: inboxError } = await supabase
+    .from('gmail_inboxes')
+    .select('tenant_id, tenants!inner(name)')
+    .eq('email_address', normalizedEmail)
+    .eq('is_active', true)
     .maybeSingle();
   
-  if (error) {
-    console.error(`[stub-only] Tenant lookup error:`, error);
-    return { tenantId: null, tenantName: null };
+  if (inboxError) {
+    console.error(`[stub-only] gmail_inboxes lookup error:`, inboxError);
+  } else if (inbox) {
+    const tenantName = (inbox.tenants as any)?.name || 'Unknown';
+    console.log(`[stub-only] ✅ Resolved via gmail_inboxes → ${tenantName}`);
+    return { tenantId: inbox.tenant_id, tenantName };
   }
   
-  if (!tenant) {
-    console.log(`[stub-only] No tenant for alias ${gmailAlias} - fail-closed`);
-    return { tenantId: null, tenantName: null };
-  }
-  
-  return { tenantId: tenant.id, tenantName: tenant.name };
+  // TIER 3: Fail-closed (quarantine)
+  console.log(`[stub-only] ❌ No tenant found for ${normalizedEmail} - fail-closed`);
+  return { tenantId: null, tenantName: null };
 }
 
 /**
