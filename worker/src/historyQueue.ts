@@ -618,6 +618,19 @@ async function insertToEmailQueue(
   const fromEmail = getHeader(headers, 'From');
 
   try {
+    // IDEMPOTENCY CHECK: Skip if this gmail_message_id already exists for this tenant
+    const { data: existing } = await supabase
+      .from('email_queue')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('gmail_message_id', message.id)
+      .limit(1);
+    
+    if (existing && existing.length > 0) {
+      log('debug', 'Duplicate email skipped (pre-check)', { messageId: message.id, tenantId });
+      return true; // Not an error, just a duplicate
+    }
+
     const { error } = await supabase.from('email_queue').insert({
       gmail_message_id: message.id,
       gmail_history_id: message.historyId || null,
@@ -639,9 +652,9 @@ async function insertToEmailQueue(
     });
 
     if (error) {
-      // Check for duplicate
+      // Check for duplicate (race condition with constraint)
       if (error.message.includes('duplicate') || error.code === '23505') {
-        log('debug', 'Duplicate email skipped', { messageId: message.id });
+        log('debug', 'Duplicate email skipped (constraint)', { messageId: message.id });
         return true; // Not an error, just a duplicate
       }
       log('error', 'Email queue insert failed', { messageId: message.id, error: error.message });
