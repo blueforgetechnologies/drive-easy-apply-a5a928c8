@@ -1,17 +1,39 @@
 import { supabase } from './supabase.js';
 
+// Timeout constants for different operations
+const CLAIM_RPC_TIMEOUT_MS = 30_000; // 30 seconds for claim RPCs
+const GENERAL_TIMEOUT_MS = 15_000;   // 15 seconds for general operations
+
 /**
  * Wrap a promise-like (thenable) with a timeout to prevent indefinite hangs.
- * Accepts PromiseLike<T> to support Supabase query builders which are awaitable
- * but not typed as Promise.
+ * Uses 'any' to handle Supabase query builders which have complex thenable types.
+ * Cast the result at call sites if you need specific typing.
  */
-function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promiseLike),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`)), ms)
-    ),
-  ]);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function withTimeout<T = any>(
+  promiseLike: any,
+  ms: number,
+  label: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`));
+    }, ms);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result as T;
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw e;
+  }
 }
 
 export interface QueueItem {
@@ -48,65 +70,90 @@ export interface InboundQueueItem {
 /**
  * Atomically claim a batch of OUTBOUND email queue items using FOR UPDATE SKIP LOCKED.
  * These are emails with to_email populated (sent via Resend).
+ * Includes timeout protection to prevent indefinite hangs.
  */
 export async function claimBatch(batchSize: number = 25): Promise<QueueItem[]> {
-  const { data, error } = await supabase.rpc('claim_email_queue_batch', {
-    p_batch_size: batchSize,
-  });
+  try {
+    const result = await withTimeout<{ data: any; error: any }>(
+      supabase.rpc('claim_email_queue_batch', { p_batch_size: batchSize }),
+      CLAIM_RPC_TIMEOUT_MS,
+      'claim_email_queue_batch'
+    );
 
-  if (error) {
-    console.error('[claim] Error claiming batch:', error);
-    throw error;
+    if (result.error) {
+      console.error('[claim] Error claiming outbound batch:', result.error);
+      throw result.error;
+    }
+
+    const claimed = (result.data || []) as QueueItem[];
+    if (claimed.length > 0) {
+      console.log(`[claim] Claimed ${claimed.length} outbound emails for processing`);
+    }
+    return claimed;
+  } catch (err: any) {
+    const isTimeout = err?.message?.includes('TIMEOUT');
+    console.error('[claim] claimBatch error:', {
+      isTimeout,
+      message: err?.message,
+      name: err?.name,
+    });
+    // On timeout, return empty array to let loop continue rather than crash
+    if (isTimeout) {
+      return [];
+    }
+    throw err;
   }
-
-  return (data || []) as QueueItem[];
 }
 
 /**
  * Atomically claim a batch of INBOUND email queue items for parsing.
  * Uses FOR UPDATE SKIP LOCKED to prevent race conditions between workers.
- * INBOUND = has payload_url AND subject IS NULL (not yet parsed)
+ * INBOUND = has payload_url AND to_email IS NULL AND parsed_at IS NULL
  * These are load emails from Gmail that need parsing, NOT outbound sends.
+ * Includes timeout protection to prevent indefinite hangs.
  */
 export async function claimInboundBatch(batchSize: number = 50): Promise<InboundQueueItem[]> {
   try {
-    const { data, error } = await supabase.rpc('claim_inbound_email_queue_batch', {
-      p_batch_size: batchSize,
-    });
+    const result = await withTimeout<{ data: any; error: any }>(
+      supabase.rpc('claim_inbound_email_queue_batch', { p_batch_size: batchSize }),
+      CLAIM_RPC_TIMEOUT_MS,
+      'claim_inbound_email_queue_batch'
+    );
 
-    if (error) {
+    if (result.error) {
       // Check for auth-related failures
       const isAuthFailure = 
-        error.code === '401' || 
-        error.code === '403' || 
-        (error as any).status === 401 ||
-        (error as any).status === 403 ||
-        error.message?.includes('UNAUTHENTICATED') ||
-        error.message?.includes('Invalid API key') ||
-        error.message?.includes('JWT');
+        result.error.code === '401' || 
+        result.error.code === '403' || 
+        (result.error as any).status === 401 ||
+        (result.error as any).status === 403 ||
+        result.error.message?.includes('UNAUTHENTICATED') ||
+        result.error.message?.includes('Invalid API key') ||
+        result.error.message?.includes('JWT');
 
       console.error('[claim] Error claiming inbound batch:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        status: (error as any).status,
+        message: result.error.message,
+        code: result.error.code,
+        details: result.error.details,
+        hint: result.error.hint,
+        status: (result.error as any).status,
       });
 
       if (isAuthFailure) {
         console.error('[claim] AUTH_FAILURE - check service role key configuration');
       }
 
-      throw error;
+      throw result.error;
     }
 
-    if (!data || data.length === 0) {
-      return [];
+    const claimed = (result.data || []) as InboundQueueItem[];
+    if (claimed.length > 0) {
+      console.log(`[claim] Claimed ${claimed.length} inbound emails for processing`);
     }
-
-    console.log(`[claim] Claimed ${data.length} inbound emails for processing`);
-    return (data || []) as InboundQueueItem[];
+    return claimed;
   } catch (err: any) {
+    const isTimeout = err?.message?.includes('TIMEOUT');
+    
     // Check for auth-related failures in catch block
     const isAuthFailure = 
       err?.code === '401' || 
@@ -117,7 +164,9 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
       err?.message?.includes('Invalid API key') ||
       err?.message?.includes('JWT');
 
-    console.error('[claim] Unexpected error in claimInboundBatch:', {
+    console.error('[claim] claimInboundBatch error:', {
+      isTimeout,
+      isAuthFailure,
       name: err?.name,
       message: err?.message,
       code: err?.code,
@@ -126,6 +175,11 @@ export async function claimInboundBatch(batchSize: number = 50): Promise<Inbound
 
     if (isAuthFailure) {
       console.error('[claim] AUTH_FAILURE - check service role key configuration');
+    }
+
+    // On timeout, return empty array to let loop continue rather than crash
+    if (isTimeout) {
+      return [];
     }
 
     throw err;
@@ -242,23 +296,39 @@ export interface HistoryQueueItem {
 /**
  * Atomically claim a batch of gmail_history_queue items for processing.
  * Uses FOR UPDATE SKIP LOCKED to prevent race conditions between workers.
+ * Includes timeout protection to prevent indefinite hangs.
  */
 export async function claimHistoryBatch(batchSize: number = 25): Promise<HistoryQueueItem[]> {
-  const { data, error } = await supabase.rpc('claim_gmail_history_batch', {
-    p_batch_size: batchSize,
-  });
+  try {
+    const result = await withTimeout<{ data: any; error: any }>(
+      supabase.rpc('claim_gmail_history_batch', { p_batch_size: batchSize }),
+      CLAIM_RPC_TIMEOUT_MS,
+      'claim_gmail_history_batch'
+    );
 
-  if (error) {
-    console.error('[claim] Error claiming history batch:', error);
-    throw error;
+    if (result.error) {
+      console.error('[claim] Error claiming history batch:', result.error);
+      throw result.error;
+    }
+
+    const claimed = (result.data || []) as HistoryQueueItem[];
+    if (claimed.length > 0) {
+      console.log(`[claim] Claimed ${claimed.length} history stubs for processing`);
+    }
+    return claimed;
+  } catch (err: any) {
+    const isTimeout = err?.message?.includes('TIMEOUT');
+    console.error('[claim] claimHistoryBatch error:', {
+      isTimeout,
+      message: err?.message,
+      name: err?.name,
+    });
+    // On timeout, return empty array to let loop continue rather than crash
+    if (isTimeout) {
+      return [];
+    }
+    throw err;
   }
-
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  console.log(`[claim] Claimed ${data.length} history stubs for processing`);
-  return (data || []) as HistoryQueueItem[];
 }
 
 /**

@@ -437,51 +437,104 @@ function extractAliasFromHeaders(headers: GmailMessageHeader[]): { alias: string
 }
 
 /**
+ * Helper to wrap a promise-like with a timeout using Promise.race.
+ * Used for Supabase calls that might hang (e.g., during Cloudflare 500 errors).
+ */
+const TENANT_RESOLUTION_TIMEOUT_MS = 15_000;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function withTenantTimeout<T = any>(
+  promiseLike: any,
+  timeoutMs: number,
+  stepName: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`TIMEOUT (${timeoutMs}ms) at ${stepName}`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promiseLike),
+      timeoutPromise,
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result as T;
+  } catch (e) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
+/**
  * Resolve tenant from alias using tenant_inbound_addresses table.
  * The table stores full plus-addresses in `email_address` column (e.g., p.d+talbi@talbilogistics.com).
  * We match by looking for addresses containing the +alias pattern.
+ * Includes timeout protection to prevent Cloudflare 500 errors from blocking the loop.
  */
 async function resolveTenantFromAlias(alias: string): Promise<string | null> {
   log('debug', 'Resolving tenant from alias', { alias });
 
-  const { data, error } = await supabase
-    .from('tenant_inbound_addresses')
-    .select('tenant_id, email_address')
-    .eq('is_active', true)
-    .ilike('email_address', `%+${alias}@%`)
-    .maybeSingle();
+  try {
+    const result = await withTenantTimeout<{ data: any; error: any }>(
+      supabase
+        .from('tenant_inbound_addresses')
+        .select('tenant_id, email_address')
+        .eq('is_active', true)
+        .ilike('email_address', `%+${alias}@%`)
+        .maybeSingle(),
+      TENANT_RESOLUTION_TIMEOUT_MS,
+      'tenant_inbound_addresses_lookup'
+    );
 
-  if (error) {
-    log('error', 'Tenant lookup error', { alias, error: error.message });
+    if (result.error) {
+      log('error', 'Tenant lookup error', { alias, error: result.error.message });
+      return null;
+    }
+
+    if (result.data?.tenant_id) {
+      log('info', 'Tenant resolved via inbound address', {
+        alias,
+        email_address: result.data.email_address,
+        tenant_id: result.data.tenant_id,
+      });
+      return result.data.tenant_id;
+    }
+
+    // Fallback: check if alias matches a tenant slug/name
+    // Minimal sanitization to avoid breaking the `.or()` filter string
+    const safeAlias = alias.replace(/[,]/g, '').trim();
+
+    const fallbackResult = await withTenantTimeout<{ data: any; error: any }>(
+      supabase
+        .from('tenants')
+        .select('id')
+        .or(`slug.eq.${safeAlias},name.ilike.%${safeAlias}%`)
+        .maybeSingle(),
+      TENANT_RESOLUTION_TIMEOUT_MS,
+      'tenants_fallback_lookup'
+    );
+
+    if (fallbackResult.data?.id) {
+      log('info', 'Tenant resolved via slug/name fallback', { alias: safeAlias, tenant_id: fallbackResult.data.id });
+      return fallbackResult.data.id;
+    }
+
+    log('warn', 'No tenant found for alias', { alias: safeAlias });
+    return null;
+  } catch (err: any) {
+    const isTimeout = err?.message?.includes('TIMEOUT');
+    log('error', 'Tenant resolution failed', { 
+      alias, 
+      isTimeout, 
+      error: err?.message || String(err) 
+    });
+    // Return null on timeout/error - let caller handle gracefully
     return null;
   }
-
-  if (data?.tenant_id) {
-    log('info', 'Tenant resolved via inbound address', {
-      alias,
-      email_address: data.email_address,
-      tenant_id: data.tenant_id,
-    });
-    return data.tenant_id;
-  }
-
-  // Fallback: check if alias matches a tenant slug/name
-  // Minimal sanitization to avoid breaking the `.or()` filter string
-  const safeAlias = alias.replace(/[,]/g, '').trim();
-
-  const { data: tenantData } = await supabase
-    .from('tenants')
-    .select('id')
-    .or(`slug.eq.${safeAlias},name.ilike.%${safeAlias}%`)
-    .maybeSingle();
-
-  if (tenantData?.id) {
-    log('info', 'Tenant resolved via slug/name fallback', { alias: safeAlias, tenant_id: tenantData.id });
-    return tenantData.id;
-  }
-
-  log('warn', 'No tenant found for alias', { alias: safeAlias });
-  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
