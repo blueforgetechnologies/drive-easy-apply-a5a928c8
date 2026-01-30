@@ -33,9 +33,14 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Configuration from environment
-const WEBHOOK_STUB_ONLY_MODE = Deno.env.get('WEBHOOK_STUB_ONLY_MODE') === 'true';
+// ROBUST check: accept 'true', 'TRUE', '1', 'yes' etc.
+const stubModeRaw = Deno.env.get('WEBHOOK_STUB_ONLY_MODE') || '';
+const WEBHOOK_STUB_ONLY_MODE = ['true', '1', 'yes'].includes(stubModeRaw.toLowerCase().trim());
 const QUEUE_DEPTH_LIMIT = parseInt(Deno.env.get('QUEUE_DEPTH_LIMIT') || '1000', 10);
 const GMAIL_WEBHOOK_DISABLED = Deno.env.get('GMAIL_WEBHOOK_DISABLED') === 'true';
+
+// Log config at module load (appears once per cold start)
+console.log(`[gmail-webhook] CONFIG: WEBHOOK_STUB_ONLY_MODE=${WEBHOOK_STUB_ONLY_MODE} (raw="${stubModeRaw}"), QUEUE_DEPTH_LIMIT=${QUEUE_DEPTH_LIMIT}`);
 
 // ============================================================================
 // STUB-ONLY MODE IMPLEMENTATION (I1-I5 Compliant)
