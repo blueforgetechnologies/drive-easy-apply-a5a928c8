@@ -3,10 +3,12 @@ import { supabase } from './supabase.js';
 const MAINTENANCE_TIMEOUT_MS = 15_000;
 
 /**
- * Helper to wrap a promise with a timeout using Promise.race
+ * Helper to wrap a promise-like with a timeout using Promise.race
+ * Uses 'any' to handle Supabase query builder thenables
  */
-async function withMaintenanceTimeout<T>(
-  promiseLike: PromiseLike<T> | Promise<T>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function withMaintenanceTimeout<T = any>(
+  promiseLike: any,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
@@ -24,7 +26,7 @@ async function withMaintenanceTimeout<T>(
       timeoutPromise,
     ]);
     if (timeoutId) clearTimeout(timeoutId);
-    return result;
+    return result as T;
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
     throw e;
@@ -43,7 +45,8 @@ export async function resetStuckProcessingRows(stuckAgeMinutes: number = 5): Pro
   const cutoff = new Date(Date.now() - stuckAgeMinutes * 60 * 1000).toISOString();
 
   try {
-    const { data, error } = await withMaintenanceTimeout(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await withMaintenanceTimeout(
       supabase
         .from('email_queue')
         .update({
@@ -53,20 +56,20 @@ export async function resetStuckProcessingRows(stuckAgeMinutes: number = 5): Pro
         })
         .eq('status', 'processing')
         .lt('processing_started_at', cutoff)
-        .select('id') as Promise<{ data: { id: string }[] | null; error: Error | null }>,
+        .select('id'),
       MAINTENANCE_TIMEOUT_MS,
       'reset-stuck-processing'
     );
 
-    if (error) {
+    if (result?.error) {
       console.error('[maintenance] Failed to reset stuck processing rows', {
-        error: error.message,
+        error: result.error.message,
         cutoff,
       });
       return 0;
     }
 
-    return data?.length || 0;
+    return result?.data?.length || 0;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('TIMEOUT')) {

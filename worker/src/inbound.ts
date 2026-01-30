@@ -46,11 +46,12 @@ export interface InboundProcessResult {
 const HELPER_TIMEOUT_MS = 15_000;
 
 /**
- * Helper to wrap a promise with a timeout using Promise.race
- * (Supabase query builders don't support .abortSignal())
+ * Helper to wrap a promise-like with a timeout using Promise.race
+ * Uses 'any' to handle Supabase query builder thenables
  */
-async function withHelperTimeout<T>(
-  promiseLike: PromiseLike<T> | Promise<T>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function withHelperTimeout<T = any>(
+  promiseLike: any,
   timeoutMs: number,
   stepName: string
 ): Promise<T> {
@@ -68,7 +69,7 @@ async function withHelperTimeout<T>(
       timeoutPromise,
     ]);
     if (timeoutId) clearTimeout(timeoutId);
-    return result;
+    return result as T;
   } catch (e) {
     if (timeoutId) clearTimeout(timeoutId);
     throw e;
@@ -85,7 +86,8 @@ async function findExistingByFingerprint(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  const { data: existingLoad } = await withHelperTimeout(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await withHelperTimeout<any>(
     supabase
       .from('load_emails')
       .select('id, load_id, received_at')
@@ -95,12 +97,12 @@ async function findExistingByFingerprint(
       .gte('received_at', windowStart)
       .order('received_at', { ascending: true })
       .limit(1)
-      .maybeSingle() as Promise<{ data: { id: string; load_id: string; received_at: string } | null }>,
+      .maybeSingle(),
     HELPER_TIMEOUT_MS,
     'findExistingByFingerprint'
   );
   
-  return existingLoad;
+  return result?.data ?? null;
 }
 
 // Check for existing similar load (legacy content hash)
@@ -113,7 +115,8 @@ async function findExistingSimilarLoad(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  const { data: existingLoad } = await withHelperTimeout(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await withHelperTimeout<any>(
     supabase
       .from('load_emails')
       .select('id, load_id, received_at')
@@ -123,12 +126,13 @@ async function findExistingSimilarLoad(
       .gte('received_at', windowStart)
       .order('received_at', { ascending: true })
       .limit(1)
-      .maybeSingle() as Promise<{ data: { id: string; load_id: string; received_at: string } | null }>,
+      .maybeSingle(),
     HELPER_TIMEOUT_MS,
     'findExistingSimilarLoad'
   );
   
-  return existingLoad;
+  return result?.data ?? null;
+}
 }
 
 // Haversine distance calculation
