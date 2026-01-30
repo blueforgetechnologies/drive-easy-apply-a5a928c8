@@ -42,6 +42,9 @@ export interface InboundProcessResult {
   isDuplicate?: boolean;
 }
 
+// Timeout for helper queries (shorter than main step timeout)
+const HELPER_TIMEOUT_MS = 15_000;
+
 // Check for existing load with same fingerprint in same tenant
 async function findExistingByFingerprint(
   fingerprint: string,
@@ -52,18 +55,33 @@ async function findExistingByFingerprint(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  const { data: existingLoad } = await supabase
-    .from('load_emails')
-    .select('id, load_id, received_at')
-    .eq('parsed_load_fingerprint', fingerprint)
-    .eq('tenant_id', tenantId)
-    .eq('is_duplicate', false)
-    .gte('received_at', windowStart)
-    .order('received_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // Add timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
   
-  return existingLoad;
+  try {
+    const { data: existingLoad } = await supabase
+      .from('load_emails')
+      .select('id, load_id, received_at')
+      .eq('parsed_load_fingerprint', fingerprint)
+      .eq('tenant_id', tenantId)
+      .eq('is_duplicate', false)
+      .gte('received_at', windowStart)
+      .order('received_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .abortSignal(controller.signal);
+    
+    clearTimeout(timeoutId);
+    return existingLoad;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('abort')) {
+      throw new Error(`TIMEOUT (${HELPER_TIMEOUT_MS}ms) at findExistingByFingerprint`);
+    }
+    throw e;
+  }
 }
 
 // Check for existing similar load (legacy content hash)
@@ -76,18 +94,33 @@ async function findExistingSimilarLoad(
   
   const windowStart = new Date(Date.now() - hoursWindow * 60 * 60 * 1000).toISOString();
   
-  const { data: existingLoad } = await supabase
-    .from('load_emails')
-    .select('id, load_id, received_at')
-    .eq('content_hash', contentHash)
-    .eq('tenant_id', tenantId)
-    .eq('is_update', false)
-    .gte('received_at', windowStart)
-    .order('received_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // Add timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
   
-  return existingLoad;
+  try {
+    const { data: existingLoad } = await supabase
+      .from('load_emails')
+      .select('id, load_id, received_at')
+      .eq('content_hash', contentHash)
+      .eq('tenant_id', tenantId)
+      .eq('is_update', false)
+      .gte('received_at', windowStart)
+      .order('received_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .abortSignal(controller.signal);
+    
+    clearTimeout(timeoutId);
+    return existingLoad;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('abort')) {
+      throw new Error(`TIMEOUT (${HELPER_TIMEOUT_MS}ms) at findExistingSimilarLoad`);
+    }
+    throw e;
+  }
 }
 
 // Haversine distance calculation

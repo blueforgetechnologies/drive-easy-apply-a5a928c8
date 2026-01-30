@@ -1,32 +1,53 @@
 import { supabase } from './supabase.js';
 
+const MAINTENANCE_TIMEOUT_MS = 15_000;
+
 /**
  * Reset stuck processing rows in email_queue.
  *
  * This is a worker-side failsafe for cases where the worker claims rows (status=processing)
  * and then crashes/hangs before it can complete/fail them.
+ * 
+ * Now includes timeout protection to prevent blocking the worker loop.
  */
 export async function resetStuckProcessingRows(stuckAgeMinutes: number = 5): Promise<number> {
   const cutoff = new Date(Date.now() - stuckAgeMinutes * 60 * 1000).toISOString();
 
-  const { data, error } = await supabase
-    .from('email_queue')
-    .update({
-      status: 'pending',
-      processing_started_at: null,
-      last_error: 'reset_stuck_processing',
-    })
-    .eq('status', 'processing')
-    .lt('processing_started_at', cutoff)
-    .select('id');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), MAINTENANCE_TIMEOUT_MS);
 
-  if (error) {
-    console.error('[maintenance] Failed to reset stuck processing rows', {
-      error: error.message,
-      cutoff,
-    });
+  try {
+    const { data, error } = await supabase
+      .from('email_queue')
+      .update({
+        status: 'pending',
+        processing_started_at: null,
+        last_error: 'reset_stuck_processing',
+      })
+      .eq('status', 'processing')
+      .lt('processing_started_at', cutoff)
+      .select('id')
+      .abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      console.error('[maintenance] Failed to reset stuck processing rows', {
+        error: error.message,
+        cutoff,
+      });
+      return 0;
+    }
+
+    return data?.length || 0;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('abort')) {
+      console.error('[maintenance] TIMEOUT resetting stuck rows - Supabase may be unresponsive');
+      return 0;
+    }
+    console.error('[maintenance] Error resetting stuck rows:', msg);
     return 0;
   }
-
-  return data?.length || 0;
 }
