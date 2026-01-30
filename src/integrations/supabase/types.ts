@@ -2838,6 +2838,7 @@ export type Database = {
           dedup_canonical_payload: Json | null
           dedup_eligible: boolean | null
           dedup_eligible_reason: string | null
+          dropoff_coordinates: Json | null
           duplicate_of_id: string | null
           email_id: string
           email_source: string
@@ -2860,6 +2861,7 @@ export type Database = {
           parent_email_id: string | null
           parsed_data: Json | null
           parsed_load_fingerprint: string | null
+          pickup_coordinates: Json | null
           posted_at: string | null
           raw_payload_url: string | null
           received_at: string
@@ -2878,6 +2880,7 @@ export type Database = {
           dedup_canonical_payload?: Json | null
           dedup_eligible?: boolean | null
           dedup_eligible_reason?: string | null
+          dropoff_coordinates?: Json | null
           duplicate_of_id?: string | null
           email_id: string
           email_source?: string
@@ -2900,6 +2903,7 @@ export type Database = {
           parent_email_id?: string | null
           parsed_data?: Json | null
           parsed_load_fingerprint?: string | null
+          pickup_coordinates?: Json | null
           posted_at?: string | null
           raw_payload_url?: string | null
           received_at: string
@@ -2918,6 +2922,7 @@ export type Database = {
           dedup_canonical_payload?: Json | null
           dedup_eligible?: boolean | null
           dedup_eligible_reason?: string | null
+          dropoff_coordinates?: Json | null
           duplicate_of_id?: string | null
           email_id?: string
           email_source?: string
@@ -2940,6 +2945,7 @@ export type Database = {
           parent_email_id?: string | null
           parsed_data?: Json | null
           parsed_load_fingerprint?: string | null
+          pickup_coordinates?: Json | null
           posted_at?: string | null
           raw_payload_url?: string | null
           received_at?: string
