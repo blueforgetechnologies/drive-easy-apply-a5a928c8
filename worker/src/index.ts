@@ -25,6 +25,15 @@ import { processInboundEmail, verifyStorageAccess } from './inbound.js';
 import { processHistoryItem } from './historyQueue.js';
 import { supabase, verifySelfCheck } from './supabase.js';
 import { resetStuckProcessingRows } from './maintenance.js';
+import { 
+  startEventLoopMonitor, 
+  stopEventLoopMonitor, 
+  logMetricsReport, 
+  recordInboundParseTime, 
+  recordMatchingTime, 
+  recordOutboundSendTime,
+  recordQueueDrain 
+} from './metrics.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION (defaults, can be overridden by database)
@@ -471,6 +480,9 @@ async function workerLoop(): Promise<void> {
     METRICS.staleResetCount += startupResetCount;
   }
 
+  // Start event loop monitoring for metrics
+  startEventLoopMonitor();
+  
   // Log heartbeat every minute and report to database
   const heartbeatInterval = setInterval(async () => {
     METRICS.lastHeartbeat = new Date();
@@ -484,6 +496,11 @@ async function workerLoop(): Promise<void> {
     
     // Report heartbeat to database
     await reportHeartbeat();
+  }, 60000);
+  
+  // Log detailed metrics every 60 seconds
+  const metricsInterval = setInterval(() => {
+    logMetricsReport();
   }, 60000);
   
   // Initial heartbeat
@@ -621,19 +638,25 @@ async function workerLoop(): Promise<void> {
         for (const [messageId, items] of byMessageId.entries()) {
           // Process the first item
           const primary = items[0];
+          const itemStartTime = Date.now();
           try {
             const result = await processInboundEmail(primary);
+            const parseDuration = Date.now() - itemStartTime;
             processedCount++;
             // Update last_processed_at for circuit breaker stall detection
             METRICS.lastProcessedAt = new Date();
+            // Record metrics
+            recordInboundParseTime(parseDuration);
+            recordQueueDrain(1);
             if (result.success) {
               log('debug', `Inbound processed`, { 
                 id: primary.id.substring(0, 8), 
                 loadId: result.loadId,
-                isDuplicate: result.isDuplicate 
+                isDuplicate: result.isDuplicate,
+                duration_ms: parseDuration 
               });
             } else {
-              log('warn', `Inbound failed`, { id: primary.id.substring(0, 8), error: result.error });
+              log('warn', `Inbound failed`, { id: primary.id.substring(0, 8), error: result.error, duration_ms: parseDuration });
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -901,6 +924,8 @@ async function workerLoop(): Promise<void> {
   }
 
   clearInterval(heartbeatInterval);
+  clearInterval(metricsInterval);
+  stopEventLoopMonitor();
   log('info', 'Worker shutdown complete', {
     total_sent: METRICS.emailsSent,
     total_failed: METRICS.emailsFailed,

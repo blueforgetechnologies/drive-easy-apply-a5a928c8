@@ -7,6 +7,7 @@
  * - Computes fingerprints for deduplication
  * - Creates load_emails records
  * - Triggers hunt matching
+ * - Records performance metrics
  */
 
 import { supabase } from './supabase.js';
@@ -18,6 +19,7 @@ import {
   generateContentHash,
   FINGERPRINT_VERSION,
 } from './fingerprint.js';
+import { recordMatchingTime } from './metrics.js';
 // Types are handled via casting at call sites to avoid Supabase builder type conflicts
 
 export interface InboundQueueItem {
@@ -883,6 +885,7 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
       
       if (hasFp && hasReceivedAt && hasTenant) {
         logStep('11-hunt-matching-start');
+        const matchingStartTime = Date.now();
         matchLoadToHunts(
           insertedEmail.id,
           insertedEmail.load_id,
@@ -890,7 +893,13 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
           tenantId,
           loadContentFingerprint,
           receivedAt
-        ).catch((e) => {
+        ).then(() => {
+          const matchingDuration = Date.now() - matchingStartTime;
+          recordMatchingTime(matchingDuration);
+          logStep('11-hunt-matching-done', { duration_ms: matchingDuration });
+        }).catch((e) => {
+          const matchingDuration = Date.now() - matchingStartTime;
+          recordMatchingTime(matchingDuration); // Still record even on error
           console.error(`[inbound] Hunt matching error for ${itemIdShort}:`, e instanceof Error ? e.message : e);
         });
       }
