@@ -566,10 +566,11 @@ async function workerLoop(): Promise<void> {
       // Also claim INBOUND emails for parsing (load emails) - HIGHEST PRIORITY
       const inboundBatch = await claimInboundBatch(50);
 
-      // Claim gmail_history_queue stubs (Phase 7B - ENQUEUE_ONLY mode)
-      // CAPPED to prevent starvation of inbound processing
+      // DISABLED: History queue processing temporarily disabled to unblock worker loop
+      // Re-enable by setting ENABLE_HISTORY_QUEUE=true
+      const HISTORY_QUEUE_ENABLED = process.env.ENABLE_HISTORY_QUEUE === 'true';
       const HISTORY_CAP_PER_LOOP = 5;
-      const historyBatch = await claimHistoryBatch(HISTORY_CAP_PER_LOOP);
+      const historyBatch = HISTORY_QUEUE_ENABLED ? await claimHistoryBatch(HISTORY_CAP_PER_LOOP) : [];
 
       // Log claim results ALWAYS for debugging stalls
       log('debug', 'Claim results', {
