@@ -298,15 +298,18 @@ async function createLoadFromMessage(
   }
 
   // Compute fingerprint
-  const contentHash = generateContentHash(bodyHtml || bodyText || '');
-  const fingerprint = computeParsedLoadFingerprint({
+  const fingerprintBasis: Record<string, any> = {
     origin_city: parsedData.origin_city,
     origin_state: parsedData.origin_state,
-    dest_city: parsedData.dest_city,
-    dest_state: parsedData.dest_state,
+    destination_city: parsedData.destination_city,
+    destination_state: parsedData.destination_state,
     pickup_date: parsedData.pickup_date,
     vehicle_type: parsedData.vehicle_type,
-  });
+  };
+
+  const contentHash = generateContentHash(fingerprintBasis);
+  const fingerprintResult = computeParsedLoadFingerprint(fingerprintBasis);
+  const fingerprint = fingerprintResult.fingerprint;
 
   // Insert load_email record
   const { data: inserted, error: insertError } = await supabase
