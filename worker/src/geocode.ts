@@ -2,6 +2,9 @@ import { supabase } from './supabase.js';
 
 const MAPBOX_TOKEN = process.env.VITE_MAPBOX_TOKEN;
 
+// Timeout for geocode operations
+const GEOCODE_TIMEOUT_MS = 10_000;
+
 export interface Coordinates {
   lat: number;
   lng: number;
@@ -15,6 +18,7 @@ export interface CityStateResult {
 /**
  * Geocode a city/state location using Mapbox, with caching.
  * Returns coordinates or null if geocoding fails.
+ * Now includes timeout protection to prevent indefinite hangs.
  */
 export async function geocodeLocation(
   city: string,
@@ -25,15 +29,32 @@ export async function geocodeLocation(
   const locationKey = `${city.toLowerCase().trim()}, ${state.toLowerCase().trim()}`;
 
   try {
-    // Check cache first
-    const { data: cached } = await supabase
-      .from('geocode_cache')
-      .select('latitude, longitude, id, hit_count')
-      .eq('location_key', locationKey)
-      .maybeSingle();
+    // Check cache first with timeout
+    const cacheController = new AbortController();
+    const cacheTimeoutId = setTimeout(() => cacheController.abort(), GEOCODE_TIMEOUT_MS);
+    
+    let cached: { latitude: number; longitude: number; id: string; hit_count: number } | null = null;
+    try {
+      const { data } = await supabase
+        .from('geocode_cache')
+        .select('latitude, longitude, id, hit_count')
+        .eq('location_key', locationKey)
+        .maybeSingle()
+        .abortSignal(cacheController.signal);
+      cached = data;
+      clearTimeout(cacheTimeoutId);
+    } catch (e) {
+      clearTimeout(cacheTimeoutId);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('abort')) {
+        console.error(`[geocode] Cache lookup TIMEOUT for ${city}, ${state}`);
+        return null;
+      }
+      throw e;
+    }
 
     if (cached) {
-      // Increment hit count (fire and forget)
+      // Increment hit count (fire and forget - no timeout needed)
       supabase
         .from('geocode_cache')
         .update({ hit_count: (cached.hit_count || 1) + 1 })
@@ -44,37 +65,52 @@ export async function geocodeLocation(
       return { lat: Number(cached.latitude), lng: Number(cached.longitude) };
     }
 
-    // Cache miss - call Mapbox API
+    // Cache miss - call Mapbox API with timeout
     const query = encodeURIComponent(`${city}, ${state}, USA`);
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=1`
-    );
+    const fetchController = new AbortController();
+    const fetchTimeoutId = setTimeout(() => fetchController.abort(), GEOCODE_TIMEOUT_MS);
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=1`,
+        { signal: fetchController.signal }
+      );
+      clearTimeout(fetchTimeoutId);
 
-    if (response.ok) {
-      const data = await response.json() as { features?: Array<{ center?: [number, number] }> };
-      if (data.features?.[0]?.center) {
-        const coords: Coordinates = {
-          lng: data.features[0].center[0],
-          lat: data.features[0].center[1],
-        };
+      if (response.ok) {
+        const data = await response.json() as { features?: Array<{ center?: [number, number] }> };
+        if (data.features?.[0]?.center) {
+          const coords: Coordinates = {
+            lng: data.features[0].center[0],
+            lat: data.features[0].center[1],
+          };
 
-        // Store in cache
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        await supabase.from('geocode_cache').upsert(
-          {
-            location_key: locationKey,
-            city: city.trim(),
-            state: state.trim(),
-            latitude: coords.lat,
-            longitude: coords.lng,
-            month_created: currentMonth,
-          },
-          { onConflict: 'location_key' }
-        );
+          // Store in cache (fire and forget - no timeout needed for cache write)
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          supabase.from('geocode_cache').upsert(
+            {
+              location_key: locationKey,
+              city: city.trim(),
+              state: state.trim(),
+              latitude: coords.lat,
+              longitude: coords.lng,
+              month_created: currentMonth,
+            },
+            { onConflict: 'location_key' }
+          ).then(() => {}).catch(() => {});
 
-        console.log(`[geocode] Cache MISS (stored): ${city}, ${state}`);
-        return coords;
+          console.log(`[geocode] Cache MISS (stored): ${city}, ${state}`);
+          return coords;
+        }
       }
+    } catch (e) {
+      clearTimeout(fetchTimeoutId);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('abort')) {
+        console.error(`[geocode] Mapbox API TIMEOUT for ${city}, ${state}`);
+        return null;
+      }
+      throw e;
     }
   } catch (e) {
     console.error('[geocode] Error:', e);
@@ -85,6 +121,7 @@ export async function geocodeLocation(
 /**
  * Lookup city from zip code using Mapbox.
  * Returns { city, state } or null if lookup fails.
+ * Now includes timeout protection to prevent indefinite hangs.
  */
 export async function lookupCityFromZip(
   zipCode: string,
@@ -94,9 +131,25 @@ export async function lookupCityFromZip(
 
   try {
     const query = encodeURIComponent(`${zipCode}, USA`);
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&types=postcode&limit=1`
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
+    
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&types=postcode&limit=1`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+    } catch (e) {
+      clearTimeout(timeoutId);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('abort')) {
+        console.error(`[geocode] Zip lookup TIMEOUT for ${zipCode}`);
+        return null;
+      }
+      throw e;
+    }
 
     if (response.ok) {
       const data = await response.json() as { features?: Array<{ place_name?: string; context?: Array<{ id?: string; text?: string; short_code?: string }> }> };
