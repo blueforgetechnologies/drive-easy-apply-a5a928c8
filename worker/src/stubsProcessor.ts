@@ -18,8 +18,6 @@ import {
   getValidAccessToken, 
   fetchGmailHistory, 
   fetchMessageFull,
-  extractAliasFromHeaders,
-  resolveTenantFromAlias,
   type GmailToken,
   type GmailMessage,
   type GmailMessageHeader,
