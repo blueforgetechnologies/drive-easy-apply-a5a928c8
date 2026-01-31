@@ -4,8 +4,31 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { X, MoreVertical, Wrench, Truck } from "lucide-react";
 import type { ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
+
+// Broker credit status type
+type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
+
+// Map status to colors
+const getStatusColor = (status: BrokerApprovalStatus | null | undefined): { dot: string; text: string; label: string } => {
+  switch (status) {
+    case 'approved':
+      return { dot: 'bg-green-500', text: 'text-green-600', label: 'Approved' };
+    case 'not_approved':
+      return { dot: 'bg-red-500', text: 'text-red-600', label: 'Not Approved' };
+    case 'not_found':
+      return { dot: 'bg-gray-900 dark:bg-gray-100', text: 'text-gray-700', label: 'Not Found' };
+    case 'call_otr':
+      return { dot: 'bg-orange-500', text: 'text-orange-600', label: 'Call OTR' };
+    case 'checking':
+      return { dot: 'bg-blue-400 animate-pulse', text: 'text-blue-600', label: 'Checking...' };
+    case 'unchecked':
+    default:
+      return { dot: 'bg-orange-400', text: 'text-muted-foreground', label: 'Unchecked' };
+  }
+};
 
 interface LoadHunterTableRowEnhancedProps {
   item: any;
@@ -29,6 +52,8 @@ interface LoadHunterTableRowEnhancedProps {
   onSkip: (emailId: string, matchId?: string) => void;
   onWaitlist: (emailId: string, matchId?: string) => void;
   onBook: (match: any, email: any) => void;
+  // NEW: Broker credit status map
+  brokerStatusMap?: Map<string, { status: string; brokerName?: string }>;
 }
 
 export function LoadHunterTableRowEnhanced({
@@ -51,6 +76,7 @@ export function LoadHunterTableRowEnhanced({
   onSkip,
   onWaitlist,
   onBook,
+  brokerStatusMap,
 }: LoadHunterTableRowEnhancedProps) {
   const navigate = useNavigate();
   
@@ -351,19 +377,49 @@ export function LoadHunterTableRowEnhanced({
         </TableCell>
       )}
 
-      {/* Customer */}
+      {/* Customer - with broker credit status indicator */}
       <TableCell className="py-1">
-        <div className="flex items-center gap-1 whitespace-nowrap">
-          <Badge variant="outline" className="h-4 px-1 text-[11px] flex-shrink-0">
-            {email.status === 'new' ? '🟡' : '🟢'}
-          </Badge>
-          <div className="text-[13px] font-medium leading-tight whitespace-nowrap">
-            {(() => {
-              const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
-              return customerName.length > 14 ? customerName.slice(0, 14) + '...' : customerName;
-            })()}
-          </div>
-        </div>
+        {(() => {
+          const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
+          const truncatedName = customerName.length > 14 ? customerName.slice(0, 14) + '...' : customerName;
+          
+          // Get broker credit status from the map (keyed by load_email_id)
+          const brokerStatus = brokerStatusMap?.get(email.id);
+          const statusColors = getStatusColor(brokerStatus?.status);
+          
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap cursor-default">
+                    {/* Colored dot (egg) indicator for broker approval status */}
+                    <div 
+                      className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColors.dot}`}
+                      style={{ 
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)',
+                      }}
+                    />
+                    {/* Customer name with status-based color */}
+                    <div className={`text-[13px] font-medium leading-tight whitespace-nowrap ${statusColors.text}`}>
+                      {truncatedName}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <div className="space-y-1">
+                    <p className="font-medium">{customerName}</p>
+                    <p className="text-muted-foreground">
+                      Factoring: <span className={`font-semibold ${statusColors.text}`}>{statusColors.label}</span>
+                    </p>
+                    {data.mc_number && (
+                      <p className="text-muted-foreground">MC# {data.mc_number}</p>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })()}
       </TableCell>
 
       {/* Received / Expires */}

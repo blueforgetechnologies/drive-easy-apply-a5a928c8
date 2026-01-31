@@ -44,6 +44,7 @@ import { useLoadHunterCounts } from "@/hooks/useLoadHunterCounts";
 import { groupMatchesByLoadEmail } from "@/utils/loadHunterHelpers";
 import { LoadHunterFilters, LoadHunterTableHeader, LoadHunterTableRowEnhanced, LoadHunterVehicleDetail } from "@/components/load-hunter";
 import type { SoundSettings } from "@/hooks/useUserPreferences";
+import { useBrokerCreditStatus } from "@/hooks/useBrokerCreditStatus";
 
 export default function LoadHunterTab() {
   const navigate = useNavigate();
@@ -119,7 +120,18 @@ export default function LoadHunterTab() {
     loadAllData,
   } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
 
-  // UI state that stays in the component
+  // Broker credit status hook - extracts load email IDs from visible data
+  const visibleLoadEmailIds = React.useMemo(() => {
+    const ids: string[] = [];
+    [...unreviewedViewData, ...missedHistory, ...loadEmails].forEach((item: any) => {
+      const emailId = item?.email?.id || item?.id || item?.load_email_id;
+      if (emailId) ids.push(emailId);
+    });
+    return ids.slice(0, 100); // Limit to 100 for performance
+  }, [unreviewedViewData, missedHistory, loadEmails]);
+  
+  const { statusMap: brokerStatusMap } = useBrokerCreditStatus(visibleLoadEmailIds);
+
   const [bookingMatch, setBookingMatch] = useState<any | null>(null);
   const [bookingEmail, setBookingEmail] = useState<any | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -3528,6 +3540,7 @@ export default function LoadHunterTab() {
                               loadDistances={loadDistances}
                               loadHuntMap={loadHuntMap}
                               currentDispatcherInfo={currentDispatcherInfo}
+                              brokerStatusMap={brokerStatusMap}
                               getDriverName={getDriverName}
                               onRowClick={async (clickedEmail, clickedMatch, clickedItem) => {
                                 const isFailed = clickedEmail._source === 'failed' || clickedEmail.status === 'failed';

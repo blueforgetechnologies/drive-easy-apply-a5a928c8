@@ -19,6 +19,7 @@ import {
   generateContentHash,
   FINGERPRINT_VERSION,
 } from './fingerprint.js';
+import { triggerBrokerCheck } from './brokerCheck.js';
 import { recordMatchingTime } from './metrics.js';
 // Types are handled via casting at call sites to avoid Supabase builder type conflicts
 
@@ -292,7 +293,7 @@ async function matchLoadToHunts(
       continue;
     }
     
-    await supabase.from('load_hunt_matches').insert({
+    const { data: insertedMatch } = await supabase.from('load_hunt_matches').insert({
       load_email_id: loadEmailId,
       hunt_plan_id: hunt.id,
       vehicle_id: hunt.vehicle_id,
@@ -301,7 +302,13 @@ async function matchLoadToHunts(
       match_status: 'active',
       matched_at: new Date().toISOString(),
       tenant_id: tenantId,
-    });
+    }).select('id').single();
+    
+    // Trigger broker credit check (non-blocking, fire-and-forget)
+    // This only fires once per load_email due to deduplication by order_number
+    if (insertedMatch) {
+      triggerBrokerCheck(tenantId, loadEmailId, parsedData, insertedMatch.id);
+    }
   }
 }
 
