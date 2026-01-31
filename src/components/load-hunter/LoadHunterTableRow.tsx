@@ -456,7 +456,22 @@ export function LoadHunterTableRow({
       {/* Pieces/Dims column */}
       <TableCell className="py-1">
         <div className="text-[13px] leading-tight whitespace-nowrap">{data?.pieces !== undefined && data?.pieces !== null ? data.pieces : '—'}</div>
-        <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{data?.dimensions ? (data.dimensions.trim().toLowerCase() === 'no dimensions specified' ? 'No Dim Specified' : data.dimensions) : '—'}</div>
+        {(() => {
+          const rawDims = data?.dimensions;
+          if (!rawDims) return <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">—</div>;
+          const cleanDims = rawDims.trim().toLowerCase() === 'no dimensions specified' ? 'No Dim Specified' : rawDims;
+          const displayDims = cleanDims.length > 18 ? cleanDims.slice(0, 18) + '…' : cleanDims;
+          return cleanDims.length > 18 ? (
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap cursor-help">{displayDims}</div>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-auto max-w-xs text-sm">{cleanDims}</HoverCardContent>
+            </HoverCard>
+          ) : (
+            <div className="text-[12px] text-muted-foreground leading-tight whitespace-nowrap">{displayDims}</div>
+          );
+        })()}
       </TableCell>
 
       {/* Avail/Posted column */}
