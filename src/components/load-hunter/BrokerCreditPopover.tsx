@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { 
   Loader2, RefreshCw, Building2, MapPin, Hash, Phone, Shield, 
   CheckCircle2, XCircle, AlertCircle, UserPlus, ExternalLink,
@@ -463,17 +463,21 @@ export function BrokerCreditPopover({
               </div>
 
               {/* Row: Address - with radio selection */}
-              <div className={`p-2 rounded ${selectedAddressSource === 'posted' ? 'bg-amber-50 border-2 border-amber-300' : 'bg-muted/20'}`}>
+              <div 
+                className={`p-2 rounded cursor-pointer transition-all ${selectedAddressSource === 'posted' ? 'bg-amber-50 border-2 border-amber-300' : 'bg-muted/20 border-2 border-transparent hover:border-muted'}`}
+                onClick={() => postedAddress && setSelectedAddressSource('posted')}
+              >
                 <div className="flex items-center gap-1 mb-0.5">
-                  <RadioGroupItem 
-                    value="posted" 
-                    id="addr-posted"
+                  <input
+                    type="radio"
+                    name="address-source"
+                    value="posted"
                     checked={selectedAddressSource === 'posted'}
-                    onClick={() => setSelectedAddressSource('posted')}
-                    className="h-3 w-3"
+                    onChange={() => setSelectedAddressSource('posted')}
                     disabled={!postedAddress}
+                    className="h-3 w-3 accent-amber-500"
                   />
-                  <label htmlFor="addr-posted" className="text-[10px] text-muted-foreground cursor-pointer">Address</label>
+                  <span className="text-[10px] text-muted-foreground">Address</span>
                 </div>
                 <div className="font-medium text-[11px] leading-tight">
                   {postedAddress || '—'}
@@ -485,17 +489,21 @@ export function BrokerCreditPopover({
                   {otrData?.mc_number ? `MC# ${otrData.mc_number}` : '—'}
                 </div>
               </div>
-              <div className={`p-2 rounded ${selectedAddressSource === 'fmcsa' ? 'bg-blue-100 border-2 border-blue-400' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
+              <div 
+                className={`p-2 rounded cursor-pointer transition-all ${selectedAddressSource === 'fmcsa' ? 'bg-blue-100 border-2 border-blue-400' : 'bg-blue-50 dark:bg-blue-950/30 border-2 border-transparent hover:border-blue-200'}`}
+                onClick={() => fmcsaData?.physical_address && setSelectedAddressSource('fmcsa')}
+              >
                 <div className="flex items-center gap-1 mb-0.5">
-                  <RadioGroupItem 
-                    value="fmcsa" 
-                    id="addr-fmcsa"
+                  <input
+                    type="radio"
+                    name="address-source"
+                    value="fmcsa"
                     checked={selectedAddressSource === 'fmcsa'}
-                    onClick={() => setSelectedAddressSource('fmcsa')}
-                    className="h-3 w-3"
+                    onChange={() => setSelectedAddressSource('fmcsa')}
                     disabled={!fmcsaData?.physical_address}
+                    className="h-3 w-3 accent-blue-500"
                   />
-                  <label htmlFor="addr-fmcsa" className="text-[10px] text-blue-600 cursor-pointer">Address</label>
+                  <span className="text-[10px] text-blue-600">Address</span>
                 </div>
                 <div className="font-medium text-[11px] leading-tight">
                   {fmcsaData?.physical_address || '—'}
