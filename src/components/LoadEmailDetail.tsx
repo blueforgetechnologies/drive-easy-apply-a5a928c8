@@ -747,8 +747,18 @@ const LoadEmailDetail = ({
     setEditableOrderLine(orderLine);
   }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
   const rawBrokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
-  // Clean and truncate broker name - remove HTML and limit to 25 chars
-  const cleanBrokerName = rawBrokerName.replace(/<[^>]*>/g, '').trim();
+  // Clean broker name - remove HTML, phone numbers, and extra text to get just the company name
+  const cleanBrokerName = rawBrokerName
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\bPhone:?\s*[\d\s\-().]+/gi, '') // Remove "Phone: xxx" patterns
+    .replace(/\bFax:?\s*[\d\s\-().]+/gi, '') // Remove "Fax: xxx" patterns  
+    .replace(/\bEmail:?\s*\S+@\S+/gi, '') // Remove "Email: xxx" patterns
+    .replace(/\bMC[:#\s-]*\d+/gi, '') // Remove "MC: xxx" patterns
+    .replace(/\bDOT[:#\s-]*\d+/gi, '') // Remove "DOT: xxx" patterns
+    .replace(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/g, '') // Remove standalone phone numbers
+    .replace(/\n|\r/g, ' ') // Replace newlines with spaces
+    .replace(/\s{2,}/g, ' ') // Collapse multiple spaces
+    .trim();
   const brokerName = cleanBrokerName.length > 25 ? cleanBrokerName.slice(0, 23) + '…' : cleanBrokerName;
   const fullBrokerName = cleanBrokerName; // For tooltips
 
