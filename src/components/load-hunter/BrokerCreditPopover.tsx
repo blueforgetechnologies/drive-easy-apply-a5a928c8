@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { cleanCompanyName } from "@/lib/companyName";
 
 type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
 
@@ -123,6 +124,15 @@ export function BrokerCreditPopover({
   const [hasChecked, setHasChecked] = useState(false);
 
   const statusColors = getStatusColor(isChecking ? 'checking' : currentStatus);
+
+  // Always display a clean company name in the UI (email subjects often include metadata)
+  const displayBrokerName =
+    cleanCompanyName(parsedData?.broker_name || customerName) || cleanCompanyName(customerName) || customerName;
+
+  const triggerNameSource =
+    cleanCompanyName(customerName) || cleanCompanyName(truncatedName) || truncatedName || customerName;
+  const triggerBrokerName =
+    triggerNameSource.length > 25 ? `${triggerNameSource.slice(0, 23)}…` : triggerNameSource;
 
   // Update status when brokerStatus prop changes
   useEffect(() => {
@@ -398,7 +408,7 @@ export function BrokerCreditPopover({
             style={{ boxShadow: buttonStyle.boxShadow }}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="truncate">{truncatedName}</span>
+            <span className="truncate">{triggerBrokerName}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent 
@@ -411,8 +421,8 @@ export function BrokerCreditPopover({
           <div className={`relative overflow-hidden ${existingCustomer ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-primary to-blue-600'}`}>
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_50%,rgba(0,0,0,0.1)_100%)]" />
             <div className="relative px-4 py-3 flex items-center justify-between">
-              <h3 className="font-bold text-white text-base truncate" title={customerName}>
-                {customerName.length > 35 ? customerName.slice(0, 33) + '…' : customerName}
+              <h3 className="font-bold text-white text-base truncate" title={displayBrokerName}>
+                {displayBrokerName.length > 35 ? displayBrokerName.slice(0, 33) + '…' : displayBrokerName}
               </h3>
               <Badge 
                 className={`flex-shrink-0 px-3 py-1 font-semibold text-xs border-0 shadow-lg ${
@@ -499,8 +509,8 @@ export function BrokerCreditPopover({
                 {/* Row 1: Names */}
                 <div className="card-glossy rounded-xl p-2.5 border border-border/50">
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Name</div>
-                  <div className="font-semibold text-xs truncate" title={parsedData?.broker_name || customerName}>
-                    {parsedData?.broker_name || customerName || '—'}
+                  <div className="font-semibold text-xs truncate" title={displayBrokerName}>
+                    {displayBrokerName || '—'}
                   </div>
                 </div>
                 <div className="rounded-xl p-2.5 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40"
