@@ -3,10 +3,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, RefreshCw, Building2, MapPin, Hash } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { 
+  Loader2, RefreshCw, Building2, MapPin, Hash, Phone, Shield, 
+  CheckCircle2, XCircle, AlertCircle, UserPlus, ExternalLink,
+  FileText, Users
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
 
@@ -28,6 +35,41 @@ const getStatusColor = (status: BrokerApprovalStatus | null | undefined): { dot:
   }
 };
 
+interface OtrData {
+  name?: string;
+  approval_status?: string;
+  credit_limit?: number;
+  mc_number?: string;
+}
+
+interface FmcsaData {
+  legal_name?: string;
+  dba_name?: string;
+  dot_number?: string;
+  mc_number?: string;
+  physical_address?: string;
+  phone?: string;
+  safer_status?: string;
+  safety_rating?: string;
+}
+
+interface ExistingCustomer {
+  id: string;
+  name: string;
+  mc_number?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+}
+
+interface SimilarCustomer {
+  id: string;
+  name: string;
+  mc_number?: string;
+}
+
 interface BrokerCreditPopoverProps {
   customerName: string;
   truncatedName: string;
@@ -35,10 +77,12 @@ interface BrokerCreditPopoverProps {
   brokerStatus?: { status: string; brokerName?: string; mcNumber?: string };
   loadEmailId: string;
   parsedData?: {
+    broker_name?: string;
     broker_address?: string;
     broker_city?: string;
     broker_state?: string;
     broker_zip?: string;
+    broker_phone?: string;
   };
   children?: React.ReactNode;
 }
@@ -52,63 +96,26 @@ export function BrokerCreditPopover({
   parsedData,
 }: BrokerCreditPopoverProps) {
   const { tenantId } = useTenantFilter();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [localMcNumber, setLocalMcNumber] = useState(mcNumber || brokerStatus?.mcNumber || '');
   const [currentStatus, setCurrentStatus] = useState(brokerStatus?.status || 'unchecked');
-  const [customerDetails, setCustomerDetails] = useState<{
-    id?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    credit_limit?: number;
-  } | null>(null);
+  
+  // 3-source data
+  const [otrData, setOtrData] = useState<OtrData | null>(null);
+  const [fmcsaData, setFmcsaData] = useState<FmcsaData | null>(null);
+  const [existingCustomer, setExistingCustomer] = useState<ExistingCustomer | null>(null);
+  const [similarCustomers, setSimilarCustomers] = useState<SimilarCustomer[]>([]);
+  
+  // User selections for saving
+  const [selectedAddressSource, setSelectedAddressSource] = useState<'posted' | 'fmcsa'>('fmcsa');
+  const [selectedMergeCustomerId, setSelectedMergeCustomerId] = useState<string | null>(null);
+  
+  const [hasChecked, setHasChecked] = useState(false);
 
   const statusColors = getStatusColor(isChecking ? 'checking' : currentStatus);
-
-  // Fetch customer details when popover opens
-  useEffect(() => {
-    if (!open || !tenantId) return;
-
-    const fetchCustomerDetails = async () => {
-      // Try to find customer by name or MC
-      const { data } = await supabase
-        .from('customers')
-        .select('id, address, city, state, zip, mc_number, otr_approval_status, otr_credit_limit')
-        .eq('tenant_id', tenantId)
-        .or(`name.ilike.%${customerName}%${localMcNumber ? `,mc_number.eq.${localMcNumber.replace(/^MC-?/i, '')}` : ''}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (data) {
-        setCustomerDetails({
-          id: data.id,
-          address: data.address || parsedData?.broker_address,
-          city: data.city || parsedData?.broker_city,
-          state: data.state || parsedData?.broker_state,
-          zip: data.zip || parsedData?.broker_zip,
-          credit_limit: data.otr_credit_limit,
-        });
-        if (data.mc_number && !localMcNumber) {
-          setLocalMcNumber(data.mc_number);
-        }
-        if (data.otr_approval_status) {
-          setCurrentStatus(data.otr_approval_status);
-        }
-      } else {
-        // Use parsed data from email if no customer record
-        setCustomerDetails({
-          address: parsedData?.broker_address,
-          city: parsedData?.broker_city,
-          state: parsedData?.broker_state,
-          zip: parsedData?.broker_zip,
-        });
-      }
-    };
-
-    fetchCustomerDetails();
-  }, [open, tenantId, customerName, localMcNumber, parsedData]);
 
   // Update status when brokerStatus prop changes
   useEffect(() => {
@@ -116,6 +123,14 @@ export function BrokerCreditPopover({
       setCurrentStatus(brokerStatus.status);
     }
   }, [brokerStatus?.status]);
+
+  // Build posted load address
+  const postedAddress = [
+    parsedData?.broker_address,
+    parsedData?.broker_city,
+    parsedData?.broker_state,
+    parsedData?.broker_zip,
+  ].filter(Boolean).join(', ') || null;
 
   const handleCheckCredit = async () => {
     if (!tenantId) {
@@ -130,6 +145,7 @@ export function BrokerCreditPopover({
     }
 
     setIsChecking(true);
+    setHasChecked(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -143,7 +159,6 @@ export function BrokerCreditPopover({
           mc_number: mcToCheck,
           broker_name: customerName,
           load_email_id: loadEmailId,
-          customer_id: customerDetails?.id,
         },
       });
 
@@ -152,17 +167,26 @@ export function BrokerCreditPopover({
       }
 
       const result = response.data;
+      
+      // Update state with all response data
+      setCurrentStatus(result.approval_status || 'unchecked');
+      setOtrData(result.otr_data || null);
+      setFmcsaData(result.fmcsa_data || null);
+      setExistingCustomer(result.existing_customer || null);
+      setSimilarCustomers(result.similar_customers || []);
+      setHasChecked(true);
+      
+      // Auto-select best address source
+      if (result.fmcsa_data?.physical_address) {
+        setSelectedAddressSource('fmcsa');
+      } else if (postedAddress) {
+        setSelectedAddressSource('posted');
+      }
+
       if (result.success !== false) {
-        setCurrentStatus(result.approval_status || 'unchecked');
-        if (result.credit_limit) {
-          setCustomerDetails(prev => ({
-            ...prev,
-            credit_limit: result.credit_limit,
-          }));
-        }
         toast.success(`Credit check complete: ${result.approval_status || 'Unknown'}`);
-      } else {
-        toast.error(result.error || 'Credit check failed');
+      } else if (result.error) {
+        toast.error(result.error);
       }
     } catch (error) {
       console.error('[BrokerCreditPopover] Check failed:', error);
@@ -172,17 +196,87 @@ export function BrokerCreditPopover({
     }
   };
 
-  const formatAddress = () => {
-    const parts = [
-      customerDetails?.address,
-      customerDetails?.city,
-      customerDetails?.state,
-      customerDetails?.zip,
-    ].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : 'No address on file';
+  const handleSaveCustomer = async () => {
+    if (!tenantId || !otrData?.name) {
+      toast.error('OTR name required - run credit check first');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const cleanMc = localMcNumber.replace(/^MC-?/i, '').trim();
+      
+      // Build customer data - OTR name + MC is authoritative
+      const customerData = {
+        tenant_id: tenantId,
+        name: otrData.name, // Always use OTR name for billing
+        mc_number: cleanMc,
+        otr_approval_status: otrData.approval_status || null,
+        otr_credit_limit: otrData.credit_limit || null,
+        otr_last_checked_at: new Date().toISOString(),
+        status: 'active',
+        dot_number: fmcsaData?.dot_number || null,
+        address: selectedAddressSource === 'fmcsa' && fmcsaData?.physical_address 
+          ? fmcsaData.physical_address 
+          : parsedData?.broker_address || null,
+        city: selectedAddressSource === 'posted' ? parsedData?.broker_city || null : null,
+        state: selectedAddressSource === 'posted' ? parsedData?.broker_state || null : null,
+        zip: selectedAddressSource === 'posted' ? parsedData?.broker_zip || null : null,
+        phone: selectedAddressSource === 'fmcsa' && fmcsaData?.phone 
+          ? fmcsaData.phone 
+          : parsedData?.broker_phone || null,
+      };
+
+      // Merge or create
+      if (selectedMergeCustomerId) {
+        // Update existing customer
+        const { error } = await supabase
+          .from('customers')
+          .update(customerData)
+          .eq('id', selectedMergeCustomerId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        toast.success('Customer updated successfully');
+        setExistingCustomer({ 
+          id: selectedMergeCustomerId, 
+          name: otrData.name,
+          mc_number: cleanMc,
+        });
+      } else {
+        // Create new customer
+        const { data, error } = await supabase
+          .from('customers')
+          .insert(customerData)
+          .select('id, name, mc_number')
+          .single();
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('Customer with this MC number already exists');
+          } else {
+            throw error;
+          }
+          return;
+        }
+        
+        toast.success('Customer created successfully');
+        setExistingCustomer({ 
+          id: data.id, 
+          name: data.name,
+          mc_number: data.mc_number || undefined,
+        });
+        setSimilarCustomers([]);
+      }
+    } catch (error) {
+      console.error('[BrokerCreditPopover] Save failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save customer');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Determine button style based on status - all cards are same size (w-[160px])
+  // Button style based on status
   const getButtonStyle = () => {
     const baseClass = 'w-[160px] max-w-[160px] px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]';
     
@@ -204,7 +298,6 @@ export function BrokerCreditPopover({
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.15)',
       };
     }
-    // Default: amber for unchecked/call_otr
     return {
       className: `${baseClass} bg-gradient-to-b from-amber-400 to-amber-500 text-amber-900 border border-amber-300`,
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.1)',
@@ -212,6 +305,15 @@ export function BrokerCreditPopover({
   };
 
   const buttonStyle = getButtonStyle();
+
+  const getApprovalIcon = (status: string | undefined) => {
+    switch (status) {
+      case 'approved': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'not_approved': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'call_otr': return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      default: return <AlertCircle className="h-4 w-4 text-gray-400" />;
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -222,47 +324,46 @@ export function BrokerCreditPopover({
           style={{ boxShadow: buttonStyle.boxShadow }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Customer name */}
           <span className="truncate">{truncatedName}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80 p-0" 
+        className="w-[520px] p-0" 
         side="bottom" 
         align="start"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with status */}
-        <div className={`p-3 border-b ${statusColors.bg}`}>
+        {/* Header with customer status */}
+        <div className={`p-3 border-b ${existingCustomer ? 'bg-green-50 dark:bg-green-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <span className="font-semibold text-sm truncate" title={customerName}>
-                {customerName.length > 30 ? customerName.slice(0, 28) + '…' : customerName}
+                {customerName.length > 35 ? customerName.slice(0, 33) + '…' : customerName}
               </span>
             </div>
-            <div className={`flex items-center gap-1.5 text-xs font-medium ${statusColors.text} flex-shrink-0 ml-2`}>
-              <div className={`w-2 h-2 rounded-full ${statusColors.dot}`} />
-              {statusColors.label}
-            </div>
+            {existingCustomer ? (
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 flex-shrink-0">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Existing Customer
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 flex-shrink-0">
+                <UserPlus className="h-3 w-3 mr-1" />
+                New Broker
+              </Badge>
+            )}
           </div>
         </div>
 
-        {/* Details section */}
-        <div className="p-3 space-y-3">
-          {/* Address */}
-          <div className="flex items-start gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-muted-foreground">{formatAddress()}</p>
-          </div>
-
-          {/* MC Number input */}
-          <div className="space-y-1.5">
-            <Label htmlFor="mc-number" className="text-xs flex items-center gap-1">
-              <Hash className="h-3 w-3" />
-              MC Number
-            </Label>
-            <div className="flex gap-2">
+        {/* MC Number input */}
+        <div className="p-3 border-b bg-muted/30">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Label htmlFor="mc-number" className="text-xs flex items-center gap-1 mb-1.5">
+                <Hash className="h-3 w-3" />
+                MC Number
+              </Label>
               <Input
                 id="mc-number"
                 value={localMcNumber}
@@ -271,31 +372,244 @@ export function BrokerCreditPopover({
                 className="h-8 text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
-              <Button
-                size="sm"
-                onClick={handleCheckCredit}
-                disabled={isChecking || !localMcNumber.trim()}
-                className="h-8 px-3 gap-1.5"
-              >
-                {isChecking ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                Check
-              </Button>
             </div>
+            <Button
+              size="sm"
+              onClick={handleCheckCredit}
+              disabled={isChecking || !localMcNumber.trim()}
+              className="h-8 px-4 gap-1.5"
+            >
+              {isChecking ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Check
+            </Button>
           </div>
-
-          {/* Credit limit if available */}
-          {customerDetails?.credit_limit && (
-            <div className="pt-2 border-t">
-              <p className="text-xs text-muted-foreground">
-                Credit Limit: <span className="font-semibold text-foreground">${customerDetails.credit_limit.toLocaleString()}</span>
-              </p>
-            </div>
-          )}
         </div>
+
+        {/* 3-Source Comparison Grid */}
+        {hasChecked && (
+          <div className="p-3 space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              {/* Column Headers */}
+              <div className="font-semibold text-center text-muted-foreground pb-1 border-b flex items-center justify-center gap-1">
+                <FileText className="h-3 w-3" />
+                Posted Load
+              </div>
+              <div className="font-semibold text-center text-green-700 pb-1 border-b flex items-center justify-center gap-1">
+                <Shield className="h-3 w-3" />
+                OTR Solutions
+              </div>
+              <div className="font-semibold text-center text-blue-700 pb-1 border-b flex items-center justify-center gap-1">
+                <Building2 className="h-3 w-3" />
+                FMCSA
+              </div>
+
+              {/* Row: Name */}
+              <div className="p-2 bg-muted/20 rounded">
+                <div className="text-[10px] text-muted-foreground mb-0.5">Name</div>
+                <div className="font-medium truncate" title={parsedData?.broker_name || customerName}>
+                  {parsedData?.broker_name || customerName || '—'}
+                </div>
+              </div>
+              <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded border border-green-200">
+                <div className="text-[10px] text-green-600 mb-0.5">Name (Billing)</div>
+                <div className="font-medium text-green-800 truncate" title={otrData?.name}>
+                  {otrData?.name || '—'}
+                </div>
+              </div>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
+                <div className="text-[10px] text-blue-600 mb-0.5">Legal Name</div>
+                <div className="font-medium truncate" title={fmcsaData?.legal_name}>
+                  {fmcsaData?.legal_name || fmcsaData?.dba_name || '—'}
+                </div>
+              </div>
+
+              {/* Row: Status / DOT */}
+              <div className="p-2 bg-muted/20 rounded">
+                <div className="text-[10px] text-muted-foreground mb-0.5">Source</div>
+                <div className="font-medium">Email</div>
+              </div>
+              <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded border border-green-200">
+                <div className="text-[10px] text-green-600 mb-0.5">Approval</div>
+                <div className="flex items-center gap-1">
+                  {getApprovalIcon(otrData?.approval_status)}
+                  <span className="font-medium capitalize">
+                    {otrData?.approval_status?.replace('_', ' ') || '—'}
+                  </span>
+                </div>
+                {otrData?.credit_limit && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    Limit: ${otrData.credit_limit.toLocaleString()}
+                  </div>
+                )}
+              </div>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
+                <div className="text-[10px] text-blue-600 mb-0.5">DOT / Status</div>
+                <div className="font-medium">
+                  {fmcsaData?.dot_number ? `DOT# ${fmcsaData.dot_number}` : '—'}
+                </div>
+                {fmcsaData?.safer_status && (
+                  <Badge variant="outline" className={`mt-0.5 text-[9px] ${
+                    fmcsaData.safer_status.includes('AUTHORIZED') 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {fmcsaData.safer_status}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Row: Address - with radio selection */}
+              <div className={`p-2 rounded ${selectedAddressSource === 'posted' ? 'bg-amber-50 border-2 border-amber-300' : 'bg-muted/20'}`}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <RadioGroupItem 
+                    value="posted" 
+                    id="addr-posted"
+                    checked={selectedAddressSource === 'posted'}
+                    onClick={() => setSelectedAddressSource('posted')}
+                    className="h-3 w-3"
+                    disabled={!postedAddress}
+                  />
+                  <label htmlFor="addr-posted" className="text-[10px] text-muted-foreground cursor-pointer">Address</label>
+                </div>
+                <div className="font-medium text-[11px] leading-tight">
+                  {postedAddress || '—'}
+                </div>
+              </div>
+              <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded">
+                <div className="text-[10px] text-green-600 mb-0.5">MC Number</div>
+                <div className="font-medium">
+                  {otrData?.mc_number ? `MC# ${otrData.mc_number}` : '—'}
+                </div>
+              </div>
+              <div className={`p-2 rounded ${selectedAddressSource === 'fmcsa' ? 'bg-blue-100 border-2 border-blue-400' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <RadioGroupItem 
+                    value="fmcsa" 
+                    id="addr-fmcsa"
+                    checked={selectedAddressSource === 'fmcsa'}
+                    onClick={() => setSelectedAddressSource('fmcsa')}
+                    className="h-3 w-3"
+                    disabled={!fmcsaData?.physical_address}
+                  />
+                  <label htmlFor="addr-fmcsa" className="text-[10px] text-blue-600 cursor-pointer">Address</label>
+                </div>
+                <div className="font-medium text-[11px] leading-tight">
+                  {fmcsaData?.physical_address || '—'}
+                </div>
+              </div>
+
+              {/* Row: Phone */}
+              <div className="p-2 bg-muted/20 rounded">
+                <div className="text-[10px] text-muted-foreground mb-0.5">Phone</div>
+                <div className="font-medium flex items-center gap-1">
+                  {parsedData?.broker_phone ? (
+                    <>
+                      <Phone className="h-3 w-3" />
+                      {parsedData.broker_phone}
+                    </>
+                  ) : '—'}
+                </div>
+              </div>
+              <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded">
+                {/* Empty - OTR doesn't provide phone */}
+              </div>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
+                <div className="text-[10px] text-blue-600 mb-0.5">Phone</div>
+                <div className="font-medium flex items-center gap-1">
+                  {fmcsaData?.phone ? (
+                    <>
+                      <Phone className="h-3 w-3" />
+                      {fmcsaData.phone}
+                    </>
+                  ) : '—'}
+                </div>
+              </div>
+            </div>
+
+            {/* Similar Customers Warning */}
+            {similarCustomers.length > 0 && !existingCustomer && (
+              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 mb-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Similar customers found - merge?
+                </div>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer p-1 hover:bg-amber-100 rounded">
+                    <input
+                      type="radio"
+                      name="merge"
+                      checked={selectedMergeCustomerId === null}
+                      onChange={() => setSelectedMergeCustomerId(null)}
+                      className="h-3 w-3"
+                    />
+                    <span>Create as new customer</span>
+                  </label>
+                  {similarCustomers.slice(0, 3).map(c => (
+                    <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer p-1 hover:bg-amber-100 rounded">
+                      <input
+                        type="radio"
+                        name="merge"
+                        checked={selectedMergeCustomerId === c.id}
+                        onChange={() => setSelectedMergeCustomerId(c.id)}
+                        className="h-3 w-3"
+                      />
+                      <span className="truncate">{c.name}</span>
+                      {c.mc_number && <span className="text-muted-foreground">MC# {c.mc_number}</span>}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2 border-t">
+              {existingCustomer ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-8 text-xs"
+                  onClick={() => {
+                    navigate(`/dashboard/business/customers/${existingCustomer.id}`);
+                    setOpen(false);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View Customer
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700"
+                  onClick={handleSaveCustomer}
+                  disabled={isSaving || !otrData?.name}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-3 w-3 mr-1" />
+                  )}
+                  {selectedMergeCustomerId ? 'Merge & Update' : 'Save as Customer'}
+                </Button>
+              )}
+            </div>
+
+            {/* Info note */}
+            <p className="text-[10px] text-muted-foreground text-center">
+              Customer name and MC will be saved from OTR Solutions (billing authority)
+            </p>
+          </div>
+        )}
+
+        {/* Before check state */}
+        {!hasChecked && (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            <p>Enter MC number and click Check to see broker information from all sources</p>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

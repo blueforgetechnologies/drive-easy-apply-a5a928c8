@@ -159,7 +159,7 @@ async function checkWithOtr(
   }
 }
 
-// Check broker info using FMCSA API (free, public) as fallback
+// Check broker info using FMCSA API (free, public) - full data including address
 async function checkWithFmcsa(mcNumber: string): Promise<{
   found: boolean;
   legal_name?: string;
@@ -167,41 +167,98 @@ async function checkWithFmcsa(mcNumber: string): Promise<{
   phone?: string;
   dot_number?: string;
   status?: string;
+  physical_address?: string;
+  safer_status?: string;
+  safety_rating?: string;
+  mc_number?: string;
 }> {
   try {
     // Clean MC: remove "MC-" prefix and strip leading zeros for FMCSA
     const cleanMc = mcNumber.replace(/^MC-?/i, '').trim().replace(/^0+/, '') || '0';
-    console.log(`[check-broker-credit] Checking FMCSA for MC: ${cleanMc}`);
+    console.log(`[check-broker-credit] Checking FMCSA (SAFER) for MC: ${cleanMc}`);
     
-    const response = await fetch(
-      `https://mobile.fmcsa.dot.gov/qc/services/carriers/docket-number/${cleanMc}?webKey=d3667c8f7b84e0af15b7e0d3aea0a8f0c29e6ec1`,
-      { headers: { 'Accept': 'application/json' } }
-    );
+    // Use SAFER website for full data including address
+    const fmcsaUrl = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=MC_MX&query_string=${cleanMc}`;
+    const response = await fetch(fmcsaUrl);
+    const html = await response.text();
 
-    if (!response.ok) {
-      console.log(`[check-broker-credit] FMCSA returned ${response.status}`);
-      return { found: false };
+    console.log(`[check-broker-credit] FMCSA response length: ${html.length}`);
+
+    // Parse HTML for carrier data
+    const result: {
+      found: boolean;
+      legal_name?: string;
+      dba_name?: string;
+      phone?: string;
+      dot_number?: string;
+      status?: string;
+      physical_address?: string;
+      safer_status?: string;
+      safety_rating?: string;
+      mc_number?: string;
+    } = { found: false };
+
+    // Extract USDOT Number
+    const usdotMatch = html.match(/USDOT Number:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (usdotMatch) {
+      result.dot_number = usdotMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
     }
 
-    const data = await response.json();
+    // Extract Legal Name
+    const legalNameMatch = html.match(/Legal Name:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (legalNameMatch) {
+      result.legal_name = legalNameMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+    }
+
+    // Extract DBA Name
+    const dbaNameMatch = html.match(/DBA Name:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (dbaNameMatch) {
+      const dbaText = dbaNameMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+      if (dbaText) result.dba_name = dbaText;
+    }
+
+    // Extract Physical Address
+    const physicalAddressMatch = html.match(/Physical Address:<\/a><\/th>\s*<td[^>]*id="physicaladdressvalue"[^>]*>(.*?)<\/td>/is);
+    if (physicalAddressMatch) {
+      result.physical_address = physicalAddressMatch[1]
+        .replace(/<br>/gi, ', ')
+        .replace(/&nbsp;/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    // Extract Phone
+    const phoneMatch = html.match(/Phone:<\/a><\/th>\s*<td[^>]*>(.*?)<\/td>/is);
+    if (phoneMatch) {
+      result.phone = phoneMatch[1].trim().replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim();
+    }
+
+    // Extract MC Number
+    const mcNumberMatch = html.match(/MC-(\d+)/i);
+    if (mcNumberMatch) {
+      result.mc_number = mcNumberMatch[1];
+    }
+
+    // Extract Operating Authority Status
+    const operatingStatusMatch = html.match(/Operating\s+Authority\s+Status:<\/a><\/th>[\s\S]{0,300}?<b>(.*?)<\/b>/i);
+    if (operatingStatusMatch) {
+      result.safer_status = operatingStatusMatch[1].trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+      result.status = result.safer_status?.toLowerCase().includes('authorized') ? 'authorized' : 'not_authorized';
+    }
+
+    // Extract Safety Rating
+    const safetyRatingMatch = html.match(/Rating:<\/[^>]+>[\s\S]{0,200}?<td[^>]*>[\s\S]{0,100}?([^<\n]+)/i);
+    if (safetyRatingMatch) {
+      const rating = safetyRatingMatch[1].trim().replace(/&nbsp;/g, ' ').replace(/\|/g, '').replace(/\s+/g, ' ').trim();
+      if (rating && rating.length > 0) result.safety_rating = rating;
+    }
+
+    // Check if carrier was found
+    result.found = !!(result.legal_name || result.dba_name || result.physical_address);
     
-    if (!data?.content || data.content.length === 0) {
-      return { found: false };
-    }
-
-    const carrier = data.content[0]?.carrier;
-    if (!carrier) {
-      return { found: false };
-    }
-
-    return {
-      found: true,
-      legal_name: carrier.legalName,
-      dba_name: carrier.dbaName,
-      phone: carrier.phyPhone,
-      dot_number: carrier.dotNumber?.toString(),
-      status: carrier.allowedToOperate === 'Y' ? 'authorized' : 'not_authorized'
-    };
+    console.log(`[check-broker-credit] FMCSA result: found=${result.found}, name=${result.legal_name}`);
+    return result;
   } catch (error) {
     console.error('[check-broker-credit] FMCSA lookup error:', error);
     return { found: false };
@@ -444,18 +501,63 @@ serve(async (req) => {
       resolvedBrokerName = resolvedBrokerName || customer.name;
     }
 
-    if (broker_name && !customer_id) {
-      const { data: matchingCustomers } = await adminClient
-        .from('customers')
-        .select('id, name, mc_number')
-        .eq('tenant_id', tenant_id)
-        .or(`name.ilike.%${broker_name}%,mc_number.eq.${mcToCheck}`)
-        .limit(1);
-      
-      if (matchingCustomers && matchingCustomers.length > 0) {
-        resolvedCustomerId = matchingCustomers[0].id;
-        if (!mcToCheck && matchingCustomers[0].mc_number) {
-          mcToCheck = matchingCustomers[0].mc_number;
+    // Check for existing customer by MC number OR name
+    let existingCustomer: {
+      id: string;
+      name: string;
+      mc_number?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      phone?: string;
+      otr_approval_status?: string;
+      otr_credit_limit?: number;
+    } | null = null;
+
+    // Find similar customers for merge detection
+    let similarCustomers: Array<{ id: string; name: string; mc_number?: string }> = [];
+
+    if (mcToCheck || broker_name) {
+      // Look for exact MC match first
+      if (mcToCheck) {
+        const cleanMc = mcToCheck.replace(/^MC-?/i, '').trim();
+        const { data: mcMatch } = await adminClient
+          .from('customers')
+          .select('id, name, mc_number, address, city, state, zip, phone, otr_approval_status, otr_credit_limit')
+          .eq('tenant_id', tenant_id)
+          .eq('mc_number', cleanMc)
+          .maybeSingle();
+        
+        if (mcMatch) {
+          existingCustomer = mcMatch;
+          resolvedCustomerId = mcMatch.id;
+        }
+      }
+
+      // Find similar customers by name (fuzzy match for merge suggestions)
+      if (broker_name && !existingCustomer) {
+        const { data: nameMatches } = await adminClient
+          .from('customers')
+          .select('id, name, mc_number')
+          .eq('tenant_id', tenant_id)
+          .ilike('name', `%${broker_name.split(' ')[0]}%`)
+          .limit(5);
+        
+        if (nameMatches && nameMatches.length > 0) {
+          similarCustomers = nameMatches;
+          // If there's an exact name match, use it
+          const exactMatch = nameMatches.find(c => 
+            c.name.toLowerCase() === broker_name.toLowerCase()
+          );
+          if (exactMatch) {
+            existingCustomer = {
+              id: exactMatch.id,
+              name: exactMatch.name,
+              mc_number: exactMatch.mc_number || undefined,
+            };
+            resolvedCustomerId = exactMatch.id;
+          }
         }
       }
     }
@@ -562,6 +664,7 @@ serve(async (req) => {
       }
     }
 
+    // Build comprehensive response with all sources
     return new Response(
       JSON.stringify({
         success: otrResult?.success ?? false,
@@ -570,8 +673,38 @@ serve(async (req) => {
         broker_name: finalBrokerName,
         dot_number: dotNumber,
         customer_id: resolvedCustomerId,
-        fmcsa_data: fmcsaResult.found ? fmcsaResult : null,
-        error: checkError
+        error: checkError,
+        // OTR Solutions data (billing authority)
+        otr_data: otrResult?.success ? {
+          name: otrResult.broker_name,
+          approval_status: otrResult.approval_status,
+          credit_limit: otrResult.credit_limit,
+          mc_number: mcToCheck,
+        } : null,
+        // FMCSA data (compliance/address)
+        fmcsa_data: fmcsaResult.found ? {
+          legal_name: fmcsaResult.legal_name,
+          dba_name: fmcsaResult.dba_name,
+          dot_number: fmcsaResult.dot_number,
+          mc_number: fmcsaResult.mc_number,
+          physical_address: fmcsaResult.physical_address,
+          phone: fmcsaResult.phone,
+          safer_status: fmcsaResult.safer_status,
+          safety_rating: fmcsaResult.safety_rating,
+        } : null,
+        // Existing customer info
+        existing_customer: existingCustomer ? {
+          id: existingCustomer.id,
+          name: existingCustomer.name,
+          mc_number: existingCustomer.mc_number,
+          address: existingCustomer.address,
+          city: existingCustomer.city,
+          state: existingCustomer.state,
+          zip: existingCustomer.zip,
+          phone: existingCustomer.phone,
+        } : null,
+        // Similar customers for merge detection
+        similar_customers: similarCustomers.length > 0 ? similarCustomers : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
