@@ -182,22 +182,44 @@ export function BrokerCreditPopover({
     return parts.length > 0 ? parts.join(', ') : 'No address on file';
   };
 
+  // Determine button style based on status
+  const getButtonStyle = () => {
+    if (currentStatus === 'not_found') {
+      return {
+        className: 'bg-gray-900 dark:bg-gray-800 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-white shadow-md border border-gray-700 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.3)',
+      };
+    }
+    if (currentStatus === 'approved') {
+      return {
+        className: 'bg-gradient-to-b from-green-100 to-green-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-green-800 shadow-md border border-green-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+      };
+    }
+    if (currentStatus === 'not_approved') {
+      return {
+        className: 'bg-gradient-to-b from-red-100 to-red-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-red-800 shadow-md border border-red-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+      };
+    }
+    // Default: amber for unchecked/call_otr
+    return {
+      className: 'bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-amber-800 shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+    };
+  };
+
+  const buttonStyle = getButtonStyle();
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-amber-800 shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]"
-          style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
+          className={buttonStyle.className}
+          style={{ boxShadow: buttonStyle.boxShadow }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Colored dot indicator for status */}
-          <div 
-            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusColors.dot}`}
-            style={{ 
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-            }}
-          />
           {/* Customer name */}
           <span className="truncate">{truncatedName}</span>
         </button>
