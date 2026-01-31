@@ -131,6 +131,56 @@ export function BrokerCreditPopover({
     }
   }, [brokerStatus?.status]);
 
+  // Look up existing customer by name when popover opens
+  useEffect(() => {
+    if (!open || !tenantId || !customerName) return;
+    
+    // If we already have an MC from props, don't look up
+    if (mcNumber || brokerStatus?.mcNumber) return;
+    
+    const lookupCustomer = async () => {
+      try {
+        const { data } = await supabase
+          .from('customers')
+          .select('id, name, mc_number, otr_approval_status, address, city, state, zip, phone')
+          .eq('tenant_id', tenantId)
+          .ilike('name', `%${customerName.substring(0, 20)}%`)
+          .limit(5);
+        
+        if (data && data.length > 0) {
+          // Find exact or best match
+          const exactMatch = data.find(c => 
+            c.name.toLowerCase() === customerName.toLowerCase()
+          );
+          const match = exactMatch || data[0];
+          
+          if (match) {
+            if (match.mc_number && !localMcNumber) {
+              setLocalMcNumber(match.mc_number);
+            }
+            setExistingCustomer({
+              id: match.id,
+              name: match.name,
+              mc_number: match.mc_number || undefined,
+              address: match.address || undefined,
+              city: match.city || undefined,
+              state: match.state || undefined,
+              zip: match.zip || undefined,
+              phone: match.phone || undefined,
+            });
+            if (match.otr_approval_status) {
+              setCurrentStatus(match.otr_approval_status);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[BrokerCreditPopover] Customer lookup failed:', error);
+      }
+    };
+    
+    lookupCustomer();
+  }, [open, tenantId, customerName, mcNumber, brokerStatus?.mcNumber]);
+
   // Build posted load address
   const postedAddress = [
     parsedData?.broker_address,
