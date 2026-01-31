@@ -50,13 +50,19 @@ async function hasRecentCheck(
 
 /**
  * Find or create customer by broker name and MC number.
- * Returns customer ID if found/created.
+ * Returns customer ID if found/created, AND the MC number from the customer record.
+ * This ensures we can use a saved MC even if the email didn't contain one.
  */
 async function findOrCreateCustomer(
   tenantId: string,
   brokerName: string,
   mcNumber: string | null | undefined
-): Promise<{ customerId: string | null; created: boolean; existingStatus: string | null }> {
+): Promise<{ 
+  customerId: string | null; 
+  created: boolean; 
+  existingStatus: string | null;
+  savedMcNumber: string | null;
+}> {
   // First, try to find by name (fuzzy)
   const { data: existingByName } = await supabase
     .from('customers')
@@ -69,7 +75,8 @@ async function findOrCreateCustomer(
     return { 
       customerId: existingByName[0].id, 
       created: false,
-      existingStatus: existingByName[0].otr_approval_status
+      existingStatus: existingByName[0].otr_approval_status,
+      savedMcNumber: existingByName[0].mc_number || null,
     };
   }
   
@@ -77,7 +84,7 @@ async function findOrCreateCustomer(
   if (mcNumber) {
     const { data: existingByMc } = await supabase
       .from('customers')
-      .select('id, otr_approval_status')
+      .select('id, mc_number, otr_approval_status')
       .eq('tenant_id', tenantId)
       .eq('mc_number', mcNumber)
       .limit(1);
@@ -86,7 +93,8 @@ async function findOrCreateCustomer(
       return { 
         customerId: existingByMc[0].id, 
         created: false,
-        existingStatus: existingByMc[0].otr_approval_status
+        existingStatus: existingByMc[0].otr_approval_status,
+        savedMcNumber: existingByMc[0].mc_number || null,
       };
     }
     
@@ -110,26 +118,27 @@ async function findOrCreateCustomer(
         console.log(`[broker-check] Customer already exists (race condition), fetching existing`);
         const { data: existing } = await supabase
           .from('customers')
-          .select('id, otr_approval_status')
+          .select('id, mc_number, otr_approval_status')
           .eq('tenant_id', tenantId)
           .or(`name.ilike.%${brokerName}%,mc_number.eq.${mcNumber}`)
           .limit(1);
         return { 
           customerId: existing?.[0]?.id || null, 
           created: false,
-          existingStatus: existing?.[0]?.otr_approval_status || null
+          existingStatus: existing?.[0]?.otr_approval_status || null,
+          savedMcNumber: existing?.[0]?.mc_number || null,
         };
       }
       console.error(`[broker-check] Failed to create customer:`, createError);
-      return { customerId: null, created: false, existingStatus: null };
+      return { customerId: null, created: false, existingStatus: null, savedMcNumber: null };
     }
     
     console.log(`[broker-check] Created new customer: ${brokerName} (MC: ${mcNumber})`);
-    return { customerId: newCustomer?.id || null, created: true, existingStatus: null };
+    return { customerId: newCustomer?.id || null, created: true, existingStatus: null, savedMcNumber: mcNumber };
   }
   
   // No customer found and no MC to create one
-  return { customerId: null, created: false, existingStatus: null };
+  return { customerId: null, created: false, existingStatus: null, savedMcNumber: null };
 }
 
 /**
@@ -201,7 +210,7 @@ export async function checkBrokerCredit(
 ): Promise<BrokerCheckResult> {
   const orderNumber = parsedData.order_number;
   const brokerName = parsedData.broker_company || parsedData.broker || parsedData.customer;
-  const mcNumber = parsedData.mc_number;
+  const emailMcNumber = parsedData.mc_number;
   
   // Skip if no broker name
   if (!brokerName) {
@@ -216,12 +225,17 @@ export async function checkBrokerCredit(
     return { success: true, approvalStatus: 'already_checked' };
   }
   
-  // Find or create customer
-  const { customerId, created, existingStatus } = await findOrCreateCustomer(
+  // Find or create customer - this returns the saved MC number if one exists
+  const { customerId, created, existingStatus, savedMcNumber } = await findOrCreateCustomer(
     tenantId,
     brokerName,
-    mcNumber
+    emailMcNumber
   );
+  
+  // Use saved MC from customer record if email didn't have one
+  const mcNumber = emailMcNumber || savedMcNumber;
+  
+  console.log(`[broker-check] Broker: ${brokerName}, Email MC: ${emailMcNumber || 'none'}, Saved MC: ${savedMcNumber || 'none'}, Using MC: ${mcNumber || 'none'}`);
   
   // If customer doesn't have MC, we can't do OTR check
   if (!mcNumber) {
@@ -246,7 +260,32 @@ export async function checkBrokerCredit(
     };
   }
   
-  // Perform OTR check
+  // If we found an existing customer with a recent valid status, use it instead of calling API again
+  // Only re-check if status is unchecked or if check is older than 24 hours
+  if (existingStatus && existingStatus !== 'unchecked' && customerId) {
+    console.log(`[broker-check] Using existing customer status: ${existingStatus} for ${brokerName}`);
+    
+    // Record the check for this load_email (dedupe future calls)
+    await supabase.from('broker_credit_checks').insert({
+      tenant_id: tenantId,
+      customer_id: customerId,
+      broker_name: brokerName,
+      mc_number: mcNumber,
+      approval_status: existingStatus,
+      load_email_id: loadEmailId,
+      match_id: matchId,
+      raw_response: { reason: 'used_existing_customer_status' },
+    });
+    
+    return {
+      success: true,
+      approvalStatus: existingStatus,
+      customerId,
+      customerCreated: created,
+    };
+  }
+  
+  // Perform OTR check - this will update the customer record with the new status
   const otrResult = await callOtrCheck(
     tenantId,
     mcNumber,
