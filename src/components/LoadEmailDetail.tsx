@@ -735,7 +735,11 @@ const LoadEmailDetail = ({
     const orderLine = `Order Number: ${data.order_number || 'N/A'} [${originCity}, ${originState} to ${destCity}, ${destState}]`;
     setEditableOrderLine(orderLine);
   }, [vehicle, data.broker_name, data.broker_email, data.order_number, originCity, originState, destCity, destState]);
-  const brokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+  const rawBrokerName = data.broker || data.broker_company || data.customer || email.from_name || email.from_email?.split('@')[0] || "Unknown";
+  // Clean and truncate broker name - remove HTML and limit to 25 chars
+  const cleanBrokerName = rawBrokerName.replace(/<[^>]*>/g, '').trim();
+  const brokerName = cleanBrokerName.length > 25 ? cleanBrokerName.slice(0, 23) + '…' : cleanBrokerName;
+  const fullBrokerName = cleanBrokerName; // For tooltips
 
   // Haversine distance calculation (returns distance in miles)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -2039,14 +2043,14 @@ const LoadEmailDetail = ({
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
                     <div className="flex items-center gap-2">
                       <button 
-                        className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:from-amber-150 hover:to-amber-250 active:scale-[0.98]"
+                        className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center rounded-lg text-amber-800 truncate shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:from-amber-150 hover:to-amber-250 active:scale-[0.98] max-w-[200px]"
                         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
-                        title={brokerName}
+                        title={fullBrokerName}
                       >
                         {brokerName}
                       </button>
                       <BrokerCreditBadge
-                        brokerName={brokerName}
+                        brokerName={fullBrokerName}
                         mcNumber={data.mc_number || data.broker_mc}
                         loadEmailId={email.id}
                         matchId={match?.id}
