@@ -45,7 +45,7 @@ async function hasRecentCheck(
     .gte('checked_at', oneHourAgo)
     .limit(1);
     
-  return (existingCheck && existingCheck.length > 0);
+  return !!(existingCheck && existingCheck.length > 0);
 }
 
 /**
@@ -167,7 +167,7 @@ async function callOtrCheck(
       return { success: false, approvalStatus: 'unchecked', error: errorText };
     }
     
-    const result = await response.json();
+    const result = await response.json() as { success?: boolean; approval_status?: string };
     console.log(`[broker-check] OTR check result: ${result.approval_status || 'unknown'}`);
     
     return {
