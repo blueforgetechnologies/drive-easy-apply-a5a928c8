@@ -584,13 +584,34 @@ export async function processInboundEmail(item: InboundQueueItem): Promise<Inbou
     } else {
       const subjectData = parseSubjectLine(subject);
       const bodyData = parseSylectusEmail(subject, bodyText);
-      parsedData = { ...bodyData, ...subjectData };
+      
+      // DEFENSIVE MERGE: Filter out undefined/null values to prevent overwrites
+      // Subject data provides base, body data supplements/overrides with real values only
+      const filterDefined = (obj: Record<string, any>): Record<string, any> => {
+        return Object.fromEntries(
+          Object.entries(obj).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        );
+      };
+      
+      const cleanSubject = filterDefined(subjectData);
+      const cleanBody = filterDefined(bodyData);
+      parsedData = { ...cleanSubject, ...cleanBody } as ParsedEmailData;
+      
+      // VALIDATION LOGGING: Warn if critical fields are missing after merge
+      const criticalFields = ['pickup_time', 'pickup_date', 'delivery_time', 'delivery_date', 'pieces', 'dimensions', 'weight'];
+      const missingFields = criticalFields.filter(f => !(parsedData as any)[f]);
+      if (missingFields.length > 0) {
+        console.warn(`[inbound] Missing critical fields after merge: ${missingFields.join(', ')} | subject: ${subject.substring(0, 60)}`);
+      }
     }
     
     logStep('4-parse-done', { 
       origin: parsedData.origin_city, 
       dest: parsedData.destination_city,
-      vehicleType: parsedData.vehicle_type 
+      vehicleType: parsedData.vehicle_type,
+      pickup_time: parsedData.pickup_time,
+      pieces: parsedData.pieces,
+      dimensions: parsedData.dimensions
     });
     
     // ─────────────────────────────────────────────────────────────────────────
