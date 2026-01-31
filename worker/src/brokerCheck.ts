@@ -260,32 +260,7 @@ export async function checkBrokerCredit(
     };
   }
   
-  // If we found an existing customer with a recent valid status, use it instead of calling API again
-  // Only re-check if status is unchecked or if check is older than 24 hours
-  if (existingStatus && existingStatus !== 'unchecked' && customerId) {
-    console.log(`[broker-check] Using existing customer status: ${existingStatus} for ${brokerName}`);
-    
-    // Record the check for this load_email (dedupe future calls)
-    await supabase.from('broker_credit_checks').insert({
-      tenant_id: tenantId,
-      customer_id: customerId,
-      broker_name: brokerName,
-      mc_number: mcNumber,
-      approval_status: existingStatus,
-      load_email_id: loadEmailId,
-      match_id: matchId,
-      raw_response: { reason: 'used_existing_customer_status' },
-    });
-    
-    return {
-      success: true,
-      approvalStatus: existingStatus,
-      customerId,
-      customerCreated: created,
-    };
-  }
-  
-  // Perform OTR check - this will update the customer record with the new status
+  // Always call OTR API for fresh approval status (approval can change throughout the day)
   const otrResult = await callOtrCheck(
     tenantId,
     mcNumber,
