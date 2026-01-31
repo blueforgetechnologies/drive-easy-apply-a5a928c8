@@ -220,6 +220,29 @@ function extractBodyFromMessage(message: GmailMessage): { text: string | null; h
   return { text, html };
 }
 
+/**
+ * Strip HTML tags to synthesize plain text from HTML content.
+ * Used when email only has body_html and no body_text.
+ */
+function stripHtmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')          // Convert <br> to newlines
+    .replace(/<\/p>/gi, '\n')               // Convert </p> to newlines
+    .replace(/<\/div>/gi, '\n')             // Convert </div> to newlines
+    .replace(/<\/tr>/gi, '\n')              // Convert </tr> to newlines
+    .replace(/<\/td>/gi, ' ')               // Convert </td> to spaces
+    .replace(/<[^>]*>/g, '')                // Remove all remaining HTML tags
+    .replace(/&nbsp;/gi, ' ')               // Convert &nbsp; to spaces
+    .replace(/&amp;/gi, '&')                // Convert &amp; to &
+    .replace(/&lt;/gi, '<')                 // Convert &lt; to <
+    .replace(/&gt;/gi, '>')                 // Convert &gt; to >
+    .replace(/&quot;/gi, '"')               // Convert &quot; to "
+    .replace(/&#39;/gi, "'")                // Convert &#39; to '
+    .replace(/\s+/g, ' ')                   // Collapse multiple whitespace
+    .trim();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LOAD CREATION (adapted from inbound.ts)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,7 +255,10 @@ async function createLoadFromMessage(
   const headers = message.payload.headers;
   const subject = getHeaderValue(headers, 'Subject') || '';
   const fromEmail = extractEmailFromHeader(getHeaderValue(headers, 'From') || '');
-  const { text: bodyText, html: bodyHtml } = extractBodyFromMessage(message);
+  const { text: rawBodyText, html: bodyHtml } = extractBodyFromMessage(message);
+  
+  // Synthesize body_text from HTML if plain text is missing
+  const bodyText = rawBodyText || (bodyHtml ? stripHtmlToText(bodyHtml) : '');
   
   const messageId = message.id;
   const internalDate = message.internalDate 
@@ -254,14 +280,15 @@ async function createLoadFromMessage(
   const subjectData = parseSubjectLine(subject);
   
   // Step 2: Determine email source and parse body with correct arguments
+  // NOTE: parseSylectusEmail internally strips HTML, so passing bodyHtml as fallback works
   let bodyData: ParsedEmailData | null = null;
   let emailSource = 'unknown';
 
   if (subject?.toLowerCase().includes('sylectus') || 
       bodyText?.toLowerCase().includes('sylectus') ||
       bodyHtml?.toLowerCase().includes('sylectus')) {
-    // FIXED: parseSylectusEmail expects (subject, bodyText), NOT (bodyHtml, bodyText)
-    bodyData = parseSylectusEmail(subject, bodyText || '');
+    // Pass bodyHtml as fallback when bodyText is empty - parser handles HTML stripping
+    bodyData = parseSylectusEmail(subject, bodyText || bodyHtml || '');
     emailSource = 'sylectus';
   } else if (subject?.toLowerCase().includes('fullcircle') ||
              subject?.toLowerCase().includes('full circle') ||
@@ -273,11 +300,25 @@ async function createLoadFromMessage(
     emailSource = 'generic';
   }
 
-  // Step 3: Merge results - body data overrides subject data where present
-  const parsedData: ParsedEmailData = {
-    ...subjectData,
-    ...bodyData,
+  // Step 3: DEFENSIVE MERGE - Filter out undefined/null values to prevent overwrites
+  // Subject data provides base, body data supplements/overrides with real values only
+  const filterDefined = (obj: Record<string, any> | null): Record<string, any> => {
+    if (!obj) return {};
+    return Object.fromEntries(
+      Object.entries(obj).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
   };
+  
+  const cleanSubject = filterDefined(subjectData);
+  const cleanBody = filterDefined(bodyData);
+  const parsedData: ParsedEmailData = { ...cleanSubject, ...cleanBody } as ParsedEmailData;
+
+  // VALIDATION LOGGING: Warn if critical fields are missing after merge
+  const criticalFields = ['pickup_time', 'pickup_date', 'delivery_time', 'delivery_date', 'pieces', 'dimensions', 'weight'];
+  const missingFields = criticalFields.filter(f => !(parsedData as any)[f]);
+  if (missingFields.length > 0) {
+    log('warn', `Missing critical fields after merge: ${missingFields.join(', ')}`, { subject: subject?.substring(0, 60) });
+  }
 
   // Check if we got any meaningful data
   if (!parsedData.origin_city && !parsedData.destination_city && !parsedData.pickup_date) {
