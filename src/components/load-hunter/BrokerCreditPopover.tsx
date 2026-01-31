@@ -692,7 +692,7 @@ export function BrokerCreditPopover({
                     variant="outline"
                     className="w-full h-12 text-sm font-semibold gap-2 rounded-xl border-2"
                     onClick={() => {
-                      navigate(`/dashboard/business/customers/${existingCustomer.id}`);
+                      navigate(`/dashboard/customer/${existingCustomer.id}`);
                       setOpen(false);
                     }}
                   >
