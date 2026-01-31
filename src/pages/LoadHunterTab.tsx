@@ -1209,7 +1209,7 @@ export default function LoadHunterTab() {
 
   // fetchMapboxToken is now provided by useLoadHunterData hook
 
-  // Initialize map when vehicle is selected
+  // Initialize map when vehicle is selected - show truck AND hunt area
   useEffect(() => {
     if (!selectedVehicle || !mapContainer.current || !mapboxToken) return;
 
@@ -1219,11 +1219,34 @@ export default function LoadHunterTab() {
       map.current = null;
     }
 
-    // Get coordinates from last_location
-    if (!selectedVehicle.last_location) return;
+    // Get truck's GPS coordinates from last_location
+    let truckLat: number | null = null;
+    let truckLng: number | null = null;
+    if (selectedVehicle.last_location) {
+      const [lat, lng] = selectedVehicle.last_location.split(',').map(parseFloat);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        truckLat = lat;
+        truckLng = lng;
+      }
+    }
 
-    const [lat, lng] = selectedVehicle.last_location.split(',').map(parseFloat);
-    if (isNaN(lat) || isNaN(lng)) return;
+    // Get hunt plan coordinates for this vehicle
+    const vehicleHuntPlans = huntPlans.filter(hp => hp.vehicleId === selectedVehicle.id && hp.enabled);
+    const activeHunt = vehicleHuntPlans[0]; // Get the first active hunt
+    const huntCoords = activeHunt?.huntCoordinates;
+    const huntRadius = parseInt(String(activeHunt?.pickupRadius || '100'), 10); // Default 100 miles
+
+    // Determine map center - prefer hunt coordinates if available, else truck location
+    let centerLng = truckLng;
+    let centerLat = truckLat;
+    
+    if (huntCoords?.lat && huntCoords?.lng) {
+      centerLng = huntCoords.lng;
+      centerLat = huntCoords.lat;
+    }
+
+    // If no coordinates at all, skip map
+    if (centerLat === null || centerLng === null) return;
 
     // Initialize new map
     mapboxgl.accessToken = mapboxToken;
@@ -1231,28 +1254,105 @@ export default function LoadHunterTab() {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [lng, lat],
+      center: [centerLng, centerLat],
       zoom: 5,
     });
 
-    // Create truck icon marker
-    const el = document.createElement('div');
-    el.className = 'truck-marker';
-    el.style.width = '40px';
-    el.style.height = '40px';
-    el.style.backgroundColor = '#3b82f6';
-    el.style.borderRadius = '50%';
-    el.style.display = 'flex';
-    el.style.alignItems = 'center';
-    el.style.justifyContent = 'center';
-    el.style.color = 'white';
-    el.style.fontSize = '20px';
-    el.innerHTML = '🚛';
+    map.current.on('load', () => {
+      if (!map.current) return;
 
-    // Add marker
-    new mapboxgl.Marker({ element: el })
-      .setLngLat([lng, lat])
-      .addTo(map.current);
+      // Add hunt area circle if hunt coordinates exist
+      if (huntCoords?.lat && huntCoords?.lng) {
+        // Convert miles to meters (1 mile = 1609.34 meters)
+        const radiusMeters = huntRadius * 1609.34;
+        
+        // Add hunt area as a circle source
+        map.current.addSource('hunt-area', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [huntCoords.lng, huntCoords.lat]
+            },
+            properties: {}
+          }
+        });
+
+        // Add circle fill layer
+        map.current.addLayer({
+          id: 'hunt-area-fill',
+          type: 'circle',
+          source: 'hunt-area',
+          paint: {
+            'circle-radius': {
+              stops: [
+                [0, 0],
+                [20, radiusMeters / 0.075] // Approximate conversion for zoom
+              ],
+              base: 2
+            },
+            'circle-color': '#10b981',
+            'circle-opacity': 0.15,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#10b981',
+            'circle-stroke-opacity': 0.6
+          }
+        });
+
+        // Add hunt area center marker (target icon)
+        const huntEl = document.createElement('div');
+        huntEl.className = 'hunt-marker';
+        huntEl.style.width = '32px';
+        huntEl.style.height = '32px';
+        huntEl.style.backgroundColor = '#10b981';
+        huntEl.style.borderRadius = '50%';
+        huntEl.style.display = 'flex';
+        huntEl.style.alignItems = 'center';
+        huntEl.style.justifyContent = 'center';
+        huntEl.style.color = 'white';
+        huntEl.style.fontSize = '16px';
+        huntEl.style.border = '3px solid white';
+        huntEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+        huntEl.innerHTML = '🎯';
+        huntEl.title = `Hunt Area: ${activeHunt?.zipCode || 'Unknown'} (${huntRadius}mi radius)`;
+
+        new mapboxgl.Marker({ element: huntEl })
+          .setLngLat([huntCoords.lng, huntCoords.lat])
+          .addTo(map.current!);
+      }
+
+      // Add truck GPS marker if coordinates exist
+      if (truckLat !== null && truckLng !== null) {
+        const truckEl = document.createElement('div');
+        truckEl.className = 'truck-marker';
+        truckEl.style.width = '40px';
+        truckEl.style.height = '40px';
+        truckEl.style.backgroundColor = '#3b82f6';
+        truckEl.style.borderRadius = '50%';
+        truckEl.style.display = 'flex';
+        truckEl.style.alignItems = 'center';
+        truckEl.style.justifyContent = 'center';
+        truckEl.style.color = 'white';
+        truckEl.style.fontSize = '20px';
+        truckEl.style.border = '3px solid white';
+        truckEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+        truckEl.innerHTML = '🚛';
+        truckEl.title = `Truck Location (GPS)`;
+
+        new mapboxgl.Marker({ element: truckEl })
+          .setLngLat([truckLng, truckLat])
+          .addTo(map.current!);
+      }
+
+      // Fit map bounds to show both markers if both exist
+      if (huntCoords?.lat && huntCoords?.lng && truckLat !== null && truckLng !== null) {
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend([huntCoords.lng, huntCoords.lat]);
+        bounds.extend([truckLng, truckLat]);
+        map.current.fitBounds(bounds, { padding: 80, maxZoom: 8 });
+      }
+    });
 
     // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -1263,7 +1363,7 @@ export default function LoadHunterTab() {
         map.current = null;
       }
     };
-  }, [selectedVehicle, mapboxToken]);
+  }, [selectedVehicle, mapboxToken, huntPlans]);
 
   // All data loading functions are now provided by useLoadHunterData hook
   // Keep refs updated for real-time subscription callbacks
