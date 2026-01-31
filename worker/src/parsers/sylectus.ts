@@ -252,15 +252,27 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Dimensions - handle "0L x 0W x 0H" format from cleaned text
+  // Dimensions - extract ONLY the dimension value, stopping at "Stackable:" or other metadata
+  // Pattern: "48L x 40W x 48H" or "NO DIMENSIONS SPECIFIED" or "0L x 0W x 0H"
   const dimensionsHtmlMatch = bodyText?.match(/<strong>Dimensions?:\s*<\/strong>\s*([^<\n]+)/i);
-  if (dimensionsHtmlMatch) {
-    data.dimensions = dimensionsHtmlMatch[1].trim();
-  } else {
-    // Try cleaned text: "Dimensions: 48L x 40W x 48H" or "48x40x48"
-    const dimsCleanMatch = cleanBodyText?.match(/Dimensions?:\s*([^\n,]+)/i);
-    if (dimsCleanMatch) {
-      data.dimensions = dimsCleanMatch[1].trim();
+  let rawDims = dimensionsHtmlMatch?.[1]?.trim();
+  
+  if (!rawDims) {
+    // Try cleaned text
+    const dimsCleanMatch = cleanBodyText?.match(/Dimensions?:\s*([^\n]+)/i);
+    rawDims = dimsCleanMatch?.[1]?.trim();
+  }
+  
+  if (rawDims) {
+    // Extract just the dimensions, stopping at "Stackable:" or other metadata keywords
+    // Match patterns like: "48L x 40W x 48H", "0L x 0W x 0H", "NO DIMENSIONS SPECIFIED", "48x40x48"
+    const dimsOnlyMatch = rawDims.match(/^(\d+L?\s*x\s*\d+W?\s*x\s*\d+H?|NO DIMENSIONS SPECIFIED|\d+x\d+x\d+)/i);
+    if (dimsOnlyMatch) {
+      data.dimensions = dimsOnlyMatch[1].trim();
+    } else {
+      // If no standard pattern, take everything before "Stackable:" or "CSA" or "Notes:"
+      const cleanedDims = rawDims.split(/\s*(?:Stackable:|CSA|Notes:)/i)[0].trim();
+      data.dimensions = cleanedDims || rawDims;
     }
   }
 
