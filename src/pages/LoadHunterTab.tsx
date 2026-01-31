@@ -120,17 +120,30 @@ export default function LoadHunterTab() {
     loadAllData,
   } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
 
-  // Broker credit status hook - extracts load email IDs from visible data
-  const visibleLoadEmailIds = React.useMemo(() => {
-    const ids: string[] = [];
+  // Broker credit status hook - extracts load email IDs and broker names from visible data
+  const visibleLoadEmailInfos = React.useMemo(() => {
+    const infos: { loadEmailId: string; brokerName?: string }[] = [];
     [...unreviewedViewData, ...missedHistory, ...loadEmails].forEach((item: any) => {
-      const emailId = item?.email?.id || item?.id || item?.load_email_id;
-      if (emailId) ids.push(emailId);
+      const email = item?.email || item;
+      const emailId = email?.id || item?.load_email_id;
+      if (emailId) {
+        const parsed = email?.parsed_data || {};
+        // Extract broker name from various parsed fields
+        const brokerName = parsed.broker_company || parsed.broker || parsed.customer;
+        // Clean broker name - remove extra info after "Broker Phone:" etc
+        const cleanBrokerName = brokerName?.split('Broker Phone:')?.[0]?.trim();
+        infos.push({ loadEmailId: emailId, brokerName: cleanBrokerName });
+      }
     });
-    return ids.slice(0, 100); // Limit to 100 for performance
+    return infos.slice(0, 100); // Limit to 100 for performance
   }, [unreviewedViewData, missedHistory, loadEmails]);
   
-  const { statusMap: brokerStatusMap } = useBrokerCreditStatus(visibleLoadEmailIds);
+  const visibleLoadEmailIds = React.useMemo(() => 
+    visibleLoadEmailInfos.map(info => info.loadEmailId), 
+    [visibleLoadEmailInfos]
+  );
+  
+  const { statusMap: brokerStatusMap } = useBrokerCreditStatus(visibleLoadEmailIds, visibleLoadEmailInfos);
 
   const [bookingMatch, setBookingMatch] = useState<any | null>(null);
   const [bookingEmail, setBookingEmail] = useState<any | null>(null);
