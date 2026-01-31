@@ -341,43 +341,33 @@ export function BrokerCreditPopover({
           align="start"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header with gradient and customer status */}
+          {/* Header - Broker Name Only */}
           <div className={`relative overflow-hidden ${existingCustomer ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-primary to-blue-600'}`}>
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_50%,rgba(0,0,0,0.1)_100%)]" />
-            <div className="relative p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
-                    <Building2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-white text-base truncate" title={customerName}>
-                      {customerName.length > 30 ? customerName.slice(0, 28) + '…' : customerName}
-                    </h3>
-                    <p className="text-white/70 text-xs">Broker Verification</p>
-                  </div>
-                </div>
-                <Badge 
-                  className={`flex-shrink-0 px-3 py-1 font-semibold text-xs border-0 shadow-lg ${
-                    existingCustomer 
-                      ? 'bg-white text-green-700' 
-                      : 'bg-white text-blue-700'
-                  }`}
-                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-                >
-                  {existingCustomer ? (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                      Existing Customer
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                      New Broker
-                    </>
-                  )}
-                </Badge>
-              </div>
+            <div className="relative px-4 py-3 flex items-center justify-between">
+              <h3 className="font-bold text-white text-base truncate" title={customerName}>
+                {customerName.length > 35 ? customerName.slice(0, 33) + '…' : customerName}
+              </h3>
+              <Badge 
+                className={`flex-shrink-0 px-3 py-1 font-semibold text-xs border-0 shadow-lg ${
+                  existingCustomer 
+                    ? 'bg-white text-green-700' 
+                    : 'bg-white text-blue-700'
+                }`}
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                {existingCustomer ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                    Existing Customer
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    New Broker
+                  </>
+                )}
+              </Badge>
             </div>
           </div>
 
