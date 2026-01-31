@@ -14,6 +14,12 @@ const corsHeaders = {
 };
 
 interface OtrBrokerCheckResponse {
+  id?: string;
+  Name?: string;
+  McNumber?: string;
+  BrokerTestResult?: string;
+  NoBuy?: boolean;
+  ResponseStatus?: number;
   brokerMc?: string;
   brokerName?: string;
   status?: string;
@@ -26,6 +32,7 @@ interface OtrBrokerCheckResponse {
 // Check broker credit using OTR Solutions API
 // Endpoint: GET {BASE_URL}/broker-check/{brokerMc}
 // NOTE: Broker check does NOT require bearer token, only subscription key
+// Response format: {"id":"6678","Name":"...", "McNumber":"864049", "BrokerTestResult":"Call Credit", "NoBuy":false, "ResponseStatus":200}
 async function checkWithOtr(
   mcNumber: string, 
   subscriptionKey: string
@@ -81,32 +88,65 @@ async function checkWithOtr(
     }
     
     // Map OTR response to our status format
+    // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "Approved", etc.)
     let approvalStatus = 'unchecked';
-    if (data.approvalStatus) {
-      const otrStatus = data.approvalStatus.toLowerCase();
-      if (otrStatus === 'approved' || otrStatus === 'active' || otrStatus === 'yes') {
+    
+    // First check NoBuy flag - this is the primary indicator
+    if (typeof data.NoBuy === 'boolean') {
+      if (data.NoBuy === false) {
+        // NoBuy=false means broker IS approved for factoring
         approvalStatus = 'approved';
-      } else if (otrStatus === 'declined' || otrStatus === 'denied' || otrStatus === 'no') {
-        approvalStatus = 'not_approved';
-      } else if (otrStatus === 'call' || otrStatus === 'pending' || otrStatus === 'review') {
-        approvalStatus = 'call_otr';
       } else {
-        approvalStatus = 'call_otr';
-      }
-    } else if (data.status) {
-      const otrStatus = data.status.toLowerCase();
-      if (otrStatus === 'approved' || otrStatus === 'active') {
-        approvalStatus = 'approved';
-      } else if (otrStatus === 'declined' || otrStatus === 'denied') {
+        // NoBuy=true means broker is NOT approved
         approvalStatus = 'not_approved';
       }
     }
+    
+    // Refine based on BrokerTestResult if available
+    if (data.BrokerTestResult) {
+      const testResult = data.BrokerTestResult.toLowerCase();
+      if (testResult.includes('call') || testResult.includes('credit')) {
+        // "Call Credit" means they need to call OTR for more info, but NoBuy=false means still approved
+        if (data.NoBuy === false) {
+          approvalStatus = 'approved'; // Still approved, just may need to call for credit limit
+        } else {
+          approvalStatus = 'call_otr';
+        }
+      } else if (testResult.includes('approved') || testResult.includes('yes')) {
+        approvalStatus = 'approved';
+      } else if (testResult.includes('declined') || testResult.includes('denied') || testResult.includes('no')) {
+        approvalStatus = 'not_approved';
+      }
+    }
+    
+    // Legacy field support
+    if (approvalStatus === 'unchecked') {
+      if (data.approvalStatus) {
+        const otrStatus = data.approvalStatus.toLowerCase();
+        if (otrStatus === 'approved' || otrStatus === 'active' || otrStatus === 'yes') {
+          approvalStatus = 'approved';
+        } else if (otrStatus === 'declined' || otrStatus === 'denied' || otrStatus === 'no') {
+          approvalStatus = 'not_approved';
+        } else if (otrStatus === 'call' || otrStatus === 'pending' || otrStatus === 'review') {
+          approvalStatus = 'call_otr';
+        }
+      } else if (data.status) {
+        const otrStatus = data.status.toLowerCase();
+        if (otrStatus === 'approved' || otrStatus === 'active') {
+          approvalStatus = 'approved';
+        } else if (otrStatus === 'declined' || otrStatus === 'denied') {
+          approvalStatus = 'not_approved';
+        }
+      }
+    }
+
+    console.log(`[check-broker-credit] Mapped status: NoBuy=${data.NoBuy}, BrokerTestResult=${data.BrokerTestResult} -> ${approvalStatus}`);
 
     return {
       success: true,
       approval_status: approvalStatus,
       credit_limit: data.creditLimit,
-      broker_name: data.brokerName,
+      broker_name: data.Name || data.brokerName,
       raw_response: data
     };
   } catch (error) {
