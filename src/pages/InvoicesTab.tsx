@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2 } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
@@ -125,6 +125,7 @@ export default function InvoicesTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [retryingInvoiceId, setRetryingInvoiceId] = useState<string | null>(null);
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
   const [formData, setFormData] = useState({
@@ -683,6 +684,69 @@ export default function InvoicesTab() {
     }
   };
 
+  const handleSendInvoice = async (invoice: InvoiceWithDeliveryInfo) => {
+    if (!tenantId) {
+      toast.error("Tenant context missing");
+      return;
+    }
+
+    setSendingInvoiceId(invoice.id);
+
+    try {
+      if (invoice.billing_method === 'otr') {
+        // OTR submission
+        const { data: otrResult, error: otrError } = await supabase.functions.invoke(
+          "submit-otr-invoice",
+          {
+            body: {
+              tenant_id: tenantId,
+              invoice_id: invoice.id,
+              broker_name: invoice.customer_name,
+            },
+          }
+        );
+
+        if (otrError) {
+          console.error("OTR submission error:", otrError);
+          toast.error(`OTR submission failed: ${otrError.message}`);
+        } else if (otrResult?.success) {
+          toast.success(`Invoice ${invoice.invoice_number} submitted to OTR Solutions`);
+          loadData();
+        } else {
+          toast.error(`OTR returned: ${otrResult?.error || 'Unknown error'}`);
+        }
+      } else if (invoice.billing_method === 'direct_email') {
+        // Direct email
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+          "send-invoice-email",
+          {
+            body: {
+              tenant_id: tenantId,
+              invoice_id: invoice.id,
+            },
+          }
+        );
+
+        if (emailError) {
+          console.error("Email send error:", emailError);
+          toast.error(`Email failed: ${emailError.message}`);
+        } else if (emailResult?.success) {
+          toast.success(`Invoice ${invoice.invoice_number} sent via email`);
+          loadData();
+        } else {
+          toast.error(`Email failed: ${emailResult?.error || 'Unknown error'}`);
+        }
+      } else {
+        toast.error("No billing method configured");
+      }
+    } catch (error) {
+      console.error("Error sending invoice:", error);
+      toast.error(`Failed to send: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingInvoiceId(null);
+    }
+  };
+
   const viewInvoiceDetail = (id: string) => {
     navigate(`/dashboard/invoice/${id}`);
   };
@@ -1083,7 +1147,7 @@ export default function InvoicesTab() {
               <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
-              {filter === 'needs_setup' && (
+              {(filter === 'needs_setup' || filter === 'ready') && (
                 <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
               )}
             </TableRow>
@@ -1091,7 +1155,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={filter === 'needs_setup' ? 13 : 12} className="py-12 text-center">
+                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 13 : 12} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1196,6 +1260,26 @@ export default function InvoicesTab() {
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                      </TableCell>
+                    )}
+                    {filter === 'ready' && (
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                          disabled={sendingInvoiceId === invoice.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSendInvoice(invoice);
+                          }}
+                        >
+                          {sendingInvoiceId === invoice.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          {invoice.billing_method === 'otr' ? 'Submit' : 'Send'}
+                        </Button>
                       </TableCell>
                     )}
                   </TableRow>
