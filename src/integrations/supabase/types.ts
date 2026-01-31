@@ -5437,6 +5437,62 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_factoring_config: {
+        Row: {
+          created_at: string
+          credentials_encrypted: string | null
+          credentials_hint: string | null
+          error_message: string | null
+          id: string
+          is_enabled: boolean
+          last_checked_at: string | null
+          last_submission_at: string | null
+          provider: string
+          settings: Json | null
+          sync_status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credentials_encrypted?: string | null
+          credentials_hint?: string | null
+          error_message?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_checked_at?: string | null
+          last_submission_at?: string | null
+          provider?: string
+          settings?: Json | null
+          sync_status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credentials_encrypted?: string | null
+          credentials_hint?: string | null
+          error_message?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_checked_at?: string | null
+          last_submission_at?: string | null
+          provider?: string
+          settings?: Json | null
+          sync_status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_factoring_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_feature_access: {
         Row: {
           created_at: string
