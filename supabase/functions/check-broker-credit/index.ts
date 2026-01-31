@@ -538,14 +538,14 @@ serve(async (req) => {
       if (broker_name && !existingCustomer) {
         const { data: nameMatches } = await adminClient
           .from('customers')
-          .select('id, name, mc_number')
+          .select('id, name, mc_number, address, city, state, zip, phone, otr_approval_status')
           .eq('tenant_id', tenant_id)
           .ilike('name', `%${broker_name.split(' ')[0]}%`)
           .limit(5);
         
         if (nameMatches && nameMatches.length > 0) {
           similarCustomers = nameMatches;
-          // If there's an exact name match, use it
+          // If there's an exact name match, use it as the existing customer
           const exactMatch = nameMatches.find(c => 
             c.name.toLowerCase() === broker_name.toLowerCase()
           );
@@ -554,6 +554,11 @@ serve(async (req) => {
               id: exactMatch.id,
               name: exactMatch.name,
               mc_number: exactMatch.mc_number || undefined,
+              address: exactMatch.address || undefined,
+              city: exactMatch.city || undefined,
+              state: exactMatch.state || undefined,
+              zip: exactMatch.zip || undefined,
+              phone: exactMatch.phone || undefined,
             };
             resolvedCustomerId = exactMatch.id;
           }
