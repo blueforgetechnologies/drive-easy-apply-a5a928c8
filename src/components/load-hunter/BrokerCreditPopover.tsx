@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { 
   Loader2, RefreshCw, Building2, MapPin, Hash, Phone, Shield, 
@@ -417,6 +418,7 @@ export function BrokerCreditPopover({
           align="start"
           onClick={(e) => e.stopPropagation()}
         >
+          <ScrollArea className="max-h-[70vh]">
           {/* Header - Broker Name Only */}
           <div className={`relative overflow-hidden ${existingCustomer ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-primary to-blue-600'}`}>
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_50%,rgba(0,0,0,0.1)_100%)]" />
@@ -813,6 +815,7 @@ export function BrokerCreditPopover({
               <p className="text-xs text-muted-foreground">Enter MC number and click <span className="font-semibold">Check</span> to see broker information from all sources</p>
             </div>
           )}
+          </ScrollArea>
         </PopoverContent>
       </Popover>
     </TooltipProvider>
