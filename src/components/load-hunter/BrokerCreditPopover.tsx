@@ -140,17 +140,33 @@ export function BrokerCreditPopover({
     
     const lookupCustomer = async () => {
       try {
+        // Clean up the customer name for better matching
+        // Remove common suffixes like "Broker Posted:", dates, etc.
+        let cleanName = customerName
+          .replace(/\s*(Broker|Posted|Bro\.?|:|\d{1,2}\/\d{1,2}\/\d{2,4}).*$/gi, '')
+          .replace(/\s*(LLC|INC|CORP|LTD|CO\.?)?\s*$/gi, '')
+          .trim();
+        
+        // Use first 2-3 significant words for search
+        const searchTerms = cleanName.split(/\s+/).slice(0, 3).join(' ');
+        const searchPattern = searchTerms.length >= 2 ? `%${searchTerms}%` : `%${cleanName}%`;
+        
+        console.log('[BrokerCreditPopover] Looking up customer:', { customerName, cleanName, searchPattern });
+        
         const { data } = await supabase
           .from('customers')
           .select('id, name, mc_number, otr_approval_status, address, city, state, zip, phone')
           .eq('tenant_id', tenantId)
-          .ilike('name', `%${customerName.substring(0, 20)}%`)
+          .ilike('name', searchPattern)
           .limit(5);
         
+        console.log('[BrokerCreditPopover] Customer lookup result:', data);
+        
         if (data && data.length > 0) {
-          // Find exact or best match
+          // Find best match - prefer exact or partial match on clean name
           const exactMatch = data.find(c => 
-            c.name.toLowerCase() === customerName.toLowerCase()
+            c.name.toLowerCase().includes(cleanName.toLowerCase()) ||
+            cleanName.toLowerCase().includes(c.name.toLowerCase().replace(/\s*(llc|inc|corp|ltd|co\.?)?\s*$/gi, ''))
           );
           const match = exactMatch || data[0];
           
