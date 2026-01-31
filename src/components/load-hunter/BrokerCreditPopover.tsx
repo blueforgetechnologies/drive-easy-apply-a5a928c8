@@ -211,11 +211,13 @@ export function BrokerCreditPopover({
         {/* Header with status */}
         <div className={`p-3 border-b ${statusColors.bg}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold text-sm">{customerName}</span>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="font-semibold text-sm truncate" title={customerName}>
+                {customerName.length > 30 ? customerName.slice(0, 28) + '…' : customerName}
+              </span>
             </div>
-            <div className={`flex items-center gap-1.5 text-xs font-medium ${statusColors.text}`}>
+            <div className={`flex items-center gap-1.5 text-xs font-medium ${statusColors.text} flex-shrink-0 ml-2`}>
               <div className={`w-2 h-2 rounded-full ${statusColors.dot}`} />
               {statusColors.label}
             </div>

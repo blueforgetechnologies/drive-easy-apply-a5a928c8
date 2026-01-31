@@ -60,6 +60,7 @@ const LoadEmailDetail = ({
   const { tenantId } = useTenantFilter();
   const [showOriginalEmail, setShowOriginalEmail] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
+  const [bidInitialized, setBidInitialized] = useState(false); // Track if we've initialized bid
   const [bidError, setBidError] = useState<string | null>(null);
   const [showBidCardOnMap, setShowBidCardOnMap] = useState(false);
   const [toEmail, setToEmail] = useState<string | null>(null);
@@ -107,6 +108,15 @@ const LoadEmailDetail = ({
   const [editableHelpLine, setEditableHelpLine] = useState<string>("Please let me know if I can help on this load:");
   const [editableOrderLine, setEditableOrderLine] = useState<string>("");
   const data = email.parsed_data || {};
+  
+  // Pre-fill bid amount with posted rate if available
+  useEffect(() => {
+    if (!bidInitialized && data.rate) {
+      const rateValue = typeof data.rate === 'number' ? data.rate.toString() : data.rate;
+      setBidAmount(rateValue);
+      setBidInitialized(true);
+    }
+  }, [data.rate, bidInitialized]);
   
   // Check if broker email contains "do not reply" variants (DONOTREPLY / DO-NOT-REPLY / DO_NOT_REPLY)
   // for button styling - must be reactive to toEmail state
