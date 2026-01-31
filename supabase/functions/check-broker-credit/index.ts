@@ -89,10 +89,14 @@ async function checkWithOtr(
     }
     
     // Map OTR response to our status format
-    // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "Approved", etc.)
+    // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "NoBuy", "Approved", etc.)
+    // CRITICAL: NoBuy boolean is the AUTHORITATIVE indicator
+    // - NoBuy=false → APPROVED (broker is approved for factoring)
+    // - NoBuy=true → NOT APPROVED (broker is on no-buy list)
+    // BrokerTestResult can be "NoBuy" (string) even when NoBuy=false (boolean) - this is confusing but the boolean wins
     let approvalStatus = 'unchecked';
     
-    // First check NoBuy flag - this is the primary indicator
+    // NoBuy flag is the PRIMARY and AUTHORITATIVE indicator - do NOT override based on BrokerTestResult string
     if (typeof data.NoBuy === 'boolean') {
       if (data.NoBuy === false) {
         // NoBuy=false means broker IS approved for factoring
@@ -101,26 +105,21 @@ async function checkWithOtr(
         // NoBuy=true means broker is NOT approved
         approvalStatus = 'not_approved';
       }
-    }
-    
-    // Refine based on BrokerTestResult if available
-    if (data.BrokerTestResult) {
-      const testResult = data.BrokerTestResult.toLowerCase();
-      if (testResult.includes('call') || testResult.includes('credit')) {
-        // "Call Credit" means they need to call OTR for more info, but NoBuy=false means still approved
-        if (data.NoBuy === false) {
-          approvalStatus = 'approved'; // Still approved, just may need to call for credit limit
-        } else {
+    } else {
+      // NoBuy not present - fall back to BrokerTestResult analysis
+      if (data.BrokerTestResult) {
+        const testResult = data.BrokerTestResult.toLowerCase();
+        if (testResult === 'approved' || testResult === 'yes') {
+          approvalStatus = 'approved';
+        } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
+          approvalStatus = 'not_approved';
+        } else if (testResult.includes('call') && testResult.includes('credit')) {
           approvalStatus = 'call_otr';
         }
-      } else if (testResult.includes('approved') || testResult.includes('yes')) {
-        approvalStatus = 'approved';
-      } else if (testResult.includes('declined') || testResult.includes('denied') || testResult.includes('no')) {
-        approvalStatus = 'not_approved';
       }
     }
     
-    // Legacy field support
+    // Legacy field support - only if still unchecked
     if (approvalStatus === 'unchecked') {
       if (data.approvalStatus) {
         const otrStatus = data.approvalStatus.toLowerCase();
