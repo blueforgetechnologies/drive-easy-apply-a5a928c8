@@ -212,47 +212,71 @@ async function getOtrSubscriptionKey(adminClient: ReturnType<typeof getServiceCl
   username?: string;
   password?: string;
 } | null> {
+  const masterKey = Deno.env.get('INTEGRATIONS_MASTER_KEY');
+  
   try {
-    // First try global secret
-    const subscriptionKey = Deno.env.get('OTR_API_KEY');
-    
-    if (subscriptionKey) {
-      console.log(`[check-broker-credit] Using global OTR subscription key: ${maskSubscriptionKey(subscriptionKey)}`);
-      return { 
-        subscriptionKey,
-        username: Deno.env.get('OTR_USERNAME'),
-        password: Deno.env.get('OTR_PASSWORD'),
-      };
+    // 1. First try tenant_factoring_config (new per-tenant factoring settings)
+    const { data: factoringConfig } = await adminClient
+      .from('tenant_factoring_config')
+      .select('credentials_encrypted, is_enabled')
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'otr_solutions')
+      .eq('is_enabled', true)
+      .maybeSingle();
+
+    if (factoringConfig?.credentials_encrypted && masterKey) {
+      try {
+        const decrypted = await decrypt(factoringConfig.credentials_encrypted, masterKey);
+        const creds = JSON.parse(decrypted);
+        if (creds.api_key) {
+          console.log(`[check-broker-credit] Using tenant factoring config key: ${maskSubscriptionKey(creds.api_key)}`);
+          return { 
+            subscriptionKey: creds.api_key,
+            username: creds.username,
+            password: creds.password,
+          };
+        }
+      } catch (e) {
+        console.error('[check-broker-credit] Failed to decrypt factoring config:', e);
+      }
     }
 
-    // Then try tenant-specific integration
+    // 2. Then try tenant_integrations (legacy location)
     const { data: integration } = await adminClient
       .from('tenant_integrations')
       .select('encrypted_credentials')
       .eq('tenant_id', tenantId)
       .eq('provider', 'otr_solutions')
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     const integrationData = integration as { encrypted_credentials?: string } | null;
-    if (integrationData?.encrypted_credentials) {
-      const masterKey = Deno.env.get('INTEGRATIONS_MASTER_KEY');
-      if (masterKey) {
-        try {
-          const decrypted = await decrypt(integrationData.encrypted_credentials, masterKey);
-          const creds = JSON.parse(decrypted);
-          if (creds.api_key) {
-            console.log(`[check-broker-credit] Using tenant OTR subscription key: ${maskSubscriptionKey(creds.api_key)}`);
-            return { 
-              subscriptionKey: creds.api_key,
-              username: creds.username,
-              password: creds.password,
-            };
-          }
-        } catch (e) {
-          console.error('[check-broker-credit] Failed to decrypt OTR credentials:', e);
+    if (integrationData?.encrypted_credentials && masterKey) {
+      try {
+        const decrypted = await decrypt(integrationData.encrypted_credentials, masterKey);
+        const creds = JSON.parse(decrypted);
+        if (creds.api_key) {
+          console.log(`[check-broker-credit] Using tenant integration key: ${maskSubscriptionKey(creds.api_key)}`);
+          return { 
+            subscriptionKey: creds.api_key,
+            username: creds.username,
+            password: creds.password,
+          };
         }
+      } catch (e) {
+        console.error('[check-broker-credit] Failed to decrypt integration:', e);
       }
+    }
+
+    // 3. Finally fall back to global secrets (staging/dev only)
+    const subscriptionKey = Deno.env.get('OTR_API_KEY');
+    if (subscriptionKey) {
+      console.log(`[check-broker-credit] Using global OTR key (fallback): ${maskSubscriptionKey(subscriptionKey)}`);
+      return { 
+        subscriptionKey,
+        username: Deno.env.get('OTR_USERNAME'),
+        password: Deno.env.get('OTR_PASSWORD'),
+      };
     }
 
     return null;
