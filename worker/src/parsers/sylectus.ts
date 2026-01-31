@@ -102,20 +102,35 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // HTML format extractions
+  // HTML format extractions - handle space before </strong> e.g., "<strong>Broker Name: </strong>John"
   const brokerNameHtmlMatch = bodyText?.match(/<strong>Broker\s*Name:\s*<\/strong>\s*([^<\n]+)/i);
   if (brokerNameHtmlMatch) {
     data.broker_name = brokerNameHtmlMatch[1].trim();
+  } else {
+    // Fallback to cleaned text
+    const brokerNameClean = cleanBodyText?.match(/Broker\s*Name:\s*([^\n,]+)/i);
+    if (brokerNameClean) data.broker_name = brokerNameClean[1].trim();
   }
 
   const brokerCompanyHtmlMatch = bodyText?.match(/<strong>Broker\s*Company:\s*<\/strong>\s*([^<\n]+)/i);
   if (brokerCompanyHtmlMatch) {
     data.broker_company = brokerCompanyHtmlMatch[1].trim();
+    // Also set customer to broker_company as this is the primary customer reference
+    if (!data.customer) data.customer = data.broker_company;
+  } else {
+    const brokerCompanyClean = cleanBodyText?.match(/Broker\s*Company:\s*([^\n,]+)/i);
+    if (brokerCompanyClean) {
+      data.broker_company = brokerCompanyClean[1].trim();
+      if (!data.customer) data.customer = data.broker_company;
+    }
   }
 
   const brokerPhoneHtmlMatch = bodyText?.match(/<strong>Broker\s*Phone:\s*<\/strong>\s*([^<\n]+)/i);
   if (brokerPhoneHtmlMatch) {
     data.broker_phone = brokerPhoneHtmlMatch[1].trim();
+  } else {
+    const brokerPhoneClean = cleanBodyText?.match(/Broker\s*Phone:\s*([^\n,]+)/i);
+    if (brokerPhoneClean) data.broker_phone = brokerPhoneClean[1].trim();
   }
 
   // Plain text patterns - use cleaned body text (HTML stripped) to avoid capturing HTML tags
@@ -165,18 +180,19 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Parse pickup datetime - try strict format first, then flexible
-  const pickupSection = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  // Parse pickup datetime from cleaned text - look for "Pick-Up ... MM/DD/YY HH:MM TZ"
+  // The HTML structure is: <p>Pick-Up</p>...<p>01/30/26 23:00 EST</p>
+  const pickupSection = cleanBodyText?.match(/Pick-?Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (pickupSection) {
     data.pickup_date = pickupSection[1];
     data.pickup_time = pickupSection[2] + (pickupSection[3] ? ' ' + pickupSection[3] : '');
   } else {
     // Try to extract date and flexible time (ASAP, Direct, etc.)
-    const pickupDateOnly = bodyText?.match(/Pick-Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    const pickupDateOnly = cleanBodyText?.match(/Pick-?Up[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
     if (pickupDateOnly) {
       data.pickup_date = pickupDateOnly[1];
       // Look for instruction-style time after the date
-      const afterDate = bodyText?.substring(bodyText.indexOf(pickupDateOnly[0]) + pickupDateOnly[0].length);
+      const afterDate = cleanBodyText?.substring(cleanBodyText.indexOf(pickupDateOnly[0]) + pickupDateOnly[0].length);
       const instructionMatch = afterDate?.match(/^\s*(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i);
       if (instructionMatch) {
         data.pickup_time = instructionMatch[1].trim();
@@ -184,18 +200,18 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Parse delivery datetime - try strict format first, then flexible
-  const deliverySection = bodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
+  // Parse delivery datetime from cleaned text
+  const deliverySection = cleanBodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2})\s*(EST|CST|MST|PST|EDT|CDT|MDT|PDT)?/i);
   if (deliverySection) {
     data.delivery_date = deliverySection[1];
     data.delivery_time = deliverySection[2] + (deliverySection[3] ? ' ' + deliverySection[3] : '');
   } else {
     // Try to extract date and flexible time (ASAP, Direct, etc.)
-    const deliveryDateOnly = bodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    const deliveryDateOnly = cleanBodyText?.match(/Delivery[\s\S]*?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
     if (deliveryDateOnly) {
       data.delivery_date = deliveryDateOnly[1];
       // Look for instruction-style time after the date
-      const afterDate = bodyText?.substring(bodyText.indexOf(deliveryDateOnly[0]) + deliveryDateOnly[0].length);
+      const afterDate = cleanBodyText?.substring(cleanBodyText.indexOf(deliveryDateOnly[0]) + deliveryDateOnly[0].length);
       const instructionMatch = afterDate?.match(/^\s*(ASAP|Direct|Deliver\s*Direct|Flexible|TBD|Open|Will\s*Call)/i);
       if (instructionMatch) {
         data.delivery_time = instructionMatch[1].trim();
@@ -212,36 +228,39 @@ export function parseSylectusEmail(subject: string, bodyText: string): ParsedEma
     }
   }
 
-  // Pieces
+  // Pieces - handle both "<strong>Pieces: </strong>0" and "<strong>Pieces:</strong> 0" formats
   const piecesHtmlMatch = bodyText?.match(/<strong>Pieces?:\s*<\/strong>\s*(\d+)/i);
   if (piecesHtmlMatch) {
     data.pieces = parseInt(piecesHtmlMatch[1]);
   } else {
-    const piecesMatch = bodyText?.match(/Pieces?[:\s]+(\d+)/i);
-    if (piecesMatch) {
-      data.pieces = parseInt(piecesMatch[1]);
+    // Try extracting from cleaned text: "Pieces: 0" or "Pieces: 123"
+    const piecesCleanMatch = cleanBodyText?.match(/Pieces?:\s*(\d+)/i);
+    if (piecesCleanMatch) {
+      data.pieces = parseInt(piecesCleanMatch[1]);
     }
   }
 
-  // Weight
+  // Weight - handle both HTML and plain text formats
   const weightHtmlMatch = bodyText?.match(/<strong>Weight:\s*<\/strong>\s*([\d,]+)\s*(?:lbs?)?/i);
   if (weightHtmlMatch) {
     data.weight = weightHtmlMatch[1].replace(',', '');
   } else {
-    const weightMatch = bodyText?.match(/(?:^|[\s,])(\d{1,6})\s*(?:lbs?|pounds?)(?:[\s,.]|$)/i);
-    if (weightMatch) {
-      data.weight = weightMatch[1];
+    // Try extracting from cleaned text: "Weight: 450 lbs"
+    const weightCleanMatch = cleanBodyText?.match(/Weight:\s*([\d,]+)\s*(?:lbs?)?/i);
+    if (weightCleanMatch) {
+      data.weight = weightCleanMatch[1].replace(',', '');
     }
   }
 
-  // Dimensions
+  // Dimensions - handle "0L x 0W x 0H" format from cleaned text
   const dimensionsHtmlMatch = bodyText?.match(/<strong>Dimensions?:\s*<\/strong>\s*([^<\n]+)/i);
   if (dimensionsHtmlMatch) {
     data.dimensions = dimensionsHtmlMatch[1].trim();
   } else {
-    const dimensionsPlainMatch = bodyText?.match(/Dimensions?:\s*(\d+[x×X]\d+(?:[x×X]\d+)?)/i);
-    if (dimensionsPlainMatch) {
-      data.dimensions = dimensionsPlainMatch[1].trim();
+    // Try cleaned text: "Dimensions: 48L x 40W x 48H" or "48x40x48"
+    const dimsCleanMatch = cleanBodyText?.match(/Dimensions?:\s*([^\n,]+)/i);
+    if (dimsCleanMatch) {
+      data.dimensions = dimsCleanMatch[1].trim();
     }
   }
 
