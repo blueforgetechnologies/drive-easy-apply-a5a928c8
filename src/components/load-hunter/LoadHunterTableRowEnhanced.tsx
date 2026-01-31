@@ -380,8 +380,33 @@ export function LoadHunterTableRowEnhanced({
       {/* Customer - with broker credit status indicator */}
       <TableCell className="py-1">
         {(() => {
-          const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
-          const cleanName = customerName.replace(/<[^>]*>/g, '').trim();
+          // Sanitize customer name - sometimes raw email body gets stored here
+          const rawCustomerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
+          
+          // Clean the name: strip HTML, limit length, and extract meaningful part
+          const sanitizeCustomerName = (name: string): string => {
+            if (!name || typeof name !== 'string') return 'Unknown';
+            
+            // Strip HTML tags
+            let clean = name.replace(/<[^>]*>/g, '').trim();
+            
+            // If it looks like email body (has newlines, very long, contains email-like patterns)
+            if (clean.length > 100 || clean.includes('\n') || clean.includes('Subject:') || clean.includes('@')) {
+              // Try to extract first line or first meaningful part
+              const firstLine = clean.split(/[\n\r]/)[0].trim();
+              if (firstLine && firstLine.length > 0 && firstLine.length < 80) {
+                clean = firstLine;
+              } else {
+                // Fallback to first 60 chars
+                clean = clean.substring(0, 60);
+              }
+            }
+            
+            // Final safety truncation
+            return clean.length > 60 ? clean.substring(0, 60) + '...' : clean;
+          };
+          
+          const cleanName = sanitizeCustomerName(rawCustomerName);
           const truncatedName = cleanName.length > 14 ? cleanName.slice(0, 14) + '...' : cleanName;
           
           // Get broker credit status from the map (keyed by load_email_id)
@@ -406,9 +431,9 @@ export function LoadHunterTableRowEnhanced({
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
+                <TooltipContent side="top" className="text-xs max-w-[300px]">
                   <div className="space-y-1">
-                    <p className="font-medium">{cleanName}</p>
+                    <p className="font-medium break-words">{cleanName}</p>
                     <p className="text-muted-foreground">
                       Factoring: <span className={`font-semibold ${statusColors.text}`}>{statusColors.label}</span>
                     </p>
