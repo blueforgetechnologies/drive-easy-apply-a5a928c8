@@ -292,9 +292,11 @@ async function createLoadFromMessage(
     emailSource = 'sylectus';
   } else if (subject?.toLowerCase().includes('fullcircle') ||
              subject?.toLowerCase().includes('full circle') ||
+             fromEmail?.toLowerCase().includes('fullcircle') ||
              bodyText?.toLowerCase().includes('fullcircletms') ||
              bodyHtml?.toLowerCase().includes('fullcircletms')) {
-    bodyData = parseFullCircleTMSEmail(bodyHtml || '', bodyText || '');
+    // FIXED: parseFullCircleTMSEmail expects (subject, bodyText, bodyHtml?) - was reversed!
+    bodyData = parseFullCircleTMSEmail(subject, bodyText || '', bodyHtml || undefined);
     emailSource = 'fullcircle';
   } else {
     emailSource = 'generic';
