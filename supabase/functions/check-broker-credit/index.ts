@@ -281,12 +281,32 @@ serve(async (req) => {
       force_check
     } = body;
 
-    // Check tenant access
+    // Check tenant access - allow service role for automated VPS calls
     const authHeader = req.headers.get('Authorization');
-    const accessCheck = await assertTenantAccess(authHeader, tenant_id);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const token = authHeader?.replace('Bearer ', '');
     
-    if (!accessCheck.allowed) {
-      return accessCheck.response!;
+    // Check if this is a service-role call (from VPS worker)
+    const isServiceRoleCall = token && serviceRoleKey && token === serviceRoleKey;
+    
+    let accessCheck: { allowed: boolean; user_id?: string; response?: Response };
+    
+    if (isServiceRoleCall) {
+      // VPS worker using service role - validate tenant_id exists
+      if (!tenant_id) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id required for service role calls' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log(`[check-broker-credit] Service role call for tenant ${tenant_id}`);
+      accessCheck = { allowed: true, user_id: 'service_role' };
+    } else {
+      // User call - validate JWT and tenant membership
+      accessCheck = await assertTenantAccess(authHeader, tenant_id);
+      if (!accessCheck.allowed) {
+        return accessCheck.response!;
+      }
     }
 
     const adminClient = getServiceClient();
