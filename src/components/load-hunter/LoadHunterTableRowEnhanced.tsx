@@ -4,9 +4,9 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { X, MoreVertical, Wrench, Truck } from "lucide-react";
 import type { ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
+import { BrokerCreditPopover } from "./BrokerCreditPopover";
 
 // Broker credit status type
 type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
@@ -377,7 +377,7 @@ export function LoadHunterTableRowEnhanced({
         </TableCell>
       )}
 
-      {/* Customer - with broker credit status indicator */}
+      {/* Customer - with broker credit popover */}
       <TableCell className="py-1">
         {(() => {
           const customerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
@@ -385,39 +385,21 @@ export function LoadHunterTableRowEnhanced({
           
           // Get broker credit status from the map (keyed by load_email_id)
           const brokerStatus = brokerStatusMap?.get(email.id);
-          const statusColors = getStatusColor(brokerStatus?.status);
           
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 whitespace-nowrap cursor-default">
-                    {/* Colored dot (egg) indicator for broker approval status */}
-                    <div 
-                      className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColors.dot}`}
-                      style={{ 
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)',
-                      }}
-                    />
-                    {/* Customer name with status-based color */}
-                    <div className={`text-[13px] font-medium leading-tight whitespace-nowrap ${statusColors.text}`}>
-                      {truncatedName}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  <div className="space-y-1">
-                    <p className="font-medium">{customerName}</p>
-                    <p className="text-muted-foreground">
-                      Factoring: <span className={`font-semibold ${statusColors.text}`}>{statusColors.label}</span>
-                    </p>
-                    {data.mc_number && (
-                      <p className="text-muted-foreground">MC# {data.mc_number}</p>
-                    )}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <BrokerCreditPopover
+              customerName={customerName}
+              truncatedName={truncatedName}
+              mcNumber={data.mc_number}
+              brokerStatus={brokerStatus}
+              loadEmailId={email.id}
+              parsedData={{
+                broker_address: data.broker_address,
+                broker_city: data.broker_city,
+                broker_state: data.broker_state,
+                broker_zip: data.broker_zip,
+              }}
+            />
           );
         })()}
       </TableCell>

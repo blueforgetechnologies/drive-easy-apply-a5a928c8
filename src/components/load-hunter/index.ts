@@ -6,3 +6,4 @@ export { LoadHunterTableRowEnhanced } from './LoadHunterTableRowEnhanced';
 export { LoadHunterTableHeader } from './LoadHunterTableHeader';
 export { LoadHunterPagination } from './LoadHunterPagination';
 export { LoadHunterVehicleDetail } from './LoadHunterVehicleDetail';
+export { BrokerCreditPopover } from './BrokerCreditPopover';
