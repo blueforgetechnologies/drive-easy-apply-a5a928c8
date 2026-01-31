@@ -1368,9 +1368,15 @@ const LoadEmailDetail = ({
               <Card className="p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Route</span>
-                  {data.vehicle_type && <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                      {data.vehicle_type}
-                    </span>}
+                  {data.vehicle_type && (() => {
+                    const cleanType = (data.vehicle_type || '').replace(/<[^>]*>/g, '').trim();
+                    const truncatedType = cleanType.length > 20 ? cleanType.slice(0, 18) + '…' : cleanType;
+                    return (
+                      <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded" title={cleanType.length > 20 ? cleanType : undefined}>
+                        {truncatedType}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="flex items-center gap-1">
@@ -2060,7 +2066,11 @@ const LoadEmailDetail = ({
                       <div>{data.loaded_miles ? `${Math.round(data.loaded_miles)}mi` : '—'}</div>
                     </div>
                     <div>
-                      <div>{data.vehicle_type || 'SPRINTER'}</div>
+                      {(() => {
+                        const cleanType = (data.vehicle_type || 'SPRINTER').replace(/<[^>]*>/g, '').trim();
+                        const truncatedType = cleanType.length > 18 ? cleanType.slice(0, 16) + '…' : cleanType;
+                        return <div title={cleanType.length > 18 ? cleanType : undefined}>{truncatedType}</div>;
+                      })()}
                       <div>{data.weight || '0'}</div>
                     </div>
                     <div>
