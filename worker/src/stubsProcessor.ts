@@ -416,7 +416,7 @@ async function createLoadFromMessage(
   });
 
   // Trigger matching (async, don't wait)
-  triggerMatching(inserted.id, inserted.load_id, parsedData, tenantId, fingerprint, new Date(internalDate))
+  triggerMatching(inserted.id, inserted.load_id, pickupCoords, tenantId, fingerprint, new Date(internalDate))
     .catch(err => log('warn', 'Matching failed', { error: String(err) }));
 
   return { success: true, loadId: inserted.load_id };
@@ -425,7 +425,7 @@ async function createLoadFromMessage(
 async function triggerMatching(
   loadEmailId: string,
   loadId: string,
-  parsedData: any,
+  pickupCoords: Coordinates | null,
   tenantId: string,
   fingerprint: string | null,
   receivedAt: Date
@@ -437,9 +437,9 @@ async function triggerMatching(
     .eq('enabled', true)
     .eq('tenant_id', tenantId);
 
-  if (!hunts?.length || !parsedData.pickup_coordinates) return;
+  if (!hunts?.length || !pickupCoords) return;
 
-  const loadCoords = parsedData.pickup_coordinates;
+  const loadCoords = pickupCoords;
 
   for (const hunt of hunts) {
     const huntCoords = hunt.hunt_coordinates as { lat: number; lng: number } | null;
