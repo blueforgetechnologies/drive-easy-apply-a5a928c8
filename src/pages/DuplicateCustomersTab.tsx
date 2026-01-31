@@ -44,10 +44,16 @@ export default function DuplicateCustomersTab() {
       
       if (queryError) throw queryError;
       
+      // Helper to strip HTML tags
+      const stripHtml = (str: string | null) => {
+        if (!str) return null;
+        return str.replace(/<[^>]*>/g, '').trim();
+      };
+
       const allCustomers: Customer[] = (customers || []).map((c: any) => ({
         id: c.id,
         name: c.name,
-        contact_name: c.contact_name,
+        contact_name: stripHtml(c.contact_name),
         email: c.email,
         phone: c.phone,
         mc_number: c.mc_number,
