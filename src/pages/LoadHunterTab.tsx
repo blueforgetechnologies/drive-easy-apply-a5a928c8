@@ -120,9 +120,9 @@ export default function LoadHunterTab() {
     loadAllData,
   } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
 
-  // Broker credit status hook - extracts load email IDs and broker names from visible data
+  // Broker credit status hook - extracts load email IDs, broker names, and MC numbers from visible data
   const visibleLoadEmailInfos = React.useMemo(() => {
-    const infos: { loadEmailId: string; brokerName?: string }[] = [];
+    const infos: { loadEmailId: string; brokerName?: string; mcNumber?: string }[] = [];
     [...unreviewedViewData, ...missedHistory, ...loadEmails].forEach((item: any) => {
       const email = item?.email || item;
       const emailId = email?.id || item?.load_email_id;
@@ -132,7 +132,9 @@ export default function LoadHunterTab() {
         const brokerName = parsed.broker_company || parsed.broker || parsed.customer;
         // Clean broker name - remove extra info after "Broker Phone:" etc
         const cleanBrokerName = brokerName?.split('Broker Phone:')?.[0]?.trim();
-        infos.push({ loadEmailId: emailId, brokerName: cleanBrokerName });
+        // Extract MC number from parsed data
+        const mcNumber = parsed.mc_number || parsed.broker_mc || parsed.mc;
+        infos.push({ loadEmailId: emailId, brokerName: cleanBrokerName, mcNumber });
       }
     });
     return infos.slice(0, 100); // Limit to 100 for performance

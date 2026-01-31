@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
@@ -13,16 +13,15 @@ interface BrokerCreditStatus {
 interface LoadEmailBrokerInfo {
   loadEmailId: string;
   brokerName?: string;
+  mcNumber?: string;
 }
 
 /**
  * Hook to fetch broker credit statuses for a list of load email IDs.
  * Returns a Map<loadEmailId, BrokerCreditStatus> for quick lookups.
  * 
- * NEW: Also looks up customer OTR status by broker name when no direct
- * load_email check exists - this handles the case where a customer was
- * checked for one email but the status should apply to all emails from
- * that same broker.
+ * UPDATED: Now automatically triggers fresh OTR checks for brokers with MC numbers.
+ * Checks are always live from OTR, not relying on cached statuses.
  */
 export function useBrokerCreditStatus(
   loadEmailIds: string[],
@@ -31,10 +30,14 @@ export function useBrokerCreditStatus(
   const { tenantId } = useTenantFilter();
   const [statusMap, setStatusMap] = useState<Map<string, BrokerCreditStatus>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Track which emails we've already triggered checks for to avoid duplicates
+  const triggeredChecksRef = useRef<Set<string>>(new Set());
 
   // Memoize the IDs to prevent unnecessary refetches
   const idString = useMemo(() => loadEmailIds.filter(Boolean).sort().join(','), [loadEmailIds]);
 
+  // Initial fetch - get cached data for immediate display, then trigger fresh checks
   useEffect(() => {
     if (!tenantId || !idString) {
       setStatusMap(new Map());
@@ -47,10 +50,10 @@ export function useBrokerCreditStatus(
       return;
     }
 
-    const fetchStatuses = async () => {
+    const fetchAndTriggerChecks = async () => {
       setIsLoading(true);
       try {
-        // Fetch the most recent broker credit check for each load_email_id
+        // Step 1: Fetch cached data for immediate display
         const { data: checkData, error: checkError } = await supabase
           .from('broker_credit_checks')
           .select('load_email_id, approval_status, broker_name, mc_number, checked_at, customer_id')
@@ -60,12 +63,11 @@ export function useBrokerCreditStatus(
 
         if (checkError) {
           console.error('[useBrokerCreditStatus] Query error:', checkError);
-          return;
         }
 
-        // Build map with most recent status per load_email_id
+        // Build initial map from cached data
         const newMap = new Map<string, BrokerCreditStatus>();
-        const foundEmailIds = new Set<string>();
+        const cachedMcNumbers = new Map<string, string>(); // loadEmailId -> mcNumber
         
         for (const row of checkData || []) {
           if (row.load_email_id && !newMap.has(row.load_email_id)) {
@@ -76,70 +78,98 @@ export function useBrokerCreditStatus(
               checkedAt: row.checked_at,
               customerId: row.customer_id,
             });
-            foundEmailIds.add(row.load_email_id);
+            if (row.mc_number) {
+              cachedMcNumbers.set(row.load_email_id, row.mc_number);
+            }
           }
         }
 
-        // For emails without a direct check, try to find customer status by broker name
-        // This handles the case where a customer was checked once and the status should
-        // apply to all emails from that broker
-        const missingIds = ids.filter(id => !foundEmailIds.has(id));
+        // Step 2: Build list of brokers that need fresh checks
+        // Priority: Use MC from broker info (parsed email), then from cached checks
+        const brokersToCheck: { loadEmailId: string; mcNumber: string; brokerName?: string }[] = [];
         
-        if (missingIds.length > 0 && loadEmailBrokerInfos) {
-          // Get unique broker names for missing emails
-          const brokerNamesForMissing = loadEmailBrokerInfos
-            .filter(info => missingIds.includes(info.loadEmailId) && info.brokerName)
-            .map(info => info.brokerName!);
-          
-          const uniqueBrokerNames = [...new Set(brokerNamesForMissing)];
-          
-          if (uniqueBrokerNames.length > 0) {
-            // Search for customers by name with OTR status set
-            const { data: customerData } = await supabase
-              .from('customers')
-              .select('id, name, mc_number, otr_approval_status, otr_last_checked_at')
-              .eq('tenant_id', tenantId)
-              .not('otr_approval_status', 'is', null);
-            
-            // Create lookup map of broker name -> customer status (fuzzy match)
-            const customerStatusMap = new Map<string, BrokerCreditStatus>();
-            for (const customer of customerData || []) {
-              if (customer.otr_approval_status) {
-                const customerNameLower = customer.name?.toLowerCase() || '';
-                customerStatusMap.set(customerNameLower, {
-                  status: customer.otr_approval_status,
-                  brokerName: customer.name,
-                  mcNumber: customer.mc_number,
-                  checkedAt: customer.otr_last_checked_at,
-                  customerId: customer.id,
-                });
-              }
-            }
-            
-            // Match missing emails to customer statuses
-            for (const info of loadEmailBrokerInfos) {
-              if (missingIds.includes(info.loadEmailId) && info.brokerName) {
-                const brokerNameLower = info.brokerName.toLowerCase();
-                
-                // Try exact match first, then fuzzy match
-                let matchedStatus: BrokerCreditStatus | undefined;
-                
-                for (const [custName, custStatus] of customerStatusMap) {
-                  if (custName.includes(brokerNameLower) || brokerNameLower.includes(custName)) {
-                    matchedStatus = custStatus;
-                    break;
-                  }
-                }
-                
-                if (matchedStatus) {
-                  newMap.set(info.loadEmailId, matchedStatus);
-                }
-              }
-            }
+        for (const info of loadEmailBrokerInfos || []) {
+          const mc = info.mcNumber || cachedMcNumbers.get(info.loadEmailId);
+          if (mc && !triggeredChecksRef.current.has(info.loadEmailId)) {
+            brokersToCheck.push({
+              loadEmailId: info.loadEmailId,
+              mcNumber: mc,
+              brokerName: info.brokerName,
+            });
           }
         }
 
+        // Also check for emails with MC from cached data but not in broker infos
+        for (const [emailId, mcNumber] of cachedMcNumbers) {
+          if (!triggeredChecksRef.current.has(emailId) && 
+              !brokersToCheck.some(b => b.loadEmailId === emailId)) {
+            brokersToCheck.push({
+              loadEmailId: emailId,
+              mcNumber,
+              brokerName: newMap.get(emailId)?.brokerName,
+            });
+          }
+        }
+
+        // Set initial state from cache
         setStatusMap(newMap);
+
+        // Step 3: Trigger fresh OTR checks in parallel (limit concurrency)
+        if (brokersToCheck.length > 0) {
+          // Mark as triggered to prevent re-checks
+          for (const b of brokersToCheck) {
+            triggeredChecksRef.current.add(b.loadEmailId);
+            // Set status to 'checking' for UI feedback
+            newMap.set(b.loadEmailId, {
+              ...newMap.get(b.loadEmailId),
+              status: 'checking',
+              mcNumber: b.mcNumber,
+              brokerName: b.brokerName,
+            });
+          }
+          setStatusMap(new Map(newMap));
+
+          // Trigger checks in batches of 5 to avoid overwhelming the API
+          const BATCH_SIZE = 5;
+          for (let i = 0; i < brokersToCheck.length; i += BATCH_SIZE) {
+            const batch = brokersToCheck.slice(i, i + BATCH_SIZE);
+            
+            await Promise.all(
+              batch.map(async (broker) => {
+                try {
+                  const { data, error } = await supabase.functions.invoke('check-broker-credit', {
+                    body: {
+                      tenant_id: tenantId,
+                      mc_number: broker.mcNumber,
+                      broker_name: broker.brokerName,
+                      load_email_id: broker.loadEmailId,
+                    },
+                  });
+
+                  if (!error && data) {
+                    // Update the map with fresh result
+                    setStatusMap((prev) => {
+                      const updated = new Map(prev);
+                      updated.set(broker.loadEmailId, {
+                        status: data.approval_status || 'unchecked',
+                        brokerName: data.broker_name || broker.brokerName,
+                        mcNumber: broker.mcNumber,
+                        checkedAt: new Date().toISOString(),
+                        customerId: data.customer_id,
+                      });
+                      return updated;
+                    });
+                  } else {
+                    console.warn(`[useBrokerCreditStatus] Check failed for ${broker.mcNumber}:`, error);
+                    // Keep cached status but mark as potentially stale
+                  }
+                } catch (err) {
+                  console.error(`[useBrokerCreditStatus] Error checking ${broker.mcNumber}:`, err);
+                }
+              })
+            );
+          }
+        }
       } catch (err) {
         console.error('[useBrokerCreditStatus] Error:', err);
       } finally {
@@ -147,7 +177,7 @@ export function useBrokerCreditStatus(
       }
     };
 
-    fetchStatuses();
+    fetchAndTriggerChecks();
   }, [tenantId, idString, loadEmailBrokerInfos]);
 
   // Subscribe to realtime updates for broker_credit_checks
