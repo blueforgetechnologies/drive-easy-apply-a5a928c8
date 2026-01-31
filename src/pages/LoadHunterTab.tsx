@@ -120,32 +120,18 @@ export default function LoadHunterTab() {
     loadAllData,
   } = useLoadHunterData({ tenantId, shouldFilter, emailTimeWindow, sessionStart });
 
-  // Broker credit status hook - extracts load email IDs, broker names, and MC numbers from visible data
-  const visibleLoadEmailInfos = React.useMemo(() => {
-    const infos: { loadEmailId: string; brokerName?: string; mcNumber?: string }[] = [];
+  // Broker credit status hook - only uses load email IDs (OTR checks triggered by VPS worker on match)
+  const visibleLoadEmailIds = React.useMemo(() => {
+    const ids = new Set<string>();
     [...unreviewedViewData, ...missedHistory, ...loadEmails].forEach((item: any) => {
       const email = item?.email || item;
       const emailId = email?.id || item?.load_email_id;
-      if (emailId) {
-        const parsed = email?.parsed_data || {};
-        // Extract broker name from various parsed fields
-        const brokerName = parsed.broker_company || parsed.broker || parsed.customer;
-        // Clean broker name - remove extra info after "Broker Phone:" etc
-        const cleanBrokerName = brokerName?.split('Broker Phone:')?.[0]?.trim();
-        // Extract MC number from parsed data
-        const mcNumber = parsed.mc_number || parsed.broker_mc || parsed.mc;
-        infos.push({ loadEmailId: emailId, brokerName: cleanBrokerName, mcNumber });
-      }
+      if (emailId) ids.add(emailId);
     });
-    return infos.slice(0, 100); // Limit to 100 for performance
+    return Array.from(ids).slice(0, 100); // Limit for performance
   }, [unreviewedViewData, missedHistory, loadEmails]);
   
-  const visibleLoadEmailIds = React.useMemo(() => 
-    visibleLoadEmailInfos.map(info => info.loadEmailId), 
-    [visibleLoadEmailInfos]
-  );
-  
-  const { statusMap: brokerStatusMap } = useBrokerCreditStatus(visibleLoadEmailIds, visibleLoadEmailInfos);
+  const { statusMap: brokerStatusMap } = useBrokerCreditStatus(visibleLoadEmailIds);
 
   const [bookingMatch, setBookingMatch] = useState<any | null>(null);
   const [bookingEmail, setBookingEmail] = useState<any | null>(null);
