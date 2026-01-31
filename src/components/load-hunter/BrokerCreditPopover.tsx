@@ -182,30 +182,32 @@ export function BrokerCreditPopover({
     return parts.length > 0 ? parts.join(', ') : 'No address on file';
   };
 
-  // Determine button style based on status
+  // Determine button style based on status - all cards are same size (w-[160px])
   const getButtonStyle = () => {
+    const baseClass = 'w-[160px] max-w-[160px] px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]';
+    
     if (currentStatus === 'not_found') {
       return {
-        className: 'bg-gray-900 dark:bg-gray-800 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-white shadow-md border border-gray-700 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
+        className: `${baseClass} bg-gray-900 dark:bg-gray-800 text-white border border-gray-700`,
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.3)',
       };
     }
     if (currentStatus === 'approved') {
       return {
-        className: 'bg-gradient-to-b from-green-100 to-green-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-green-800 shadow-md border border-green-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+        className: `${baseClass} bg-gradient-to-b from-green-500 to-green-600 text-white border border-green-400`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.15)',
       };
     }
     if (currentStatus === 'not_approved') {
       return {
-        className: 'bg-gradient-to-b from-red-100 to-red-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-red-800 shadow-md border border-red-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+        className: `${baseClass} bg-gradient-to-b from-red-500 to-red-600 text-white border border-red-400`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.15)',
       };
     }
     // Default: amber for unchecked/call_otr
     return {
-      className: 'bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-amber-800 shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)',
+      className: `${baseClass} bg-gradient-to-b from-amber-400 to-amber-500 text-amber-900 border border-amber-300`,
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.1)',
     };
   };
 
