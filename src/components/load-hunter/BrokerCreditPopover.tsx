@@ -187,20 +187,19 @@ export function BrokerCreditPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer hover:bg-accent/50 rounded px-1 -mx-1 transition-colors"
+          className="bg-gradient-to-b from-amber-100 to-amber-200 px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg text-amber-800 shadow-md border border-amber-300 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] max-w-[200px]"
+          style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.1)' }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Colored dot indicator */}
+          {/* Colored dot indicator for status */}
           <div 
-            className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColors.dot}`}
+            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusColors.dot}`}
             style={{ 
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
             }}
           />
           {/* Customer name */}
-          <div className={`text-[13px] font-medium leading-tight whitespace-nowrap ${statusColors.text}`}>
-            {truncatedName}
-          </div>
+          <span className="truncate">{truncatedName}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent 
