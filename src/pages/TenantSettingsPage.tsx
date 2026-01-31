@@ -24,8 +24,10 @@ import {
   Copy,
   Pause,
   Play,
-  Bell
+  Bell,
+  DollarSign
 } from "lucide-react";
+import { FactoringConfigCard } from "@/components/FactoringConfigCard";
 import InboundEmailRoutingCard from "@/components/InboundEmailRoutingCard";
 import CustomInboundAddresses from "@/components/CustomInboundAddresses";
 import TenantGmailConnection from "@/components/TenantGmailConnection";
@@ -516,6 +518,9 @@ export default function TenantSettingsPage() {
         tenantId={tenant.id}
         tenantName={tenant.name}
       />
+
+      {/* Factoring Company Configuration */}
+      <FactoringConfigCard tenantId={tenant.id} />
 
       {/* Custom Inbound Addresses - Full Width */}
       <CustomInboundAddresses
