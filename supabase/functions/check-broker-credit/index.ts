@@ -45,7 +45,8 @@ async function checkWithOtr(
   error?: string;
 }> {
   try {
-    const cleanMc = mcNumber.replace(/^MC-?/i, '').trim();
+    // Clean MC: remove "MC-" prefix and strip leading zeros
+    const cleanMc = mcNumber.replace(/^MC-?/i, '').trim().replace(/^0+/, '') || '0';
     const requestUrl = `${OTR_API_BASE_URL}/broker-check/${cleanMc}`;
     
     console.log(`[check-broker-credit] GET ${requestUrl}`);
@@ -168,7 +169,8 @@ async function checkWithFmcsa(mcNumber: string): Promise<{
   status?: string;
 }> {
   try {
-    const cleanMc = mcNumber.replace(/^MC-?/i, '').trim();
+    // Clean MC: remove "MC-" prefix and strip leading zeros for FMCSA
+    const cleanMc = mcNumber.replace(/^MC-?/i, '').trim().replace(/^0+/, '') || '0';
     console.log(`[check-broker-credit] Checking FMCSA for MC: ${cleanMc}`);
     
     const response = await fetch(
