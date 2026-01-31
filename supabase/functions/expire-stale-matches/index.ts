@@ -6,9 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Match record type from query
+// deno-lint-ignore no-explicit-any
+type MatchRecord = any;
 
 // Get current time in Eastern timezone (America/New_York)
 // This handles both EST (-5) and EDT (-4) automatically
@@ -55,6 +55,20 @@ serve(async (req) => {
   }
 
   try {
+    // Create Supabase client inside handler to avoid module-level env var issues
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing environment variables:', { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey });
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Validate request - accept CRON_SECRET or valid JWT
     const cronSecret = Deno.env.get('CRON_SECRET');
     const providedSecret = req.headers.get('x-cron-secret');
@@ -134,7 +148,7 @@ serve(async (req) => {
     const currentTime = new Date();
     
     // Filter to only matches where the load has actually expired
-    const expiredMatches = matches.filter(match => {
+    const expiredMatches = matches.filter((match: MatchRecord) => {
       const loadEmail = match.load_emails as any;
       if (!loadEmail) return false;
       
