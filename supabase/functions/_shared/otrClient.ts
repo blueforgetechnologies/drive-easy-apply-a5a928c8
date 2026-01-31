@@ -5,10 +5,10 @@
 // CONFIGURATION
 // =============================================================================
 
-// STAGING URL - only use production after approval
+// PRODUCTION URL - switched from staging on 2026-01-31 as staging lacks broker data
 // Note: Root URL may 404; only full endpoints work
-export const OTR_API_BASE_URL = 'https://servicesstg.otrsolutions.com/carrier-tms/2';
-// Production URL (DO NOT USE until approved): 'https://services.otrsolutions.com/carrier-tms/2'
+export const OTR_API_BASE_URL = 'https://services.otrsolutions.com/carrier-tms/2';
+// Staging URL (for testing): 'https://servicesstg.otrsolutions.com/carrier-tms/2'
 
 // Endpoints (appended to BASE_URL):
 // - GET  /broker-check/{brokerMc}
