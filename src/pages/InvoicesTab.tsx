@@ -781,9 +781,9 @@ export default function InvoicesTab() {
   const getBillingMethodBadge = (method: string | null) => {
     switch (method) {
       case 'otr':
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR</Badge>;
+        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR Solutions</Badge>;
       case 'direct_email':
-        return <Badge variant="secondary" className="text-xs">Direct Email</Badge>;
+        return <Badge variant="secondary" className="text-xs">Bill Broker</Badge>;
       default:
         return <Badge variant="outline" className="text-xs text-muted-foreground">Not Set</Badge>;
     }
@@ -1137,7 +1137,7 @@ export default function InvoicesTab() {
             <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
               <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Method</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs">Billing Method</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">Credit Approved</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs">CC (Acct)</TableHead>
