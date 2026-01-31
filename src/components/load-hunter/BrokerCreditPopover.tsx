@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { 
   Loader2, RefreshCw, Building2, MapPin, Hash, Phone, Shield, 
   CheckCircle2, XCircle, AlertCircle, UserPlus, ExternalLink,
-  FileText, Users, HelpCircle, Sparkles, DollarSign
+  FileText, Users, HelpCircle, Sparkles, DollarSign, GitMerge, Database
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -69,6 +69,12 @@ interface SimilarCustomer {
   id: string;
   name: string;
   mc_number?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  otr_approval_status?: string;
 }
 
 interface BrokerCreditPopoverProps {
@@ -330,7 +336,7 @@ export function BrokerCreditPopover({
           </button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-[560px] p-0 card-glossy border-0 overflow-hidden" 
+          className={`p-0 card-glossy border-0 overflow-hidden transition-all ${similarCustomers.length > 0 || existingCustomer ? 'w-[740px]' : 'w-[560px]'}`}
           side="bottom" 
           align="start"
           onClick={(e) => e.stopPropagation()}
@@ -410,58 +416,78 @@ export function BrokerCreditPopover({
           {/* 3-Source Comparison Grid - Beautiful Cards */}
           {hasChecked && (
             <div className="p-4 space-y-4">
-              {/* Column Headers */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
-                  <FileText className="h-4 w-4 text-amber-600" />
-                  <span className="font-semibold text-xs text-amber-700">Posted Load</span>
+              {/* Column Headers - Dynamic 3 or 4 columns */}
+              <div className={`grid gap-2 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
+                  <FileText className="h-3.5 w-3.5 text-amber-600" />
+                  <span className="font-semibold text-[10px] text-amber-700">Posted Load</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
-                  <Shield className="h-4 w-4 text-green-600" />
-                  <span className="font-semibold text-xs text-green-700">OTR Solutions</span>
+                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
+                  <Shield className="h-3.5 w-3.5 text-green-600" />
+                  <span className="font-semibold text-[10px] text-green-700">OTR Solutions</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
-                  <Building2 className="h-4 w-4 text-blue-600" />
-                  <span className="font-semibold text-xs text-blue-700">FMCSA</span>
+                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
+                  <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="font-semibold text-[10px] text-blue-700">FMCSA</span>
                 </div>
+                {(similarCustomers.length > 0 || existingCustomer) && (
+                  <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200/50">
+                    <Database className="h-3.5 w-3.5 text-purple-600" />
+                    <span className="font-semibold text-[10px] text-purple-700">Saved Customer</span>
+                  </div>
+                )}
               </div>
 
-              {/* Data Cards Grid */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Data Cards Grid - Dynamic 3 or 4 columns */}
+              <div className={`grid gap-2 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {/* Row 1: Names */}
-                <div className="card-glossy rounded-xl p-3 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Name</div>
-                  <div className="font-semibold text-sm truncate" title={parsedData?.broker_name || customerName}>
+                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Name</div>
+                  <div className="font-semibold text-xs truncate" title={parsedData?.broker_name || customerName}>
                     {parsedData?.broker_name || customerName || '—'}
                   </div>
                 </div>
-                <div className="rounded-xl p-3 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40"
+                <div className="rounded-xl p-2.5 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40"
                   style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(16,185,129,0.1)' }}
                 >
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1.5 flex items-center gap-1">
+                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3" />
                     Billing Name
                   </div>
-                  <div className="font-bold text-sm text-green-800 dark:text-green-200 truncate" title={otrData?.name}>
+                  <div className="font-bold text-xs text-green-800 dark:text-green-200 truncate" title={otrData?.name}>
                     {otrData?.name || '—'}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-3 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1.5">Legal Name</div>
-                  <div className="font-semibold text-sm truncate" title={fmcsaData?.legal_name}>
+                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">Legal Name</div>
+                  <div className="font-semibold text-xs truncate" title={fmcsaData?.legal_name}>
                     {fmcsaData?.legal_name || fmcsaData?.dba_name || '—'}
                   </div>
                 </div>
+                {/* 4th Column: Saved Customer Name */}
+                {(similarCustomers.length > 0 || existingCustomer) && (
+                  <div className={`rounded-xl p-2.5 border-2 ${existingCustomer ? 'border-purple-400 bg-gradient-to-br from-purple-100 to-violet-50 dark:from-purple-950/50 dark:to-violet-950/50' : 'border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50/50 dark:from-purple-950/30 dark:to-violet-950/30'}`}
+                    style={{ boxShadow: existingCustomer ? 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(147,51,234,0.1)' : undefined }}
+                  >
+                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1 flex items-center gap-1">
+                      {existingCustomer ? <CheckCircle2 className="h-3 w-3" /> : <GitMerge className="h-3 w-3" />}
+                      {existingCustomer ? 'Matched' : 'Similar'}
+                    </div>
+                    <div className="font-semibold text-xs truncate text-purple-800 dark:text-purple-200" title={existingCustomer?.name || similarCustomers[0]?.name}>
+                      {existingCustomer?.name || similarCustomers[0]?.name || '—'}
+                    </div>
+                  </div>
+                )}
 
-                {/* Row 2: Status/Approval/DOT */}
-                <div className="card-glossy rounded-xl p-3 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Source</div>
-                  <div className="font-medium text-sm flex items-center gap-1.5">
+                {/* Row 2: Status/Approval/DOT/Saved Status */}
+                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Source</div>
+                  <div className="font-medium text-xs flex items-center gap-1.5">
                     <div className="h-2 w-2 rounded-full bg-amber-400" />
                     Email Parse
                   </div>
                 </div>
-                <div className={`rounded-xl p-3 border-2 ${
+                <div className={`rounded-xl p-2.5 border-2 ${
                   otrData?.approval_status === 'approved' 
                     ? 'border-green-400 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-950/50 dark:to-emerald-950/50' 
                     : otrData?.approval_status === 'not_approved'
@@ -470,29 +496,29 @@ export function BrokerCreditPopover({
                 }`}
                   style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.05)' }}
                 >
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1.5">Approval</div>
-                  <div className="flex items-center gap-2">
+                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1">Approval</div>
+                  <div className="flex items-center gap-1.5">
                     {getApprovalIcon(otrData?.approval_status)}
-                    <span className="font-bold text-sm capitalize">
+                    <span className="font-bold text-xs capitalize">
                       {otrData?.approval_status?.replace('_', ' ') || '—'}
                     </span>
                   </div>
                   {otrData?.credit_limit && (
-                    <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground bg-white/60 dark:bg-black/20 rounded-md px-2 py-0.5 w-fit">
-                      <DollarSign className="h-3 w-3" />
-                      Limit: ${otrData.credit_limit.toLocaleString()}
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground bg-white/60 dark:bg-black/20 rounded-md px-1.5 py-0.5 w-fit">
+                      <DollarSign className="h-2.5 w-2.5" />
+                      ${otrData.credit_limit.toLocaleString()}
                     </div>
                   )}
                 </div>
-                <div className="card-glossy rounded-xl p-3 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1.5">DOT / Status</div>
-                  <div className="font-semibold text-sm">
+                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">DOT / Status</div>
+                  <div className="font-semibold text-xs">
                     {fmcsaData?.dot_number ? `DOT# ${fmcsaData.dot_number}` : '—'}
                   </div>
                   {fmcsaData?.safer_status && (
                     <Badge 
                       variant="outline" 
-                      className={`mt-1.5 text-[9px] font-semibold ${
+                      className={`mt-1 text-[8px] font-semibold ${
                         fmcsaData.safer_status.includes('AUTHORIZED') 
                           ? 'bg-green-100 text-green-700 border-green-300' 
                           : 'bg-red-100 text-red-700 border-red-300'
@@ -502,10 +528,19 @@ export function BrokerCreditPopover({
                     </Badge>
                   )}
                 </div>
+                {/* 4th Column: Saved Customer MC */}
+                {(similarCustomers.length > 0 || existingCustomer) && (
+                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
+                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">MC Number</div>
+                    <div className="font-semibold text-xs">
+                      {existingCustomer?.mc_number ? `MC# ${existingCustomer.mc_number}` : similarCustomers[0]?.mc_number ? `MC# ${similarCustomers[0].mc_number}` : '—'}
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 3: Address - With selectable radio + tooltip */}
                 <div 
-                  className={`rounded-xl p-3 cursor-pointer transition-all duration-200 ${
+                  className={`rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
                     selectedAddressSource === 'posted' 
                       ? 'border-2 border-amber-400 bg-gradient-to-br from-amber-100 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 shadow-md' 
                       : 'card-glossy border border-border/50 hover:border-amber-300 hover:shadow-sm'
@@ -513,7 +548,7 @@ export function BrokerCreditPopover({
                   style={selectedAddressSource === 'posted' ? { boxShadow: '0 4px 12px rgba(251,191,36,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {}}
                   onClick={() => postedAddress && setSelectedAddressSource('posted')}
                 >
-                  <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1 mb-1">
                     <input
                       type="radio"
                       name="address-source"
@@ -521,31 +556,22 @@ export function BrokerCreditPopover({
                       checked={selectedAddressSource === 'posted'}
                       onChange={() => setSelectedAddressSource('posted')}
                       disabled={!postedAddress}
-                      className="h-3.5 w-3.5 accent-amber-500"
+                      className="h-3 w-3 accent-amber-500"
                     />
                     <span className="text-[10px] uppercase tracking-wide text-amber-600 font-semibold">Address</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-3 w-3 text-amber-400 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        <p className="font-semibold mb-1">Choose your preferred address source</p>
-                        <p className="text-muted-foreground">Select which address to save with the customer record. FMCSA is typically more reliable.</p>
-                      </TooltipContent>
-                    </Tooltip>
                   </div>
-                  <div className="font-medium text-xs leading-relaxed text-foreground/80">
-                    {postedAddress || <span className="text-muted-foreground italic">Not available</span>}
+                  <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
+                    {postedAddress || <span className="text-muted-foreground italic">N/A</span>}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-3 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-semibold mb-1.5">MC Number</div>
-                  <div className="font-bold text-sm">
+                <div className="card-glossy rounded-xl p-2.5 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
+                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-semibold mb-1">MC Number</div>
+                  <div className="font-bold text-xs">
                     {otrData?.mc_number ? `MC# ${otrData.mc_number}` : '—'}
                   </div>
                 </div>
                 <div 
-                  className={`rounded-xl p-3 cursor-pointer transition-all duration-200 ${
+                  className={`rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
                     selectedAddressSource === 'fmcsa' 
                       ? 'border-2 border-blue-400 bg-gradient-to-br from-blue-100 to-sky-50 dark:from-blue-950/50 dark:to-sky-950/50 shadow-md' 
                       : 'card-glossy border border-blue-200/50 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/10 hover:border-blue-300 hover:shadow-sm'
@@ -553,7 +579,7 @@ export function BrokerCreditPopover({
                   style={selectedAddressSource === 'fmcsa' ? { boxShadow: '0 4px 12px rgba(59,130,246,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {}}
                   onClick={() => fmcsaData?.physical_address && setSelectedAddressSource('fmcsa')}
                 >
-                  <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1 mb-1">
                     <input
                       type="radio"
                       name="address-source"
@@ -561,88 +587,108 @@ export function BrokerCreditPopover({
                       checked={selectedAddressSource === 'fmcsa'}
                       onChange={() => setSelectedAddressSource('fmcsa')}
                       disabled={!fmcsaData?.physical_address}
-                      className="h-3.5 w-3.5 accent-blue-500"
+                      className="h-3 w-3 accent-blue-500"
                     />
                     <span className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold">Address</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-3 w-3 text-blue-400 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        <p className="font-semibold mb-1">FMCSA Official Address</p>
-                        <p className="text-muted-foreground">This is the registered physical address from federal records.</p>
-                      </TooltipContent>
-                    </Tooltip>
                   </div>
-                  <div className="font-medium text-xs leading-relaxed text-foreground/80">
-                    {fmcsaData?.physical_address || <span className="text-muted-foreground italic">Not available</span>}
+                  <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
+                    {fmcsaData?.physical_address || <span className="text-muted-foreground italic">N/A</span>}
                   </div>
                 </div>
+                {/* 4th Column: Saved Customer Address */}
+                {(similarCustomers.length > 0 || existingCustomer) && (
+                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
+                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">Address</div>
+                    <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
+                      {existingCustomer?.address ? (
+                        [existingCustomer.address, existingCustomer.city, existingCustomer.state, existingCustomer.zip].filter(Boolean).join(', ')
+                      ) : <span className="text-muted-foreground italic">N/A</span>}
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 4: Phone */}
-                <div className="card-glossy rounded-xl p-3 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Phone</div>
-                  <div className="font-medium text-sm flex items-center gap-1.5">
+                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Phone</div>
+                  <div className="font-medium text-xs flex items-center gap-1">
                     {parsedData?.broker_phone ? (
                       <>
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Phone className="h-3 w-3 text-muted-foreground" />
                         {parsedData.broker_phone}
                       </>
                     ) : <span className="text-muted-foreground">—</span>}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-3 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
-                  {/* OTR doesn't provide phone */}
+                <div className="card-glossy rounded-xl p-2.5 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
                   <div className="h-full flex items-center justify-center">
                     <span className="text-[10px] text-muted-foreground">N/A</span>
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-3 border border-blue-200/50 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/10">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1.5">Phone</div>
-                  <div className="font-medium text-sm flex items-center gap-1.5">
+                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/10">
+                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">Phone</div>
+                  <div className="font-medium text-xs flex items-center gap-1">
                     {fmcsaData?.phone ? (
                       <>
-                        <Phone className="h-3.5 w-3.5 text-blue-500" />
+                        <Phone className="h-3 w-3 text-blue-500" />
                         {fmcsaData.phone}
                       </>
                     ) : <span className="text-muted-foreground">—</span>}
                   </div>
                 </div>
+                {/* 4th Column: Saved Customer Phone */}
+                {(similarCustomers.length > 0 || existingCustomer) && (
+                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
+                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">Phone</div>
+                    <div className="font-medium text-xs flex items-center gap-1">
+                      {existingCustomer?.phone ? (
+                        <>
+                          <Phone className="h-3 w-3 text-purple-500" />
+                          {existingCustomer.phone}
+                        </>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Similar Customers Warning - Puffy Card */}
+              {/* Similar Customers - Merge Option with Purple Theme */}
               {similarCustomers.length > 0 && !existingCustomer && (
-                <div className="rounded-xl p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border-2 border-amber-300"
-                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 12px rgba(251,191,36,0.15)' }}
+                <div className="rounded-xl p-3 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/40 dark:to-violet-950/40 border-2 border-purple-300"
+                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 12px rgba(147,51,234,0.15)' }}
                 >
-                  <div className="flex items-center gap-2 text-sm font-bold text-amber-700 mb-3">
-                    <div className="p-1.5 rounded-lg bg-amber-200/50">
-                      <Users className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-sm font-bold text-purple-700 mb-2">
+                    <div className="p-1.5 rounded-lg bg-purple-200/50">
+                      <GitMerge className="h-4 w-4" />
                     </div>
-                    Similar customers found – merge instead?
+                    Possible duplicate found – merge?
                   </div>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-3 text-sm cursor-pointer p-2.5 rounded-lg bg-white/60 dark:bg-black/20 hover:bg-white/80 transition-colors border border-transparent hover:border-amber-300">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg bg-white/60 dark:bg-black/20 hover:bg-white/80 transition-colors border border-transparent hover:border-purple-300">
                       <input
                         type="radio"
                         name="merge"
                         checked={selectedMergeCustomerId === null}
                         onChange={() => setSelectedMergeCustomerId(null)}
-                        className="h-4 w-4 accent-amber-500"
+                        className="h-3.5 w-3.5 accent-purple-500"
                       />
                       <span className="font-medium">Create as new customer</span>
                     </label>
                     {similarCustomers.slice(0, 3).map(c => (
-                      <label key={c.id} className="flex items-center gap-3 text-sm cursor-pointer p-2.5 rounded-lg bg-white/60 dark:bg-black/20 hover:bg-white/80 transition-colors border border-transparent hover:border-amber-300">
+                      <label key={c.id} className={`flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg transition-colors border ${
+                        selectedMergeCustomerId === c.id 
+                          ? 'bg-purple-100 dark:bg-purple-950/50 border-purple-400' 
+                          : 'bg-white/60 dark:bg-black/20 hover:bg-white/80 border-transparent hover:border-purple-300'
+                      }`}>
                         <input
                           type="radio"
                           name="merge"
                           checked={selectedMergeCustomerId === c.id}
                           onChange={() => setSelectedMergeCustomerId(c.id)}
-                          className="h-4 w-4 accent-amber-500"
+                          className="h-3.5 w-3.5 accent-purple-500"
                         />
-                        <span className="truncate font-medium">{c.name}</span>
-                        {c.mc_number && <Badge variant="outline" className="text-[10px] bg-white/80">MC# {c.mc_number}</Badge>}
+                        <GitMerge className="h-3 w-3 text-purple-500" />
+                        <span className="truncate font-semibold text-purple-800">{c.name}</span>
+                        {c.mc_number && <Badge variant="outline" className="text-[9px] bg-white/80 border-purple-200 text-purple-700">MC# {c.mc_number}</Badge>}
                       </label>
                     ))}
                   </div>
