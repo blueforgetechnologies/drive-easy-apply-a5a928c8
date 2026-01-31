@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search, CheckCircle, XCircle } from "lucide-react";
-import { BrokerCreditBadge } from "@/components/BrokerCreditBadge";
+import { 
+  ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search, 
+  CheckCircle, XCircle, DollarSign, ShieldCheck, Loader2,
+  FileText
+} from "lucide-react";
+import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface CustomerData {
   id: string;
@@ -35,6 +38,9 @@ interface CustomerData {
   mc_number: string | null;
   dot_number: string | null;
   factoring_approval: string | null;
+  otr_approval_status: string | null;
+  otr_credit_limit: number | null;
+  otr_last_checked_at: string | null;
 }
 
 interface FMCSAResult {
@@ -51,16 +57,16 @@ interface FMCSAResult {
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { tenantId } = useTenantFilter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
-  const [usdotLookup, setUsdotLookup] = useState("");
-  const [mcLookup, setMcLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupDialogOpen, setLookupDialogOpen] = useState(false);
   const [lookupResult, setLookupResult] = useState<FMCSAResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
+  const [checkingFactoring, setCheckingFactoring] = useState(false);
 
   useEffect(() => {
     loadCustomer();
@@ -76,8 +82,6 @@ export default function CustomerDetail() {
 
       if (error) throw error;
       setCustomer(data);
-      setUsdotLookup(data.dot_number || "");
-      setMcLookup(data.mc_number || "");
     } catch (error: any) {
       toast.error("Failed to load customer details");
       console.error(error);
@@ -131,72 +135,25 @@ export default function CustomerDetail() {
     }
   };
 
-  const handleUsdotLookup = async () => {
-    if (!usdotLookup.trim()) {
-      toast.error("Please enter a USDOT number");
+  const handleFMCSALookup = async (type: "usdot" | "mc") => {
+    const value = type === "usdot" ? customer?.dot_number : customer?.mc_number;
+    if (!value?.trim()) {
+      toast.error(`Please enter a ${type === "usdot" ? "USDOT" : "MC"} number`);
       return;
     }
 
     setLookupLoading(true);
     setLookupResult(null);
     setLookupError(null);
-    setLookupType("usdot");
+    setLookupType(type);
     
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ usdot: usdotLookup }),
-        }
-      );
-      
-      if (!response.ok) {
-        const error = await response.json();
-        setLookupError(error.error || "Company not found in FMCSA database");
-        setLookupDialogOpen(true);
-        return;
-      }
-
-      const data = await response.json();
-      if (data.error) {
-        setLookupError(data.error);
-        setLookupDialogOpen(true);
-        return;
-      }
-      setLookupResult(data);
-      setLookupDialogOpen(true);
-    } catch (error: any) {
-      setLookupError(error.message || "Failed to fetch FMCSA data");
-      setLookupDialogOpen(true);
-    } finally {
-      setLookupLoading(false);
-    }
-  };
-
-  const handleMcLookup = async () => {
-    if (!mcLookup.trim()) {
-      toast.error("Please enter an MC number");
-      return;
-    }
-
-    setLookupLoading(true);
-    setLookupResult(null);
-    setLookupError(null);
-    setLookupType("mc");
-    
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-carrier-data`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ mc: mcLookup }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(type === "usdot" ? { usdot: value } : { mc: value }),
         }
       );
       
@@ -233,8 +190,6 @@ export default function CustomerDetail() {
         phone: lookupResult.phone || customer.phone,
         address: lookupResult.physical_address || customer.address,
       });
-      setUsdotLookup(lookupResult.usdot || usdotLookup);
-      setMcLookup(lookupResult.mc_number || mcLookup);
       toast.success("Company information applied");
     }
     setLookupDialogOpen(false);
@@ -242,322 +197,347 @@ export default function CustomerDetail() {
     setLookupError(null);
   };
 
-  const handleDiscardLookupResult = () => {
-    setLookupDialogOpen(false);
-    setLookupResult(null);
-    setLookupError(null);
-  };
+  const handleCheckFactoringApproval = async () => {
+    if (!customer?.mc_number) {
+      toast.error("MC number required for factoring check");
+      return;
+    }
 
-  if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
-  }
+    if (!tenantId) {
+      toast.error("No tenant context");
+      return;
+    }
 
-  if (!customer) {
-    return <div className="text-center py-8">Customer not found</div>;
-  }
+    setCheckingFactoring(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-broker-credit', {
+        body: {
+          tenant_id: tenantId,
+          mc_number: customer.mc_number,
+          broker_name: customer.name,
+          customer_id: customer.id,
+          force_check: true
+        }
+      });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-500";
-      case "inactive":
-        return "bg-gray-500";
-      case "pending":
-        return "bg-orange-500";
-      default:
-        return "bg-gray-500";
+      if (error) {
+        console.error('OTR check error:', error);
+        toast.error('Failed to check factoring approval');
+        return;
+      }
+
+      // Update local state
+      if (data?.approval_status) {
+        setCustomer(prev => prev ? {
+          ...prev,
+          otr_approval_status: data.approval_status,
+          otr_credit_limit: data.credit_limit || prev.otr_credit_limit,
+          otr_last_checked_at: new Date().toISOString()
+        } : null);
+      }
+
+      // Show result
+      if (data?.approval_status === 'approved') {
+        toast.success('Factoring Approved', {
+          description: data.credit_limit ? `Credit Limit: $${data.credit_limit.toLocaleString()}` : 'Broker approved for factoring'
+        });
+      } else if (data?.approval_status === 'not_approved') {
+        toast.error('Factoring Not Approved', {
+          description: 'This broker is not approved for factoring'
+        });
+      } else if (data?.approval_status === 'call_otr') {
+        toast.warning('Contact OTR', {
+          description: 'Contact OTR Solutions for more information'
+        });
+      } else if (data?.approval_status === 'not_found') {
+        toast.warning('Not Found', {
+          description: 'Broker not found in OTR system'
+        });
+      }
+    } catch (err) {
+      console.error('OTR check error:', err);
+      toast.error('Failed to check factoring approval');
+    } finally {
+      setCheckingFactoring(false);
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active": return <Badge className="bg-green-500/10 text-green-600 border-green-500/30">Active</Badge>;
+      case "inactive": return <Badge variant="secondary">Inactive</Badge>;
+      case "pending": return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30">Pending</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getFactoringBadge = (status: string | null) => {
+    switch (status) {
+      case "approved": return <Badge className="bg-green-500/10 text-green-600 border-green-500/30">Approved</Badge>;
+      case "not_approved": return <Badge className="bg-red-500/10 text-red-600 border-red-500/30">Not Approved</Badge>;
+      case "call_otr": return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">Call OTR</Badge>;
+      case "not_found": return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/30">Not Found</Badge>;
+      default: return <Badge variant="outline">Unchecked</Badge>;
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!customer) {
+    return <div className="text-center py-8 text-muted-foreground">Customer not found</div>;
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/business?subtab=customers")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Customers
+    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/business?subtab=customers")}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold">{customer.name}</h1>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-semibold">Status:</Label>
-            <Select value={customer.status} onValueChange={(value) => updateField("status", value)}>
-              <SelectTrigger className="w-[140px] bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold">{customer.name}</h1>
+              {getStatusBadge(customer.status)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {customer.mc_number && `MC# ${customer.mc_number}`}
+              {customer.mc_number && customer.dot_number && " • "}
+              {customer.dot_number && `DOT# ${customer.dot_number}`}
+            </p>
           </div>
-          {/* OTR Credit Check Badge */}
-          <BrokerCreditBadge
-            brokerName={customer.name}
-            mcNumber={customer.mc_number}
-            customerId={customer.id}
-            showCheckButton={true}
-          />
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSave} disabled={saving} size="sm">
+            <Save className="h-4 w-4 mr-1.5" />
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Company Information */}
+      {/* Factoring Status Card */}
+      <Card className="border-dashed">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Factoring Approval</span>
+                  {getFactoringBadge(customer.otr_approval_status)}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {customer.otr_credit_limit && (
+                    <span>Credit Limit: ${customer.otr_credit_limit.toLocaleString()}</span>
+                  )}
+                  {customer.otr_last_checked_at && (
+                    <span className="ml-2">
+                      • Last checked: {new Date(customer.otr_last_checked_at).toLocaleDateString()}
+                    </span>
+                  )}
+                  {!customer.otr_credit_limit && !customer.otr_last_checked_at && (
+                    <span>Not yet checked with OTR Solutions</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Button 
+              onClick={handleCheckFactoringApproval} 
+              disabled={checkingFactoring || !customer.mc_number}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {checkingFactoring ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              Check Factoring Approval
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Company Info */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Company Information
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              Company
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div>
-              <Label>Company Name *</Label>
-              <Input
-                value={customer.name}
-                onChange={(e) => updateField("name", e.target.value)}
-              />
+              <Label className="text-xs">Company Name *</Label>
+              <Input value={customer.name} onChange={(e) => updateField("name", e.target.value)} className="h-9" />
             </div>
-
             <div>
-              <Label>Contact Name</Label>
-              <Input
-                value={customer.contact_name || ""}
-                onChange={(e) => updateField("contact_name", e.target.value)}
-              />
+              <Label className="text-xs">Contact Name</Label>
+              <Input value={customer.contact_name || ""} onChange={(e) => updateField("contact_name", e.target.value)} className="h-9" />
             </div>
-
-            <Separator />
-
             <div>
-              <Label className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Address
-              </Label>
-              <Input
-                value={customer.address || ""}
-                onChange={(e) => updateField("address", e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>City</Label>
-                <Input
-                  value={customer.city || ""}
-                  onChange={(e) => updateField("city", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>State</Label>
-                <Input
-                  value={customer.state || ""}
-                  onChange={(e) => updateField("state", e.target.value)}
-                  placeholder="e.g., CA"
-                />
-              </div>
-              <div>
-                <Label>ZIP Code</Label>
-                <Input
-                  value={customer.zip || ""}
-                  onChange={(e) => updateField("zip", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <Separator />
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>USDOT Number</Label>
-                <Input
-                  value={customer.dot_number || ""}
-                  onChange={(e) => {
-                    updateField("dot_number", e.target.value);
-                    setUsdotLookup(e.target.value);
-                  }}
-                  placeholder="Enter USDOT"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleUsdotLookup} 
-                  disabled={lookupLoading}
-                  className="w-full bg-blue-500 hover:bg-blue-600"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  {lookupLoading ? "Searching..." : "Search FMCSA"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>MC Number</Label>
-                <Input
-                  value={customer.mc_number || ""}
-                  onChange={(e) => {
-                    updateField("mc_number", e.target.value);
-                    setMcLookup(e.target.value);
-                  }}
-                  placeholder="Enter MC Number"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleMcLookup} 
-                  disabled={lookupLoading}
-                  className="w-full bg-blue-500 hover:bg-blue-600"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  {lookupLoading && lookupType === "mc" ? "Searching..." : "Search FMCSA"}
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label>Factoring Approval</Label>
-              <Select 
-                value={customer.factoring_approval || "pending"} 
-                onValueChange={(value) => updateField("factoring_approval", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label className="text-xs">Status</Label>
+              <Select value={customer.status} onValueChange={(v) => updateField("status", v)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="not_approved">Not Approved</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
-
+        {/* Address */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div>
-              <Label>Payment Terms</Label>
-              <Input
-                value={customer.payment_terms || ""}
-                onChange={(e) => updateField("payment_terms", e.target.value)}
-                placeholder="e.g., Net 30"
-              />
+              <Label className="text-xs">Street Address</Label>
+              <Input value={customer.address || ""} onChange={(e) => updateField("address", e.target.value)} className="h-9" />
             </div>
-
-            <div>
-              <Label>Credit Limit ($)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={customer.credit_limit || ""}
-                onChange={(e) => updateField("credit_limit", e.target.value ? parseFloat(e.target.value) : null)}
-              />
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">City</Label>
+                <Input value={customer.city || ""} onChange={(e) => updateField("city", e.target.value)} className="h-9" />
+              </div>
+              <div>
+                <Label className="text-xs">State</Label>
+                <Input value={customer.state || ""} onChange={(e) => updateField("state", e.target.value)} className="h-9" placeholder="CA" maxLength={2} />
+              </div>
+              <div>
+                <Label className="text-xs">ZIP</Label>
+                <Input value={customer.zip || ""} onChange={(e) => updateField("zip", e.target.value)} className="h-9" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Right Column - Contact Information */}
+        {/* Contact */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Phone className="h-5 w-5" />
-              Contact Information
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              Contact
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div>
-              <Label className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Primary Email
-              </Label>
-              <Input
-                type="email"
-                value={customer.email || ""}
-                onChange={(e) => updateField("email", e.target.value)}
-              />
+              <Label className="text-xs">Primary Phone</Label>
+              <Input type="tel" value={customer.phone || ""} onChange={(e) => updateField("phone", e.target.value)} className="h-9" />
             </div>
-
             <div>
-              <Label>Secondary Email</Label>
-              <Input
-                type="email"
-                value={customer.email_secondary || ""}
-                onChange={(e) => updateField("email_secondary", e.target.value)}
-              />
+              <Label className="text-xs">Mobile</Label>
+              <Input type="tel" value={customer.phone_mobile || ""} onChange={(e) => updateField("phone_mobile", e.target.value)} className="h-9" />
             </div>
-
-            <Separator />
-
             <div>
-              <Label>Primary Phone</Label>
-              <Input
-                type="tel"
-                value={customer.phone || ""}
-                onChange={(e) => updateField("phone", e.target.value)}
-              />
+              <Label className="text-xs">Fax</Label>
+              <Input type="tel" value={customer.phone_fax || ""} onChange={(e) => updateField("phone_fax", e.target.value)} className="h-9" />
             </div>
+          </CardContent>
+        </Card>
 
+        {/* Email */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              Email
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div>
-              <Label>Secondary Phone</Label>
-              <Input
-                type="tel"
-                value={customer.phone_secondary || ""}
-                onChange={(e) => updateField("phone_secondary", e.target.value)}
-              />
+              <Label className="text-xs">Primary Email</Label>
+              <Input type="email" value={customer.email || ""} onChange={(e) => updateField("email", e.target.value)} className="h-9" />
             </div>
-
             <div>
-              <Label>Mobile</Label>
-              <Input
-                type="tel"
-                value={customer.phone_mobile || ""}
-                onChange={(e) => updateField("phone_mobile", e.target.value)}
-              />
+              <Label className="text-xs">Secondary Email</Label>
+              <Input type="email" value={customer.email_secondary || ""} onChange={(e) => updateField("email_secondary", e.target.value)} className="h-9" />
             </div>
+          </CardContent>
+        </Card>
 
-            <div>
-              <Label>Fax</Label>
-              <Input
-                type="tel"
-                value={customer.phone_fax || ""}
-                onChange={(e) => updateField("phone_fax", e.target.value)}
-              />
+        {/* FMCSA & Compliance */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              FMCSA & Compliance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label className="text-xs">USDOT Number</Label>
+                <Input value={customer.dot_number || ""} onChange={(e) => updateField("dot_number", e.target.value)} className="h-9" placeholder="Enter USDOT" />
+              </div>
+              <Button variant="secondary" size="sm" className="mt-5 h-9" onClick={() => handleFMCSALookup("usdot")} disabled={lookupLoading}>
+                <Search className="h-3.5 w-3.5" />
+              </Button>
             </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label className="text-xs">MC Number</Label>
+                <Input value={customer.mc_number || ""} onChange={(e) => updateField("mc_number", e.target.value)} className="h-9" placeholder="Enter MC" />
+              </div>
+              <Button variant="secondary" size="sm" className="mt-5 h-9" onClick={() => handleFMCSALookup("mc")} disabled={lookupLoading}>
+                <Search className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
-
+        {/* Billing */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              Billing
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={customer.notes || ""}
-                onChange={(e) => updateField("notes", e.target.value)}
-                rows={4}
-              />
+              <Label className="text-xs">Payment Terms</Label>
+              <Input value={customer.payment_terms || ""} onChange={(e) => updateField("payment_terms", e.target.value)} className="h-9" placeholder="e.g., Net 30" />
+            </div>
+            <div>
+              <Label className="text-xs">Credit Limit ($)</Label>
+              <Input type="number" value={customer.credit_limit || ""} onChange={(e) => updateField("credit_limit", e.target.value ? parseFloat(e.target.value) : null)} className="h-9" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* FMCSA Lookup Result Dialog */}
+      {/* Notes */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea value={customer.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={3} placeholder="Additional notes..." />
+        </CardContent>
+      </Card>
+
+      {/* FMCSA Lookup Dialog */}
       <Dialog open={lookupDialogOpen} onOpenChange={setLookupDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {lookupError ? (
-                <>
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  Company Not Found
-                </>
+                <><XCircle className="h-5 w-5 text-red-500" />Company Not Found</>
               ) : (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  Company Found
-                </>
+                <><CheckCircle className="h-5 w-5 text-green-500" />Company Found</>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -570,39 +550,18 @@ export default function CustomerDetail() {
               </p>
             </div>
           ) : lookupResult && (
-            <div className="space-y-3 py-4">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">Company:</span>
-                <span className="col-span-2">{lookupResult.dba_name || lookupResult.name || '—'}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">Legal Name:</span>
-                <span className="col-span-2">{lookupResult.name || '—'}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">USDOT:</span>
-                <span className="col-span-2">{lookupResult.usdot || '—'}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">MC Number:</span>
-                <span className="col-span-2">{lookupResult.mc_number || '—'}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">Phone:</span>
-                <span className="col-span-2">{lookupResult.phone || '—'}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <span className="font-medium text-muted-foreground">Address:</span>
-                <span className="col-span-2">{lookupResult.physical_address || '—'}</span>
-              </div>
+            <div className="space-y-2 py-4 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Company:</span><span>{lookupResult.dba_name || lookupResult.name || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Legal Name:</span><span>{lookupResult.name || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">USDOT:</span><span>{lookupResult.usdot || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">MC Number:</span><span>{lookupResult.mc_number || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Phone:</span><span>{lookupResult.phone || '—'}</span></div>
               {lookupResult.safer_status && (
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <span className="font-medium text-muted-foreground">SAFER Status:</span>
-                  <span className="col-span-2">
-                    <Badge variant={lookupResult.safer_status === 'NOT AUTHORIZED' ? 'destructive' : 'default'}>
-                      {lookupResult.safer_status}
-                    </Badge>
-                  </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">SAFER Status:</span>
+                  <Badge variant={lookupResult.safer_status === 'NOT AUTHORIZED' ? 'destructive' : 'default'}>
+                    {lookupResult.safer_status}
+                  </Badge>
                 </div>
               )}
             </div>
@@ -610,17 +569,11 @@ export default function CustomerDetail() {
           
           <DialogFooter>
             {lookupError ? (
-              <Button variant="outline" onClick={handleDiscardLookupResult}>
-                Close
-              </Button>
+              <Button variant="outline" onClick={() => setLookupDialogOpen(false)}>Close</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={handleDiscardLookupResult}>
-                  Discard
-                </Button>
-                <Button onClick={handleApplyLookupResult} className="bg-green-600 hover:bg-green-700">
-                  Apply to Customer
-                </Button>
+                <Button variant="outline" onClick={() => setLookupDialogOpen(false)}>Discard</Button>
+                <Button onClick={handleApplyLookupResult} className="bg-green-600 hover:bg-green-700">Apply</Button>
               </>
             )}
           </DialogFooter>
