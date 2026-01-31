@@ -11,8 +11,13 @@ import type { ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
 // Broker credit status type
 type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
 
-// Map status to colors
-const getStatusColor = (status: BrokerApprovalStatus | null | undefined): { dot: string; text: string; label: string } => {
+// Map status to colors - grey if no MC number available
+const getStatusColor = (status: BrokerApprovalStatus | null | undefined, hasMc: boolean = true): { dot: string; text: string; label: string } => {
+  // If no MC number, always show grey
+  if (!hasMc) {
+    return { dot: 'bg-gray-400', text: 'text-gray-500', label: 'No MC' };
+  }
+  
   switch (status) {
     case 'approved':
       return { dot: 'bg-green-500', text: 'text-green-600', label: 'Approved' };
@@ -53,7 +58,7 @@ interface LoadHunterTableRowEnhancedProps {
   onWaitlist: (emailId: string, matchId?: string) => void;
   onBook: (match: any, email: any) => void;
   // NEW: Broker credit status map
-  brokerStatusMap?: Map<string, { status: string; brokerName?: string }>;
+  brokerStatusMap?: Map<string, { status: string; brokerName?: string; mcNumber?: string }>;
 }
 
 export function LoadHunterTableRowEnhanced({
@@ -411,7 +416,9 @@ export function LoadHunterTableRowEnhanced({
           
           // Get broker credit status from the map (keyed by load_email_id)
           const brokerStatus = brokerStatusMap?.get(email.id);
-          const statusColors = getStatusColor(brokerStatus?.status);
+          // Check if MC is available from broker status or parsed email data
+          const hasMc = !!(brokerStatus?.mcNumber || data.mc_number);
+          const statusColors = getStatusColor(brokerStatus?.status, hasMc);
           
           return (
             <TooltipProvider>
