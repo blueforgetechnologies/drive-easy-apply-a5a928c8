@@ -2032,7 +2032,7 @@ const LoadEmailDetail = ({
                 <div className="border-b">
                   <div className="grid grid-cols-[2fr,1.4fr,1.2fr,1fr,1fr,1fr] px-2 py-1.5 text-[11px] gap-x-2">
                     <button 
-                      className={`w-[260px] max-w-[260px] px-3 py-1.5 font-bold text-sm flex items-center rounded-lg truncate shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${hasCarrierSafetyIssue ? 'bg-gradient-to-b from-red-500 to-red-600 text-white border border-red-400' : 'bg-gradient-to-b from-blue-500 to-blue-600 text-white border border-blue-400'}`}
+                      className={`w-[240px] max-w-[240px] px-3 py-1.5 font-bold text-sm flex items-center rounded-lg truncate shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${hasCarrierSafetyIssue ? 'bg-gradient-to-b from-red-500 to-red-600 text-white border border-red-400' : 'bg-gradient-to-b from-blue-500 to-blue-600 text-white border border-blue-400'}`}
                       style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.15)' }}
                       title={carrierName || "No Carrier"}
                     >
