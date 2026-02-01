@@ -7,6 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { X, MoreVertical, Wrench, Truck } from "lucide-react";
 import type { ActiveFilter, LoadHunterTheme } from "@/types/loadHunter";
+import { cleanCompanyName } from "@/lib/companyName";
 
 // Broker credit status type
 type BrokerApprovalStatus = 'approved' | 'not_approved' | 'not_found' | 'call_otr' | 'unchecked' | 'checking' | string;
@@ -385,33 +386,22 @@ export function LoadHunterTableRowEnhanced({
       {/* Customer - with broker credit status indicator */}
       <TableCell className="py-1">
         {(() => {
-          // Sanitize customer name - sometimes raw email body gets stored here
+          // Sanitize customer name - use centralized cleanCompanyName utility
           const rawCustomerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
           
-          // Clean the name: strip HTML, limit length, and extract meaningful part
-          const sanitizeCustomerName = (name: string): string => {
-            if (!name || typeof name !== 'string') return 'Unknown';
-            
-            // Strip HTML tags
-            let clean = name.replace(/<[^>]*>/g, '').trim();
-            
-            // If it looks like email body (has newlines, very long, contains email-like patterns)
-            if (clean.length > 100 || clean.includes('\n') || clean.includes('Subject:') || clean.includes('@')) {
-              // Try to extract first line or first meaningful part
-              const firstLine = clean.split(/[\n\r]/)[0].trim();
-              if (firstLine && firstLine.length > 0 && firstLine.length < 80) {
-                clean = firstLine;
-              } else {
-                // Fallback to first 60 chars
-                clean = clean.substring(0, 60);
-              }
-            }
-            
-            // Final safety truncation
-            return clean.length > 60 ? clean.substring(0, 60) + '...' : clean;
-          };
+          // Use centralized utility that strips Phone/Email/MC metadata
+          let cleanName = cleanCompanyName(rawCustomerName);
           
-          const cleanName = sanitizeCustomerName(rawCustomerName);
+          // Additional safety: if still too long or contains email patterns, extract first meaningful part
+          if (cleanName.length > 60 || cleanName.includes('\n') || cleanName.includes('Subject:')) {
+            const firstLine = cleanName.split(/[\n\r]/)[0].trim();
+            cleanName = firstLine.length > 0 && firstLine.length < 60 ? firstLine : cleanName.substring(0, 60);
+          }
+          
+          // Final safety truncation for tooltip display
+          cleanName = cleanName.length > 60 ? cleanName.substring(0, 57) + '...' : cleanName;
+          if (!cleanName) cleanName = 'Unknown';
+          
           const truncatedName = cleanName.length > 14 ? cleanName.slice(0, 14) + '...' : cleanName;
           
           // Get broker credit status from the map (keyed by load_email_id)
