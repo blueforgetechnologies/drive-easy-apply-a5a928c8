@@ -24,11 +24,14 @@ export function useBrokerCreditStatus(
   const { tenantId } = useTenantFilter();
   const [statusMap, setStatusMap] = useState<Map<string, BrokerCreditStatus>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  // Track the last fetched idString to know when to refetch
-  const lastFetchedIdStringRef = useRef<string>('');
+  // Track the last fetched key (tenant + ids) to know when to refetch
+  const lastFetchedKeyRef = useRef<string>('');
 
   // Memoize the IDs to prevent unnecessary refetches
   const idString = useMemo(() => loadEmailIds.filter(Boolean).sort().join(','), [loadEmailIds]);
+  
+  // Combine tenant and IDs for cache key - forces refetch on tenant change
+  const cacheKey = useMemo(() => `${tenantId || ''}::${idString}`, [tenantId, idString]);
 
   // Fetch function that can be called on-demand
   const fetchCachedStatus = useCallback(async (ids: string[], forceRefresh = false) => {
@@ -79,11 +82,11 @@ export function useBrokerCreditStatus(
     }
   }, [tenantId]);
 
-  // Fetch cached broker credit check results when IDs change or on mount
+  // Fetch cached broker credit check results when IDs or tenant change
   useEffect(() => {
     if (!tenantId || !idString) {
       setStatusMap(new Map());
-      lastFetchedIdStringRef.current = '';
+      lastFetchedKeyRef.current = '';
       return;
     }
 
@@ -93,15 +96,15 @@ export function useBrokerCreditStatus(
       return;
     }
 
-    // Always refetch if idString changed (including on mount when ref is empty)
-    // This ensures fresh data when navigating back to the tab
-    const shouldRefresh = lastFetchedIdStringRef.current !== idString;
+    // Always refetch if cacheKey changed (tenant or IDs changed)
+    // This ensures fresh data when navigating back to the tab or switching tenants
+    const shouldRefresh = lastFetchedKeyRef.current !== cacheKey;
     
     if (shouldRefresh) {
-      lastFetchedIdStringRef.current = idString;
+      lastFetchedKeyRef.current = cacheKey;
       fetchCachedStatus(ids, true);
     }
-  }, [tenantId, idString, fetchCachedStatus]);
+  }, [tenantId, idString, cacheKey, fetchCachedStatus]);
 
   // Subscribe to realtime updates for broker_credit_checks (INSERT and UPDATE)
   useEffect(() => {
