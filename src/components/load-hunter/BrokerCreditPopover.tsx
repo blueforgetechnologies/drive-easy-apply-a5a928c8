@@ -501,112 +501,106 @@ export function BrokerCreditPopover({
             </div>
           </div>
 
-          {/* 3-Source Comparison Grid - Beautiful Cards */}
+          {/* 3-Source Comparison Grid - Engraved Compact Cards */}
           {hasChecked && (
-            <div className="p-4 space-y-4">
+            <div className="p-3 space-y-2">
               {/* Column Headers - Dynamic 3 or 4 columns */}
-              <div className={`grid gap-2 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
-                  <FileText className="h-3.5 w-3.5 text-amber-600" />
-                  <span className="font-semibold text-[10px] text-amber-700">Posted Load</span>
+              <div className={`grid gap-1 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                <div className="cell-engraved-amber flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                  <FileText className="h-3 w-3 text-amber-600" />
+                  <span className="font-bold text-[9px] text-amber-700 uppercase tracking-wide">Posted</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
-                  <Shield className="h-3.5 w-3.5 text-green-600" />
-                  <span className="font-semibold text-[10px] text-green-700">OTR Solutions</span>
+                <div className="cell-engraved-green flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                  <Shield className="h-3 w-3 text-green-600" />
+                  <span className="font-bold text-[9px] text-green-700 uppercase tracking-wide">OTR</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
-                  <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="font-semibold text-[10px] text-blue-700">FMCSA</span>
+                <div className="cell-engraved-blue flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                  <Building2 className="h-3 w-3 text-blue-600" />
+                  <span className="font-bold text-[9px] text-blue-700 uppercase tracking-wide">FMCSA</span>
                 </div>
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200/50">
-                    <Database className="h-3.5 w-3.5 text-purple-600" />
-                    <span className="font-semibold text-[10px] text-purple-700">Saved Customer</span>
+                  <div className="cell-engraved-purple flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                    <Database className="h-3 w-3 text-purple-600" />
+                    <span className="font-bold text-[9px] text-purple-700 uppercase tracking-wide">Saved</span>
                   </div>
                 )}
               </div>
 
               {/* Data Cards Grid - Dynamic 3 or 4 columns */}
-              <div className={`grid gap-2 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <div className={`grid gap-1 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {/* Row 1: Names */}
-                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Name</div>
-                  <div className="font-semibold text-xs truncate" title={displayBrokerName}>
+                <div className="cell-engraved rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Name</div>
+                  <div className="font-semibold text-[11px] truncate" title={displayBrokerName}>
                     {displayBrokerName || '—'}
                   </div>
                 </div>
-                <div className="rounded-xl p-2.5 border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40"
-                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(16,185,129,0.1)' }}
-                >
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Billing Name
+                <div className="cell-engraved-green rounded-md p-2 border-l-2 border-l-green-500">
+                  <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5 flex items-center gap-0.5">
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    Billing
                   </div>
-                  <div className="font-bold text-xs text-green-800 dark:text-green-200 truncate" title={otrData?.name}>
+                  <div className="font-bold text-[11px] text-green-800 dark:text-green-200 truncate" title={otrData?.name}>
                     {otrData?.name || '—'}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">Legal Name</div>
-                  <div className="font-semibold text-xs truncate" title={fmcsaData?.legal_name}>
+                <div className="cell-engraved-blue rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">Legal</div>
+                  <div className="font-semibold text-[11px] truncate" title={fmcsaData?.legal_name}>
                     {fmcsaData?.legal_name || fmcsaData?.dba_name || '—'}
                   </div>
                 </div>
                 {/* 4th Column: Saved Customer Name */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className={`rounded-xl p-2.5 border-2 ${existingCustomer ? 'border-purple-400 bg-gradient-to-br from-purple-100 to-violet-50 dark:from-purple-950/50 dark:to-violet-950/50' : 'border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50/50 dark:from-purple-950/30 dark:to-violet-950/30'}`}
-                    style={{ boxShadow: existingCustomer ? 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(147,51,234,0.1)' : undefined }}
-                  >
-                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1 flex items-center gap-1">
-                      {existingCustomer ? <CheckCircle2 className="h-3 w-3" /> : <GitMerge className="h-3 w-3" />}
+                  <div className={`cell-engraved-purple rounded-md p-2 ${existingCustomer ? 'border-l-2 border-l-purple-500' : ''}`}>
+                    <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5 flex items-center gap-0.5">
+                      {existingCustomer ? <CheckCircle2 className="h-2.5 w-2.5" /> : <GitMerge className="h-2.5 w-2.5" />}
                       {existingCustomer ? 'Matched' : 'Similar'}
                     </div>
-                    <div className="font-semibold text-xs truncate text-purple-800 dark:text-purple-200" title={existingCustomer?.name || similarCustomers[0]?.name}>
+                    <div className="font-semibold text-[11px] truncate text-purple-800 dark:text-purple-200" title={existingCustomer?.name || similarCustomers[0]?.name}>
                       {existingCustomer?.name || similarCustomers[0]?.name || '—'}
                     </div>
                   </div>
                 )}
 
                 {/* Row 2: Status/Approval/DOT/Saved Status */}
-                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Source</div>
-                  <div className="font-medium text-xs flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full bg-amber-400" />
-                    Email Parse
+                <div className="cell-engraved rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Source</div>
+                  <div className="font-medium text-[11px] flex items-center gap-1">
+                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    Email
                   </div>
                 </div>
-                <div className={`rounded-xl p-2.5 border-2 ${
+                <div className={`rounded-md p-2 border-l-2 ${
                   otrData?.approval_status === 'approved' 
-                    ? 'border-green-400 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-950/50 dark:to-emerald-950/50' 
+                    ? 'cell-engraved-green border-l-green-500' 
                     : otrData?.approval_status === 'not_approved'
-                    ? 'border-red-400 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50 dark:to-rose-950/50'
-                    : 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50'
-                }`}
-                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.05)' }}
-                >
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-bold mb-1">Approval</div>
-                  <div className="flex items-center gap-1.5">
+                    ? 'cell-engraved border-l-red-500 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50'
+                    : 'cell-engraved-amber border-l-amber-500'
+                }`}>
+                  <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5">Approval</div>
+                  <div className="flex items-center gap-1">
                     {getApprovalIcon(otrData?.approval_status)}
-                    <span className="font-bold text-xs capitalize">
+                    <span className="font-bold text-[11px] capitalize">
                       {otrData?.approval_status?.replace('_', ' ') || '—'}
                     </span>
                   </div>
                   {otrData?.credit_limit && (
-                    <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground bg-white/60 dark:bg-black/20 rounded-md px-1.5 py-0.5 w-fit">
-                      <DollarSign className="h-2.5 w-2.5" />
+                    <div className="flex items-center gap-0.5 mt-0.5 text-[9px] text-muted-foreground">
+                      <DollarSign className="h-2 w-2" />
                       ${otrData.credit_limit.toLocaleString()}
                     </div>
                   )}
                 </div>
-                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">DOT / Status</div>
-                  <div className="font-semibold text-xs">
+                <div className="cell-engraved-blue rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">DOT</div>
+                  <div className="font-semibold text-[11px]">
                     {fmcsaData?.dot_number ? `DOT# ${fmcsaData.dot_number}` : '—'}
                   </div>
                   {fmcsaData?.safer_status && (
                     <Badge 
                       variant="outline" 
-                      className={`mt-1 text-[8px] font-semibold ${
+                      className={`mt-0.5 text-[7px] font-bold px-1 py-0 h-4 ${
                         fmcsaData.safer_status.includes('AUTHORIZED') 
                           ? 'bg-green-100 text-green-700 border-green-300' 
                           : 'bg-red-100 text-red-700 border-red-300'
@@ -618,9 +612,9 @@ export function BrokerCreditPopover({
                 </div>
                 {/* 4th Column: Saved Customer MC */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
-                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">MC Number</div>
-                    <div className="font-semibold text-xs">
+                  <div className="cell-engraved-purple rounded-md p-2">
+                    <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">MC #</div>
+                    <div className="font-semibold text-[11px]">
                       {existingCustomer?.mc_number ? `MC# ${existingCustomer.mc_number}` : similarCustomers[0]?.mc_number ? `MC# ${similarCustomers[0].mc_number}` : '—'}
                     </div>
                   </div>
@@ -628,15 +622,14 @@ export function BrokerCreditPopover({
 
                 {/* Row 3: Address - With selectable radio + tooltip */}
                 <div 
-                  className={`rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
+                  className={`rounded-md p-2 cursor-pointer transition-all duration-150 ${
                     selectedAddressSource === 'posted' 
-                      ? 'border-2 border-amber-400 bg-gradient-to-br from-amber-100 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 shadow-md' 
-                      : 'card-glossy border border-border/50 hover:border-amber-300 hover:shadow-sm'
+                      ? 'cell-engraved-amber ring-2 ring-amber-400 ring-offset-1' 
+                      : 'cell-engraved hover:ring-1 hover:ring-amber-300'
                   }`}
-                  style={selectedAddressSource === 'posted' ? { boxShadow: '0 4px 12px rgba(251,191,36,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {}}
                   onClick={() => postedAddress && setSelectedAddressSource('posted')}
                 >
-                  <div className="flex items-center gap-1 mb-1">
+                  <div className="flex items-center gap-1 mb-0.5">
                     <input
                       type="radio"
                       name="address-source"
@@ -644,30 +637,29 @@ export function BrokerCreditPopover({
                       checked={selectedAddressSource === 'posted'}
                       onChange={() => setSelectedAddressSource('posted')}
                       disabled={!postedAddress}
-                      className="h-3 w-3 accent-amber-500"
+                      className="h-2.5 w-2.5 accent-amber-500"
                     />
-                    <span className="text-[10px] uppercase tracking-wide text-amber-600 font-semibold">Address</span>
+                    <span className="text-[8px] uppercase tracking-wider text-amber-700 font-bold">Address</span>
                   </div>
-                  <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
-                    {postedAddress || <span className="text-muted-foreground italic">N/A</span>}
+                  <div className="font-medium text-[9px] leading-tight text-foreground/80">
+                    {postedAddress || <span className="text-muted-foreground italic text-[9px]">N/A</span>}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-2.5 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
-                  <div className="text-[10px] uppercase tracking-wide text-green-600 font-semibold mb-1">MC Number</div>
-                  <div className="font-bold text-xs">
+                <div className="cell-engraved-green rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5">MC #</div>
+                  <div className="font-bold text-[11px]">
                     {otrData?.mc_number ? `MC# ${otrData.mc_number}` : '—'}
                   </div>
                 </div>
                 <div 
-                  className={`rounded-xl p-2.5 cursor-pointer transition-all duration-200 ${
+                  className={`rounded-md p-2 cursor-pointer transition-all duration-150 ${
                     selectedAddressSource === 'fmcsa' 
-                      ? 'border-2 border-blue-400 bg-gradient-to-br from-blue-100 to-sky-50 dark:from-blue-950/50 dark:to-sky-950/50 shadow-md' 
-                      : 'card-glossy border border-blue-200/50 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/10 hover:border-blue-300 hover:shadow-sm'
+                      ? 'cell-engraved-blue ring-2 ring-blue-400 ring-offset-1' 
+                      : 'cell-engraved-blue hover:ring-1 hover:ring-blue-300'
                   }`}
-                  style={selectedAddressSource === 'fmcsa' ? { boxShadow: '0 4px 12px rgba(59,130,246,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {}}
                   onClick={() => fmcsaData?.physical_address && setSelectedAddressSource('fmcsa')}
                 >
-                  <div className="flex items-center gap-1 mb-1">
+                  <div className="flex items-center gap-1 mb-0.5">
                     <input
                       type="radio"
                       name="address-source"
@@ -675,49 +667,46 @@ export function BrokerCreditPopover({
                       checked={selectedAddressSource === 'fmcsa'}
                       onChange={() => setSelectedAddressSource('fmcsa')}
                       disabled={!fmcsaData?.physical_address}
-                      className="h-3 w-3 accent-blue-500"
+                      className="h-2.5 w-2.5 accent-blue-500"
                     />
-                    <span className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold">Address</span>
+                    <span className="text-[8px] uppercase tracking-wider text-blue-700 font-bold">Address</span>
                   </div>
-                  <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
-                    {fmcsaData?.physical_address || <span className="text-muted-foreground italic">N/A</span>}
+                  <div className="font-medium text-[9px] leading-tight text-foreground/80">
+                    {fmcsaData?.physical_address || <span className="text-muted-foreground italic text-[9px]">N/A</span>}
                   </div>
                 </div>
                 {/* 4th Column: Saved Customer Address */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
-                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">Address</div>
-                    <div className="font-medium text-[10px] leading-relaxed text-foreground/80">
+                  <div className="cell-engraved-purple rounded-md p-2">
+                    <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">Address</div>
+                    <div className="font-medium text-[9px] leading-tight text-foreground/80">
                       {existingCustomer?.address ? (
                         [existingCustomer.address, existingCustomer.city, existingCustomer.state, existingCustomer.zip].filter(Boolean).join(', ')
-                      ) : <span className="text-muted-foreground italic">N/A</span>}
+                      ) : <span className="text-muted-foreground italic text-[9px]">N/A</span>}
                     </div>
                   </div>
                 )}
 
                 {/* Row 3.5: OTR Address Input - Spans full width */}
                 <div 
-                  className={`rounded-xl p-2.5 transition-all duration-200 ${
+                  className={`rounded-md p-2 transition-all duration-150 ${
                     selectedAddressSource === 'otr' 
-                      ? 'border-2 border-green-400 bg-gradient-to-br from-green-100 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 shadow-md' 
-                      : 'card-glossy border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10 hover:border-green-300'
+                      ? 'cell-engraved-green ring-2 ring-green-400 ring-offset-1' 
+                      : 'cell-engraved-green hover:ring-1 hover:ring-green-300'
                   }`}
-                  style={{ 
-                    gridColumn: similarCustomers.length > 0 || existingCustomer ? 'span 4' : 'span 3',
-                    ...(selectedAddressSource === 'otr' ? { boxShadow: '0 4px 12px rgba(34,197,94,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {})
-                  }}
+                  style={{ gridColumn: similarCustomers.length > 0 || existingCustomer ? 'span 4' : 'span 3' }}
                   onClick={() => setSelectedAddressSource('otr')}
                 >
-                  <div className="flex items-center gap-1 mb-1.5">
+                  <div className="flex items-center gap-1 mb-1">
                     <input
                       type="radio"
                       name="address-source"
                       value="otr"
                       checked={selectedAddressSource === 'otr'}
                       onChange={() => setSelectedAddressSource('otr')}
-                      className="h-3 w-3 accent-green-500"
+                      className="h-2.5 w-2.5 accent-green-500"
                     />
-                    <span className="text-[10px] uppercase tracking-wide text-green-600 font-bold">OTR Address (Paste from Portal)</span>
+                    <span className="text-[8px] uppercase tracking-wider text-green-700 font-bold">OTR Address (Paste)</span>
                   </div>
                   <Input
                     value={customOtrAddress}
@@ -729,49 +718,49 @@ export function BrokerCreditPopover({
                     }}
                     onClick={(e) => e.stopPropagation()}
                     placeholder="Paste address from OTR Solutions portal..."
-                    className="h-8 text-xs bg-white/80 dark:bg-black/30 border-green-200 focus:border-green-400 focus:ring-green-400"
+                    className="h-7 text-[11px] bg-white/80 dark:bg-black/30 border-green-200 focus:border-green-400 focus:ring-green-400"
                   />
                 </div>
 
                 {/* Row 4: Phone */}
-                <div className="card-glossy rounded-xl p-2.5 border border-border/50">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Phone</div>
-                  <div className="font-medium text-xs flex items-center gap-1">
+                <div className="cell-engraved rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Phone</div>
+                  <div className="font-medium text-[11px] flex items-center gap-1">
                     {parsedData?.broker_phone ? (
                       <>
-                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <Phone className="h-2.5 w-2.5 text-muted-foreground" />
                         {parsedData.broker_phone}
                       </>
-                    ) : <span className="text-muted-foreground">—</span>}
+                    ) : <span className="text-muted-foreground text-[10px]">—</span>}
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-2.5 border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10">
+                <div className="cell-engraved-green rounded-md p-2">
                   <div className="h-full flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground">N/A</span>
+                    <span className="text-[9px] text-muted-foreground">N/A</span>
                   </div>
                 </div>
-                <div className="card-glossy rounded-xl p-2.5 border border-blue-200/50 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/10">
-                  <div className="text-[10px] uppercase tracking-wide text-blue-600 font-semibold mb-1">Phone</div>
-                  <div className="font-medium text-xs flex items-center gap-1">
+                <div className="cell-engraved-blue rounded-md p-2">
+                  <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">Phone</div>
+                  <div className="font-medium text-[11px] flex items-center gap-1">
                     {fmcsaData?.phone ? (
                       <>
-                        <Phone className="h-3 w-3 text-blue-500" />
+                        <Phone className="h-2.5 w-2.5 text-blue-500" />
                         {fmcsaData.phone}
                       </>
-                    ) : <span className="text-muted-foreground">—</span>}
+                    ) : <span className="text-muted-foreground text-[10px]">—</span>}
                   </div>
                 </div>
                 {/* 4th Column: Saved Customer Phone */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="card-glossy rounded-xl p-2.5 border border-purple-200/50 bg-gradient-to-br from-purple-50/30 to-transparent dark:from-purple-950/10">
-                    <div className="text-[10px] uppercase tracking-wide text-purple-600 font-semibold mb-1">Phone</div>
-                    <div className="font-medium text-xs flex items-center gap-1">
+                  <div className="cell-engraved-purple rounded-md p-2">
+                    <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">Phone</div>
+                    <div className="font-medium text-[11px] flex items-center gap-1">
                       {existingCustomer?.phone ? (
                         <>
-                          <Phone className="h-3 w-3 text-purple-500" />
+                          <Phone className="h-2.5 w-2.5 text-purple-500" />
                           {existingCustomer.phone}
                         </>
-                      ) : <span className="text-muted-foreground">—</span>}
+                      ) : <span className="text-muted-foreground text-[10px]">—</span>}
                     </div>
                   </div>
                 )}
@@ -779,106 +768,100 @@ export function BrokerCreditPopover({
 
               {/* Similar Customers - Merge Option with Purple Theme */}
               {similarCustomers.length > 0 && !existingCustomer && (
-                <div className="rounded-xl p-3 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/40 dark:to-violet-950/40 border-2 border-purple-300"
-                  style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 12px rgba(147,51,234,0.15)' }}
-                >
-                  <div className="flex items-center gap-2 text-sm font-bold text-purple-700 mb-1">
-                    <div className="p-1.5 rounded-lg bg-purple-200/50">
-                      <GitMerge className="h-4 w-4" />
-                    </div>
+                <div className="cell-engraved-purple rounded-md p-2.5 mt-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 mb-1">
+                    <GitMerge className="h-3 w-3" />
                     Similar customers found
                   </div>
-                  <p className="text-[10px] text-purple-600/80 mb-2 ml-9">
-                    Is this the same broker? Select to merge records, or create new if different.
+                  <p className="text-[9px] text-purple-600/80 mb-1.5 ml-4">
+                    Is this the same broker? Select to merge or create new.
                   </p>
-                  <div className="space-y-1.5">
-                    <label className={`flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg transition-colors border ${
+                  <div className="space-y-1">
+                    <label className={`flex items-center gap-1.5 text-[10px] cursor-pointer p-1.5 rounded-md transition-colors ${
                       selectedMergeCustomerId === null 
-                        ? 'bg-green-100 dark:bg-green-950/50 border-green-400' 
-                        : 'bg-white/60 dark:bg-black/20 hover:bg-white/80 border-transparent hover:border-green-300'
+                        ? 'bg-green-100/80 dark:bg-green-950/50 ring-1 ring-green-400' 
+                        : 'bg-white/60 dark:bg-black/20 hover:bg-white/80'
                     }`}>
                       <input
                         type="radio"
                         name="merge"
                         checked={selectedMergeCustomerId === null}
                         onChange={() => setSelectedMergeCustomerId(null)}
-                        className="h-3.5 w-3.5 accent-green-500"
+                        className="h-2.5 w-2.5 accent-green-500"
                       />
-                      <UserPlus className="h-3 w-3 text-green-600" />
-                      <span className="font-semibold text-green-700">Not a duplicate – Create new customer</span>
+                      <UserPlus className="h-2.5 w-2.5 text-green-600" />
+                      <span className="font-semibold text-green-700">Create new customer</span>
                     </label>
                     {similarCustomers.slice(0, 3).map(c => (
-                      <label key={c.id} className={`flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg transition-colors border ${
+                      <label key={c.id} className={`flex items-center gap-1.5 text-[10px] cursor-pointer p-1.5 rounded-md transition-colors ${
                         selectedMergeCustomerId === c.id 
-                          ? 'bg-purple-100 dark:bg-purple-950/50 border-purple-400' 
-                          : 'bg-white/60 dark:bg-black/20 hover:bg-white/80 border-transparent hover:border-purple-300'
+                          ? 'bg-purple-100/80 dark:bg-purple-950/50 ring-1 ring-purple-400' 
+                          : 'bg-white/60 dark:bg-black/20 hover:bg-white/80'
                       }`}>
                         <input
                           type="radio"
                           name="merge"
                           checked={selectedMergeCustomerId === c.id}
                           onChange={() => setSelectedMergeCustomerId(c.id)}
-                          className="h-3.5 w-3.5 accent-purple-500"
+                          className="h-2.5 w-2.5 accent-purple-500"
                         />
-                        <GitMerge className="h-3 w-3 text-purple-500" />
-                        <span className="truncate font-semibold text-purple-800">Same broker – Merge with {c.name}</span>
-                        {c.mc_number && <Badge variant="outline" className="text-[9px] bg-white/80 border-purple-200 text-purple-700">MC# {c.mc_number}</Badge>}
+                        <GitMerge className="h-2.5 w-2.5 text-purple-500" />
+                        <span className="truncate font-semibold text-purple-800">Merge: {c.name}</span>
+                        {c.mc_number && <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 bg-white/80 border-purple-200 text-purple-700">MC# {c.mc_number}</Badge>}
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Action Button - Big Puffy Style */}
-              <div className="pt-2">
+              {/* Action Button - Compact Style */}
+              <div className="pt-1.5">
                 {existingCustomer ? (
                   <Button
                     variant="outline"
-                    className="w-full h-12 text-sm font-semibold gap-2 rounded-xl border-2"
+                    className="w-full h-9 text-xs font-semibold gap-1.5 rounded-md"
                     onClick={() => {
                       navigate(`/dashboard/customer/${existingCustomer.id}`);
                       setOpen(false);
                     }}
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-3.5 w-3.5" />
                     View Customer Profile
                   </Button>
                 ) : (
                   <Button
-                    className="w-full h-12 text-sm font-bold gap-2 rounded-xl btn-glossy-success text-white"
+                    className="w-full h-9 text-xs font-bold gap-1.5 rounded-md btn-glossy-success text-white"
                     onClick={handleSaveCustomer}
                     disabled={isSaving || !otrData?.name}
                   >
                     {isSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <UserPlus className="h-4 w-4" />
+                      <UserPlus className="h-3.5 w-3.5" />
                     )}
-                    {selectedMergeCustomerId ? 'Merge & Update Customer' : 'Save as Customer'}
+                    {selectedMergeCustomerId ? 'Merge & Update' : 'Save as Customer'}
                   </Button>
                 )}
               </div>
 
               {/* Info note with icon */}
-              <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-muted/30">
-                <Shield className="h-3.5 w-3.5 text-green-600" />
-                <p className="text-[11px] text-muted-foreground">
-                  Customer name & MC saved from <span className="font-semibold text-green-600">OTR Solutions</span> (billing authority)
+              <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md bg-muted/30 mt-1">
+                <Shield className="h-3 w-3 text-green-600" />
+                <p className="text-[9px] text-muted-foreground">
+                  Name & MC from <span className="font-semibold text-green-600">OTR</span> (billing authority)
                 </p>
               </div>
             </div>
           )}
 
-          {/* Before check state - Nice empty state */}
+          {/* Before check state - Compact empty state */}
           {!hasChecked && (
-            <div className="p-8 text-center">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4"
-                style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.05)' }}
-              >
-                <Shield className="h-7 w-7 text-muted-foreground" />
+            <div className="p-5 text-center">
+              <div className="mx-auto w-10 h-10 cell-engraved rounded-xl flex items-center justify-center mb-2.5">
+                <Shield className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium text-foreground mb-1">Ready to Verify</p>
-              <p className="text-xs text-muted-foreground">Enter MC number and click <span className="font-semibold">Check</span> to see broker information from all sources</p>
+              <p className="text-xs font-medium text-foreground mb-0.5">Ready to Verify</p>
+              <p className="text-[10px] text-muted-foreground">Enter MC # and click <span className="font-semibold">Check</span></p>
             </div>
           )}
           </ScrollArea>
