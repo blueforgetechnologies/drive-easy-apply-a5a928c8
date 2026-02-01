@@ -87,7 +87,7 @@ export function LoadHunterTableRowEnhanced({
   const navigate = useNavigate();
 
   // Keep the first two columns compact so they don't look like oversized gaps.
-  const wideCol = 'w-[220px] min-w-[220px]';
+  const wideCol = 'w-[180px] min-w-[180px]';
   
   // Parse data from email
   const data = email?.parsed_data || {};
