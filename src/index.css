@@ -331,79 +331,82 @@ All colors MUST be HSL.
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.1);
   }
   
-  /* Engraved Cell - Inset card style for data cells */
-  .cell-engraved {
-    background: linear-gradient(180deg, hsl(220 14% 94%) 0%, hsl(220 14% 96%) 100%);
+  /* Puffy Glossy Cell - Raised card style for data cells */
+  .cell-puffy {
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 97%) 100%);
     box-shadow: 
-      inset 0 2px 4px rgba(0,0,0,0.08),
-      inset 0 1px 2px rgba(0,0,0,0.04),
-      0 1px 0 rgba(255,255,255,0.8);
+      0 2px 6px rgba(0,0,0,0.08),
+      0 1px 2px rgba(0,0,0,0.04),
+      inset 0 1px 0 rgba(255,255,255,0.9);
     border: 1px solid hsl(220 13% 88%);
   }
-  .dark .cell-engraved {
-    background: linear-gradient(180deg, hsl(224 71% 6%) 0%, hsl(224 71% 8%) 100%);
+  .dark .cell-puffy {
+    background: linear-gradient(180deg, hsl(224 71% 12%) 0%, hsl(224 71% 8%) 100%);
     box-shadow: 
-      inset 0 2px 4px rgba(0,0,0,0.3),
-      inset 0 1px 2px rgba(0,0,0,0.2),
-      0 1px 0 rgba(255,255,255,0.03);
-    border-color: hsl(215 28% 15%);
+      0 2px 6px rgba(0,0,0,0.25),
+      0 1px 2px rgba(0,0,0,0.15),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    border-color: hsl(215 28% 18%);
   }
   
-  /* Engraved Cell with color accent */
-  .cell-engraved-green {
-    background: linear-gradient(180deg, hsl(142 40% 94%) 0%, hsl(142 45% 96%) 100%);
+  /* Puffy Cell with color accent - Green */
+  .cell-puffy-green {
+    background: linear-gradient(180deg, hsl(142 50% 98%) 0%, hsl(142 45% 94%) 100%);
     box-shadow: 
-      inset 0 2px 4px hsl(142 50% 40% / 0.1),
-      inset 0 1px 2px hsl(142 50% 40% / 0.05),
-      0 1px 0 rgba(255,255,255,0.8);
-    border: 1px solid hsl(142 40% 82%);
+      0 3px 8px hsl(142 50% 40% / 0.12),
+      0 1px 3px hsl(142 50% 40% / 0.08),
+      inset 0 1px 0 rgba(255,255,255,0.95);
+    border: 1px solid hsl(142 40% 80%);
   }
-  .dark .cell-engraved-green {
-    background: linear-gradient(180deg, hsl(142 30% 10%) 0%, hsl(142 30% 12%) 100%);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.03);
-    border-color: hsl(142 30% 20%);
+  .dark .cell-puffy-green {
+    background: linear-gradient(180deg, hsl(142 35% 14%) 0%, hsl(142 30% 10%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    border-color: hsl(142 30% 22%);
   }
   
-  .cell-engraved-blue {
-    background: linear-gradient(180deg, hsl(217 50% 95%) 0%, hsl(217 55% 97%) 100%);
+  /* Puffy Cell - Blue */
+  .cell-puffy-blue {
+    background: linear-gradient(180deg, hsl(217 60% 98%) 0%, hsl(217 55% 94%) 100%);
     box-shadow: 
-      inset 0 2px 4px hsl(217 50% 50% / 0.08),
-      inset 0 1px 2px hsl(217 50% 50% / 0.04),
-      0 1px 0 rgba(255,255,255,0.8);
-    border: 1px solid hsl(217 40% 85%);
+      0 3px 8px hsl(217 50% 50% / 0.1),
+      0 1px 3px hsl(217 50% 50% / 0.06),
+      inset 0 1px 0 rgba(255,255,255,0.95);
+    border: 1px solid hsl(217 40% 82%);
   }
-  .dark .cell-engraved-blue {
-    background: linear-gradient(180deg, hsl(217 40% 10%) 0%, hsl(217 40% 12%) 100%);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.03);
-    border-color: hsl(217 30% 20%);
+  .dark .cell-puffy-blue {
+    background: linear-gradient(180deg, hsl(217 45% 14%) 0%, hsl(217 40% 10%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    border-color: hsl(217 30% 22%);
   }
   
-  .cell-engraved-amber {
-    background: linear-gradient(180deg, hsl(45 80% 95%) 0%, hsl(45 85% 97%) 100%);
+  /* Puffy Cell - Amber */
+  .cell-puffy-amber {
+    background: linear-gradient(180deg, hsl(45 90% 98%) 0%, hsl(45 85% 94%) 100%);
     box-shadow: 
-      inset 0 2px 4px hsl(45 70% 50% / 0.1),
-      inset 0 1px 2px hsl(45 70% 50% / 0.05),
-      0 1px 0 rgba(255,255,255,0.8);
-    border: 1px solid hsl(45 60% 82%);
+      0 3px 8px hsl(45 70% 50% / 0.12),
+      0 1px 3px hsl(45 70% 50% / 0.08),
+      inset 0 1px 0 rgba(255,255,255,0.95);
+    border: 1px solid hsl(45 60% 78%);
   }
-  .dark .cell-engraved-amber {
-    background: linear-gradient(180deg, hsl(45 40% 10%) 0%, hsl(45 40% 12%) 100%);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.03);
-    border-color: hsl(45 30% 20%);
+  .dark .cell-puffy-amber {
+    background: linear-gradient(180deg, hsl(45 45% 14%) 0%, hsl(45 40% 10%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    border-color: hsl(45 30% 22%);
   }
   
-  .cell-engraved-purple {
-    background: linear-gradient(180deg, hsl(270 50% 96%) 0%, hsl(270 55% 98%) 100%);
+  /* Puffy Cell - Purple */
+  .cell-puffy-purple {
+    background: linear-gradient(180deg, hsl(270 55% 98%) 0%, hsl(270 50% 95%) 100%);
     box-shadow: 
-      inset 0 2px 4px hsl(270 50% 50% / 0.08),
-      inset 0 1px 2px hsl(270 50% 50% / 0.04),
-      0 1px 0 rgba(255,255,255,0.8);
-    border: 1px solid hsl(270 40% 88%);
+      0 3px 8px hsl(270 50% 50% / 0.1),
+      0 1px 3px hsl(270 50% 50% / 0.06),
+      inset 0 1px 0 rgba(255,255,255,0.95);
+    border: 1px solid hsl(270 40% 85%);
   }
-  .dark .cell-engraved-purple {
-    background: linear-gradient(180deg, hsl(270 30% 10%) 0%, hsl(270 30% 12%) 100%);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.03);
-    border-color: hsl(270 30% 20%);
+  .dark .cell-puffy-purple {
+    background: linear-gradient(180deg, hsl(270 35% 14%) 0%, hsl(270 30% 10%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    border-color: hsl(270 30% 22%);
   }
 
   /* ========== SCI-FI APPLICATION THEME ========== */
