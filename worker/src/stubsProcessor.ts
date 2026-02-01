@@ -16,11 +16,13 @@ import { supabase } from './supabase.js';
 import { 
   loadGmailToken, 
   getValidAccessToken, 
-  fetchGmailHistory, 
+  fetchGmailHistoryWithMeta,
+  fetchRecentMessages,
   fetchMessageFull,
   type GmailToken,
   type GmailMessage,
   type GmailMessageHeader,
+  type HistoryFetchResult,
 } from './historyQueue.js';
 import { geocodeLocation, lookupCityFromZip, type Coordinates } from './geocode.js';
 import { parseSylectusEmail, parseSubjectLine, type ParsedEmailData } from './parsers/sylectus.js';
@@ -527,16 +529,62 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
       return { success: false, messagesProcessed: 0, loadsCreated: 0, error };
     }
 
-    // Step 3: Fetch message IDs from history
-    const messageIds = await fetchGmailHistory(accessToken, stub.email_address, stub.history_id);
+    // Step 3: Fetch message IDs from history WITH metadata
+    const historyResult: HistoryFetchResult = await fetchGmailHistoryWithMeta(
+      accessToken, 
+      stub.email_address, 
+      stub.history_id
+    );
+    
+    let messageIds = historyResult.messageIds;
+    
+    // CRITICAL FIX: If history returned 0 messages, verify via messages.list
+    // This prevents advancing the cursor when Gmail has history gaps
+    if (messageIds.length === 0 && historyResult.historyEmpty) {
+      log('warn', 'History returned 0, verifying via messages.list', { 
+        stubId: stub.id.substring(0, 8),
+        historyId: stub.history_id 
+      });
+      
+      // Check for recent messages in the last 30 minutes
+      const recentCheck = await fetchRecentMessages(accessToken, stub.email_address, 50, 30);
+      
+      if (recentCheck.hasNewer && recentCheck.messageIds.length > 0) {
+        // HISTORY GAP DETECTED! Gmail has messages that history.list didn't return
+        log('warn', 'HISTORY GAP DETECTED! Found messages via messages.list that history missed', {
+          stubId: stub.id.substring(0, 8),
+          historyId: stub.history_id,
+          recentMessageCount: recentCheck.messageIds.length,
+        });
+        
+        // Filter to only messages we haven't already processed
+        const existingIds = await getExistingEmailIds(stub.tenant_id, recentCheck.messageIds);
+        messageIds = recentCheck.messageIds.filter(id => !existingIds.includes(id));
+        
+        log('info', 'Backfilling missing messages', {
+          stubId: stub.id.substring(0, 8),
+          totalRecent: recentCheck.messageIds.length,
+          alreadyExists: existingIds.length,
+          toBackfill: messageIds.length,
+        });
+        
+        // Log gap event for monitoring
+        await logHistoryGapEvent(stub.tenant_id, stub.email_address, stub.history_id, messageIds.length);
+      } else {
+        // Truly no new messages - safe to complete
+        await completeStub(stub.id);
+        log('debug', 'No new messages confirmed via messages.list', { stubId: stub.id.substring(0, 8) });
+        return { success: true, messagesProcessed: 0, loadsCreated: 0 };
+      }
+    }
+    
     if (messageIds.length === 0) {
-      // No new messages - still success
+      // No messages to process after all checks
       await completeStub(stub.id);
-      log('debug', 'No new messages in history', { stubId: stub.id.substring(0, 8) });
       return { success: true, messagesProcessed: 0, loadsCreated: 0 };
     }
 
-    log('info', `Found ${messageIds.length} messages in history`, { stubId: stub.id.substring(0, 8) });
+    log('info', `Found ${messageIds.length} messages to process`, { stubId: stub.id.substring(0, 8) });
 
     // Step 4: Process each message
     let messagesProcessed = 0;
@@ -586,5 +634,61 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     });
     await failStub(stub.id, errorMessage);
     return { success: false, messagesProcessed: 0, loadsCreated: 0, error: errorMessage };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS FOR HISTORY GAP DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Check which email_ids already exist in load_emails table.
+ * Used to filter out already-processed messages during backfill.
+ */
+async function getExistingEmailIds(tenantId: string, emailIds: string[]): Promise<string[]> {
+  if (emailIds.length === 0) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('load_emails')
+      .select('email_id')
+      .eq('tenant_id', tenantId)
+      .in('email_id', emailIds);
+    
+    if (error) {
+      log('error', 'Failed to check existing email_ids', { error: error.message });
+      return [];
+    }
+    
+    return (data || []).map(row => row.email_id);
+  } catch (err) {
+    log('error', 'Exception checking existing email_ids', { 
+      error: err instanceof Error ? err.message : String(err) 
+    });
+    return [];
+  }
+}
+
+/**
+ * Log a history gap event for monitoring and debugging.
+ */
+async function logHistoryGapEvent(
+  tenantId: string, 
+  emailAddress: string, 
+  historyId: string, 
+  backfilledCount: number
+): Promise<void> {
+  try {
+    await supabase.from('circuit_breaker_events').insert({
+      tenant_id: tenantId,
+      email_address: emailAddress,
+      history_id: historyId,
+      breaker_type: 'history_gap_detected',
+      reason: `Backfilled ${backfilledCount} messages missed by history.list`,
+    });
+  } catch (err) {
+    log('warn', 'Failed to log history gap event', { 
+      error: err instanceof Error ? err.message : String(err) 
+    });
   }
 }

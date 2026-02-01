@@ -254,13 +254,34 @@ async function fetchWithTimeout(
  * Fetch history entries starting from a given historyId.
  * Exported for use by stubsProcessor.ts
  */
+export interface HistoryFetchResult {
+  messageIds: string[];
+  historyEmpty: boolean;  // true if history.list returned no history entries
+  latestHistoryId: string | null;  // returned historyId from Gmail
+}
+
 export async function fetchGmailHistory(
   accessToken: string, 
   emailAddress: string, 
   startHistoryId: string
 ): Promise<string[]> {
+  const result = await fetchGmailHistoryWithMeta(accessToken, emailAddress, startHistoryId);
+  return result.messageIds;
+}
+
+/**
+ * Fetch history entries with metadata about whether history was empty.
+ * This is critical for detecting history gaps.
+ */
+export async function fetchGmailHistoryWithMeta(
+  accessToken: string, 
+  emailAddress: string, 
+  startHistoryId: string
+): Promise<HistoryFetchResult> {
   const messageIds: string[] = [];
   let pageToken: string | undefined;
+  let historyEmpty = true;
+  let latestHistoryId: string | null = null;
 
   try {
     do {
@@ -287,8 +308,14 @@ export async function fetchGmailHistory(
 
       const data = await response.json() as GmailHistoryResponse;
       
+      // Track the latest historyId returned by Gmail
+      if (data.historyId) {
+        latestHistoryId = data.historyId;
+      }
+      
       // Extract messageIds from history entries
-      if (data.history) {
+      if (data.history && data.history.length > 0) {
+        historyEmpty = false;
         for (const entry of data.history) {
           if (entry.messagesAdded) {
             for (const added of entry.messagesAdded) {
@@ -303,19 +330,81 @@ export async function fetchGmailHistory(
       pageToken = data.nextPageToken;
     } while (pageToken);
 
-    log('info', 'History fetched', { email: emailAddress, messageCount: messageIds.length });
-    return messageIds;
+    log('info', 'History fetched', { 
+      email: emailAddress, 
+      messageCount: messageIds.length,
+      historyEmpty,
+      latestHistoryId 
+    });
+    return { messageIds, historyEmpty, latestHistoryId };
   } catch (error) {
     // Handle AbortError specifically for timeout
     if (error instanceof Error && error.name === 'AbortError') {
       log('error', 'History fetch TIMEOUT (15s)', { email: emailAddress });
-      return [];
+      return { messageIds: [], historyEmpty: true, latestHistoryId: null };
     }
     log('error', 'History fetch exception', { 
       email: emailAddress, 
       error: error instanceof Error ? error.message : String(error) 
     });
-    return [];
+    return { messageIds: [], historyEmpty: true, latestHistoryId: null };
+  }
+}
+
+/**
+ * Fetch recent messages via messages.list to verify if there are truly no new messages.
+ * Used when history.list returns 0 to detect history gaps.
+ * Returns message IDs newer than the provided cutoff date.
+ */
+export async function fetchRecentMessages(
+  accessToken: string,
+  emailAddress: string,
+  maxResults: number = 20,
+  newerThanMinutes: number = 30
+): Promise<{ messageIds: string[]; hasNewer: boolean }> {
+  try {
+    // Build query for recent inbox messages
+    const afterDate = new Date(Date.now() - newerThanMinutes * 60 * 1000);
+    const afterEpoch = Math.floor(afterDate.getTime() / 1000);
+    
+    const url = new URL(`https://gmail.googleapis.com/gmail/v1/users/${emailAddress}/messages`);
+    url.searchParams.set('maxResults', String(maxResults));
+    url.searchParams.set('q', `in:inbox after:${afterEpoch}`);
+    
+    const response = await fetchWithTimeout(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      log('error', 'Messages.list failed', { 
+        email: emailAddress, 
+        status: response.status, 
+        error: errorText 
+      });
+      return { messageIds: [], hasNewer: false };
+    }
+
+    const data = await response.json() as { messages?: Array<{ id: string; threadId: string }> };
+    const messageIds = (data.messages || []).map(m => m.id);
+    
+    log('info', 'Recent messages fetched', { 
+      email: emailAddress, 
+      count: messageIds.length,
+      newerThanMinutes 
+    });
+    
+    return { messageIds, hasNewer: messageIds.length > 0 };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      log('error', 'Messages.list fetch TIMEOUT (15s)', { email: emailAddress });
+      return { messageIds: [], hasNewer: false };
+    }
+    log('error', 'Messages.list fetch exception', { 
+      email: emailAddress, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    return { messageIds: [], hasNewer: false };
   }
 }
 
