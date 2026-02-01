@@ -1193,16 +1193,18 @@ export default function LoadHunterTab() {
 
   // Reload emails when time window changes - handled by tenant change effect which calls loadLoadEmails
   // The emailTimeWindow is in the useCallback deps, so the function updates when it changes
+  // NOTE: deactivateStaleMatches is now handled by pg_cron (every 1 min) to reduce edge function costs
+  // Frontend only calls it once on mount for immediate feedback
   useEffect(() => {
-    // Run immediately on mount
+    // Run immediately on mount only
     checkAndMarkMissedLoads();
-    deactivateStaleMatches();
+    deactivateStaleMatches(); // One-time call on mount; cron handles recurring
     
-    // Run every 30 seconds
+    // Only run missed load check periodically (local operation, no edge function)
     const missedCheckInterval = setInterval(() => {
-      console.log('⏰ Running missed load check (15 min) and stale match check (30 min)');
+      console.log('⏰ Running missed load check (15 min)');
       checkAndMarkMissedLoads();
-      deactivateStaleMatches();
+      // deactivateStaleMatches removed - now handled by pg_cron every 1 minute
     }, 30 * 1000);
     
     return () => clearInterval(missedCheckInterval);
