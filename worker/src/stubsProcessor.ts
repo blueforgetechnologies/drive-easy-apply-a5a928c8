@@ -30,6 +30,7 @@ import {
   generateContentHash,
   FINGERPRINT_VERSION,
 } from './fingerprint.js';
+import { triggerBrokerCheck } from './brokerCheck.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -416,7 +417,7 @@ async function createLoadFromMessage(
   });
 
   // Trigger matching (async, don't wait)
-  triggerMatching(inserted.id, inserted.load_id, pickupCoords, tenantId, fingerprint, new Date(internalDate))
+  triggerMatching(inserted.id, inserted.load_id, pickupCoords, tenantId, fingerprint, new Date(internalDate), parsedData)
     .catch(err => log('warn', 'Matching failed', { error: String(err) }));
 
   return { success: true, loadId: inserted.load_id };
@@ -428,7 +429,8 @@ async function triggerMatching(
   pickupCoords: Coordinates | null,
   tenantId: string,
   fingerprint: string | null,
-  receivedAt: Date
+  receivedAt: Date,
+  parsedData: ParsedEmailData
 ): Promise<void> {
   // Simplified matching - get enabled hunt plans for tenant
   const { data: hunts } = await supabase
@@ -469,8 +471,8 @@ async function triggerMatching(
       if (!shouldTrigger) continue;
     }
 
-    // Insert match
-    await supabase.from('load_hunt_matches').insert({
+    // Insert match and get the ID
+    const { data: insertedMatch } = await supabase.from('load_hunt_matches').insert({
       load_email_id: loadEmailId,
       hunt_plan_id: hunt.id,
       vehicle_id: hunt.vehicle_id,
@@ -479,7 +481,12 @@ async function triggerMatching(
       match_status: 'active',
       matched_at: new Date().toISOString(),
       tenant_id: tenantId,
-    });
+    }).select('id').single();
+
+    // Trigger broker credit check (fire-and-forget)
+    if (insertedMatch) {
+      triggerBrokerCheck(tenantId, loadEmailId, parsedData, insertedMatch.id);
+    }
   }
 }
 
