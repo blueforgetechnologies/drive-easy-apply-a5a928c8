@@ -26,6 +26,7 @@ import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { EditEntityDialog } from "@/components/EditEntityDialog";
 import { LoadDocuments } from "@/components/LoadDocuments";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
+import { cleanLoadNotes } from "@/lib/companyName";
 
 export default function LoadDetail() {
   const { id } = useParams();
@@ -812,10 +813,10 @@ export default function LoadDetail() {
 
         <TabsContent value="overview" className="space-y-1.5">
           {/* Email Notes Alert - Always visible if present */}
-          {originalEmail?.parsed_data?.notes && (
+          {cleanLoadNotes(originalEmail?.parsed_data?.notes) && (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 border border-red-500/30">
               <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-              <p className="text-xs text-red-500 font-medium">{originalEmail.parsed_data.notes}</p>
+              <p className="text-xs text-red-500 font-medium">{cleanLoadNotes(originalEmail.parsed_data.notes)}</p>
             </div>
           )}
 

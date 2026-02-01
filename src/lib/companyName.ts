@@ -45,3 +45,43 @@ export function cleanCompanyName(input: string | null | undefined): string {
 
   return s;
 }
+
+/**
+ * Sanitizes load notes by stripping Sylectus/Solera boilerplate text.
+ * Removes the "BID ON LOAD" instructions and copyright footer that appear in emails.
+ */
+export function cleanLoadNotes(input: string | null | undefined): string {
+  if (!input) return "";
+
+  let s = String(input);
+
+  // Remove Sylectus boilerplate patterns
+  const boilerplatePatterns: RegExp[] = [
+    // "BID ON LOAD To bid on the load please click..."
+    /BID\s+ON\s+LOAD\s*To\s+bid\s+on\s+the\s+load\s+please\s+click\s+the\s+button\s+above\.?/gi,
+    // "To review your existing bids, go to the Bid Board page."
+    /To\s+review\s+your\s+existing\s+bids,?\s+go\s+to\s+the\s+Bid\s+Board\s+page\.?/gi,
+    // "The status of your bid will change throughout the life cycle of the post."
+    /The\s+status\s+of\s+your\s+bid\s+will\s+change\s+throughout\s+the\s+life\s*cycle\s+of\s+the\s+post\.?/gi,
+    // "© 2023 Solera, Inc.All Rights Reserved" (with possible whitespace issues)
+    /©\s*\d{4}\s*Solera,?\s*Inc\.?\s*All\s*Rights\s*Reserved/gi,
+    // "|| www.solera.com Privacy Policy"
+    /\|?\|?\s*www\.solera\.com\s*Privacy\s*Policy/gi,
+    // Just "www.solera.com" standalone
+    /www\.solera\.com/gi,
+    // "Privacy Policy" at end
+    /\s*Privacy\s*Policy\s*$/gi,
+  ];
+
+  for (const pattern of boilerplatePatterns) {
+    s = s.replace(pattern, "").trim();
+  }
+
+  // Clean up multiple spaces and trailing/leading whitespace
+  s = s.replace(/\s+/g, " ").trim();
+  
+  // Remove trailing pipes or separators
+  s = s.replace(/[\|]+\s*$/g, "").trim();
+
+  return s;
+}
