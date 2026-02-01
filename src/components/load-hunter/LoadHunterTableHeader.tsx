@@ -40,6 +40,9 @@ export function LoadHunterTableHeader({
 
   const cellStyle = loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined;
 
+  // Column sizing: keep the first two columns compact so they don't look like huge gaps.
+  const wideCol = 'w-[220px] min-w-[220px]';
+
   return (
     <TableHeader 
       className={loadHunterTheme === 'aurora' ? 'rounded-t-lg' : ''}
@@ -78,11 +81,11 @@ export function LoadHunterTableHeader({
 
         {/* Truck column - expanded width */}
         {activeFilter !== 'all' && (
-          <TableHead className={`w-[290px] min-w-[290px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Truck - Drivers<br/>Carrier</TableHead>
+          <TableHead className={`${wideCol} py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Truck - Drivers<br/>Carrier</TableHead>
         )}
 
         {/* Customer - expanded width */}
-        <TableHead className={`w-[290px] min-w-[290px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Customer</TableHead>
+        <TableHead className={`${wideCol} py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Customer</TableHead>
 
         {/* Received/Expires */}
         {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
