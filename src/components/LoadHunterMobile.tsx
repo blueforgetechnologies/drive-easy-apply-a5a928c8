@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import oilChangeIcon from '@/assets/oil-change-icon.png';
 import checkEngineIcon from '@/assets/check-engine-icon.png';
+import { cleanLoadNotes } from "@/lib/companyName";
 
 interface Vehicle {
   id: string;
@@ -809,9 +810,9 @@ export default function LoadHunterMobile({
                     </div>
 
                     {/* Load Notes (if present) */}
-                    {data.notes && (
+                    {cleanLoadNotes(data.notes) && (
                       <div className="bg-amber-50 dark:bg-amber-950/30 rounded p-1.5 text-[9px] text-amber-800 dark:text-amber-300">
-                        <span className="font-semibold">Notes:</span> {data.notes}
+                        <span className="font-semibold">Notes:</span> {cleanLoadNotes(data.notes)}
                       </div>
                     )}
 

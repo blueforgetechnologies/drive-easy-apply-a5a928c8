@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import LoadRouteMap from "@/components/LoadRouteMap";
+import { cleanLoadNotes } from "@/lib/companyName";
 import { BrokerCreditBadge } from "@/components/BrokerCreditBadge";
 import { BrokerCreditPopover } from "@/components/load-hunter/BrokerCreditPopover";
 import { supabase } from "@/integrations/supabase/client";
@@ -2107,10 +2108,12 @@ const LoadEmailDetail = ({
                 <div className="flex items-center gap-2 px-3 py-1.5">
                   <div className="flex-1 border rounded-lg px-3 py-1.5 text-[11px] flex items-center gap-4">
                     <div className="font-semibold text-blue-600 shrink-0">Original Post</div>
-                    <div>
-                      <span className="text-muted-foreground">Notes:</span>{' '}
-                      <span className="text-red-600 font-bold">{data.notes || ''}</span>
-                    </div>
+                    {cleanLoadNotes(data.notes) && (
+                      <div>
+                        <span className="text-muted-foreground">Notes:</span>{' '}
+                        <span className="text-red-600 font-bold">{cleanLoadNotes(data.notes)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
