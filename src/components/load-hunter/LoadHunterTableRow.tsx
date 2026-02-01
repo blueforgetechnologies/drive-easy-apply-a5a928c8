@@ -463,7 +463,7 @@ export function LoadHunterTableRow({
         <TableCell className="py-1">
           <div className="flex items-center gap-1">
             <span className={`text-[13px] leading-tight whitespace-nowrap font-medium ${receivedDiffMins >= 15 ? 'text-red-500' : receivedDiffMins >= 5 ? 'text-orange-500' : 'text-green-500'}`} title={exactReceived}>{receivedAgo}</span>
-            {isNewlyProcessed && (
+            {isNewlyProcessed && activeFilter !== 'unreviewed' && (
               <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
             )}
             {email.is_update && (
