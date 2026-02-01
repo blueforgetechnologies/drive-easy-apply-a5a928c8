@@ -7274,6 +7274,16 @@ export type Database = {
         Returns: boolean
       }
       is_user_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      match_customer_by_broker_name: {
+        Args: { p_broker_name: string; p_tenant_id: string }
+        Returns: {
+          alias_names: string[]
+          id: string
+          mc_number: string
+          name: string
+          otr_approval_status: string
+        }[]
+      }
       next_invoice_number: { Args: { p_tenant_id: string }; Returns: string }
       reset_stale_email_queue: { Args: never; Returns: number }
       resolve_integration_config: {
