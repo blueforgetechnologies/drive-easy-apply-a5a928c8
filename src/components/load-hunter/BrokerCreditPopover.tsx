@@ -119,7 +119,8 @@ export function BrokerCreditPopover({
   const [similarCustomers, setSimilarCustomers] = useState<SimilarCustomer[]>([]);
   
   // User selections for saving
-  const [selectedAddressSource, setSelectedAddressSource] = useState<'posted' | 'fmcsa'>('fmcsa');
+  const [selectedAddressSource, setSelectedAddressSource] = useState<'posted' | 'fmcsa' | 'otr'>('fmcsa');
+  const [customOtrAddress, setCustomOtrAddress] = useState('');
   const [selectedMergeCustomerId, setSelectedMergeCustomerId] = useState<string | null>(null);
   
   const [hasChecked, setHasChecked] = useState(false);
@@ -291,6 +292,24 @@ export function BrokerCreditPopover({
       const cleanMc = localMcNumber.replace(/^MC-?/i, '').trim();
       
       // Build customer data - OTR name + MC is authoritative
+      // Determine address based on source selection
+      let addressValue: string | null = null;
+      let cityValue: string | null = null;
+      let stateValue: string | null = null;
+      let zipValue: string | null = null;
+      
+      if (selectedAddressSource === 'otr' && customOtrAddress.trim()) {
+        // Use custom OTR address as full address string
+        addressValue = customOtrAddress.trim();
+      } else if (selectedAddressSource === 'fmcsa' && fmcsaData?.physical_address) {
+        addressValue = fmcsaData.physical_address;
+      } else if (selectedAddressSource === 'posted') {
+        addressValue = parsedData?.broker_address || null;
+        cityValue = parsedData?.broker_city || null;
+        stateValue = parsedData?.broker_state || null;
+        zipValue = parsedData?.broker_zip || null;
+      }
+      
       const customerData = {
         tenant_id: tenantId,
         name: otrData.name, // Always use OTR name for billing
@@ -300,12 +319,10 @@ export function BrokerCreditPopover({
         otr_last_checked_at: new Date().toISOString(),
         status: 'active',
         dot_number: fmcsaData?.dot_number || null,
-        address: selectedAddressSource === 'fmcsa' && fmcsaData?.physical_address 
-          ? fmcsaData.physical_address 
-          : parsedData?.broker_address || null,
-        city: selectedAddressSource === 'posted' ? parsedData?.broker_city || null : null,
-        state: selectedAddressSource === 'posted' ? parsedData?.broker_state || null : null,
-        zip: selectedAddressSource === 'posted' ? parsedData?.broker_zip || null : null,
+        address: addressValue,
+        city: cityValue,
+        state: stateValue,
+        zip: zipValue,
         phone: selectedAddressSource === 'fmcsa' && fmcsaData?.phone 
           ? fmcsaData.phone 
           : parsedData?.broker_phone || null,
@@ -677,6 +694,44 @@ export function BrokerCreditPopover({
                     </div>
                   </div>
                 )}
+
+                {/* Row 3.5: OTR Address Input - Spans full width */}
+                <div 
+                  className={`rounded-xl p-2.5 transition-all duration-200 ${
+                    selectedAddressSource === 'otr' 
+                      ? 'border-2 border-green-400 bg-gradient-to-br from-green-100 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 shadow-md' 
+                      : 'card-glossy border border-green-200/50 bg-gradient-to-br from-green-50/30 to-transparent dark:from-green-950/10 hover:border-green-300'
+                  }`}
+                  style={{ 
+                    gridColumn: similarCustomers.length > 0 || existingCustomer ? 'span 4' : 'span 3',
+                    ...(selectedAddressSource === 'otr' ? { boxShadow: '0 4px 12px rgba(34,197,94,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' } : {})
+                  }}
+                  onClick={() => setSelectedAddressSource('otr')}
+                >
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <input
+                      type="radio"
+                      name="address-source"
+                      value="otr"
+                      checked={selectedAddressSource === 'otr'}
+                      onChange={() => setSelectedAddressSource('otr')}
+                      className="h-3 w-3 accent-green-500"
+                    />
+                    <span className="text-[10px] uppercase tracking-wide text-green-600 font-bold">OTR Address (Paste from Portal)</span>
+                  </div>
+                  <Input
+                    value={customOtrAddress}
+                    onChange={(e) => {
+                      setCustomOtrAddress(e.target.value);
+                      if (e.target.value.trim()) {
+                        setSelectedAddressSource('otr');
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Paste address from OTR Solutions portal..."
+                    className="h-8 text-xs bg-white/80 dark:bg-black/30 border-green-200 focus:border-green-400 focus:ring-green-400"
+                  />
+                </div>
 
                 {/* Row 4: Phone */}
                 <div className="card-glossy rounded-xl p-2.5 border border-border/50">
