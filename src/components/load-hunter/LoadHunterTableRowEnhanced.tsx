@@ -460,7 +460,7 @@ export function LoadHunterTableRowEnhanced({
             >
               {receivedAgo}
             </span>
-            {isNewlyProcessed && (
+            {isNewlyProcessed && activeFilter !== 'unreviewed' && (
               <Badge variant="default" className="h-4 px-1 text-[10px] bg-green-500 hover:bg-green-500 text-black font-semibold">NEW</Badge>
             )}
             {email.is_update && (
