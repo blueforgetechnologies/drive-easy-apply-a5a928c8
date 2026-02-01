@@ -91,18 +91,24 @@ async function checkWithOtr(
     // Map OTR response to our status format
     // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "NoBuy", "Approved", etc.)
     // 
-    // STATUS MAPPING (NoBuy boolean is authoritative):
-    // - NoBuy=false → APPROVED (Green) - broker is eligible for factoring
-    // - NoBuy=true → NOT APPROVED (Red) - broker is NOT eligible, regardless of BrokerTestResult
+    // STATUS MAPPING:
+    // - NoBuy=false + "Call Credit" → CALL_OTR (Orange) - eligible but needs verification call
+    // - NoBuy=false + other result → APPROVED (Green) - fully approved
+    // - NoBuy=true → NOT APPROVED (Red) - broker is NOT eligible
     let approvalStatus = 'unchecked';
     const testResult = (data.BrokerTestResult || '').toLowerCase().trim();
     
     if (typeof data.NoBuy === 'boolean') {
       if (data.NoBuy === false) {
-        // NoBuy=false means broker IS APPROVED for factoring
-        approvalStatus = 'approved';
+        // NoBuy=false means broker IS eligible for factoring
+        // But if "Call Credit", flag it so team knows to call OTR
+        if (testResult.includes('call') || testResult === 'call credit') {
+          approvalStatus = 'call_otr';
+        } else {
+          approvalStatus = 'approved';
+        }
       } else {
-        // NoBuy=true means NOT APPROVED - matches OTR portal display
+        // NoBuy=true means NOT APPROVED
         approvalStatus = 'not_approved';
       }
       console.log(`[check-broker-credit] Mapped status: NoBuy=${data.NoBuy}, BrokerTestResult="${data.BrokerTestResult}" -> ${approvalStatus}`);
@@ -110,7 +116,9 @@ async function checkWithOtr(
       // NoBuy not present - fall back to BrokerTestResult analysis only
       if (testResult === 'approved' || testResult === 'yes') {
         approvalStatus = 'approved';
-      } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied' || testResult.includes('call')) {
+      } else if (testResult.includes('call')) {
+        approvalStatus = 'call_otr';
+      } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
         approvalStatus = 'not_approved';
       }
       console.log(`[check-broker-credit] Mapped status (no NoBuy): BrokerTestResult="${data.BrokerTestResult}" -> ${approvalStatus}`);
