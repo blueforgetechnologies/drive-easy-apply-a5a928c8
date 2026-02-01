@@ -24,13 +24,14 @@ export function useBrokerCreditStatus(
   const { tenantId } = useTenantFilter();
   const [statusMap, setStatusMap] = useState<Map<string, BrokerCreditStatus>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  const fetchedIdsRef = useRef<Set<string>>(new Set());
+  // Track the last fetched idString to know when to refetch
+  const lastFetchedIdStringRef = useRef<string>('');
 
   // Memoize the IDs to prevent unnecessary refetches
   const idString = useMemo(() => loadEmailIds.filter(Boolean).sort().join(','), [loadEmailIds]);
 
   // Fetch function that can be called on-demand
-  const fetchCachedStatus = useCallback(async (ids: string[]) => {
+  const fetchCachedStatus = useCallback(async (ids: string[], forceRefresh = false) => {
     if (!tenantId || ids.length === 0) return;
 
     setIsLoading(true);
@@ -47,12 +48,18 @@ export function useBrokerCreditStatus(
         return;
       }
 
-      // Build map from cached data (most recent check per load_email_id)
+      // Build map from cached data - always use most recent check per load_email_id
+      // Track which IDs we've seen so we only take the first (most recent) per ID
+      const seenIds = new Set<string>();
+      
       setStatusMap((prev) => {
-        const newMap = new Map(prev);
+        // If force refresh, start fresh; otherwise merge with existing
+        const newMap = forceRefresh ? new Map<string, BrokerCreditStatus>() : new Map(prev);
         
         for (const row of checkData || []) {
-          if (row.load_email_id && !newMap.has(row.load_email_id)) {
+          // Only take the first result per load_email_id (most recent due to ordering)
+          if (row.load_email_id && !seenIds.has(row.load_email_id)) {
+            seenIds.add(row.load_email_id);
             newMap.set(row.load_email_id, {
               status: row.approval_status || 'unchecked',
               brokerName: row.broker_name,
@@ -60,7 +67,6 @@ export function useBrokerCreditStatus(
               checkedAt: row.checked_at,
               customerId: row.customer_id,
             });
-            fetchedIdsRef.current.add(row.load_email_id);
           }
         }
         
@@ -73,11 +79,11 @@ export function useBrokerCreditStatus(
     }
   }, [tenantId]);
 
-  // Fetch cached broker credit check results when IDs change
+  // Fetch cached broker credit check results when IDs change or on mount
   useEffect(() => {
     if (!tenantId || !idString) {
       setStatusMap(new Map());
-      fetchedIdsRef.current.clear();
+      lastFetchedIdStringRef.current = '';
       return;
     }
 
@@ -87,11 +93,13 @@ export function useBrokerCreditStatus(
       return;
     }
 
-    // Only fetch IDs we haven't already fetched
-    const newIds = ids.filter(id => !fetchedIdsRef.current.has(id));
+    // Always refetch if idString changed (including on mount when ref is empty)
+    // This ensures fresh data when navigating back to the tab
+    const shouldRefresh = lastFetchedIdStringRef.current !== idString;
     
-    if (newIds.length > 0) {
-      fetchCachedStatus(newIds);
+    if (shouldRefresh) {
+      lastFetchedIdStringRef.current = idString;
+      fetchCachedStatus(ids, true);
     }
   }, [tenantId, idString, fetchCachedStatus]);
 
@@ -123,7 +131,6 @@ export function useBrokerCreditStatus(
               });
               return updated;
             });
-            fetchedIdsRef.current.add(newRow.load_email_id);
           }
         }
       )
@@ -138,7 +145,7 @@ export function useBrokerCreditStatus(
   const refetch = useCallback(() => {
     if (!tenantId || !idString) return;
     const ids = idString.split(',').filter(Boolean);
-    fetchCachedStatus(ids);
+    fetchCachedStatus(ids, true);
   }, [tenantId, idString, fetchCachedStatus]);
 
   return { statusMap, isLoading, refetch };
