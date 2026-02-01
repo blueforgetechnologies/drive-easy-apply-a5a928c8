@@ -53,12 +53,14 @@ async function getRecentCheckResult(
 ): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null } | null> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   
+  // Fix #1: Get the MOST RECENT check, not a random one from the hour
   const { data: existingCheck } = await supabase
     .from('broker_credit_checks')
     .select('approval_status, customer_id, mc_number')
     .eq('tenant_id', tenantId)
     .eq('load_email_id', loadEmailId)
     .gte('checked_at', oneHourAgo)
+    .order('checked_at', { ascending: false })
     .limit(1);
     
   if (existingCheck && existingCheck.length > 0) {
@@ -69,6 +71,24 @@ async function getRecentCheckResult(
     };
   }
   return null;
+}
+
+/**
+ * Fetch existing match_ids that already have broker_credit_checks for a load_email_id.
+ * Used to avoid overwriting existing rows during dedupe fan-out.
+ */
+async function getExistingCheckedMatchIds(
+  tenantId: string,
+  loadEmailId: string
+): Promise<Set<string>> {
+  const { data: existing } = await supabase
+    .from('broker_credit_checks')
+    .select('match_id')
+    .eq('tenant_id', tenantId)
+    .eq('load_email_id', loadEmailId)
+    .not('match_id', 'is', null);
+    
+  return new Set((existing || []).map(r => r.match_id).filter(Boolean));
 }
 
 /**
@@ -95,6 +115,8 @@ async function getAllMatchesForLoad(
 /**
  * Fan-out: Upsert broker_credit_checks for ALL matches on a load_email_id.
  * This ensures every match row in UI shows the same status dot.
+ * 
+ * @param isDedupeFanout - If true, only insert MISSING matches (don't overwrite existing audit data)
  */
 async function fanOutCreditCheckToMatches(
   tenantId: string,
@@ -104,15 +126,29 @@ async function fanOutCreditCheckToMatches(
   brokerName: string,
   mcNumber: string | null,
   approvalStatus: string,
-  rawResponse: Record<string, unknown> | null
+  rawResponse: Record<string, unknown> | null,
+  isDedupeFanout: boolean = false
 ): Promise<void> {
   if (matchIds.length === 0) {
     console.log(`[broker-check] No matches to fan-out for load ${loadEmailId}`);
     return;
   }
   
-  // Build rows for bulk upsert - only include mc_number if present
-  const rows = matchIds.map(matchId => {
+  // Fix #2: For dedupe fan-out, only insert rows for MISSING match_ids
+  let targetMatchIds = matchIds;
+  if (isDedupeFanout) {
+    const existingMatchIds = await getExistingCheckedMatchIds(tenantId, loadEmailId);
+    targetMatchIds = matchIds.filter(id => !existingMatchIds.has(id));
+    
+    if (targetMatchIds.length === 0) {
+      console.log(`[broker-check] Dedupe fan-out: all ${matchIds.length} matches already have checks`);
+      return;
+    }
+    console.log(`[broker-check] Dedupe fan-out: filling gaps for ${targetMatchIds.length} of ${matchIds.length} matches`);
+  }
+  
+  // Build rows for bulk insert - only include mc_number if present
+  const rows = targetMatchIds.map(matchId => {
     const row: Record<string, unknown> = {
       tenant_id: tenantId,
       customer_id: customerId,
@@ -132,18 +168,28 @@ async function fanOutCreditCheckToMatches(
     return row;
   });
   
-  // Bulk upsert using the unique constraint
-  const { error } = await supabase
-    .from('broker_credit_checks')
-    .upsert(rows, { 
-      onConflict: 'tenant_id,load_email_id,match_id',
-      ignoreDuplicates: false 
-    });
+  // For dedupe fan-out, use INSERT with ignoreDuplicates to avoid overwrites
+  // For fresh checks, use UPSERT to update if needed
+  const { error } = isDedupeFanout
+    ? await supabase
+        .from('broker_credit_checks')
+        .insert(rows)
+    : await supabase
+        .from('broker_credit_checks')
+        .upsert(rows, { 
+          onConflict: 'tenant_id,load_email_id,match_id',
+          ignoreDuplicates: false 
+        });
     
   if (error) {
-    console.error(`[broker-check] Fan-out upsert failed:`, error);
+    // Ignore duplicate key errors for dedupe fan-out (race condition protection)
+    if (isDedupeFanout && error.code === '23505') {
+      console.log(`[broker-check] Dedupe fan-out: some rows already existed (race condition, safe to ignore)`);
+      return;
+    }
+    console.error(`[broker-check] Fan-out ${isDedupeFanout ? 'insert' : 'upsert'} failed:`, error);
   } else {
-    console.log(`[broker-check] Fan-out complete: ${matchIds.length} matches for load ${loadEmailId}`);
+    console.log(`[broker-check] Fan-out complete: ${targetMatchIds.length} matches for load ${loadEmailId}`);
   }
 }
 
@@ -403,7 +449,7 @@ export async function checkBrokerCredit(
   if (recentResult) {
     console.log(`[broker-check] Dedupe hit for load ${loadEmailId} - reusing status: ${recentResult.approvalStatus}, fan-out to ${allMatchIds.length} matches`);
     
-    // Fan-out existing result to any missing matches
+    // Fan-out existing result to any MISSING matches only (isDedupeFanout=true)
     await fanOutCreditCheckToMatches(
       tenantId,
       loadEmailId,
@@ -412,7 +458,8 @@ export async function checkBrokerCredit(
       brokerName,
       recentResult.mcNumber,
       recentResult.approvalStatus,
-      { reason: 'dedupe_fanout' }
+      { reason: 'dedupe_fanout' },
+      true // isDedupeFanout - only fill gaps, don't overwrite existing audit data
     );
     
     return { success: true, approvalStatus: recentResult.approvalStatus };
