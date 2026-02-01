@@ -298,13 +298,18 @@ export function WorkerControlPanel() {
     loadVolumeData();
     loadWorkerHealth();
     
-    // Refresh stats every 30 seconds
-    const interval = setInterval(() => {
-      loadQueueStats();
-      loadVolumeData();
-      loadWorkerHealth();
-    }, 30000);
-    return () => clearInterval(interval);
+    // Visibility-based refresh: reload when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[WorkerControlPanel] Tab visible - refreshing stats');
+        loadQueueStats();
+        loadVolumeData();
+        loadWorkerHealth();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const updateConfig = (updates: Partial<WorkerConfig>) => {

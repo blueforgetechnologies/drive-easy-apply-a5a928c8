@@ -293,16 +293,20 @@ export function UserActivityTracker() {
     trackPresence();
   }, [trackPresence]);
 
-  // Reload users when online status or presence activity changes
+  // Reload users on mount and when tab becomes visible (visibility-based refresh)
   useEffect(() => {
     loadTodayUsers();
     
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      loadTodayUsers();
-    }, 30000);
-
-    return () => clearInterval(interval);
+    // Visibility-based refresh: reload when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[UserActivityTracker] Tab visible - refreshing user list');
+        loadTodayUsers();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loadTodayUsers]);
 
   const formatLastActivity = (date: Date) => {

@@ -234,17 +234,9 @@ export default function LoadAnalyticsTab() {
     loadGeocodeCache();
   }, [startDate, endDate, canAccessAnalytics, accessLoading, tenantLoading]);
 
-  // Auto-refresh interval - gated by access
-  useEffect(() => {
-    if (accessLoading || tenantLoading) return;
-    if (!canAccessAnalytics) return;
-    
-    const interval = setInterval(() => {
-      refreshData();
-    }, refreshInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [refreshInterval, startDate, endDate, canAccessAnalytics, accessLoading, tenantLoading]);
+  // REMOVED: Auto-refresh interval - now manual refresh only
+  // Users can click the refresh button when they need updated data
+  // This reduces unnecessary edge function calls and database queries
 
   const refreshData = async () => {
     // Hard gate: never refresh if not authorized
