@@ -551,20 +551,10 @@ export default function LoadHunterTab() {
   // UI no longer polls process-email-queue - workers claim from email_queue table directly
   // This eliminates Edge Function costs and prevents Gmail API 429 rate limits
 
-  // BACKUP: Periodic re-match every 60 seconds (reduced from 20s for cost savings)
+  // REMOVED: Periodic re-match interval (was 60s, now eliminated)
   // Primary matching is handled by gmail-webhook and realtime subscriptions
-  // This only catches loads that failed initial matching
-  useEffect(() => {
-    const readyHunts = huntPlans.filter(h => h.enabled && h.initialMatchDone);
-    if (readyHunts.length === 0) return;
-    
-    const interval = setInterval(() => {
-      // Force re-matching by updating state (triggers the matching useEffect above)
-      setLoadEmails(current => [...current]);
-    }, 60 * 1000); // Every 60 seconds
-    
-    return () => clearInterval(interval);
-  }, [huntPlans]);
+  // Realtime listeners already trigger re-matching when new emails/matches arrive
+  // No polling needed - see useLoadHunterRealtime for realtime subscriptions
 
   // REALTIME SUBSCRIPTION: Auto-refresh when new matches arrive
   // CRITICAL: Must be tenant-scoped to prevent cross-tenant triggers

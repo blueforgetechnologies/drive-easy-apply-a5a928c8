@@ -165,6 +165,7 @@ const MapTab = () => {
     prevTenantIdRef.current = tenantId;
   }, [tenantId, clearAllMarkers]);
 
+  // Load vehicles on mount and when user returns to tab (visibility-based refresh)
   useEffect(() => {
     // SECURITY: Don't load until tenant context is ready
     if (!isReady) {
@@ -174,13 +175,18 @@ const MapTab = () => {
     
     loadVehicles();
     
-    // Auto-refresh vehicle positions every 30 seconds
-    const refreshInterval = setInterval(() => {
-      if (isReady) loadVehicles();
-    }, 30000);
-
+    // Visibility-based refresh: reload when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isReady) {
+        console.log('[MapTab] Tab visible - refreshing vehicle positions');
+        loadVehicles();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
-      clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [tenantId, isReady]);
 
