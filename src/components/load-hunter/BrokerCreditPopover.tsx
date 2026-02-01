@@ -379,7 +379,7 @@ export function BrokerCreditPopover({
 
   // Button style based on status
   const getButtonStyle = () => {
-    const baseClass = 'w-[240px] max-w-[240px] px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]';
+    const baseClass = 'w-[210px] max-w-[210px] px-3 py-1.5 font-bold text-sm flex items-center gap-2 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]';
     
     if (currentStatus === 'not_found') {
       return {
