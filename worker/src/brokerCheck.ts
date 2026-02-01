@@ -4,6 +4,8 @@
  * Checks broker factoring approval via OTR Solutions API
  * and auto-creates customers when MC numbers are found.
  * 
+ * Uses RPC match_customer_by_broker_name to search both name AND alias_names.
+ * Learns new alias names automatically when broker names differ.
  * Deduplicates by order_number to minimize API calls.
  */
 
@@ -18,7 +20,23 @@ export interface BrokerCheckResult {
   approvalStatus?: string;
   customerId?: string | null;
   customerCreated?: boolean;
+  aliasLearned?: boolean;
   error?: string;
+}
+
+interface MatchedCustomer {
+  id: string;
+  name: string | null;
+  mc_number: string | null;
+  otr_approval_status: string | null;
+  alias_names: string[] | null;
+}
+
+/**
+ * Normalize broker name for comparison (lowercase, collapse whitespace)
+ */
+function normalizeName(name?: string | null): string {
+  return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 /**
@@ -49,9 +67,74 @@ async function hasRecentCheck(
 }
 
 /**
+ * Find customer using RPC that searches BOTH name AND alias_names.
+ * Returns the matched customer if found.
+ */
+async function findCustomerByBrokerName(
+  tenantId: string,
+  brokerName: string
+): Promise<MatchedCustomer | null> {
+  const { data, error } = await supabase.rpc('match_customer_by_broker_name', {
+    p_tenant_id: tenantId,
+    p_broker_name: brokerName,
+  });
+
+  if (error) {
+    console.error(`[broker-check] RPC match_customer_by_broker_name error:`, error);
+    return null;
+  }
+
+  // RPC returns array, get first match
+  const rows = data as MatchedCustomer[] | null;
+  return rows?.[0] ?? null;
+}
+
+/**
+ * Learn new alias: if brokerName differs from saved name and isn't already in alias_names,
+ * append it to the customer's alias_names array.
+ */
+async function learnAliasIfNew(
+  tenantId: string,
+  customer: MatchedCustomer,
+  brokerName: string
+): Promise<boolean> {
+  const normalizedBroker = normalizeName(brokerName);
+  const normalizedCustomerName = normalizeName(customer.name);
+  
+  // Don't add if it matches the primary name
+  if (normalizedBroker === normalizedCustomerName) {
+    return false;
+  }
+  
+  // Don't add if already in alias_names
+  const aliases = customer.alias_names ?? [];
+  const alreadyExists = aliases.some(a => normalizeName(a) === normalizedBroker);
+  if (alreadyExists) {
+    return false;
+  }
+  
+  // Append the new alias (keep original casing from the email)
+  const trimmedBroker = brokerName.trim();
+  const newAliases = [...aliases, trimmedBroker];
+  
+  const { error } = await supabase
+    .from('customers')
+    .update({ alias_names: newAliases })
+    .eq('tenant_id', tenantId)
+    .eq('id', customer.id);
+  
+  if (error) {
+    console.error(`[broker-check] Failed to update alias_names:`, error);
+    return false;
+  }
+  
+  console.log(`[broker-check] Learned new alias "${trimmedBroker}" for customer "${customer.name}"`);
+  return true;
+}
+
+/**
  * Find or create customer by broker name and MC number.
- * Returns customer ID if found/created, AND the MC number from the customer record.
- * This ensures we can use a saved MC even if the email didn't contain one.
+ * Uses RPC for name+alias matching, falls back to MC lookup, creates if needed.
  */
 async function findOrCreateCustomer(
   tenantId: string,
@@ -62,43 +145,48 @@ async function findOrCreateCustomer(
   created: boolean; 
   existingStatus: string | null;
   savedMcNumber: string | null;
+  aliasLearned: boolean;
 }> {
-  // First, try to find by name (fuzzy)
-  const { data: existingByName } = await supabase
-    .from('customers')
-    .select('id, mc_number, otr_approval_status')
-    .eq('tenant_id', tenantId)
-    .ilike('name', `%${brokerName}%`)
-    .limit(1);
+  // Step 1: Try RPC match (searches name + alias_names)
+  const matchedCustomer = await findCustomerByBrokerName(tenantId, brokerName);
+  
+  if (matchedCustomer) {
+    // Learn new alias if broker name differs
+    const aliasLearned = await learnAliasIfNew(tenantId, matchedCustomer, brokerName);
     
-  if (existingByName && existingByName.length > 0) {
     return { 
-      customerId: existingByName[0].id, 
+      customerId: matchedCustomer.id, 
       created: false,
-      existingStatus: existingByName[0].otr_approval_status,
-      savedMcNumber: existingByName[0].mc_number || null,
+      existingStatus: matchedCustomer.otr_approval_status,
+      savedMcNumber: matchedCustomer.mc_number || null,
+      aliasLearned,
     };
   }
   
-  // If no match by name but we have MC, try by MC
+  // Step 2: If no match by name/alias but we have MC, try by MC
   if (mcNumber) {
     const { data: existingByMc } = await supabase
       .from('customers')
-      .select('id, mc_number, otr_approval_status')
+      .select('id, mc_number, otr_approval_status, name, alias_names')
       .eq('tenant_id', tenantId)
       .eq('mc_number', mcNumber)
       .limit(1);
       
     if (existingByMc && existingByMc.length > 0) {
+      const customer = existingByMc[0] as MatchedCustomer;
+      // Learn the broker name as an alias since MC matched
+      const aliasLearned = await learnAliasIfNew(tenantId, customer, brokerName);
+      
       return { 
-        customerId: existingByMc[0].id, 
+        customerId: customer.id, 
         created: false,
-        existingStatus: existingByMc[0].otr_approval_status,
-        savedMcNumber: existingByMc[0].mc_number || null,
+        existingStatus: customer.otr_approval_status,
+        savedMcNumber: customer.mc_number || null,
+        aliasLearned,
       };
     }
     
-    // Customer doesn't exist and we have MC - create it!
+    // Step 3: Customer doesn't exist and we have MC - create it!
     const { data: newCustomer, error: createError } = await supabase
       .from('customers')
       .insert({
@@ -127,18 +215,19 @@ async function findOrCreateCustomer(
           created: false,
           existingStatus: existing?.[0]?.otr_approval_status || null,
           savedMcNumber: existing?.[0]?.mc_number || null,
+          aliasLearned: false,
         };
       }
       console.error(`[broker-check] Failed to create customer:`, createError);
-      return { customerId: null, created: false, existingStatus: null, savedMcNumber: null };
+      return { customerId: null, created: false, existingStatus: null, savedMcNumber: null, aliasLearned: false };
     }
     
     console.log(`[broker-check] Created new customer: ${brokerName} (MC: ${mcNumber})`);
-    return { customerId: newCustomer?.id || null, created: true, existingStatus: null, savedMcNumber: mcNumber };
+    return { customerId: newCustomer?.id || null, created: true, existingStatus: null, savedMcNumber: mcNumber, aliasLearned: false };
   }
   
   // No customer found and no MC to create one
-  return { customerId: null, created: false, existingStatus: null, savedMcNumber: null };
+  return { customerId: null, created: false, existingStatus: null, savedMcNumber: null, aliasLearned: false };
 }
 
 /**
@@ -173,6 +262,12 @@ async function callOtrCheck(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[broker-check] OTR API error: ${response.status} - ${errorText}`);
+      
+      // Map HTTP status to approval status
+      if (response.status === 404) {
+        return { success: true, approvalStatus: 'not_found' };
+      }
+      
       return { success: false, approvalStatus: 'unchecked', error: errorText };
     }
     
@@ -198,9 +293,10 @@ async function callOtrCheck(
  * 
  * Flow:
  * 1. Check if already checked (dedupe by order_number/load_email_id)
- * 2. Find or create customer
- * 3. If customer has MC number, call OTR API
- * 4. Store result in broker_credit_checks and update customer
+ * 2. Find customer using RPC (name + alias_names)
+ * 3. Learn new aliases if broker name differs
+ * 4. If customer has MC number, call OTR API
+ * 5. Store result in broker_credit_checks and update customer
  */
 export async function checkBrokerCredit(
   tenantId: string,
@@ -225,8 +321,8 @@ export async function checkBrokerCredit(
     return { success: true, approvalStatus: 'already_checked' };
   }
   
-  // Find or create customer - this returns the saved MC number if one exists
-  const { customerId, created, existingStatus, savedMcNumber } = await findOrCreateCustomer(
+  // Find or create customer using RPC (searches name + alias_names)
+  const { customerId, created, existingStatus, savedMcNumber, aliasLearned } = await findOrCreateCustomer(
     tenantId,
     brokerName,
     emailMcNumber
@@ -235,13 +331,13 @@ export async function checkBrokerCredit(
   // Use saved MC from customer record if email didn't have one
   const mcNumber = emailMcNumber || savedMcNumber;
   
-  console.log(`[broker-check] Broker: ${brokerName}, Email MC: ${emailMcNumber || 'none'}, Saved MC: ${savedMcNumber || 'none'}, Using MC: ${mcNumber || 'none'}`);
+  console.log(`[broker-check] Broker: ${brokerName}, Email MC: ${emailMcNumber || 'none'}, Saved MC: ${savedMcNumber || 'none'}, Using MC: ${mcNumber || 'none'}${aliasLearned ? ', Alias learned!' : ''}`);
   
   // If customer doesn't have MC, we can't do OTR check
   if (!mcNumber) {
     console.log(`[broker-check] No MC number for broker ${brokerName}, cannot check OTR`);
     
-    // Still record that we tried (for dedupe)
+    // Still record that we tried (for dedupe) - UI will show GREY
     await supabase.from('broker_credit_checks').insert({
       tenant_id: tenantId,
       customer_id: customerId,
@@ -257,10 +353,11 @@ export async function checkBrokerCredit(
       approvalStatus: 'unchecked',
       customerId,
       customerCreated: created,
+      aliasLearned,
     };
   }
   
-  // Always call OTR API for fresh approval status (approval can change throughout the day)
+  // Call OTR API for fresh approval status
   const otrResult = await callOtrCheck(
     tenantId,
     mcNumber,
@@ -275,6 +372,7 @@ export async function checkBrokerCredit(
     approvalStatus: otrResult.approvalStatus,
     customerId,
     customerCreated: created,
+    aliasLearned,
     error: otrResult.error,
   };
 }
@@ -293,6 +391,9 @@ export function triggerBrokerCheck(
     .then((result) => {
       if (result.customerCreated) {
         console.log(`[broker-check] Created new customer for ${parsedData.broker_company || parsedData.broker}`);
+      }
+      if (result.aliasLearned) {
+        console.log(`[broker-check] Learned new alias for broker match`);
       }
       if (result.approvalStatus) {
         console.log(`[broker-check] Status for load ${loadEmailId}: ${result.approvalStatus}`);
