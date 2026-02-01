@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { PDFUrlImageViewer } from "@/components/pdf/PDFUrlImageViewer";
+import { PDFThumbnail } from "@/components/pdf/PDFThumbnail";
 import {
   User,
   CreditCard,
@@ -492,6 +493,7 @@ export function ApplicationReviewDrawer({
                     {documentList.map((item) => {
                       const isImage = isImagePath(item.doc);
                       const thumbnailUrl = thumbnailUrls[item.key];
+                      const isPdf = typeof item.doc === 'string' && item.doc.toLowerCase().endsWith('.pdf');
                       
                       return (
                         <Card
@@ -519,6 +521,10 @@ export function ApplicationReviewDrawer({
                                 <ImageIcon className="h-6 w-6 text-muted-foreground" />
                               </div>
                             </div>
+                          ) : isPdf && thumbnailUrl ? (
+                            <div className="aspect-[4/3] relative bg-muted overflow-hidden">
+                              <PDFThumbnail url={thumbnailUrl} className="w-full h-full" />
+                            </div>
                           ) : (
                             <div className="aspect-[4/3] flex items-center justify-center bg-muted">
                               <FileText className="h-6 w-6 text-muted-foreground" />
@@ -526,6 +532,7 @@ export function ApplicationReviewDrawer({
                           )}
                           <div className="p-2 border-t">
                             <p className="text-xs font-medium truncate">{item.label}</p>
+                            {isPdf && <p className="text-[10px] text-muted-foreground">PDF</p>}
                           </div>
                         </Card>
                       );
