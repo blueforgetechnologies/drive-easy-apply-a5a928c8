@@ -78,11 +78,11 @@ export function LoadHunterTableHeader({
 
         {/* Truck column - expanded width */}
         {activeFilter !== 'all' && (
-          <TableHead className={`w-[200px] min-w-[200px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Truck - Drivers<br/>Carrier</TableHead>
+          <TableHead className={`w-[240px] min-w-[240px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Truck - Drivers<br/>Carrier</TableHead>
         )}
 
         {/* Customer - expanded width */}
-        <TableHead className={`w-[180px] min-w-[180px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Customer</TableHead>
+        <TableHead className={`w-[220px] min-w-[220px] py-2 text-[12px] leading-[1.1] ${cellClass}`} style={cellStyle}>Customer</TableHead>
 
         {/* Received/Expires */}
         {activeFilter !== 'mybids' && activeFilter !== 'booked' && (
