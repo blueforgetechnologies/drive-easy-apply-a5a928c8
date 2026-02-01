@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PDFUrlImageViewer } from "@/components/pdf/PDFUrlImageViewer";
 
 // Configure pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -535,25 +536,7 @@ export function PDFPreviewDialog({
                     />
                   ) : (
                     <div className="w-full max-w-4xl">
-                      {/* Use Google Docs viewer for PDFs to ensure proper rendering */}
-                      <iframe
-                        src={`https://docs.google.com/gview?url=${encodeURIComponent(selectedDocUrl)}&embedded=true`}
-                        className="w-full h-[80vh] border rounded-lg bg-white"
-                        title={selectedDocName}
-                        loading="lazy"
-                      />
-                      {/* Direct link as fallback */}
-                      <div className="mt-3 text-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(selectedDocUrl, '_blank')}
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Open in New Tab
-                        </Button>
-                      </div>
+                      <PDFUrlImageViewer url={selectedDocUrl} fileName={selectedDocName} />
                     </div>
                   )}
                 </div>
