@@ -727,22 +727,30 @@ export function BrokerCreditPopover({
                 <div className="rounded-xl p-3 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/40 dark:to-violet-950/40 border-2 border-purple-300"
                   style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8), 0 4px 12px rgba(147,51,234,0.15)' }}
                 >
-                  <div className="flex items-center gap-2 text-sm font-bold text-purple-700 mb-2">
+                  <div className="flex items-center gap-2 text-sm font-bold text-purple-700 mb-1">
                     <div className="p-1.5 rounded-lg bg-purple-200/50">
                       <GitMerge className="h-4 w-4" />
                     </div>
-                    Possible duplicate found – merge?
+                    Similar customers found
                   </div>
+                  <p className="text-[10px] text-purple-600/80 mb-2 ml-9">
+                    Is this the same broker? Select to merge records, or create new if different.
+                  </p>
                   <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg bg-white/60 dark:bg-black/20 hover:bg-white/80 transition-colors border border-transparent hover:border-purple-300">
+                    <label className={`flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg transition-colors border ${
+                      selectedMergeCustomerId === null 
+                        ? 'bg-green-100 dark:bg-green-950/50 border-green-400' 
+                        : 'bg-white/60 dark:bg-black/20 hover:bg-white/80 border-transparent hover:border-green-300'
+                    }`}>
                       <input
                         type="radio"
                         name="merge"
                         checked={selectedMergeCustomerId === null}
                         onChange={() => setSelectedMergeCustomerId(null)}
-                        className="h-3.5 w-3.5 accent-purple-500"
+                        className="h-3.5 w-3.5 accent-green-500"
                       />
-                      <span className="font-medium">Create as new customer</span>
+                      <UserPlus className="h-3 w-3 text-green-600" />
+                      <span className="font-semibold text-green-700">Not a duplicate – Create new customer</span>
                     </label>
                     {similarCustomers.slice(0, 3).map(c => (
                       <label key={c.id} className={`flex items-center gap-2 text-xs cursor-pointer p-2 rounded-lg transition-colors border ${
@@ -758,7 +766,7 @@ export function BrokerCreditPopover({
                           className="h-3.5 w-3.5 accent-purple-500"
                         />
                         <GitMerge className="h-3 w-3 text-purple-500" />
-                        <span className="truncate font-semibold text-purple-800">{c.name}</span>
+                        <span className="truncate font-semibold text-purple-800">Same broker – Merge with {c.name}</span>
                         {c.mc_number && <Badge variant="outline" className="text-[9px] bg-white/80 border-purple-200 text-purple-700">MC# {c.mc_number}</Badge>}
                       </label>
                     ))}
