@@ -21,6 +21,14 @@ interface ApplicationData {
   directDeposit: any;
   whyHireYou?: any;
   emergencyContacts?: any[];
+  consentAgreements?: {
+    mvrConsent?: boolean;
+    mvrSignature?: string;
+    mvrDate?: string | null;
+    electronic1099Consent?: boolean;
+    electronic1099Signature?: string;
+    electronic1099Date?: string | null;
+  };
 }
 
 interface CompanyProfile {
@@ -33,6 +41,9 @@ interface CompanyProfile {
   phone: string | null;
   email: string | null;
 }
+
+// Partial profile for building effective profile
+type PartialCompanyProfile = Partial<CompanyProfile> & Pick<CompanyProfile, 'company_name' | 'logo_url'>;
 
 /**
  * Professional DOT-Style Driver Employment Application PDF Generator
@@ -983,6 +994,53 @@ class DriverApplicationPDF {
     this.yPos += boxHeight - (consentLines.length * 5) - 6;
   }
 
+  private generateElectronic1099ConsentSection(): void {
+    // Calculate required space
+    const consentText = `I consent to receive my IRS Form 1099 (and any related tax documents) electronically via email at the end of each calendar year, instead of receiving a paper copy by mail. I understand that the electronic document is the legal equivalent of a paper 1099 form. I may withdraw this consent at any time by notifying ${this.companyName} in writing.`;
+    const consentLines = this.wrapText(consentText, this.contentWidth - 16);
+    const boxHeight = consentLines.length * 5 + 20;
+    
+    this.checkPageBreak(boxHeight + 15);
+    
+    // Section title bar
+    this.doc.setFillColor(90, 90, 90);
+    this.doc.rect(this.margin, this.yPos, this.contentWidth, 7, 'F');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(255, 255, 255);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text('ELECTRONIC 1099 DELIVERY CONSENT', this.margin + 3, this.yPos + 5);
+    this.yPos += 12;
+    
+    // Gray box for consent text
+    this.doc.setDrawColor(180, 180, 180);
+    this.doc.setFillColor(250, 250, 250);
+    this.doc.setLineWidth(0.5);
+    this.doc.rect(this.margin, this.yPos - 3, this.contentWidth, boxHeight, 'FD');
+    
+    // Consent paragraph
+    this.doc.setFontSize(8);
+    this.doc.setTextColor(40, 40, 40);
+    this.doc.setFont(undefined, 'normal');
+    
+    const startY = this.yPos + 2;
+    consentLines.forEach((line: string, idx: number) => {
+      this.doc.text(line, this.margin + 5, startY + (idx * 5));
+    });
+    
+    this.yPos = startY + (consentLines.length * 5) + 6;
+    
+    // Checkbox with consent
+    this.drawCheckbox(this.margin + 5, this.yPos, true, 4);
+    
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFontSize(8);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.text('I CONSENT to receive my annual 1099 tax form electronically via email.', this.margin + 12, this.yPos);
+    
+    // Move past the box
+    this.yPos += boxHeight - (consentLines.length * 5) - 6;
+  }
+
   private generateAttestationPage(): void {
     this.newPage(); // Uses unified newPage() method
     
@@ -1015,6 +1073,11 @@ I understand that any employment relationship with this company is "at-will" mea
     
     // MVR Consent Section (before main signature block)
     this.generateMvrConsentSection();
+    
+    this.yPos += 10;
+    
+    // 1099 Electronic Delivery Consent Section
+    this.generateElectronic1099ConsentSection();
     
     this.yPos += 15;
     
@@ -1169,12 +1232,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Load application from DB (includes tenant_id for access check)
+    // Load application from DB (includes tenant_id and invite_id for carrier lookup)
     const { data: application, error: appError } = await supabaseService
       .from('applications')
       .select(`
         id,
         tenant_id,
+        invite_id,
         personal_info,
         license_info,
         employment_history,
@@ -1214,17 +1278,53 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Fetch company profile
+    // Fetch company profile (tenant default branding)
     const { data: profile } = await supabaseService
       .from('company_profile')
       .select('company_name, logo_url, address, city, state, zip, phone, email')
       .eq('tenant_id', application.tenant_id)
       .maybeSingle();
 
+    // Fetch carrier name if application has invite with carrier_id
+    // This ensures the PDF uses the carrier name from the invitation, not the tenant company profile
+    let carrierName: string | null = null;
+    let carrierLogoUrl: string | null = null;
+    
+    if (application.invite_id) {
+      const { data: invite } = await supabaseService
+        .from('driver_invites')
+        .select('carrier_id')
+        .eq('id', application.invite_id)
+        .maybeSingle();
+      
+      if (invite?.carrier_id) {
+        const { data: carrier } = await supabaseService
+          .from('carriers')
+          .select('name, logo_url')
+          .eq('id', invite.carrier_id)
+          .maybeSingle();
+        
+        carrierName = carrier?.name || null;
+        carrierLogoUrl = carrier?.logo_url || null;
+      }
+    }
+
+    // Use carrier name/logo if available, otherwise fall back to tenant company profile
+    const effectiveProfile: CompanyProfile = {
+      company_name: carrierName || profile?.company_name || 'Trucking Company',
+      logo_url: carrierLogoUrl || profile?.logo_url || null,
+      address: profile?.address || null,
+      city: profile?.city || null,
+      state: profile?.state || null,
+      zip: profile?.zip || null,
+      phone: profile?.phone || null,
+      email: profile?.email || null,
+    };
+
     // Fetch logo as base64 if available
     let logoBase64: string | null = null;
-    if (profile?.logo_url) {
-      logoBase64 = await fetchLogoAsBase64(profile.logo_url);
+    if (effectiveProfile.logo_url) {
+      logoBase64 = await fetchLogoAsBase64(effectiveProfile.logo_url);
     }
 
     // Build application data
@@ -1245,8 +1345,8 @@ const handler = async (req: Request): Promise<Response> => {
         : (application.emergency_contacts as any)?.contacts || [],
     };
 
-    // Generate PDF with logo
-    const pdfGenerator = new DriverApplicationPDF(profile, logoBase64);
+    // Generate PDF with logo (uses carrier branding if available)
+    const pdfGenerator = new DriverApplicationPDF(effectiveProfile, logoBase64);
     const pdfBuffer = pdfGenerator.generate(applicationData);
     const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
