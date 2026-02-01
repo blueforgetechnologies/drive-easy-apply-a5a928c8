@@ -89,35 +89,28 @@ async function checkWithOtr(
     }
     
     // Map OTR response to our status format
-    // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "NoBuy", "Approved", etc.)
+    // OTR returns: NoBuy (boolean) - this is the ONLY authoritative indicator
     // 
-    // STATUS MAPPING:
-    // - NoBuy=false + "Call Credit" → CALL_OTR (Orange) - eligible but needs verification call
-    // - NoBuy=false + other result → APPROVED (Green) - fully approved
+    // STATUS MAPPING (NoBuy boolean is the sole authority):
+    // - NoBuy=false → APPROVED (Green) - broker is eligible for factoring
     // - NoBuy=true → NOT APPROVED (Red) - broker is NOT eligible
+    // Note: BrokerTestResult ("Call Credit", etc.) is informational only - ignored
     let approvalStatus = 'unchecked';
     const testResult = (data.BrokerTestResult || '').toLowerCase().trim();
     
     if (typeof data.NoBuy === 'boolean') {
       if (data.NoBuy === false) {
-        // NoBuy=false means broker IS eligible for factoring
-        // But if "Call Credit", flag it so team knows to call OTR
-        if (testResult.includes('call') || testResult === 'call credit') {
-          approvalStatus = 'call_otr';
-        } else {
-          approvalStatus = 'approved';
-        }
+        // NoBuy=false means APPROVED - broker IS eligible for factoring
+        approvalStatus = 'approved';
       } else {
         // NoBuy=true means NOT APPROVED
         approvalStatus = 'not_approved';
       }
-      console.log(`[check-broker-credit] Mapped status: NoBuy=${data.NoBuy}, BrokerTestResult="${data.BrokerTestResult}" -> ${approvalStatus}`);
+      console.log(`[check-broker-credit] Mapped status: NoBuy=${data.NoBuy} -> ${approvalStatus} (BrokerTestResult="${data.BrokerTestResult}" ignored)`);
     } else {
       // NoBuy not present - fall back to BrokerTestResult analysis only
       if (testResult === 'approved' || testResult === 'yes') {
         approvalStatus = 'approved';
-      } else if (testResult.includes('call')) {
-        approvalStatus = 'call_otr';
       } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
         approvalStatus = 'not_approved';
       }
