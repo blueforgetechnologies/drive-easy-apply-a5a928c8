@@ -75,6 +75,8 @@ export function cleanLoadNotes(input: string | null | undefined): string {
     /The\s+status\s+of\s+your\s+bid\s+will\s+change\s+throughout\s+the\s+life\s*cycle\s+of\s+the\s+post\.?/gi,
     // "© 2023 Solera, Inc.All Rights Reserved" (with possible whitespace issues)
     /©\s*\d{4}\s*Solera,?\s*Inc\.?\s*All\s*Rights\s*Reserved/gi,
+    // HTML entity version: "&#169; 2023 Solera, Inc.All Rights Reserved"
+    /&#169;\s*\d{4}\s*Solera,?\s*Inc\.?\s*All\s*Rights\s*Reserved/gi,
     // "|| www.solera.com Privacy Policy"
     /\|?\|?\s*www\.solera\.com\s*Privacy\s*Policy/gi,
     // Just "www.solera.com" standalone
