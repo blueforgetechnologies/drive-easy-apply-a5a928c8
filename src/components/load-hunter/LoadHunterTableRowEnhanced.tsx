@@ -313,9 +313,9 @@ export function LoadHunterTableRowEnhanced({
         </>
       )}
 
-      {/* Truck - Drivers / Carrier column */}
+      {/* Truck - Drivers / Carrier column - expanded width */}
       {activeFilter !== 'all' && (
-        <TableCell className="py-1">
+        <TableCell className="py-1 w-[200px] min-w-[200px]">
           {(() => {
             const viewingMatches = ['unreviewed', 'missed', 'skipped', 'mybids', 'booked', 'undecided', 'waitlist'].includes(activeFilter);
             
@@ -383,8 +383,8 @@ export function LoadHunterTableRowEnhanced({
         </TableCell>
       )}
 
-      {/* Customer - with broker credit status indicator */}
-      <TableCell className="py-1">
+      {/* Customer - with broker credit status indicator - expanded width */}
+      <TableCell className="py-1 w-[180px] min-w-[180px]">
         {(() => {
           // Sanitize customer name - use centralized cleanCompanyName utility
           const rawCustomerName = data.broker_company || data.broker || data.customer || email.from_name || 'Unknown';
