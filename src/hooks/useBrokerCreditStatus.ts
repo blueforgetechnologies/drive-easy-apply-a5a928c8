@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
@@ -24,39 +24,32 @@ export function useBrokerCreditStatus(
   const { tenantId } = useTenantFilter();
   const [statusMap, setStatusMap] = useState<Map<string, BrokerCreditStatus>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  const fetchedIdsRef = useRef<Set<string>>(new Set());
 
   // Memoize the IDs to prevent unnecessary refetches
   const idString = useMemo(() => loadEmailIds.filter(Boolean).sort().join(','), [loadEmailIds]);
 
-  // Fetch cached broker credit check results (OTR checks are triggered by VPS worker)
-  useEffect(() => {
-    if (!tenantId || !idString) {
-      setStatusMap(new Map());
-      return;
-    }
+  // Fetch function that can be called on-demand
+  const fetchCachedStatus = useCallback(async (ids: string[]) => {
+    if (!tenantId || ids.length === 0) return;
 
-    const ids = idString.split(',').filter(Boolean);
-    if (ids.length === 0) {
-      setStatusMap(new Map());
-      return;
-    }
+    setIsLoading(true);
+    try {
+      const { data: checkData, error: checkError } = await supabase
+        .from('broker_credit_checks')
+        .select('load_email_id, approval_status, broker_name, mc_number, checked_at, customer_id')
+        .eq('tenant_id', tenantId)
+        .in('load_email_id', ids)
+        .order('checked_at', { ascending: false });
 
-    const fetchCachedStatus = async () => {
-      setIsLoading(true);
-      try {
-        const { data: checkData, error: checkError } = await supabase
-          .from('broker_credit_checks')
-          .select('load_email_id, approval_status, broker_name, mc_number, checked_at, customer_id')
-          .eq('tenant_id', tenantId)
-          .in('load_email_id', ids)
-          .order('checked_at', { ascending: false });
+      if (checkError) {
+        console.error('[useBrokerCreditStatus] Query error:', checkError);
+        return;
+      }
 
-        if (checkError) {
-          console.error('[useBrokerCreditStatus] Query error:', checkError);
-        }
-
-        // Build map from cached data (most recent check per load_email_id)
-        const newMap = new Map<string, BrokerCreditStatus>();
+      // Build map from cached data (most recent check per load_email_id)
+      setStatusMap((prev) => {
+        const newMap = new Map(prev);
         
         for (const row of checkData || []) {
           if (row.load_email_id && !newMap.has(row.load_email_id)) {
@@ -67,21 +60,42 @@ export function useBrokerCreditStatus(
               checkedAt: row.checked_at,
               customerId: row.customer_id,
             });
+            fetchedIdsRef.current.add(row.load_email_id);
           }
         }
+        
+        return newMap;
+      });
+    } catch (err) {
+      console.error('[useBrokerCreditStatus] Error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tenantId]);
 
-        setStatusMap(newMap);
-      } catch (err) {
-        console.error('[useBrokerCreditStatus] Error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Fetch cached broker credit check results when IDs change
+  useEffect(() => {
+    if (!tenantId || !idString) {
+      setStatusMap(new Map());
+      fetchedIdsRef.current.clear();
+      return;
+    }
 
-    fetchCachedStatus();
-  }, [tenantId, idString]);
+    const ids = idString.split(',').filter(Boolean);
+    if (ids.length === 0) {
+      setStatusMap(new Map());
+      return;
+    }
 
-  // Subscribe to realtime updates for broker_credit_checks
+    // Only fetch IDs we haven't already fetched
+    const newIds = ids.filter(id => !fetchedIdsRef.current.has(id));
+    
+    if (newIds.length > 0) {
+      fetchCachedStatus(newIds);
+    }
+  }, [tenantId, idString, fetchCachedStatus]);
+
+  // Subscribe to realtime updates for broker_credit_checks (INSERT and UPDATE)
   useEffect(() => {
     if (!tenantId) return;
 
@@ -90,7 +104,7 @@ export function useBrokerCreditStatus(
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen to both INSERT and UPDATE
           schema: 'public',
           table: 'broker_credit_checks',
           filter: `tenant_id=eq.${tenantId}`,
@@ -109,6 +123,7 @@ export function useBrokerCreditStatus(
               });
               return updated;
             });
+            fetchedIdsRef.current.add(newRow.load_email_id);
           }
         }
       )
@@ -119,5 +134,12 @@ export function useBrokerCreditStatus(
     };
   }, [tenantId]);
 
-  return { statusMap, isLoading };
+  // Expose a manual refetch for when new matches arrive
+  const refetch = useCallback(() => {
+    if (!tenantId || !idString) return;
+    const ids = idString.split(',').filter(Boolean);
+    fetchCachedStatus(ids);
+  }, [tenantId, idString, fetchCachedStatus]);
+
+  return { statusMap, isLoading, refetch };
 }
