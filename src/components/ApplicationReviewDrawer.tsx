@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { PDFUrlImageViewer } from "@/components/pdf/PDFUrlImageViewer";
 import {
   User,
   CreditCard,
@@ -555,11 +556,9 @@ export function ApplicationReviewDrawer({
                         className="max-w-full h-auto shadow-lg rounded-lg"
                       />
                     ) : (
-                      <iframe
-                        src={`https://docs.google.com/gview?url=${encodeURIComponent(selectedDocUrl)}&embedded=true`}
-                        className="w-full h-[70vh] border rounded-lg"
-                        title={selectedDocName}
-                      />
+                      <div className="w-full max-w-4xl">
+                        <PDFUrlImageViewer url={selectedDocUrl} fileName={selectedDocName} />
+                      </div>
                     )}
                   </div>
                 </ScrollArea>
