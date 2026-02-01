@@ -408,7 +408,8 @@ export function LoadHunterTableRowEnhanced({
           const truncatedName = cleanName.length > 14 ? cleanName.slice(0, 14) + '...' : cleanName;
           
           // Get broker credit status from the map (keyed by load_email_id)
-          const brokerStatus = brokerStatusMap?.get(email.id);
+          const loadEmailId = (item as any)?.load_email_id ?? (email as any)?.id ?? (email as any)?.load_email_id;
+          const brokerStatus = loadEmailId ? brokerStatusMap?.get(loadEmailId) : undefined;
           // Check if MC is available from broker status or parsed email data
           const hasMc = !!(brokerStatus?.mcNumber || data.mc_number);
           const statusColors = getStatusColor(brokerStatus?.status, hasMc);

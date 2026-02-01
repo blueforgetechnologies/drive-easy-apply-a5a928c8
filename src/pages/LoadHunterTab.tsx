@@ -124,9 +124,11 @@ export default function LoadHunterTab() {
   const visibleLoadEmailIds = React.useMemo(() => {
     const ids = new Set<string>();
     [...unreviewedViewData, ...missedHistory, ...loadEmails].forEach((item: any) => {
-      const email = item?.email || item;
-      const emailId = email?.id || item?.load_email_id;
-      if (emailId) ids.add(emailId);
+      // IMPORTANT: broker_credit_checks is keyed by load_email_id (UUID).
+      // Some lists contain match rows (id = match_id) that ALSO look like emails.
+      // Always prefer load_email_id when present.
+      const loadEmailId = item?.load_email_id ?? item?.email?.id ?? item?.id;
+      if (loadEmailId) ids.add(loadEmailId);
     });
     return Array.from(ids).slice(0, 100); // Limit for performance
   }, [unreviewedViewData, missedHistory, loadEmails]);
