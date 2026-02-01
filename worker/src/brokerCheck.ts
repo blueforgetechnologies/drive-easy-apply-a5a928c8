@@ -14,6 +14,7 @@
  */
 
 import { supabase } from './supabase.js';
+import { cleanCompanyName } from './cleanCompanyName.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 // Use service role key for automated VPS broker checks (bypasses user auth)
@@ -432,12 +433,15 @@ export async function checkBrokerCredit(
   parsedData: any,
   matchId?: string | null
 ): Promise<BrokerCheckResult> {
-  const brokerName = parsedData.broker_company || parsedData.broker || parsedData.customer;
+  // Extract raw broker name from parsed data (may contain boilerplate/noise)
+  const rawBrokerName = parsedData.broker_company || parsedData.broker || parsedData.customer;
+  // Sanitize to extract just the company name (strip phone, email, metadata)
+  const brokerName = cleanCompanyName(rawBrokerName);
   const emailMcNumber = parsedData.mc_number;
   
-  // Skip if no broker name
+  // Skip if no broker name (even after cleanup)
   if (!brokerName) {
-    console.log(`[broker-check] Skipped - no broker name found`);
+    console.log(`[broker-check] Skipped - no broker name found (raw: ${rawBrokerName?.slice(0, 50) || 'none'})`);
     return { success: false, error: 'No broker name' };
   }
   
@@ -475,7 +479,7 @@ export async function checkBrokerCredit(
   // Use saved MC from customer record if email didn't have one
   const mcNumber = emailMcNumber || savedMcNumber;
   
-  console.log(`[broker-check] Broker: ${brokerName}, Email MC: ${emailMcNumber || 'none'}, Saved MC: ${savedMcNumber || 'none'}, Using MC: ${mcNumber || 'none'}, Matches: ${allMatchIds.length}${aliasLearned ? ', Alias learned!' : ''}`);
+  console.log(`[broker-check] Broker: "${brokerName}" (raw: ${rawBrokerName?.slice(0, 30) || 'none'}), Email MC: ${emailMcNumber || 'none'}, Saved MC: ${savedMcNumber || 'none'}, Using MC: ${mcNumber || 'none'}, Matches: ${allMatchIds.length}${aliasLearned ? ', Alias learned!' : ''}`);
   
   // If customer doesn't have MC, we can't do OTR check
   // Guardrail #2: Don't include mc_number in row, set status='unchecked'

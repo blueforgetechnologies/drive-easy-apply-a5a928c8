@@ -23,6 +23,9 @@ export function cleanCompanyName(input: string | null | undefined): string {
   s = s.replace(/\u00a0/g, " ");
   s = s.replace(/\s+/g, " ").trim();
 
+  // Cut at "Broker Phone:" which marks metadata start in Sylectus emails
+  s = s.replace(/\s+Broker\s+Phone\s*:\s*[\s\S]*/i, "").trim();
+  
   // Cut off common metadata blocks that get appended to broker names
   const cutoffs: RegExp[] = [
     /\s+Broker\s+Posted\b[\s\S]*/i,
