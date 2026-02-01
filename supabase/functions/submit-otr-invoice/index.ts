@@ -4,6 +4,7 @@ import { assertTenantAccess, getServiceClient } from "../_shared/assertTenantAcc
 import { 
   OTR_API_BASE_URL, 
   getOtrCredentialsFromEnv,
+  decrypt,
   maskSubscriptionKey,
   getOtrHeadersWithToken,
   getOtrToken,
@@ -81,6 +82,83 @@ const OTR_DOC_TYPES = {
   invoice: 3,           // Invoice document
   other: 4,             // Other supporting documents
 } as const;
+
+type AdminClient = ReturnType<typeof getServiceClient>;
+
+// Prefer tenant-specific factoring config; fall back to global env for backwards compat.
+async function getOtrCredentialsForTenant(adminClient: AdminClient, tenantId: string) {
+  const masterKey = Deno.env.get('INTEGRATIONS_MASTER_KEY');
+
+  // 1) tenant_factoring_config (current)
+  try {
+    const { data: factoringConfig } = await adminClient
+      .from('tenant_factoring_config')
+      .select('credentials_encrypted, is_enabled')
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'otr_solutions')
+      .eq('is_enabled', true)
+      .maybeSingle();
+
+    if (factoringConfig?.credentials_encrypted && masterKey) {
+      try {
+        const decryptedJson = await decrypt(factoringConfig.credentials_encrypted, masterKey);
+        const creds = JSON.parse(decryptedJson) as { api_key?: string; username?: string; password?: string };
+        if (creds.api_key) {
+          console.log(`[submit-otr-invoice] Using tenant factoring config key: ${maskSubscriptionKey(creds.api_key)}`);
+          return {
+            subscriptionKey: creds.api_key,
+            username: creds.username,
+            password: creds.password,
+          };
+        }
+      } catch (e) {
+        console.error('[submit-otr-invoice] Failed to decrypt tenant_factoring_config credentials:', e);
+      }
+    }
+  } catch (e) {
+    console.error('[submit-otr-invoice] Error reading tenant_factoring_config:', e);
+  }
+
+  // 2) tenant_integrations (legacy)
+  try {
+    const { data: integration } = await adminClient
+      .from('tenant_integrations')
+      .select('encrypted_credentials, is_active')
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'otr_solutions')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const integrationData = integration as { encrypted_credentials?: string } | null;
+    if (integrationData?.encrypted_credentials && masterKey) {
+      try {
+        const decryptedJson = await decrypt(integrationData.encrypted_credentials, masterKey);
+        const creds = JSON.parse(decryptedJson) as { api_key?: string; username?: string; password?: string };
+        if (creds.api_key) {
+          console.log(`[submit-otr-invoice] Using legacy tenant integration key: ${maskSubscriptionKey(creds.api_key)}`);
+          return {
+            subscriptionKey: creds.api_key,
+            username: creds.username,
+            password: creds.password,
+          };
+        }
+      } catch (e) {
+        console.error('[submit-otr-invoice] Failed to decrypt tenant_integrations credentials:', e);
+      }
+    }
+  } catch (e) {
+    console.error('[submit-otr-invoice] Error reading tenant_integrations:', e);
+  }
+
+  // 3) global env (fallback)
+  const env = getOtrCredentialsFromEnv();
+  if (env?.subscriptionKey) {
+    console.log(`[submit-otr-invoice] Using global OTR key (fallback): ${maskSubscriptionKey(env.subscriptionKey)}`);
+    return env;
+  }
+
+  return null;
+}
 
 // ============================================================================
 // Timezone Helpers - US/Eastern with explicit Intl.DateTimeFormat
@@ -432,13 +510,13 @@ serve(async (req) => {
 
     const adminClient = getServiceClient();
 
-    // Get OTR credentials
-    const credentials = getOtrCredentialsFromEnv();
+    // Get OTR credentials (tenant-scoped)
+    const credentials = await getOtrCredentialsForTenant(adminClient, tenant_id);
     if (!credentials) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'OTR Solutions subscription key not configured (OTR_API_KEY)' 
+          error: 'OTR billing is not configured for this tenant. Open Tenant Settings → Factoring and add your OTR API key + username/password.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -652,7 +730,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'OTR username and password required for invoice submission. Configure OTR_USERNAME and OTR_PASSWORD secrets.' 
+          error: 'OTR username and password are required for invoice submission. Open Tenant Settings → Factoring and add username/password.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
