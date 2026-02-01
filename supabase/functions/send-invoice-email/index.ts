@@ -1,6 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { Resend } from "https://esm.sh/resend@4.0.0";
-import { encode as base64Encode } from "https://deno.land/std@0.208.0/encoding/base64.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -226,7 +226,7 @@ Deno.serve(async (req: Request) => {
               // Convert blob to base64 safely using Deno std library
               const arrayBuffer = await fileData.arrayBuffer();
               const uint8Array = new Uint8Array(arrayBuffer);
-              const base64Content = base64Encode(uint8Array);
+              const base64Content = encodeBase64(uint8Array);
               
               const filename = doc.file_name || `${doc.document_type}_${doc.load_id.slice(0, 8)}.pdf`;
               
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
     
     // Attach invoice as HTML file (PDF generation not feasible in edge without heavy deps)
     const invoiceFilename = `invoice_${invoice.invoice_number}.html`;
-    const invoiceHtmlBase64 = base64Encode(new TextEncoder().encode(invoiceHtml));
+    const invoiceHtmlBase64 = encodeBase64(new TextEncoder().encode(invoiceHtml));
     attachments.push({
       filename: invoiceFilename,
       content: invoiceHtmlBase64,
