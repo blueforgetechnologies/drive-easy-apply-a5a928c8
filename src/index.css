@@ -349,64 +349,64 @@ All colors MUST be HSL.
     border-color: hsl(215 28% 18%);
   }
   
-  /* Puffy Cell with color accent - Green */
+  /* Puffy Cell with color accent - Green (darker header variant) */
   .cell-puffy-green {
-    background: linear-gradient(180deg, hsl(142 50% 98%) 0%, hsl(142 45% 94%) 100%);
+    background: linear-gradient(180deg, hsl(142 55% 88%) 0%, hsl(142 50% 82%) 100%);
     box-shadow: 
-      0 3px 8px hsl(142 50% 40% / 0.12),
-      0 1px 3px hsl(142 50% 40% / 0.08),
-      inset 0 1px 0 rgba(255,255,255,0.95);
-    border: 1px solid hsl(142 40% 80%);
+      0 3px 8px hsl(142 50% 40% / 0.18),
+      0 1px 3px hsl(142 50% 40% / 0.12),
+      inset 0 1px 0 rgba(255,255,255,0.7);
+    border: 1px solid hsl(142 45% 68%);
   }
   .dark .cell-puffy-green {
-    background: linear-gradient(180deg, hsl(142 35% 14%) 0%, hsl(142 30% 10%) 100%);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-    border-color: hsl(142 30% 22%);
+    background: linear-gradient(180deg, hsl(142 40% 18%) 0%, hsl(142 35% 14%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color: hsl(142 35% 28%);
   }
   
-  /* Puffy Cell - Blue */
+  /* Puffy Cell - Blue (darker header variant) */
   .cell-puffy-blue {
-    background: linear-gradient(180deg, hsl(217 60% 98%) 0%, hsl(217 55% 94%) 100%);
+    background: linear-gradient(180deg, hsl(217 65% 88%) 0%, hsl(217 60% 82%) 100%);
     box-shadow: 
-      0 3px 8px hsl(217 50% 50% / 0.1),
-      0 1px 3px hsl(217 50% 50% / 0.06),
-      inset 0 1px 0 rgba(255,255,255,0.95);
-    border: 1px solid hsl(217 40% 82%);
+      0 3px 8px hsl(217 50% 50% / 0.18),
+      0 1px 3px hsl(217 50% 50% / 0.12),
+      inset 0 1px 0 rgba(255,255,255,0.7);
+    border: 1px solid hsl(217 50% 70%);
   }
   .dark .cell-puffy-blue {
-    background: linear-gradient(180deg, hsl(217 45% 14%) 0%, hsl(217 40% 10%) 100%);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-    border-color: hsl(217 30% 22%);
+    background: linear-gradient(180deg, hsl(217 50% 18%) 0%, hsl(217 45% 14%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color: hsl(217 40% 28%);
   }
   
-  /* Puffy Cell - Amber */
+  /* Puffy Cell - Amber (darker header variant) */
   .cell-puffy-amber {
-    background: linear-gradient(180deg, hsl(45 90% 98%) 0%, hsl(45 85% 94%) 100%);
+    background: linear-gradient(180deg, hsl(45 95% 85%) 0%, hsl(45 90% 78%) 100%);
     box-shadow: 
-      0 3px 8px hsl(45 70% 50% / 0.12),
-      0 1px 3px hsl(45 70% 50% / 0.08),
-      inset 0 1px 0 rgba(255,255,255,0.95);
-    border: 1px solid hsl(45 60% 78%);
+      0 3px 8px hsl(45 70% 50% / 0.2),
+      0 1px 3px hsl(45 70% 50% / 0.14),
+      inset 0 1px 0 rgba(255,255,255,0.7);
+    border: 1px solid hsl(45 70% 62%);
   }
   .dark .cell-puffy-amber {
-    background: linear-gradient(180deg, hsl(45 45% 14%) 0%, hsl(45 40% 10%) 100%);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-    border-color: hsl(45 30% 22%);
+    background: linear-gradient(180deg, hsl(45 50% 18%) 0%, hsl(45 45% 14%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color: hsl(45 40% 28%);
   }
   
-  /* Puffy Cell - Purple */
+  /* Puffy Cell - Purple (darker header variant) */
   .cell-puffy-purple {
-    background: linear-gradient(180deg, hsl(270 55% 98%) 0%, hsl(270 50% 95%) 100%);
+    background: linear-gradient(180deg, hsl(270 60% 88%) 0%, hsl(270 55% 82%) 100%);
     box-shadow: 
-      0 3px 8px hsl(270 50% 50% / 0.1),
-      0 1px 3px hsl(270 50% 50% / 0.06),
-      inset 0 1px 0 rgba(255,255,255,0.95);
-    border: 1px solid hsl(270 40% 85%);
+      0 3px 8px hsl(270 50% 50% / 0.18),
+      0 1px 3px hsl(270 50% 50% / 0.12),
+      inset 0 1px 0 rgba(255,255,255,0.7);
+    border: 1px solid hsl(270 50% 72%);
   }
   .dark .cell-puffy-purple {
-    background: linear-gradient(180deg, hsl(270 35% 14%) 0%, hsl(270 30% 10%) 100%);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-    border-color: hsl(270 30% 22%);
+    background: linear-gradient(180deg, hsl(270 40% 18%) 0%, hsl(270 35% 14%) 100%);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color: hsl(270 35% 28%);
   }
 
   /* ========== SCI-FI APPLICATION THEME ========== */
