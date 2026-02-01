@@ -10,6 +10,7 @@ import { DocumentUpload } from "./application-steps/DocumentUpload";
 import { DirectDeposit } from "./application-steps/DirectDeposit";
 import { WhyHireYou } from "./application-steps/WhyHireYou";
 import { EmergencyContact } from "./application-steps/EmergencyContact";
+import { ConsentAgreements } from "./application-steps/ConsentAgreements";
 import { ReviewSubmit } from "./application-steps/ReviewSubmit";
 import { Check, Loader2, Save, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +133,14 @@ export interface ApplicationData {
     address: string;
     relationship: string;
   }>;
+  consentAgreements?: {
+    mvrConsent: boolean;
+    mvrSignature: string;
+    mvrDate: string | null;
+    electronic1099Consent: boolean;
+    electronic1099Signature: string;
+    electronic1099Date: string | null;
+  };
   inviteId?: string;
   tenantId?: string;
   publicToken?: string;
@@ -145,8 +154,9 @@ const steps = [
   { id: 5, name: "Emergency Contacts", shortName: "Emergency", component: EmergencyContact, stepKey: "emergency_contacts" },
   { id: 6, name: "Documents", shortName: "Documents", component: DocumentUpload, stepKey: "document_upload" },
   { id: 7, name: "Direct Deposit", shortName: "Payment", component: DirectDeposit, stepKey: "direct_deposit" },
-  { id: 8, name: "Why Hire You", shortName: "Statement", component: WhyHireYou, stepKey: "why_hire_you" },
-  { id: 9, name: "Review & Submit", shortName: "Review", component: ReviewSubmit, stepKey: null },
+  { id: 8, name: "Consents", shortName: "Consents", component: ConsentAgreements, stepKey: "consent_agreements" },
+  { id: 9, name: "Why Hire You", shortName: "Statement", component: WhyHireYou, stepKey: "why_hire_you" },
+  { id: 10, name: "Review & Submit", shortName: "Review", component: ReviewSubmit, stepKey: null },
 ];
 
 interface ApplicationFormProps {
@@ -348,6 +358,7 @@ export const ApplicationForm = ({ publicToken, isPreviewMode = false }: Applicat
       emergency_contacts: applicationData.emergencyContacts,
       document_upload: applicationData.documents,
       direct_deposit: applicationData.directDeposit,
+      consent_agreements: applicationData.consentAgreements,
       why_hire_you: applicationData.whyHireYou,
     };
 

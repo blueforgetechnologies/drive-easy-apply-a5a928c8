@@ -448,8 +448,34 @@ export const ReviewSubmit = ({ data, onBack, onEditStep, isPreviewMode = false }
         </div>
       </SectionCard>
 
+      {/* Consent Agreements */}
+      <SectionCard title="Consent Agreements" icon={ClipboardCheck} stepNumber={8}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            {data?.consentAgreements?.mvrConsent ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <X className="w-4 h-4 text-amber-500" />
+            )}
+            <span className="text-sm text-scifi-text">
+              MVR Authorization: {data?.consentAgreements?.mvrConsent ? 'Authorized' : 'Not signed'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {data?.consentAgreements?.electronic1099Consent ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <X className="w-4 h-4 text-scifi-text-muted" />
+            )}
+            <span className="text-sm text-scifi-text">
+              Electronic 1099: {data?.consentAgreements?.electronic1099Consent ? 'Consented' : 'Not signed (optional)'}
+            </span>
+          </div>
+        </div>
+      </SectionCard>
+
       {/* Why Hire You */}
-      <SectionCard title="Your Statement" icon={MessageSquare} stepNumber={8}>
+      <SectionCard title="Your Statement" icon={MessageSquare} stepNumber={9}>
         <p className="text-sm text-scifi-text line-clamp-3">
           {data?.whyHireYou?.statement || '—'}
         </p>
