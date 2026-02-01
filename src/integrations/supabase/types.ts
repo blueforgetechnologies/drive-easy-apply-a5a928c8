@@ -2093,6 +2093,7 @@ export type Database = {
           id: string
           processed_at: string | null
           queued_at: string
+          source: string | null
           status: string
           tenant_id: string
         }
@@ -2106,6 +2107,7 @@ export type Database = {
           id?: string
           processed_at?: string | null
           queued_at?: string
+          source?: string | null
           status?: string
           tenant_id: string
         }
@@ -2119,6 +2121,7 @@ export type Database = {
           id?: string
           processed_at?: string | null
           queued_at?: string
+          source?: string | null
           status?: string
           tenant_id?: string
         }
@@ -7117,6 +7120,7 @@ export type Database = {
           id: string
           processed_at: string | null
           queued_at: string
+          source: string | null
           status: string
           tenant_id: string
         }[]
