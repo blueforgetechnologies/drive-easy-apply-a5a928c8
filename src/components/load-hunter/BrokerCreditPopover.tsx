@@ -507,21 +507,21 @@ export function BrokerCreditPopover({
               {/* Column Headers - Dynamic 3 or 4 columns */}
               <div className={`grid gap-1.5 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <div className="cell-puffy-amber flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
-                  <FileText className="h-3 w-3 text-amber-600" />
-                  <span className="font-bold text-[9px] text-amber-700 uppercase tracking-wide">Posted</span>
+                  <FileText className="h-3 w-3 text-amber-900" />
+                  <span className="font-bold text-[9px] text-amber-900 uppercase tracking-wide">Posted</span>
                 </div>
                 <div className="cell-puffy-green flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
-                  <Shield className="h-3 w-3 text-green-600" />
-                  <span className="font-bold text-[9px] text-green-700 uppercase tracking-wide">OTR</span>
+                  <Shield className="h-3 w-3 text-green-900" />
+                  <span className="font-bold text-[9px] text-green-900 uppercase tracking-wide">OTR</span>
                 </div>
                 <div className="cell-puffy-blue flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
-                  <Building2 className="h-3 w-3 text-blue-600" />
-                  <span className="font-bold text-[9px] text-blue-700 uppercase tracking-wide">FMCSA</span>
+                  <Building2 className="h-3 w-3 text-white" />
+                  <span className="font-bold text-[9px] text-white uppercase tracking-wide">FMCSA</span>
                 </div>
                 {(similarCustomers.length > 0 || existingCustomer) && (
                   <div className="cell-puffy-purple flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
-                    <Database className="h-3 w-3 text-purple-600" />
-                    <span className="font-bold text-[9px] text-purple-700 uppercase tracking-wide">Saved</span>
+                    <Database className="h-3 w-3 text-white" />
+                    <span className="font-bold text-[9px] text-white uppercase tracking-wide">Saved</span>
                   </div>
                 )}
               </div>
