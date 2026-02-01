@@ -90,32 +90,42 @@ async function checkWithOtr(
     
     // Map OTR response to our status format
     // OTR returns: NoBuy (boolean) and BrokerTestResult (string like "Call Credit", "NoBuy", "Approved", etc.)
-    // CRITICAL: NoBuy boolean is the AUTHORITATIVE indicator
-    // - NoBuy=false → APPROVED (broker is approved for factoring)
-    // - NoBuy=true → NOT APPROVED (broker is on no-buy list)
-    // BrokerTestResult can be "NoBuy" (string) even when NoBuy=false (boolean) - this is confusing but the boolean wins
+    // 
+    // CORRECTED LOGIC (based on OTR portal behavior):
+    // - NoBuy=true → NOT APPROVED (broker is on no-buy list) - always takes precedence
+    // - NoBuy=false + BrokerTestResult="Call Credit" → CALL OTR (needs manual verification)
+    // - NoBuy=false + BrokerTestResult="Approved" or other → APPROVED
+    // 
+    // The key insight: NoBuy=false just means "not on no-buy list", but "Call Credit" 
+    // still requires calling the factoring company to verify approval.
     let approvalStatus = 'unchecked';
+    const testResult = (data.BrokerTestResult || '').toLowerCase().trim();
     
-    // NoBuy flag is the PRIMARY and AUTHORITATIVE indicator - do NOT override based on BrokerTestResult string
     if (typeof data.NoBuy === 'boolean') {
-      if (data.NoBuy === false) {
-        // NoBuy=false means broker IS approved for factoring
-        approvalStatus = 'approved';
-      } else {
-        // NoBuy=true means broker is NOT approved
+      if (data.NoBuy === true) {
+        // NoBuy=true means broker is definitively NOT approved
         approvalStatus = 'not_approved';
+      } else {
+        // NoBuy=false means NOT on no-buy list, but check BrokerTestResult for details
+        if (testResult.includes('call') || testResult === 'call credit') {
+          // "Call Credit" means user must call OTR to confirm
+          approvalStatus = 'call_otr';
+        } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
+          // Explicit rejection in test result overrides NoBuy=false
+          approvalStatus = 'not_approved';
+        } else {
+          // NoBuy=false with no call requirement = approved
+          approvalStatus = 'approved';
+        }
       }
     } else {
-      // NoBuy not present - fall back to BrokerTestResult analysis
-      if (data.BrokerTestResult) {
-        const testResult = data.BrokerTestResult.toLowerCase();
-        if (testResult === 'approved' || testResult === 'yes') {
-          approvalStatus = 'approved';
-        } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
-          approvalStatus = 'not_approved';
-        } else if (testResult.includes('call') && testResult.includes('credit')) {
-          approvalStatus = 'call_otr';
-        }
+      // NoBuy not present - fall back to BrokerTestResult analysis only
+      if (testResult === 'approved' || testResult === 'yes') {
+        approvalStatus = 'approved';
+      } else if (testResult === 'nobuy' || testResult === 'declined' || testResult === 'denied') {
+        approvalStatus = 'not_approved';
+      } else if (testResult.includes('call')) {
+        approvalStatus = 'call_otr';
       }
     }
     
