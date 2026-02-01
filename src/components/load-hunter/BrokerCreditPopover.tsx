@@ -416,9 +416,12 @@ export function BrokerCreditPopover({
           className={`p-0 card-glossy border-0 overflow-hidden transition-all ${similarCustomers.length > 0 || existingCustomer ? 'w-[740px]' : 'w-[560px]'}`}
           side="bottom" 
           align="start"
+          sideOffset={5}
+          collisionPadding={16}
+          avoidCollisions={true}
           onClick={(e) => e.stopPropagation()}
         >
-          <ScrollArea className="max-h-[70vh]">
+          <ScrollArea className="max-h-[calc(100vh-200px)] overflow-y-auto">
           {/* Header - Broker Name Only */}
           <div className={`relative overflow-hidden ${existingCustomer ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-primary to-blue-600'}`}>
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_50%,rgba(0,0,0,0.1)_100%)]" />
