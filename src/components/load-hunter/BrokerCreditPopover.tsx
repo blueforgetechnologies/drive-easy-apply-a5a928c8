@@ -501,25 +501,25 @@ export function BrokerCreditPopover({
             </div>
           </div>
 
-          {/* 3-Source Comparison Grid - Engraved Compact Cards */}
+          {/* 3-Source Comparison Grid - Puffy Glossy Cards */}
           {hasChecked && (
             <div className="p-3 space-y-2">
               {/* Column Headers - Dynamic 3 or 4 columns */}
-              <div className={`grid gap-1 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                <div className="cell-engraved-amber flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+              <div className={`grid gap-1.5 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                <div className="cell-puffy-amber flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
                   <FileText className="h-3 w-3 text-amber-600" />
                   <span className="font-bold text-[9px] text-amber-700 uppercase tracking-wide">Posted</span>
                 </div>
-                <div className="cell-engraved-green flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                <div className="cell-puffy-green flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
                   <Shield className="h-3 w-3 text-green-600" />
                   <span className="font-bold text-[9px] text-green-700 uppercase tracking-wide">OTR</span>
                 </div>
-                <div className="cell-engraved-blue flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                <div className="cell-puffy-blue flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
                   <Building2 className="h-3 w-3 text-blue-600" />
                   <span className="font-bold text-[9px] text-blue-700 uppercase tracking-wide">FMCSA</span>
                 </div>
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="cell-engraved-purple flex items-center justify-center gap-1 py-1.5 px-2 rounded-md">
+                  <div className="cell-puffy-purple flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg">
                     <Database className="h-3 w-3 text-purple-600" />
                     <span className="font-bold text-[9px] text-purple-700 uppercase tracking-wide">Saved</span>
                   </div>
@@ -527,15 +527,15 @@ export function BrokerCreditPopover({
               </div>
 
               {/* Data Cards Grid - Dynamic 3 or 4 columns */}
-              <div className={`grid gap-1 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <div className={`grid gap-1.5 ${similarCustomers.length > 0 || existingCustomer ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {/* Row 1: Names */}
-                <div className="cell-engraved rounded-md p-2">
+                <div className="cell-puffy rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Name</div>
                   <div className="font-semibold text-[11px] truncate" title={displayBrokerName}>
                     {displayBrokerName || '—'}
                   </div>
                 </div>
-                <div className="cell-engraved-green rounded-md p-2 border-l-2 border-l-green-500">
+                <div className="cell-puffy-green rounded-lg p-2 border-l-2 border-l-green-500">
                   <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5 flex items-center gap-0.5">
                     <CheckCircle2 className="h-2.5 w-2.5" />
                     Billing
@@ -544,7 +544,7 @@ export function BrokerCreditPopover({
                     {otrData?.name || '—'}
                   </div>
                 </div>
-                <div className="cell-engraved-blue rounded-md p-2">
+                <div className="cell-puffy-blue rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">Legal</div>
                   <div className="font-semibold text-[11px] truncate" title={fmcsaData?.legal_name}>
                     {fmcsaData?.legal_name || fmcsaData?.dba_name || '—'}
@@ -552,7 +552,7 @@ export function BrokerCreditPopover({
                 </div>
                 {/* 4th Column: Saved Customer Name */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className={`cell-engraved-purple rounded-md p-2 ${existingCustomer ? 'border-l-2 border-l-purple-500' : ''}`}>
+                  <div className={`cell-puffy-purple rounded-lg p-2 ${existingCustomer ? 'border-l-2 border-l-purple-500' : ''}`}>
                     <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5 flex items-center gap-0.5">
                       {existingCustomer ? <CheckCircle2 className="h-2.5 w-2.5" /> : <GitMerge className="h-2.5 w-2.5" />}
                       {existingCustomer ? 'Matched' : 'Similar'}
@@ -564,19 +564,19 @@ export function BrokerCreditPopover({
                 )}
 
                 {/* Row 2: Status/Approval/DOT/Saved Status */}
-                <div className="cell-engraved rounded-md p-2">
+                <div className="cell-puffy rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Source</div>
                   <div className="font-medium text-[11px] flex items-center gap-1">
                     <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                     Email
                   </div>
                 </div>
-                <div className={`rounded-md p-2 border-l-2 ${
+                <div className={`rounded-lg p-2 border-l-2 ${
                   otrData?.approval_status === 'approved' 
-                    ? 'cell-engraved-green border-l-green-500' 
+                    ? 'cell-puffy-green border-l-green-500' 
                     : otrData?.approval_status === 'not_approved'
-                    ? 'cell-engraved border-l-red-500 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50'
-                    : 'cell-engraved-amber border-l-amber-500'
+                    ? 'cell-puffy border-l-red-500 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50'
+                    : 'cell-puffy-amber border-l-amber-500'
                 }`}>
                   <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5">Approval</div>
                   <div className="flex items-center gap-1">
@@ -592,7 +592,7 @@ export function BrokerCreditPopover({
                     </div>
                   )}
                 </div>
-                <div className="cell-engraved-blue rounded-md p-2">
+                <div className="cell-puffy-blue rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">DOT</div>
                   <div className="font-semibold text-[11px]">
                     {fmcsaData?.dot_number ? `DOT# ${fmcsaData.dot_number}` : '—'}
@@ -612,7 +612,7 @@ export function BrokerCreditPopover({
                 </div>
                 {/* 4th Column: Saved Customer MC */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="cell-engraved-purple rounded-md p-2">
+                  <div className="cell-puffy-purple rounded-lg p-2">
                     <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">MC #</div>
                     <div className="font-semibold text-[11px]">
                       {existingCustomer?.mc_number ? `MC# ${existingCustomer.mc_number}` : similarCustomers[0]?.mc_number ? `MC# ${similarCustomers[0].mc_number}` : '—'}
@@ -622,10 +622,10 @@ export function BrokerCreditPopover({
 
                 {/* Row 3: Address - With selectable radio + tooltip */}
                 <div 
-                  className={`rounded-md p-2 cursor-pointer transition-all duration-150 ${
+                  className={`rounded-lg p-2 cursor-pointer transition-all duration-150 ${
                     selectedAddressSource === 'posted' 
-                      ? 'cell-engraved-amber ring-2 ring-amber-400 ring-offset-1' 
-                      : 'cell-engraved hover:ring-1 hover:ring-amber-300'
+                      ? 'cell-puffy-amber ring-2 ring-amber-400 ring-offset-1' 
+                      : 'cell-puffy hover:ring-1 hover:ring-amber-300'
                   }`}
                   onClick={() => postedAddress && setSelectedAddressSource('posted')}
                 >
@@ -645,17 +645,17 @@ export function BrokerCreditPopover({
                     {postedAddress || <span className="text-muted-foreground italic text-[9px]">N/A</span>}
                   </div>
                 </div>
-                <div className="cell-engraved-green rounded-md p-2">
+                <div className="cell-puffy-green rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-green-700 font-bold mb-0.5">MC #</div>
                   <div className="font-bold text-[11px]">
                     {otrData?.mc_number ? `MC# ${otrData.mc_number}` : '—'}
                   </div>
                 </div>
                 <div 
-                  className={`rounded-md p-2 cursor-pointer transition-all duration-150 ${
+                  className={`rounded-lg p-2 cursor-pointer transition-all duration-150 ${
                     selectedAddressSource === 'fmcsa' 
-                      ? 'cell-engraved-blue ring-2 ring-blue-400 ring-offset-1' 
-                      : 'cell-engraved-blue hover:ring-1 hover:ring-blue-300'
+                      ? 'cell-puffy-blue ring-2 ring-blue-400 ring-offset-1' 
+                      : 'cell-puffy-blue hover:ring-1 hover:ring-blue-300'
                   }`}
                   onClick={() => fmcsaData?.physical_address && setSelectedAddressSource('fmcsa')}
                 >
@@ -677,7 +677,7 @@ export function BrokerCreditPopover({
                 </div>
                 {/* 4th Column: Saved Customer Address */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="cell-engraved-purple rounded-md p-2">
+                  <div className="cell-puffy-purple rounded-lg p-2">
                     <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">Address</div>
                     <div className="font-medium text-[9px] leading-tight text-foreground/80">
                       {existingCustomer?.address ? (
@@ -689,10 +689,10 @@ export function BrokerCreditPopover({
 
                 {/* Row 3.5: OTR Address Input - Spans full width */}
                 <div 
-                  className={`rounded-md p-2 transition-all duration-150 ${
+                  className={`rounded-lg p-2 transition-all duration-150 ${
                     selectedAddressSource === 'otr' 
-                      ? 'cell-engraved-green ring-2 ring-green-400 ring-offset-1' 
-                      : 'cell-engraved-green hover:ring-1 hover:ring-green-300'
+                      ? 'cell-puffy-green ring-2 ring-green-400 ring-offset-1' 
+                      : 'cell-puffy-green hover:ring-1 hover:ring-green-300'
                   }`}
                   style={{ gridColumn: similarCustomers.length > 0 || existingCustomer ? 'span 4' : 'span 3' }}
                   onClick={() => setSelectedAddressSource('otr')}
@@ -723,7 +723,7 @@ export function BrokerCreditPopover({
                 </div>
 
                 {/* Row 4: Phone */}
-                <div className="cell-engraved rounded-md p-2">
+                <div className="cell-puffy rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Phone</div>
                   <div className="font-medium text-[11px] flex items-center gap-1">
                     {parsedData?.broker_phone ? (
@@ -734,12 +734,12 @@ export function BrokerCreditPopover({
                     ) : <span className="text-muted-foreground text-[10px]">—</span>}
                   </div>
                 </div>
-                <div className="cell-engraved-green rounded-md p-2">
+                <div className="cell-puffy-green rounded-lg p-2">
                   <div className="h-full flex items-center justify-center">
                     <span className="text-[9px] text-muted-foreground">N/A</span>
                   </div>
                 </div>
-                <div className="cell-engraved-blue rounded-md p-2">
+                <div className="cell-puffy-blue rounded-lg p-2">
                   <div className="text-[8px] uppercase tracking-wider text-blue-700 font-bold mb-0.5">Phone</div>
                   <div className="font-medium text-[11px] flex items-center gap-1">
                     {fmcsaData?.phone ? (
@@ -752,7 +752,7 @@ export function BrokerCreditPopover({
                 </div>
                 {/* 4th Column: Saved Customer Phone */}
                 {(similarCustomers.length > 0 || existingCustomer) && (
-                  <div className="cell-engraved-purple rounded-md p-2">
+                  <div className="cell-puffy-purple rounded-lg p-2">
                     <div className="text-[8px] uppercase tracking-wider text-purple-700 font-bold mb-0.5">Phone</div>
                     <div className="font-medium text-[11px] flex items-center gap-1">
                       {existingCustomer?.phone ? (
@@ -768,7 +768,7 @@ export function BrokerCreditPopover({
 
               {/* Similar Customers - Merge Option with Purple Theme */}
               {similarCustomers.length > 0 && !existingCustomer && (
-                <div className="cell-engraved-purple rounded-md p-2.5 mt-1">
+                <div className="cell-puffy-purple rounded-lg p-2.5 mt-1">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 mb-1">
                     <GitMerge className="h-3 w-3" />
                     Similar customers found
@@ -857,7 +857,7 @@ export function BrokerCreditPopover({
           {/* Before check state - Compact empty state */}
           {!hasChecked && (
             <div className="p-5 text-center">
-              <div className="mx-auto w-10 h-10 cell-engraved rounded-xl flex items-center justify-center mb-2.5">
+              <div className="mx-auto w-10 h-10 cell-puffy rounded-xl flex items-center justify-center mb-2.5">
                 <Shield className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-xs font-medium text-foreground mb-0.5">Ready to Verify</p>
