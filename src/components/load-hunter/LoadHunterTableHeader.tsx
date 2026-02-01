@@ -41,7 +41,7 @@ export function LoadHunterTableHeader({
   const cellStyle = loadHunterTheme === 'aurora' ? { textShadow: 'none' } : undefined;
 
   // Column sizing: keep the first two columns compact so they don't look like huge gaps.
-  const wideCol = 'w-[220px] min-w-[220px]';
+  const wideCol = 'w-[180px] min-w-[180px]';
 
   return (
     <TableHeader 
