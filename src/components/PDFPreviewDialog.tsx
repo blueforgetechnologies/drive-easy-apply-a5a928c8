@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PDFUrlImageViewer } from "@/components/pdf/PDFUrlImageViewer";
+import { PDFThumbnail } from "@/components/pdf/PDFThumbnail";
 
 // Configure pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -362,6 +363,16 @@ export function PDFPreviewDialog({
     return false;
   };
 
+  // Check if a path is a PDF
+  const isPdfPath = (doc: string | File | null | undefined): boolean => {
+    if (!doc) return false;
+    if (doc instanceof File) return doc.type === 'application/pdf';
+    if (typeof doc === 'string') {
+      return doc.toLowerCase().endsWith('.pdf');
+    }
+    return false;
+  };
+
   const showLoading = isLoading || (isRendering && pageImages.length === 0);
 
   // Build document list
@@ -473,6 +484,7 @@ export function PDFPreviewDialog({
                   {documentList.map((item) => {
                     const url = getDocumentUrl(item.doc, item.key);
                     const isImage = url ? isImageUrl(url) : isImagePath(item.doc);
+                    const isPdf = isPdfPath(item.doc);
                     const hasSignedUrl = !!url;
                     
                     return (
@@ -501,6 +513,10 @@ export function PDFPreviewDialog({
                             <div className="absolute inset-0 flex items-center justify-center -z-10">
                               <ImageIcon className="h-8 w-8 text-muted-foreground" />
                             </div>
+                          </div>
+                        ) : isPdf && hasSignedUrl ? (
+                          <div className="aspect-[4/3] relative bg-muted overflow-hidden">
+                            <PDFThumbnail url={url} className="w-full h-full" />
                           </div>
                         ) : (
                           <div className="aspect-[4/3] flex items-center justify-center bg-muted">
