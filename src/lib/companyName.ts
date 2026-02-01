@@ -8,7 +8,17 @@ export function cleanCompanyName(input: string | null | undefined): string {
 
   let s = String(input);
 
-  // Strip HTML tags and entities-ish whitespace
+  // Decode common HTML entities
+  s = s
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&nbsp;/gi, " ");
+
+  // Strip HTML tags and whitespace artifacts
   s = s.replace(/<[^>]*>/g, " ");
   s = s.replace(/\u00a0/g, " ");
   s = s.replace(/\s+/g, " ").trim();
