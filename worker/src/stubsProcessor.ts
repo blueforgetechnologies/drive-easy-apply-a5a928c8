@@ -93,28 +93,51 @@ const DB_READ_TIMEOUT_MS = parseInt(process.env.STUB_DB_READ_TIMEOUT_MS || '2000
 const DB_WRITE_TIMEOUT_MS = parseInt(process.env.STUB_DB_WRITE_TIMEOUT_MS || '25000', 10); // 25s
 const TOKEN_TIMEOUT_MS = parseInt(process.env.STUB_TOKEN_TIMEOUT_MS || '20000', 10); // 20s
 
+
 async function withTimeout<T>(
+
   promiseLike: any,
+
   ms: number,
+
   label: string
+
 ): Promise<T> {
+
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
   const timeoutPromise = new Promise<never>((_, reject) => {
+
     timeoutId = setTimeout(() => {
+
       reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`));
+
     }, ms);
+
   });
+
   try {
+
     const result = await Promise.race([
+
       Promise.resolve(promiseLike) as Promise<T>,
+
       timeoutPromise,
+
     ]);
+
     if (timeoutId) clearTimeout(timeoutId);
+
     return result as T;
+
   } catch (e) {
+
     if (timeoutId) clearTimeout(timeoutId);
+
     throw e;
+
   }
+
 }
 
 function stubStepStart(stub: GmailStub, step: string, extra?: Record<string, any>): void {
