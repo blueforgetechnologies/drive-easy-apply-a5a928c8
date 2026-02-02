@@ -7205,6 +7205,7 @@ export type Database = {
       }
       get_default_tenant_id: { Args: never; Returns: string }
       get_email_queue_pending_count: { Args: never; Returns: number }
+      get_gmail_stubs_health: { Args: never; Returns: Json }
       get_multi_match_fingerprints: {
         Args: never
         Returns: {
