@@ -67,6 +67,21 @@ const DEFAULT_CONFIG: DynamicConfig = {
   restart_requested_at: null,
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WATCHDOG CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WATCHDOG_CONFIG = {
+  // How long without progress before triggering watchdog (ms)
+  STALL_THRESHOLD_MS: parseInt(process.env.WATCHDOG_STALL_THRESHOLD_MS || '300000', 10), // 5 minutes
+  // Minimum pending count to trigger watchdog exit
+  MIN_PENDING_FOR_WATCHDOG: parseInt(process.env.WATCHDOG_MIN_PENDING || '200', 10),
+  // How often to check watchdog conditions (ms)
+  CHECK_INTERVAL_MS: 60000, // 1 minute
+  // Whether watchdog is enabled (default ON in production)
+  ENABLED: process.env.WATCHDOG_ENABLED !== 'false',
+};
+
 // Current active configuration (updated from database)
 let currentConfig: DynamicConfig = { ...DEFAULT_CONFIG };
 
@@ -102,6 +117,13 @@ interface WorkerMetrics {
   lastConfigRefresh: Date | null;
   // Circuit breaker stall detector: tracks when we last successfully processed something
   lastProcessedAt: Date | null;
+  // Watchdog tracking
+  lastClaimAt: Date | null;
+  lastProgressAt: Date | null;
+  // Gmail stubs tracking for drain_tick
+  stubsProcessedThisLoop: number;
+  stubsPendingCount: number;
+  stubsProcessingCount: number;
 }
 
 const METRICS: WorkerMetrics = {
@@ -118,6 +140,11 @@ const METRICS: WorkerMetrics = {
   configSource: 'default',
   lastConfigRefresh: null,
   lastProcessedAt: null,
+  lastClaimAt: null,
+  lastProgressAt: null,
+  stubsProcessedThisLoop: 0,
+  stubsPendingCount: 0,
+  stubsProcessingCount: 0,
 };
 
 let isShuttingDown = false;
@@ -449,6 +476,114 @@ async function cleanupStaleWorkerRecords(): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WATCHDOG: Detect stalled gmail_stubs processing and trigger Docker restart
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface GmailStubsHealth {
+  pending_count: number;
+  processing_count: number;
+  failed_count: number;
+  completed_count: number;
+  oldest_pending_at: string | null;
+  oldest_pending_age_minutes: number | null;
+  oldest_processing_at: string | null;
+  oldest_processing_age_minutes: number | null;
+  last_completed_at: string | null;
+  time_since_completion_minutes: number | null;
+}
+
+/**
+ * Fetch gmail_stubs queue health from database for watchdog and drain_tick logging.
+ */
+async function fetchGmailStubsHealth(): Promise<GmailStubsHealth | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_gmail_stubs_health');
+    if (error) {
+      log('warn', 'Failed to fetch gmail_stubs health', { error: error.message });
+      return null;
+    }
+    return data as GmailStubsHealth;
+  } catch (e) {
+    log('warn', 'Exception fetching gmail_stubs health', { error: String(e) });
+    return null;
+  }
+}
+
+/**
+ * Watchdog check: If pending is high and no progress in STALL_THRESHOLD_MS, exit for Docker restart.
+ * This ensures the worker cannot silently stall indefinitely.
+ */
+async function checkWatchdog(): Promise<void> {
+  if (!WATCHDOG_CONFIG.ENABLED) return;
+
+  const health = await fetchGmailStubsHealth();
+  if (!health) return;
+
+  // Update metrics for visibility
+  METRICS.stubsPendingCount = health.pending_count;
+  METRICS.stubsProcessingCount = health.processing_count;
+
+  const now = Date.now();
+  const lastProgress = METRICS.lastProgressAt?.getTime() || METRICS.startedAt.getTime();
+  const msSinceProgress = now - lastProgress;
+
+  // Watchdog trigger conditions:
+  // 1. Pending count is above threshold
+  // 2. No progress in STALL_THRESHOLD_MS
+  if (health.pending_count >= WATCHDOG_CONFIG.MIN_PENDING_FOR_WATCHDOG && 
+      msSinceProgress >= WATCHDOG_CONFIG.STALL_THRESHOLD_MS) {
+    
+    log('error', '🚨 STUCK_WATCHDOG: Worker stalled, triggering Docker restart', {
+      pending_count: health.pending_count,
+      processing_count: health.processing_count,
+      ms_since_progress: msSinceProgress,
+      stall_threshold_ms: WATCHDOG_CONFIG.STALL_THRESHOLD_MS,
+      min_pending_threshold: WATCHDOG_CONFIG.MIN_PENDING_FOR_WATCHDOG,
+      last_progress_at: METRICS.lastProgressAt?.toISOString() || 'never',
+      oldest_pending_age_minutes: health.oldest_pending_age_minutes,
+      oldest_processing_age_minutes: health.oldest_processing_age_minutes,
+      last_completed_at: health.last_completed_at,
+    });
+
+    // Exit with code 1 so Docker restart:always will restart us
+    process.exit(1);
+  }
+}
+
+/**
+ * Log drain_tick: High-signal periodic log showing queue health.
+ * Called every loop when stubs are enabled.
+ */
+function logDrainTick(health: GmailStubsHealth | null, claimedCount: number, backoffMs: number): void {
+  const lastProgress = METRICS.lastProgressAt?.toISOString() || 'never';
+  
+  log('info', 'DRAIN_TICK', {
+    claimed_count: claimedCount,
+    pending_count: health?.pending_count ?? 'unknown',
+    processing_count: health?.processing_count ?? 'unknown',
+    failed_count: health?.failed_count ?? 0,
+    backoff_ms: backoffMs,
+    last_progress_at: lastProgress,
+    oldest_pending_age_min: health?.oldest_pending_age_minutes?.toFixed(1) ?? 'unknown',
+    oldest_processing_age_min: health?.oldest_processing_age_minutes?.toFixed(1) ?? 'unknown',
+    loop: METRICS.loopCount,
+    uptime_min: Math.floor((Date.now() - METRICS.startedAt.getTime()) / 60000),
+  });
+}
+
+/**
+ * Log drain_progress: Called whenever a stub completes successfully.
+ */
+function logDrainProgress(stubId: string, elapsedMs: number, remainingPending: number): void {
+  log('info', 'DRAIN_PROGRESS', {
+    stub_id: stubId.substring(0, 8),
+    elapsed_ms: elapsedMs,
+    remaining_pending: remainingPending,
+    last_progress_at: new Date().toISOString(),
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN WORKER LOOP
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -468,6 +603,9 @@ async function workerLoop(): Promise<void> {
     interval_ms: currentConfig.loop_interval_ms,
     concurrent: currentConfig.concurrent_limit,
     config_source: METRICS.configSource,
+    watchdog_enabled: WATCHDOG_CONFIG.ENABLED,
+    watchdog_stall_threshold_ms: WATCHDOG_CONFIG.STALL_THRESHOLD_MS,
+    watchdog_min_pending: WATCHDOG_CONFIG.MIN_PENDING_FOR_WATCHDOG,
   });
 
   // One-time storage verification on startup
@@ -503,6 +641,15 @@ async function workerLoop(): Promise<void> {
   const metricsInterval = setInterval(() => {
     logMetricsReport();
   }, 60000);
+  
+  // Watchdog interval: Check for stalls even if loop is stuck (runs async)
+  const watchdogInterval = setInterval(async () => {
+    try {
+      await checkWatchdog();
+    } catch (e) {
+      log('error', 'Watchdog interval error', { error: String(e) });
+    }
+  }, WATCHDOG_CONFIG.CHECK_INTERVAL_MS);
   
   // Initial heartbeat
   await reportHeartbeat();
@@ -555,6 +702,7 @@ async function workerLoop(): Promise<void> {
       });
 
       METRICS.isHealthy = true;
+      METRICS.stubsProcessedThisLoop = 0; // Reset per-loop counter
 
       // Reset stale items and check for stuck emails periodically
       if (Date.now() - lastStaleReset >= STATIC_CONFIG.STALE_RESET_INTERVAL_MS) {
@@ -592,6 +740,10 @@ async function workerLoop(): Promise<void> {
       // ═══════════════════════════════════════════════════════════════════════
       const GMAIL_STUBS_ENABLED = process.env.ENABLE_GMAIL_STUBS === 'true';
       const STUBS_CAP_PER_LOOP = 25;
+      
+      // Track when we last claimed
+      METRICS.lastClaimAt = new Date();
+      
       const stubsBatch = GMAIL_STUBS_ENABLED ? await claimStubsBatch(STUBS_CAP_PER_LOOP) : [];
 
       // Also claim INBOUND emails for parsing (load emails) - LEGACY PATH
@@ -604,6 +756,17 @@ async function workerLoop(): Promise<void> {
       const HISTORY_CAP_PER_LOOP = 5;
       const historyBatch = HISTORY_QUEUE_ENABLED ? await claimHistoryBatch(HISTORY_CAP_PER_LOOP) : [];
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // DRAIN_TICK: High-signal log showing queue health every loop
+      // ═══════════════════════════════════════════════════════════════════════
+      const stubsHealth = GMAIL_STUBS_ENABLED ? await fetchGmailStubsHealth() : null;
+      const backoffMs = Math.max(0, METRICS.rateLimitBackoffUntil - Date.now());
+      
+      // Log DRAIN_TICK every loop when stubs are enabled
+      if (GMAIL_STUBS_ENABLED) {
+        logDrainTick(stubsHealth, stubsBatch.length, backoffMs);
+      }
+
       // Log claim results ALWAYS for debugging stalls
       log('debug', 'Claim results', {
         outbound: batch.length,
@@ -612,6 +775,11 @@ async function workerLoop(): Promise<void> {
         history: historyBatch.length,
         totalClaimed: batch.length + stubsBatch.length + inboundBatch.length + historyBatch.length,
       });
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // WATCHDOG CHECK: Detect stalled processing and trigger Docker restart
+      // ═══════════════════════════════════════════════════════════════════════
+      await checkWatchdog();
 
       if (batch.length === 0 && stubsBatch.length === 0 && inboundBatch.length === 0 && historyBatch.length === 0) {
         // Increment loop counter BEFORE sleeping on empty batch
@@ -635,21 +803,35 @@ async function workerLoop(): Promise<void> {
         let stubsFailed = 0;
         let messagesProcessed = 0;
         let loadsCreated = 0;
+        
+        // Track remaining for drain_progress
+        let remainingPending = stubsHealth?.pending_count ?? 0;
 
         for (const stub of stubsBatch) {
+          const stubStart = Date.now();
           try {
             const result = await processStub(stub);
+            const stubElapsed = Date.now() - stubStart;
+            
             if (result.success) {
               stubsSuccess++;
               messagesProcessed += result.messagesProcessed;
               loadsCreated += result.loadsCreated;
-              // Update last_processed_at for circuit breaker stall detection
+              remainingPending = Math.max(0, remainingPending - 1);
+              
+              // Update progress tracking for watchdog
               METRICS.lastProcessedAt = new Date();
+              METRICS.lastProgressAt = new Date();
+              METRICS.stubsProcessedThisLoop++;
+              
+              // Log DRAIN_PROGRESS for each completed stub
+              logDrainProgress(stub.id, stubElapsed, remainingPending);
             } else {
               stubsFailed++;
               log('warn', `Stub failed`, { 
                 id: stub.id.substring(0, 8), 
-                error: result.error 
+                error: result.error,
+                elapsed_ms: stubElapsed,
               });
             }
           } catch (error) {
@@ -657,7 +839,8 @@ async function workerLoop(): Promise<void> {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log('error', `Stub exception`, { 
               id: stub.id.substring(0, 8), 
-              error: errorMessage 
+              error: errorMessage,
+              elapsed_ms: Date.now() - stubStart,
             });
           }
         }
@@ -669,6 +852,7 @@ async function workerLoop(): Promise<void> {
           messagesProcessed,
           loadsCreated,
           duration_ms: Date.now() - stubsStart,
+          remaining_pending: remainingPending,
         });
       }
 
@@ -704,6 +888,7 @@ async function workerLoop(): Promise<void> {
             processedCount++;
             // Update last_processed_at for circuit breaker stall detection
             METRICS.lastProcessedAt = new Date();
+            METRICS.lastProgressAt = new Date(); // Watchdog progress tracking
             // Record metrics
             recordInboundParseTime(parseDuration);
             recordQueueDrain(1);
@@ -984,6 +1169,7 @@ async function workerLoop(): Promise<void> {
 
   clearInterval(heartbeatInterval);
   clearInterval(metricsInterval);
+  clearInterval(watchdogInterval);
   stopEventLoopMonitor();
   log('info', 'Worker shutdown complete', {
     total_sent: METRICS.emailsSent,
