@@ -201,12 +201,14 @@ export async function claimStubsBatch(batchSize: number = 25): Promise<GmailStub
  * FIX #1: Timeout is INSIDE this function. Callers should NOT wrap with withTimeout.
  */
 export async function completeStub(id: string): Promise<void> {
-  const { error } = await withTimeout<{ error: any }>(
+  // BLOCKER #1 FIX: Treat RPC result as any and check res?.error safely
+  // Supabase returns { data, error } - avoid generic type mismatch
+  const res: any = await withTimeout(
     supabase.rpc('complete_gmail_stub', { p_id: id }),
     DB_WRITE_TIMEOUT_MS,
     'complete_gmail_stub'
   );
-  if (error) throw new Error(`complete_gmail_stub: ${error.message}`);
+  if (res?.error) throw new Error(`complete_gmail_stub: ${res.error.message || res.error}`);
 }
 
 /**
@@ -214,7 +216,9 @@ export async function completeStub(id: string): Promise<void> {
  * FIX #1: Timeout is INSIDE this function. Callers should NOT wrap with withTimeout.
  */
 export async function failStub(id: string, errorMessage: string): Promise<void> {
-  const { error } = await withTimeout<{ error: any }>(
+  // BLOCKER #1 FIX: Treat RPC result as any and check res?.error safely
+  // Supabase returns { data, error } - avoid generic type mismatch
+  const res: any = await withTimeout(
     supabase.rpc('fail_gmail_stub', {
       p_id: id,
       p_error: errorMessage,
@@ -222,7 +226,7 @@ export async function failStub(id: string, errorMessage: string): Promise<void> 
     DB_WRITE_TIMEOUT_MS,
     'fail_gmail_stub'
   );
-  if (error) throw new Error(`fail_gmail_stub: ${error.message}`);
+  if (res?.error) throw new Error(`fail_gmail_stub: ${res.error.message || res.error}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -335,16 +339,21 @@ async function createLoadFromMessage(
   // Check if already exists FOR THIS TENANT (multi-tenant correctness)
   // Gmail message IDs are globally unique, but we scope by tenant to prevent
   // one tenant's ingestion from blocking another (defense-in-depth)
-  // FIX #2: Use proper destructuring from Supabase return, no generic type on withTimeout
+  // BLOCKER #2 FIX: Defensive dedupe with explicit typeof check
   const dedupeQuery = supabase
     .from('load_emails')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', tenantId)
     .eq('email_id', messageId);
   
-  const dedupeResult = await withTimeout(dedupeQuery, DB_READ_TIMEOUT_MS, 'dedupe_check_load_emails') as any;
-  if (dedupeResult.error) throw new Error(`dedupe_check_load_emails: ${dedupeResult.error.message}`);
-  const existingCount = dedupeResult.count ?? 0;
+  const res: any = await withTimeout(dedupeQuery, DB_READ_TIMEOUT_MS, 'dedupe_check_load_emails');
+  if (res?.error) throw new Error(`dedupe_check_load_emails: ${res.error.message || res.error}`);
+  
+  // Defensive: ensure count is a number, log if missing for debugging
+  const existingCount = (typeof res?.count === 'number') ? res.count : 0;
+  if (res?.count === null || res?.count === undefined) {
+    log('debug', 'dedupe count returned null/undefined, treating as 0', { messageId, tenant: tenantId.substring(0, 8) });
+  }
 
   if (existingCount > 0) {
     log('debug', 'Message already processed for this tenant', { messageId, tenant: tenantId.substring(0, 8) });
