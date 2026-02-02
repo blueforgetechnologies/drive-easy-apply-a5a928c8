@@ -99,16 +99,14 @@ async function withTimeout<T>(
   label: string
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`));
     }, ms);
   });
-
   try {
     const result = await Promise.race([
-      Promise.resolve(promiseLike),
+      Promise.resolve(promiseLike) as Promise<T>,
       timeoutPromise,
     ]);
     if (timeoutId) clearTimeout(timeoutId);
