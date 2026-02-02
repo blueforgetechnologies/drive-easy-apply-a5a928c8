@@ -83,6 +83,14 @@ function log(level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?:
 
 const CLAIM_TIMEOUT_MS = 30_000;
 
+// Stub processor timeouts (hard caps to prevent hung awaits)
+const STUB_MAX_RUNTIME_MS = parseInt(process.env.STUB_MAX_RUNTIME_MS || '120000', 10); // 120s
+const FETCH_HISTORY_TIMEOUT_MS = parseInt(process.env.STUB_FETCH_HISTORY_TIMEOUT_MS || '30000', 10); // 30s
+const FETCH_MESSAGE_FULL_TIMEOUT_MS = parseInt(process.env.STUB_FETCH_MESSAGE_FULL_TIMEOUT_MS || '45000', 10); // 45s
+const DB_READ_TIMEOUT_MS = parseInt(process.env.STUB_DB_READ_TIMEOUT_MS || '20000', 10); // 20s
+const DB_WRITE_TIMEOUT_MS = parseInt(process.env.STUB_DB_WRITE_TIMEOUT_MS || '25000', 10); // 25s
+const TOKEN_TIMEOUT_MS = parseInt(process.env.STUB_TOKEN_TIMEOUT_MS || '20000', 10); // 20s
+
 async function withTimeout<T>(
   promiseLike: any,
   ms: number,
@@ -107,6 +115,54 @@ async function withTimeout<T>(
     if (timeoutId) clearTimeout(timeoutId);
     throw e;
   }
+}
+
+function stubStepStart(stub: GmailStub, step: string, extra?: Record<string, any>): void {
+  log('info', 'STUB_STEP_START', {
+    stub_id: stub.id,
+    step,
+    historyId: stub.history_id,
+    ...extra,
+  });
+}
+
+function stubStepEnd(stub: GmailStub, step: string, elapsedMs: number, extra?: Record<string, any>): void {
+  log('info', 'STUB_STEP_END', {
+    stub_id: stub.id,
+    step,
+    elapsed_ms: elapsedMs,
+    ...extra,
+  });
+}
+
+function stubStepError(stub: GmailStub, step: string, elapsedMs: number, error: unknown, extra?: Record<string, any>): void {
+  log('error', 'STUB_STEP_ERROR', {
+    stub_id: stub.id,
+    step,
+    elapsed_ms: elapsedMs,
+    error: error instanceof Error ? error.message : String(error),
+    ...extra,
+  });
+}
+
+function stubDone(
+  stub: GmailStub,
+  summary: {
+    messages_seen: number;
+    deduped: number;
+    loads_created: number;
+    messages_failed: number;
+    elapsed_ms: number;
+    error?: string;
+  }
+): void {
+  log('info', 'STUB_DONE', {
+    stub_id: stub.id,
+    historyId: stub.history_id,
+    tenant: stub.tenant_id.substring(0, 8),
+    email: stub.email_address,
+    ...summary,
+  });
 }
 
 /**
@@ -142,23 +198,27 @@ export async function claimStubsBatch(batchSize: number = 25): Promise<GmailStub
  * Mark a stub as completed.
  */
 export async function completeStub(id: string): Promise<void> {
-  const { error } = await supabase.rpc('complete_gmail_stub', { p_id: id });
-  if (error) {
-    log('error', `Error completing stub ${id}`, { error: error.message });
-  }
+  const result = await withTimeout<{ error: any }>(
+    supabase.rpc('complete_gmail_stub', { p_id: id }),
+    DB_WRITE_TIMEOUT_MS,
+    'complete_gmail_stub'
+  );
+  if (result.error) throw new Error(`complete_gmail_stub: ${result.error.message}`);
 }
 
 /**
  * Mark a stub as failed with error message.
  */
 export async function failStub(id: string, errorMessage: string): Promise<void> {
-  const { error } = await supabase.rpc('fail_gmail_stub', {
-    p_id: id,
-    p_error: errorMessage,
-  });
-  if (error) {
-    log('error', `Error failing stub ${id}`, { error: error.message });
-  }
+  const result = await withTimeout<{ error: any }>(
+    supabase.rpc('fail_gmail_stub', {
+      p_id: id,
+      p_error: errorMessage,
+    }),
+    DB_WRITE_TIMEOUT_MS,
+    'fail_gmail_stub'
+  );
+  if (result.error) throw new Error(`fail_gmail_stub: ${result.error.message}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -271,11 +331,17 @@ async function createLoadFromMessage(
   // Check if already exists FOR THIS TENANT (multi-tenant correctness)
   // Gmail message IDs are globally unique, but we scope by tenant to prevent
   // one tenant's ingestion from blocking another (defense-in-depth)
-  const { count: existingCount } = await supabase
-    .from('load_emails')
-    .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .eq('email_id', messageId);
+  const existingResult = await withTimeout<{ count: number | null; error: any }>(
+    supabase
+      .from('load_emails')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('email_id', messageId),
+    DB_READ_TIMEOUT_MS,
+    'dedupe_check_load_emails'
+  );
+  if (existingResult.error) throw new Error(`dedupe_check_load_emails: ${existingResult.error.message}`);
+  const existingCount = existingResult.count;
 
   if (existingCount && existingCount > 0) {
     log('debug', 'Message already processed for this tenant', { messageId, tenant: tenantId.substring(0, 8) });
@@ -370,32 +436,42 @@ async function createLoadFromMessage(
   const fingerprint = fingerprintResult.fingerprint;
 
   // Insert load_email record with ON CONFLICT handling for concurrency safety
-  const { data: inserted, error: insertError } = await supabase
-    .from('load_emails')
-    .upsert({
-      tenant_id: tenantId,
-      email_id: messageId,
-      thread_id: message.threadId,
-      from_email: fromEmail,
-      subject,
-      body_text: bodyText?.substring(0, 50000),
-      body_html: bodyHtml?.substring(0, 100000),
-      received_at: internalDate,
-      email_source: emailSource,
-      status: 'active',
-      parsed_data: parsedData,
-      pickup_coordinates: pickupCoords ? { lat: pickupCoords.lat, lng: pickupCoords.lng } : null,
-      content_hash: contentHash,
-      parsed_load_fingerprint: fingerprint,
-      fingerprint_version: FINGERPRINT_VERSION,
-      dedup_eligible: !!fingerprint,
-      dedup_eligible_reason: fingerprint ? 'has_fingerprint' : 'missing_fingerprint',
-    }, { 
-      onConflict: 'email_id',
-      ignoreDuplicates: true 
-    })
-    .select('id, load_id')
-    .maybeSingle();
+  const insertResult = await withTimeout<{ data: any; error: any }>(
+    supabase
+      .from('load_emails')
+      .upsert(
+        {
+          tenant_id: tenantId,
+          email_id: messageId,
+          thread_id: message.threadId,
+          from_email: fromEmail,
+          subject,
+          body_text: bodyText?.substring(0, 50000),
+          body_html: bodyHtml?.substring(0, 100000),
+          received_at: internalDate,
+          email_source: emailSource,
+          status: 'active',
+          parsed_data: parsedData,
+          pickup_coordinates: pickupCoords ? { lat: pickupCoords.lat, lng: pickupCoords.lng } : null,
+          content_hash: contentHash,
+          parsed_load_fingerprint: fingerprint,
+          fingerprint_version: FINGERPRINT_VERSION,
+          dedup_eligible: !!fingerprint,
+          dedup_eligible_reason: fingerprint ? 'has_fingerprint' : 'missing_fingerprint',
+        },
+        {
+          onConflict: 'email_id',
+          ignoreDuplicates: true,
+        }
+      )
+      .select('id, load_id')
+      .maybeSingle(),
+    DB_WRITE_TIMEOUT_MS,
+    'upsert_load_emails'
+  );
+
+  const inserted = insertResult.data;
+  const insertError = insertResult.error;
 
   // Handle conflict as success (another worker already processed this)
   if (insertError) {
@@ -438,11 +514,16 @@ async function triggerMatching(
   parsedData: ParsedEmailData
 ): Promise<void> {
   // Simplified matching - get enabled hunt plans for tenant
-  const { data: hunts } = await supabase
-    .from('hunt_plans')
-    .select('id, vehicle_id, hunt_coordinates, pickup_radius, tenant_id')
-    .eq('enabled', true)
-    .eq('tenant_id', tenantId);
+  const huntsResult = await withTimeout<{ data: any; error: any }>(
+    supabase
+      .from('hunt_plans')
+      .select('id, vehicle_id, hunt_coordinates, pickup_radius, tenant_id')
+      .eq('enabled', true)
+      .eq('tenant_id', tenantId),
+    DB_READ_TIMEOUT_MS,
+    'match_fetch_hunt_plans'
+  );
+  const hunts = huntsResult.data as any[] | null;
 
   if (!hunts?.length || !pickupCoords) return;
 
@@ -465,28 +546,42 @@ async function triggerMatching(
 
     // Check cooldown
     if (fingerprint) {
-      const { data: shouldTrigger } = await supabase.rpc('should_trigger_hunt_for_fingerprint', {
-        p_tenant_id: tenantId,
-        p_hunt_plan_id: hunt.id,
-        p_fingerprint: fingerprint,
-        p_received_at: receivedAt.toISOString(),
-        p_cooldown_seconds: 60,
-        p_last_load_email_id: loadEmailId,
-      });
+      const shouldTriggerResult = await withTimeout<{ data: any; error: any }>(
+        supabase.rpc('should_trigger_hunt_for_fingerprint', {
+          p_tenant_id: tenantId,
+          p_hunt_plan_id: hunt.id,
+          p_fingerprint: fingerprint,
+          p_received_at: receivedAt.toISOString(),
+          p_cooldown_seconds: 60,
+          p_last_load_email_id: loadEmailId,
+        }),
+        DB_READ_TIMEOUT_MS,
+        'should_trigger_hunt_for_fingerprint'
+      );
+      const shouldTrigger = shouldTriggerResult.data as boolean;
       if (!shouldTrigger) continue;
     }
 
     // Insert match and get the ID
-    const { data: insertedMatch } = await supabase.from('load_hunt_matches').insert({
-      load_email_id: loadEmailId,
-      hunt_plan_id: hunt.id,
-      vehicle_id: hunt.vehicle_id,
-      distance_miles: Math.round(distance),
-      is_active: true,
-      match_status: 'active',
-      matched_at: new Date().toISOString(),
-      tenant_id: tenantId,
-    }).select('id').single();
+    const insertedMatchResult = await withTimeout<{ data: any; error: any }>(
+      supabase
+        .from('load_hunt_matches')
+        .insert({
+          load_email_id: loadEmailId,
+          hunt_plan_id: hunt.id,
+          vehicle_id: hunt.vehicle_id,
+          distance_miles: Math.round(distance),
+          is_active: true,
+          match_status: 'active',
+          matched_at: new Date().toISOString(),
+          tenant_id: tenantId,
+        })
+        .select('id')
+        .single(),
+      DB_WRITE_TIMEOUT_MS,
+      'insert_load_hunt_matches'
+    );
+    const insertedMatch = insertedMatchResult.data;
 
     // Trigger broker credit check (fire-and-forget)
     if (insertedMatch) {
@@ -508,6 +603,13 @@ async function triggerMatching(
  */
 export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
   const startTime = Date.now();
+
+  // Counters for STUB_DONE (tracked across both success + failure paths)
+  let messagesProcessed = 0;
+  let loadsCreated = 0;
+  let deduped = 0;
+  let messagesFailed = 0;
+  let messagesSeen = 0;
   log('info', 'Processing stub', { 
     id: stub.id.substring(0, 8), 
     email: stub.email_address,
@@ -516,28 +618,49 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
   });
 
   try {
-    // Step 1: Load Gmail token
-    const token = await loadGmailToken(stub.email_address);
-    if (!token) {
-      const error = 'No Gmail token found';
-      await failStub(stub.id, error);
-      return { success: false, messagesProcessed: 0, loadsCreated: 0, error };
-    }
+    const ensureWithinBudget = (): void => {
+      if (Date.now() - startTime > STUB_MAX_RUNTIME_MS) {
+        throw new Error('stub_processing_timeout');
+      }
+    };
 
-    // Step 2: Get valid access token (refresh if needed)
-    const accessToken = await getValidAccessToken(token);
-    if (!accessToken) {
-      const error = 'Failed to get valid access token';
-      await failStub(stub.id, error);
-      return { success: false, messagesProcessed: 0, loadsCreated: 0, error };
-    }
-
-    // Step 3: Fetch message IDs from history WITH metadata
-    const historyResult: HistoryFetchResult = await fetchGmailHistoryWithMeta(
-      accessToken, 
-      stub.email_address, 
-      stub.history_id
+    // Step 0: Load Gmail token
+    ensureWithinBudget();
+    const token = await withTimeout<GmailToken | null>(
+      loadGmailToken(stub.email_address),
+      TOKEN_TIMEOUT_MS,
+      'loadGmailToken'
     );
+    if (!token) throw new Error('no_gmail_token');
+
+    // Step 0b: Get valid access token (refresh if needed)
+    ensureWithinBudget();
+    const accessToken = await withTimeout<string | null>(
+      getValidAccessToken(token),
+      TOKEN_TIMEOUT_MS,
+      'getValidAccessToken'
+    );
+    if (!accessToken) throw new Error('access_token_unavailable');
+
+    // Step: fetchHistory
+    ensureWithinBudget();
+    const fetchHistoryStepStart = Date.now();
+    stubStepStart(stub, 'fetchHistory');
+    let historyResult: HistoryFetchResult;
+    try {
+      historyResult = await withTimeout<HistoryFetchResult>(
+        fetchGmailHistoryWithMeta(accessToken, stub.email_address, stub.history_id),
+        FETCH_HISTORY_TIMEOUT_MS,
+        'fetchHistory'
+      );
+      stubStepEnd(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, {
+        message_count: historyResult.messageIds?.length ?? 0,
+        historyEmpty: historyResult.historyEmpty,
+      });
+    } catch (e) {
+      stubStepError(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, e);
+      throw e;
+    }
     
     let messageIds = historyResult.messageIds;
     
@@ -550,7 +673,11 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
       });
       
       // Check for recent messages in the last 30 minutes
-      const recentCheck = await fetchRecentMessages(accessToken, stub.email_address, 50, 30);
+      const recentCheck = await withTimeout<{ messageIds: string[]; hasNewer: boolean }>(
+        fetchRecentMessages(accessToken, stub.email_address, 50, 30),
+        DB_READ_TIMEOUT_MS,
+        'fetchRecentMessages'
+      );
       
       if (recentCheck.hasNewer && recentCheck.messageIds.length > 0) {
         // HISTORY GAP DETECTED! Gmail has messages that history.list didn't return
@@ -561,7 +688,11 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
         });
         
         // Filter to only messages we haven't already processed
-        const existingIds = await getExistingEmailIds(stub.tenant_id, recentCheck.messageIds);
+        const existingIds = await withTimeout<string[]>(
+          getExistingEmailIds(stub.tenant_id, recentCheck.messageIds),
+          DB_READ_TIMEOUT_MS,
+          'getExistingEmailIds'
+        );
         messageIds = recentCheck.messageIds.filter(id => !existingIds.includes(id));
         
         log('info', 'Backfilling missing messages', {
@@ -572,10 +703,25 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
         });
         
         // Log gap event for monitoring
-        await logHistoryGapEvent(stub.tenant_id, stub.email_address, stub.history_id, messageIds.length);
+        await withTimeout<void>(
+          logHistoryGapEvent(stub.tenant_id, stub.email_address, stub.history_id, messageIds.length),
+          DB_WRITE_TIMEOUT_MS,
+          'logHistoryGapEvent'
+        );
       } else {
         // Truly no new messages - safe to complete
-        await completeStub(stub.id);
+        const completeStepStart = Date.now();
+        stubStepStart(stub, 'completeStub', { reason: 'no_new_messages_via_recent' });
+        await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+        stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_new_messages_via_recent' });
+
+        stubDone(stub, {
+          messages_seen: 0,
+          deduped: 0,
+          loads_created: 0,
+          messages_failed: 0,
+          elapsed_ms: Date.now() - startTime,
+        });
         log('debug', 'No new messages confirmed via messages.list', { stubId: stub.id.substring(0, 8) });
         return { success: true, messagesProcessed: 0, loadsCreated: 0 };
       }
@@ -583,32 +729,80 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     
     if (messageIds.length === 0) {
       // No messages to process after all checks
-      await completeStub(stub.id);
+      const completeStepStart = Date.now();
+      stubStepStart(stub, 'completeStub', { reason: 'no_message_ids' });
+      await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+      stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_message_ids' });
+
+      stubDone(stub, {
+        messages_seen: 0,
+        deduped: 0,
+        loads_created: 0,
+        messages_failed: 0,
+        elapsed_ms: Date.now() - startTime,
+      });
       return { success: true, messagesProcessed: 0, loadsCreated: 0 };
     }
 
     log('info', `Found ${messageIds.length} messages to process`, { stubId: stub.id.substring(0, 8) });
 
     // Step 4: Process each message
-    let messagesProcessed = 0;
-    let loadsCreated = 0;
 
     for (const messageId of messageIds) {
+      ensureWithinBudget();
       try {
-        // Fetch full message
-        const message = await fetchMessageFull(accessToken, stub.email_address, messageId);
-        if (!message) {
-          log('warn', 'Failed to fetch message', { messageId });
-          continue;
+        // perMessage: fetchMessageFull
+        const fetchMessageStepStart = Date.now();
+        stubStepStart(stub, 'fetchMessageFull', { messageId });
+        let message: GmailMessage | null;
+        try {
+          message = await withTimeout<GmailMessage | null>(
+            fetchMessageFull(accessToken, stub.email_address, messageId),
+            FETCH_MESSAGE_FULL_TIMEOUT_MS,
+            'fetchMessageFull'
+          );
+          stubStepEnd(stub, 'fetchMessageFull', Date.now() - fetchMessageStepStart, { messageId });
+        } catch (e) {
+          stubStepError(stub, 'fetchMessageFull', Date.now() - fetchMessageStepStart, e, { messageId });
+          throw e;
         }
 
-        // Create load from message
-        const result = await createLoadFromMessage(message, stub.tenant_id, stub.email_address);
+        if (!message) {
+          log('warn', 'Failed to fetch message', { messageId });
+          messagesFailed++;
+          continue;
+        }
+        messagesSeen++;
+
+        // createLoadFromMessage
+        const createLoadStepStart = Date.now();
+        stubStepStart(stub, 'createLoadFromMessage', { messageId });
+        let result: { success: boolean; loadId?: string; error?: string };
+        try {
+          result = await withTimeout<{ success: boolean; loadId?: string; error?: string }>(
+            createLoadFromMessage(message, stub.tenant_id, stub.email_address),
+            FETCH_MESSAGE_FULL_TIMEOUT_MS,
+            'createLoadFromMessage'
+          );
+          stubStepEnd(stub, 'createLoadFromMessage', Date.now() - createLoadStepStart, {
+            messageId,
+            success: result.success,
+            has_load_id: !!result.loadId,
+            error: result.error,
+          });
+        } catch (e) {
+          stubStepError(stub, 'createLoadFromMessage', Date.now() - createLoadStepStart, e, { messageId });
+          throw e;
+        }
+
         messagesProcessed++;
         if (result.success && result.loadId) {
           loadsCreated++;
+        } else if (result.success && !result.loadId) {
+          deduped++;
         }
       } catch (msgErr) {
+        messagesFailed++;
         log('error', 'Error processing message', { 
           messageId, 
           error: msgErr instanceof Error ? msgErr.message : String(msgErr) 
@@ -617,13 +811,30 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     }
 
     // Step 5: Mark stub as completed
-    await completeStub(stub.id);
+    ensureWithinBudget();
+    const completeStepStart = Date.now();
+    stubStepStart(stub, 'completeStub');
+    try {
+      await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+      stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart);
+    } catch (e) {
+      stubStepError(stub, 'completeStub', Date.now() - completeStepStart, e);
+      throw e;
+    }
 
     const elapsed = Date.now() - startTime;
     log('info', 'Stub processed', {
       id: stub.id.substring(0, 8),
       messagesProcessed,
       loadsCreated,
+      elapsed_ms: elapsed,
+    });
+
+    stubDone(stub, {
+      messages_seen: messagesSeen,
+      deduped,
+      loads_created: loadsCreated,
+      messages_failed: messagesFailed,
       elapsed_ms: elapsed,
     });
 
@@ -635,7 +846,25 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
       id: stub.id.substring(0, 8), 
       error: errorMessage 
     });
-    await failStub(stub.id, errorMessage);
+
+    // Ensure stub ends in failed state (never leave "processing" indefinitely)
+    const failStepStart = Date.now();
+    stubStepStart(stub, 'failStub', { reason: errorMessage });
+    try {
+      await withTimeout<void>(failStub(stub.id, errorMessage), DB_WRITE_TIMEOUT_MS, 'failStub');
+      stubStepEnd(stub, 'failStub', Date.now() - failStepStart, { reason: errorMessage });
+    } catch (e) {
+      stubStepError(stub, 'failStub', Date.now() - failStepStart, e, { reason: errorMessage });
+    }
+
+    stubDone(stub, {
+      messages_seen: messagesSeen,
+      deduped,
+      loads_created: loadsCreated,
+      messages_failed: messagesFailed,
+      elapsed_ms: Date.now() - startTime,
+      error: errorMessage,
+    });
     return { success: false, messagesProcessed: 0, loadsCreated: 0, error: errorMessage };
   }
 }
@@ -652,11 +881,17 @@ async function getExistingEmailIds(tenantId: string, emailIds: string[]): Promis
   if (emailIds.length === 0) return [];
   
   try {
-    const { data, error } = await supabase
-      .from('load_emails')
-      .select('email_id')
-      .eq('tenant_id', tenantId)
-      .in('email_id', emailIds);
+    const result = await withTimeout<{ data: any; error: any }>(
+      supabase
+        .from('load_emails')
+        .select('email_id')
+        .eq('tenant_id', tenantId)
+        .in('email_id', emailIds),
+      DB_READ_TIMEOUT_MS,
+      'getExistingEmailIds'
+    );
+    const data = result.data;
+    const error = result.error;
     
     if (error) {
       log('error', 'Failed to check existing email_ids', { error: error.message });
@@ -682,13 +917,17 @@ async function logHistoryGapEvent(
   backfilledCount: number
 ): Promise<void> {
   try {
-    await supabase.from('circuit_breaker_events').insert({
-      tenant_id: tenantId,
-      email_address: emailAddress,
-      history_id: historyId,
-      breaker_type: 'history_gap_detected',
-      reason: `Backfilled ${backfilledCount} messages missed by history.list`,
-    });
+    await withTimeout(
+      supabase.from('circuit_breaker_events').insert({
+        tenant_id: tenantId,
+        email_address: emailAddress,
+        history_id: historyId,
+        breaker_type: 'history_gap_detected',
+        reason: `Backfilled ${backfilledCount} messages missed by history.list`,
+      }),
+      DB_WRITE_TIMEOUT_MS,
+      'logHistoryGapEvent_insert'
+    );
   } catch (err) {
     log('warn', 'Failed to log history gap event', { 
       error: err instanceof Error ? err.message : String(err) 

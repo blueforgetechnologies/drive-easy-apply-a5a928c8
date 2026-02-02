@@ -828,6 +828,12 @@ async function workerLoop(): Promise<void> {
               logDrainProgress(stub.id, stubElapsed, remainingPending);
             } else {
               stubsFailed++;
+
+              // Watchdog progress: failures still count as "progress" because the stub is finalized
+              // (moved out of processing), preventing silent stalls.
+              METRICS.lastProcessedAt = new Date();
+              METRICS.lastProgressAt = new Date();
+
               log('warn', `Stub failed`, { 
                 id: stub.id.substring(0, 8), 
                 error: result.error,
