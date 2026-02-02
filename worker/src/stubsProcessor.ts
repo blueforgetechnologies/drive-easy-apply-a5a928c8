@@ -268,14 +268,17 @@ async function createLoadFromMessage(
     ? new Date(parseInt(message.internalDate)).toISOString()
     : new Date().toISOString();
 
-  // Check if already exists
+  // Check if already exists FOR THIS TENANT (multi-tenant correctness)
+  // Gmail message IDs are globally unique, but we scope by tenant to prevent
+  // one tenant's ingestion from blocking another (defense-in-depth)
   const { count: existingCount } = await supabase
     .from('load_emails')
     .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
     .eq('email_id', messageId);
 
   if (existingCount && existingCount > 0) {
-    log('debug', 'Message already processed', { messageId });
+    log('debug', 'Message already processed for this tenant', { messageId, tenant: tenantId.substring(0, 8) });
     return { success: true, loadId: undefined };
   }
 
