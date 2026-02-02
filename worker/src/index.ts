@@ -843,6 +843,12 @@ async function workerLoop(): Promise<void> {
           } catch (error) {
             stubsFailed++;
             const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // FIX #4: Watchdog progress - exceptions still count as "progress" because
+            // processStub already called failStub internally (stub is finalized)
+            METRICS.lastProcessedAt = new Date();
+            METRICS.lastProgressAt = new Date();
+            
             log('error', `Stub exception`, { 
               id: stub.id.substring(0, 8), 
               error: errorMessage,

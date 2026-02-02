@@ -87,6 +87,8 @@ const CLAIM_TIMEOUT_MS = 30_000;
 const STUB_MAX_RUNTIME_MS = parseInt(process.env.STUB_MAX_RUNTIME_MS || '120000', 10); // 120s
 const FETCH_HISTORY_TIMEOUT_MS = parseInt(process.env.STUB_FETCH_HISTORY_TIMEOUT_MS || '30000', 10); // 30s
 const FETCH_MESSAGE_FULL_TIMEOUT_MS = parseInt(process.env.STUB_FETCH_MESSAGE_FULL_TIMEOUT_MS || '45000', 10); // 45s
+const FETCH_RECENT_MESSAGES_TIMEOUT_MS = parseInt(process.env.STUB_FETCH_RECENT_TIMEOUT_MS || '30000', 10); // 30s (FIX #3)
+const CREATE_LOAD_TIMEOUT_MS = parseInt(process.env.STUB_CREATE_LOAD_TIMEOUT_MS || '60000', 10); // 60s (FIX #3)
 const DB_READ_TIMEOUT_MS = parseInt(process.env.STUB_DB_READ_TIMEOUT_MS || '20000', 10); // 20s
 const DB_WRITE_TIMEOUT_MS = parseInt(process.env.STUB_DB_WRITE_TIMEOUT_MS || '25000', 10); // 25s
 const TOKEN_TIMEOUT_MS = parseInt(process.env.STUB_TOKEN_TIMEOUT_MS || '20000', 10); // 20s
@@ -196,21 +198,23 @@ export async function claimStubsBatch(batchSize: number = 25): Promise<GmailStub
 
 /**
  * Mark a stub as completed.
+ * FIX #1: Timeout is INSIDE this function. Callers should NOT wrap with withTimeout.
  */
 export async function completeStub(id: string): Promise<void> {
-  const result = await withTimeout<{ error: any }>(
+  const { error } = await withTimeout<{ error: any }>(
     supabase.rpc('complete_gmail_stub', { p_id: id }),
     DB_WRITE_TIMEOUT_MS,
     'complete_gmail_stub'
   );
-  if (result.error) throw new Error(`complete_gmail_stub: ${result.error.message}`);
+  if (error) throw new Error(`complete_gmail_stub: ${error.message}`);
 }
 
 /**
  * Mark a stub as failed with error message.
+ * FIX #1: Timeout is INSIDE this function. Callers should NOT wrap with withTimeout.
  */
 export async function failStub(id: string, errorMessage: string): Promise<void> {
-  const result = await withTimeout<{ error: any }>(
+  const { error } = await withTimeout<{ error: any }>(
     supabase.rpc('fail_gmail_stub', {
       p_id: id,
       p_error: errorMessage,
@@ -218,7 +222,7 @@ export async function failStub(id: string, errorMessage: string): Promise<void> 
     DB_WRITE_TIMEOUT_MS,
     'fail_gmail_stub'
   );
-  if (result.error) throw new Error(`fail_gmail_stub: ${result.error.message}`);
+  if (error) throw new Error(`fail_gmail_stub: ${error.message}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -331,19 +335,18 @@ async function createLoadFromMessage(
   // Check if already exists FOR THIS TENANT (multi-tenant correctness)
   // Gmail message IDs are globally unique, but we scope by tenant to prevent
   // one tenant's ingestion from blocking another (defense-in-depth)
-  const existingResult = await withTimeout<{ count: number | null; error: any }>(
-    supabase
-      .from('load_emails')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
-      .eq('email_id', messageId),
-    DB_READ_TIMEOUT_MS,
-    'dedupe_check_load_emails'
-  );
-  if (existingResult.error) throw new Error(`dedupe_check_load_emails: ${existingResult.error.message}`);
-  const existingCount = existingResult.count;
+  // FIX #2: Use proper destructuring from Supabase return, no generic type on withTimeout
+  const dedupeQuery = supabase
+    .from('load_emails')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('email_id', messageId);
+  
+  const dedupeResult = await withTimeout(dedupeQuery, DB_READ_TIMEOUT_MS, 'dedupe_check_load_emails') as any;
+  if (dedupeResult.error) throw new Error(`dedupe_check_load_emails: ${dedupeResult.error.message}`);
+  const existingCount = dedupeResult.count ?? 0;
 
-  if (existingCount && existingCount > 0) {
+  if (existingCount > 0) {
     log('debug', 'Message already processed for this tenant', { messageId, tenant: tenantId.substring(0, 8) });
     return { success: true, loadId: undefined };
   }
@@ -673,9 +676,10 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
       });
       
       // Check for recent messages in the last 30 minutes
+      // FIX #3: Use correct timeout constant for fetchRecentMessages
       const recentCheck = await withTimeout<{ messageIds: string[]; hasNewer: boolean }>(
         fetchRecentMessages(accessToken, stub.email_address, 50, 30),
-        DB_READ_TIMEOUT_MS,
+        FETCH_RECENT_MESSAGES_TIMEOUT_MS,
         'fetchRecentMessages'
       );
       
@@ -709,10 +713,11 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
           'logHistoryGapEvent'
         );
       } else {
-        // Truly no new messages - safe to complete
+      // Truly no new messages - safe to complete
         const completeStepStart = Date.now();
         stubStepStart(stub, 'completeStub', { reason: 'no_new_messages_via_recent' });
-        await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+        // FIX #1: completeStub has internal timeout, no double-wrap
+        await completeStub(stub.id);
         stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_new_messages_via_recent' });
 
         stubDone(stub, {
@@ -731,7 +736,8 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
       // No messages to process after all checks
       const completeStepStart = Date.now();
       stubStepStart(stub, 'completeStub', { reason: 'no_message_ids' });
-      await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+      // FIX #1: completeStub has internal timeout, no double-wrap
+      await completeStub(stub.id);
       stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_message_ids' });
 
       stubDone(stub, {
@@ -775,13 +781,14 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
         messagesSeen++;
 
         // createLoadFromMessage
+        // FIX #3: Use CREATE_LOAD_TIMEOUT_MS (60s) instead of FETCH_MESSAGE_FULL_TIMEOUT_MS
         const createLoadStepStart = Date.now();
         stubStepStart(stub, 'createLoadFromMessage', { messageId });
         let result: { success: boolean; loadId?: string; error?: string };
         try {
           result = await withTimeout<{ success: boolean; loadId?: string; error?: string }>(
             createLoadFromMessage(message, stub.tenant_id, stub.email_address),
-            FETCH_MESSAGE_FULL_TIMEOUT_MS,
+            CREATE_LOAD_TIMEOUT_MS,
             'createLoadFromMessage'
           );
           stubStepEnd(stub, 'createLoadFromMessage', Date.now() - createLoadStepStart, {
@@ -811,11 +818,12 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     }
 
     // Step 5: Mark stub as completed
+    // FIX #1: completeStub has internal timeout, no double-wrap
     ensureWithinBudget();
     const completeStepStart = Date.now();
     stubStepStart(stub, 'completeStub');
     try {
-      await withTimeout<void>(completeStub(stub.id), DB_WRITE_TIMEOUT_MS, 'completeStub');
+      await completeStub(stub.id);
       stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart);
     } catch (e) {
       stubStepError(stub, 'completeStub', Date.now() - completeStepStart, e);
@@ -848,10 +856,12 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     });
 
     // Ensure stub ends in failed state (never leave "processing" indefinitely)
+    // FIX #1: failStub has internal timeout, no double-wrap
+    // FIX #5: Always finalize - this catch block guarantees stub ends completed OR failed
     const failStepStart = Date.now();
     stubStepStart(stub, 'failStub', { reason: errorMessage });
     try {
-      await withTimeout<void>(failStub(stub.id, errorMessage), DB_WRITE_TIMEOUT_MS, 'failStub');
+      await failStub(stub.id, errorMessage);
       stubStepEnd(stub, 'failStub', Date.now() - failStepStart, { reason: errorMessage });
     } catch (e) {
       stubStepError(stub, 'failStub', Date.now() - failStepStart, e, { reason: errorMessage });
