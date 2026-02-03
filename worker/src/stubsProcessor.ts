@@ -93,51 +93,32 @@ const DB_READ_TIMEOUT_MS = parseInt(process.env.STUB_DB_READ_TIMEOUT_MS || '2000
 const DB_WRITE_TIMEOUT_MS = parseInt(process.env.STUB_DB_WRITE_TIMEOUT_MS || '25000', 10); // 25s
 const TOKEN_TIMEOUT_MS = parseInt(process.env.STUB_TOKEN_TIMEOUT_MS || '20000', 10); // 20s
 
+// Message batching: cap messages per stub to prevent long blocking
+const MAX_MESSAGES_PER_STUB = parseInt(process.env.MAX_MESSAGES_PER_STUB || '10', 10);
+
 
 async function withTimeout<T>(
-
   promiseLike: any,
-
   ms: number,
-
   label: string
-
 ): Promise<T> {
-
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
   const timeoutPromise = new Promise<never>((_, reject) => {
-
     timeoutId = setTimeout(() => {
-
       reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`));
-
     }, ms);
-
   });
-
   try {
-
     const result = await Promise.race([
-
       Promise.resolve(promiseLike) as Promise<T>,
-
       timeoutPromise,
-
     ]);
-
     if (timeoutId) clearTimeout(timeoutId);
-
     return result as T;
-
   } catch (e) {
-
     if (timeoutId) clearTimeout(timeoutId);
-
     throw e;
-
   }
-
 }
 
 function stubStepStart(stub: GmailStub, step: string, extra?: Record<string, any>): void {
@@ -675,92 +656,107 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
     );
     if (!accessToken) throw new Error('access_token_unavailable');
 
-    // Step: fetchHistory
-    ensureWithinBudget();
-    const fetchHistoryStepStart = Date.now();
-    stubStepStart(stub, 'fetchHistory');
-    let historyResult: HistoryFetchResult;
-    try {
-      historyResult = await withTimeout<HistoryFetchResult>(
-        fetchGmailHistoryWithMeta(accessToken, stub.email_address, stub.history_id),
-        FETCH_HISTORY_TIMEOUT_MS,
-        'fetchHistory'
-      );
-      stubStepEnd(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, {
-        message_count: historyResult.messageIds?.length ?? 0,
-        historyEmpty: historyResult.historyEmpty,
-      });
-    } catch (e) {
-      stubStepError(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, e);
-      throw e;
-    }
+    // Step 2: Check if this is an overflow stub (synthetic history_id with message IDs)
+    // Format: "overflow:<msg1>,<msg2>,..."
+    let messageIds: string[] = [];
+    const isOverflowStub = stub.history_id.startsWith('overflow:');
     
-    let messageIds = historyResult.messageIds;
-    
-    // CRITICAL FIX: If history returned 0 messages, verify via messages.list
-    // This prevents advancing the cursor when Gmail has history gaps
-    if (messageIds.length === 0 && historyResult.historyEmpty) {
-      log('warn', 'History returned 0, verifying via messages.list', { 
+    if (isOverflowStub) {
+      // Parse message IDs directly from the synthetic history_id
+      const encoded = stub.history_id.slice('overflow:'.length);
+      messageIds = encoded.split(',').filter(id => id.length > 0);
+      log('info', 'Processing overflow stub with pre-defined message IDs', {
         stubId: stub.id.substring(0, 8),
-        historyId: stub.history_id 
+        messageCount: messageIds.length,
       });
-      
-      // Check for recent messages in the last 30 minutes
-      // FIX #3: Use correct timeout constant for fetchRecentMessages
-      const recentCheck = await withTimeout<{ messageIds: string[]; hasNewer: boolean }>(
-        fetchRecentMessages(accessToken, stub.email_address, 50, 30),
-        FETCH_RECENT_MESSAGES_TIMEOUT_MS,
-        'fetchRecentMessages'
-      );
-      
-      if (recentCheck.hasNewer && recentCheck.messageIds.length > 0) {
-        // HISTORY GAP DETECTED! Gmail has messages that history.list didn't return
-        log('warn', 'HISTORY GAP DETECTED! Found messages via messages.list that history missed', {
-          stubId: stub.id.substring(0, 8),
-          historyId: stub.history_id,
-          recentMessageCount: recentCheck.messageIds.length,
-        });
-        
-        // Filter to only messages we haven't already processed
-        const existingIds = await withTimeout<string[]>(
-          getExistingEmailIds(stub.tenant_id, recentCheck.messageIds),
-          DB_READ_TIMEOUT_MS,
-          'getExistingEmailIds'
+    } else {
+      // Normal stub: fetch via history.list
+      ensureWithinBudget();
+      const fetchHistoryStepStart = Date.now();
+      stubStepStart(stub, 'fetchHistory');
+      let historyResult: HistoryFetchResult;
+      try {
+        historyResult = await withTimeout<HistoryFetchResult>(
+          fetchGmailHistoryWithMeta(accessToken, stub.email_address, stub.history_id),
+          FETCH_HISTORY_TIMEOUT_MS,
+          'fetchHistory'
         );
-        messageIds = recentCheck.messageIds.filter(id => !existingIds.includes(id));
-        
-        log('info', 'Backfilling missing messages', {
-          stubId: stub.id.substring(0, 8),
-          totalRecent: recentCheck.messageIds.length,
-          alreadyExists: existingIds.length,
-          toBackfill: messageIds.length,
+        stubStepEnd(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, {
+          message_count: historyResult.messageIds?.length ?? 0,
+          historyEmpty: historyResult.historyEmpty,
         });
-        
-        // Log gap event for monitoring
-        await withTimeout<void>(
-          logHistoryGapEvent(stub.tenant_id, stub.email_address, stub.history_id, messageIds.length),
-          DB_WRITE_TIMEOUT_MS,
-          'logHistoryGapEvent'
-        );
-      } else {
-      // Truly no new messages - safe to complete
-        const completeStepStart = Date.now();
-        stubStepStart(stub, 'completeStub', { reason: 'no_new_messages_via_recent' });
-        // FIX #1: completeStub has internal timeout, no double-wrap
-        await completeStub(stub.id);
-        stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_new_messages_via_recent' });
-
-        stubDone(stub, {
-          messages_seen: 0,
-          deduped: 0,
-          loads_created: 0,
-          messages_failed: 0,
-          elapsed_ms: Date.now() - startTime,
-        });
-        log('debug', 'No new messages confirmed via messages.list', { stubId: stub.id.substring(0, 8) });
-        return { success: true, messagesProcessed: 0, loadsCreated: 0 };
+      } catch (e) {
+        stubStepError(stub, 'fetchHistory', Date.now() - fetchHistoryStepStart, e);
+        throw e;
       }
-    }
+      
+      messageIds = historyResult.messageIds;
+    
+      // CRITICAL FIX: If history returned 0 messages, verify via messages.list
+      // This prevents advancing the cursor when Gmail has history gaps
+      if (messageIds.length === 0 && historyResult.historyEmpty) {
+        log('warn', 'History returned 0, verifying via messages.list', { 
+          stubId: stub.id.substring(0, 8),
+          historyId: stub.history_id 
+        });
+        
+        // Check for recent messages in the last 30 minutes
+        // FIX #3: Use correct timeout constant for fetchRecentMessages
+        const recentCheck = await withTimeout<{ messageIds: string[]; hasNewer: boolean }>(
+          fetchRecentMessages(accessToken, stub.email_address, 50, 30),
+          FETCH_RECENT_MESSAGES_TIMEOUT_MS,
+          'fetchRecentMessages'
+        );
+        
+        if (recentCheck.hasNewer && recentCheck.messageIds.length > 0) {
+          // HISTORY GAP DETECTED! Gmail has messages that history.list didn't return
+          log('warn', 'HISTORY GAP DETECTED! Found messages via messages.list that history missed', {
+            stubId: stub.id.substring(0, 8),
+            historyId: stub.history_id,
+            recentMessageCount: recentCheck.messageIds.length,
+          });
+          
+          // Filter to only messages we haven't already processed
+          const existingIds = await withTimeout<string[]>(
+            getExistingEmailIds(stub.tenant_id, recentCheck.messageIds),
+            DB_READ_TIMEOUT_MS,
+            'getExistingEmailIds'
+          );
+          messageIds = recentCheck.messageIds.filter(id => !existingIds.includes(id));
+          
+          log('info', 'Backfilling missing messages', {
+            stubId: stub.id.substring(0, 8),
+            totalRecent: recentCheck.messageIds.length,
+            alreadyExists: existingIds.length,
+            toBackfill: messageIds.length,
+          });
+          
+          // Log gap event for monitoring
+          await withTimeout<void>(
+            logHistoryGapEvent(stub.tenant_id, stub.email_address, stub.history_id, messageIds.length),
+            DB_WRITE_TIMEOUT_MS,
+            'logHistoryGapEvent'
+          );
+        } else {
+          // Truly no new messages - safe to complete
+          const completeStepStart = Date.now();
+          stubStepStart(stub, 'completeStub', { reason: 'no_new_messages_via_recent' });
+          // FIX #1: completeStub has internal timeout, no double-wrap
+          await completeStub(stub.id);
+          stubStepEnd(stub, 'completeStub', Date.now() - completeStepStart, { reason: 'no_new_messages_via_recent' });
+
+          stubDone(stub, {
+            messages_seen: 0,
+            deduped: 0,
+            loads_created: 0,
+            messages_failed: 0,
+            elapsed_ms: Date.now() - startTime,
+          });
+          log('debug', 'No new messages confirmed via messages.list', { stubId: stub.id.substring(0, 8) });
+          return { success: true, messagesProcessed: 0, loadsCreated: 0 };
+        }
+      }
+    } // end else (non-overflow stub)
     
     if (messageIds.length === 0) {
       // No messages to process after all checks
@@ -782,9 +778,36 @@ export async function processStub(stub: GmailStub): Promise<StubProcessResult> {
 
     log('info', `Found ${messageIds.length} messages to process`, { stubId: stub.id.substring(0, 8) });
 
-    // Step 4: Process each message
+    // Step 3b: Cap messages per stub to prevent long blocking
+    // If > MAX_MESSAGES_PER_STUB, process first batch and re-enqueue remainder
+    let messagesToProcess = messageIds;
+    if (messageIds.length > MAX_MESSAGES_PER_STUB) {
+      messagesToProcess = messageIds.slice(0, MAX_MESSAGES_PER_STUB);
+      const overflowMessageIds = messageIds.slice(MAX_MESSAGES_PER_STUB);
+      
+      log('info', 'STUB_OVERFLOW: Capping messages and re-enqueueing remainder', {
+        stubId: stub.id.substring(0, 8),
+        total: messageIds.length,
+        processing: messagesToProcess.length,
+        overflow: overflowMessageIds.length,
+      });
+      
+      // Re-enqueue overflow as new stub(s) with message IDs encoded in history_id
+      // We use a synthetic format: "overflow:<comma-separated-message-ids>"
+      // The processor will detect this and fetch messages directly instead of via history.list
+      try {
+        await reEnqueueOverflowMessages(stub.tenant_id, stub.email_address, overflowMessageIds);
+      } catch (overflowErr) {
+        log('error', 'Failed to re-enqueue overflow messages', {
+          stubId: stub.id.substring(0, 8),
+          error: overflowErr instanceof Error ? overflowErr.message : String(overflowErr),
+        });
+        // Continue processing the capped batch anyway - overflow can be recovered via reconciliation
+      }
+    }
 
-    for (const messageId of messageIds) {
+    // Step 4: Process each message (capped batch)
+    for (const messageId of messagesToProcess) {
       ensureWithinBudget();
       try {
         // perMessage: fetchMessageFull
@@ -972,5 +995,69 @@ async function logHistoryGapEvent(
     log('warn', 'Failed to log history gap event', { 
       error: err instanceof Error ? err.message : String(err) 
     });
+  }
+}
+
+/**
+ * Re-enqueue overflow messages as new stub(s) when a stub has > MAX_MESSAGES_PER_STUB.
+ * Splits into chunks of MAX_MESSAGES_PER_STUB and inserts new stubs with synthetic history IDs.
+ * Format: "overflow:<comma-separated-message-ids>"
+ */
+async function reEnqueueOverflowMessages(
+  tenantId: string,
+  emailAddress: string,
+  messageIds: string[]
+): Promise<void> {
+  if (messageIds.length === 0) return;
+  
+  // Split into chunks of MAX_MESSAGES_PER_STUB
+  const chunks: string[][] = [];
+  for (let i = 0; i < messageIds.length; i += MAX_MESSAGES_PER_STUB) {
+    chunks.push(messageIds.slice(i, i + MAX_MESSAGES_PER_STUB));
+  }
+  
+  log('info', 'Re-enqueueing overflow messages', {
+    tenant: tenantId.substring(0, 8),
+    email: emailAddress,
+    totalMessages: messageIds.length,
+    chunks: chunks.length,
+  });
+  
+  for (const chunk of chunks) {
+    // Create synthetic history_id encoding the message IDs
+    // Format: "overflow:<msg1>,<msg2>,..."
+    const syntheticHistoryId = `overflow:${chunk.join(',')}`;
+    
+    try {
+      const insertResult = await withTimeout<{ data: any; error: any }>(
+        supabase.from('gmail_stubs').insert({
+          tenant_id: tenantId,
+          email_address: emailAddress,
+          history_id: syntheticHistoryId,
+          status: 'pending',
+          source: 'overflow_reenqueue',
+        }),
+        DB_WRITE_TIMEOUT_MS,
+        'reEnqueueOverflowMessages_insert'
+      );
+      
+      if (insertResult.error) {
+        log('error', 'Failed to insert overflow stub', { 
+          error: insertResult.error.message,
+          chunk_size: chunk.length,
+        });
+      } else {
+        log('info', 'Inserted overflow stub', {
+          tenant: tenantId.substring(0, 8),
+          chunk_size: chunk.length,
+          historyId: syntheticHistoryId.substring(0, 50) + '...',
+        });
+      }
+    } catch (err) {
+      log('error', 'Exception inserting overflow stub', {
+        error: err instanceof Error ? err.message : String(err),
+        chunk_size: chunk.length,
+      });
+    }
   }
 }
