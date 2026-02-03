@@ -598,6 +598,9 @@ async function workerLoop(): Promise<void> {
     process.exit(0);
   }
   
+  // BACKLOG CUTOFF GUARDRAIL - Real-time only mode
+  log('info', '[STARTUP] Backlog cutoff active — processing only emails newer than 5 minutes');
+  
   log('info', 'Starting email queue worker (Resend)', {
     batch_size: currentConfig.batch_size,
     interval_ms: currentConfig.loop_interval_ms,
@@ -606,6 +609,7 @@ async function workerLoop(): Promise<void> {
     watchdog_enabled: WATCHDOG_CONFIG.ENABLED,
     watchdog_stall_threshold_ms: WATCHDOG_CONFIG.STALL_THRESHOLD_MS,
     watchdog_min_pending: WATCHDOG_CONFIG.MIN_PENDING_FOR_WATCHDOG,
+    backlog_cutoff_minutes: 5,
   });
 
   // One-time storage verification on startup
