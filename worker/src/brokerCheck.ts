@@ -202,6 +202,13 @@ async function findCustomerByBrokerName(
   tenantId: string,
   brokerName: string
 ): Promise<MatchedCustomer | null> {
+  // DEBUG: Log exact RPC call parameters
+  console.log(`[broker-check] 🔍 DEBUG RPC CALL:
+    function: match_customer_by_broker_name
+    p_tenant_id: "${tenantId}"
+    p_broker_name: "${brokerName}"
+    lowercase_needle: "${brokerName.toLowerCase().replace(/\s+/g, ' ').trim()}"`);
+  
   const { data, error } = await supabase.rpc('match_customer_by_broker_name', {
     p_tenant_id: tenantId,
     p_broker_name: brokerName,
@@ -212,9 +219,15 @@ async function findCustomerByBrokerName(
     return null;
   }
 
-  // RPC returns array, get first match
+  // DEBUG: Log RPC result
   const rows = data as MatchedCustomer[] | null;
-  return rows?.[0] ?? null;
+  const match = rows?.[0] ?? null;
+  console.log(`[broker-check] 🔍 DEBUG RPC RESULT:
+    rowsReturned: ${rows?.length ?? 0}
+    matchedCustomer: ${match ? `"${match.name}" (id: ${match.id}, MC: ${match.mc_number || 'null'})` : 'null'}
+    aliases: ${match?.alias_names ? JSON.stringify(match.alias_names) : '[]'}`);
+  
+  return match;
 }
 
 /**
@@ -439,6 +452,13 @@ export async function checkBrokerCredit(
   const brokerName = cleanCompanyName(rawBrokerName);
   const emailMcNumber = parsedData.mc_number;
   
+  // DEBUG: Log both raw and normalized broker names BEFORE lookup
+  console.log(`[broker-check] 🔍 DEBUG TRACE - load ${loadEmailId}:
+    rawBrokerName: "${rawBrokerName?.slice(0, 80) || 'null'}"
+    normalizedBrokerName (after cleanCompanyName): "${brokerName || 'null'}"
+    emailMcNumber: "${emailMcNumber || 'null'}"
+    RPC will search: match_customer_by_broker_name(tenant_id, "${brokerName}")`);
+  
   // Skip if no broker name (even after cleanup)
   if (!brokerName) {
     console.log(`[broker-check] Skipped - no broker name found (raw: ${rawBrokerName?.slice(0, 50) || 'none'})`);
@@ -475,6 +495,14 @@ export async function checkBrokerCredit(
     brokerName,
     emailMcNumber
   );
+  
+  // DEBUG: Log customer lookup result
+  console.log(`[broker-check] 🔍 DEBUG LOOKUP RESULT - load ${loadEmailId}:
+    customerFound: ${customerId ? 'YES' : 'NO'}
+    customerId: "${customerId || 'null'}"
+    savedMcNumber: "${savedMcNumber || 'null'}"
+    existingStatus: "${existingStatus || 'null'}"
+    aliasLearned: ${aliasLearned}`);
   
   // Use saved MC from customer record if email didn't have one
   const mcNumber = emailMcNumber || savedMcNumber;
