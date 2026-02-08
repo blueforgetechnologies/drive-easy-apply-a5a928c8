@@ -254,3 +254,6 @@ verify_jwt = true
 
 [functions.create-sample-application]
 verify_jwt = true
+
+[functions.renew-gmail-watch]
+verify_jwt = false
