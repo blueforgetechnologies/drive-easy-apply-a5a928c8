@@ -7290,6 +7290,7 @@ export type Database = {
         }[]
       }
       next_invoice_number: { Args: { p_tenant_id: string }; Returns: string }
+      pg_advisory_xact_lock_try: { Args: { lock_id: number }; Returns: boolean }
       reset_stale_email_queue: { Args: never; Returns: number }
       resolve_integration_config: {
         Args: { p_integration_key: string; p_tenant_id: string }
