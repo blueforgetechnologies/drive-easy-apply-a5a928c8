@@ -105,24 +105,7 @@ function initChannelForTenant(tenantId: string) {
         fetchMatchesForTenant(tenantId);
       }
     )
-    .on(
-      'postgres_changes',
-      { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'load_emails',
-        filter: `tenant_id=eq.${tenantId}`
-      },
-      (payload) => {
-        // CODE GUARD: Double-check tenant_id
-        if ((payload.new as any)?.tenant_id !== tenantId) {
-          console.warn('[SharedMatches] IGNORED cross-tenant email insert:', (payload.new as any)?.tenant_id, 'vs', tenantId);
-          return;
-        }
-        console.log(`[SharedMatches] New email for tenant ${tenantId}, refetching`);
-        fetchMatchesForTenant(tenantId);
-      }
-    )
+    // load_emails subscription removed — uses 30s polling instead
     .subscribe((status) => {
       console.log(`[SharedMatches] Channel status for ${tenantId}:`, status);
     });
