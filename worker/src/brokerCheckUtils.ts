@@ -1,6 +1,5 @@
 /**
  * Shared types and pure utilities for broker credit checks.
- * Extracted to keep brokerCheck.ts focused and to enable unit testing.
  */
 
 export interface BrokerCheckResult {
@@ -42,17 +41,18 @@ export function deriveBrokerKey(
 }
 
 /**
- * Hash (tenant_id, broker_key) into a 32-bit signed integer
- * suitable for pg_advisory_lock.
- *
- * Uses FNV-1a for speed and low collision rate.
+ * Compute the 30-minute decision window start.
+ * Floors the given date to the nearest 30-minute boundary.
  */
-export function hashBrokerKey(tenantId: string, brokerKey: string): number {
-  const input = `${tenantId}::${brokerKey}`;
-  let hash = 0x811c9dc5; // FNV offset basis
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = (hash * 0x01000193) | 0; // FNV prime, keep 32-bit
-  }
-  return hash;
+export function computeDecisionWindow(now: Date = new Date()): Date {
+  const ms = now.getTime();
+  const thirtyMin = 30 * 60 * 1000;
+  return new Date(Math.floor(ms / thirtyMin) * thirtyMin);
+}
+
+/**
+ * Sleep for a given number of milliseconds.
+ */
+export function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

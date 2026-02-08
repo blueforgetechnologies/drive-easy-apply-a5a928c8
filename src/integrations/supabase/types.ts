@@ -483,47 +483,56 @@ export type Database = {
       broker_credit_checks: {
         Row: {
           approval_status: string
+          broker_key: string | null
           broker_name: string
           checked_at: string
           checked_by: string | null
           created_at: string
           credit_limit: number | null
           customer_id: string | null
+          decision_window_start: string | null
           id: string
           load_email_id: string | null
           match_id: string | null
           mc_number: string | null
           raw_response: Json | null
+          status: string
           tenant_id: string
         }
         Insert: {
           approval_status: string
+          broker_key?: string | null
           broker_name: string
           checked_at?: string
           checked_by?: string | null
           created_at?: string
           credit_limit?: number | null
           customer_id?: string | null
+          decision_window_start?: string | null
           id?: string
           load_email_id?: string | null
           match_id?: string | null
           mc_number?: string | null
           raw_response?: Json | null
+          status?: string
           tenant_id: string
         }
         Update: {
           approval_status?: string
+          broker_key?: string | null
           broker_name?: string
           checked_at?: string
           checked_by?: string | null
           created_at?: string
           credit_limit?: number | null
           customer_id?: string | null
+          decision_window_start?: string | null
           id?: string
           load_email_id?: string | null
           match_id?: string | null
           mc_number?: string | null
           raw_response?: Json | null
+          status?: string
           tenant_id?: string
         }
         Relationships: [
@@ -7290,7 +7299,6 @@ export type Database = {
         }[]
       }
       next_invoice_number: { Args: { p_tenant_id: string }; Returns: string }
-      pg_advisory_xact_lock_try: { Args: { lock_id: number }; Returns: boolean }
       reset_stale_email_queue: { Args: never; Returns: number }
       resolve_integration_config: {
         Args: { p_integration_key: string; p_tenant_id: string }

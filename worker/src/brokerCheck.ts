@@ -7,12 +7,12 @@
  * Uses RPC match_customer_by_broker_name to search both name AND alias_names.
  * Learns new alias names automatically when broker names differ.
  * 
- * Key behavior:
- * - 30-minute broker-level TTL cache: keyed by (tenant_id, broker_key)
- *   where broker_key = customer_id > mc_number > normalized broker name
- * - pg_advisory_lock prevents concurrent OTR calls for the same broker
- * - Fan-out: ALL matches for a load_email_id receive the SAME approval_status
- * - If no MC number, rows are written without mc_number (UI shows GREY)
+ * Concurrency model — "Leader Election" via UNIQUE insert:
+ *   1. Compute 30-min decision_window_start for (tenant_id, broker_key)
+ *   2. Attempt INSERT with status='pending'
+ *      - Success → Leader: call OTR, UPDATE status='complete'
+ *      - Conflict → Follower: poll until status='complete', reuse result
+ *   3. Fan-out result to all match rows so UI badges update instantly
  */
 
 import { supabase } from './supabase.js';
@@ -20,7 +20,8 @@ import { cleanCompanyName } from './cleanCompanyName.js';
 import {
   normalizeName,
   deriveBrokerKey,
-  hashBrokerKey,
+  computeDecisionWindow,
+  sleep,
   type MatchedCustomer,
   type BrokerCheckResult,
 } from './brokerCheckUtils.js';
@@ -28,57 +29,160 @@ import {
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-/** TTL for broker-level OTR cache (30 minutes) */
-const BROKER_CACHE_TTL_MS = 30 * 60 * 1000;
+/** Max time a follower will wait for the leader to complete (ms) */
+const FOLLOWER_MAX_WAIT_MS = 5000;
+/** Polling interval for follower waiting on leader (ms) */
+const FOLLOWER_POLL_MS = 250;
 
 // ─── DB helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Acquire a pg_advisory_lock for (tenant_id, broker_key) to serialize OTR calls.
- * Returns true if lock was acquired successfully.
+ * Attempt to claim "leader" status for a broker decision window.
+ * Returns:
+ *   'leader'   – INSERT succeeded, caller should call OTR
+ *   'follower' – INSERT conflicted, another worker is handling it
+ *   'error'    – unexpected DB error
  */
-async function acquireAdvisoryLock(tenantId: string, brokerKey: string): Promise<boolean> {
-  const lockId = hashBrokerKey(tenantId, brokerKey);
-  const { data, error } = await supabase.rpc('pg_advisory_xact_lock_try', { lock_id: lockId });
-  if (error) {
-    console.warn(`[broker-check] Advisory lock RPC error (non-fatal, proceeding):`, error.message);
-    return true; // Fail-open: proceed without lock
-  }
-  return data !== false;
+async function tryClaimLeader(
+  tenantId: string,
+  brokerKey: string,
+  windowStart: Date,
+  customerId: string | null,
+  brokerName: string,
+  mcNumber: string | null,
+  loadEmailId: string,
+  matchId: string | null
+): Promise<'leader' | 'follower' | 'error'> {
+  const row: Record<string, unknown> = {
+    tenant_id: tenantId,
+    broker_key: brokerKey,
+    decision_window_start: windowStart.toISOString(),
+    status: 'pending',
+    approval_status: 'pending',
+    broker_name: brokerName,
+    customer_id: customerId,
+    load_email_id: loadEmailId,
+    match_id: matchId,
+    checked_at: new Date().toISOString(),
+  };
+  if (mcNumber) row.mc_number = mcNumber;
+
+  const { error } = await supabase
+    .from('broker_credit_checks')
+    .insert(row);
+
+  if (!error) return 'leader';
+
+  // 23505 = unique_violation → another worker already inserted
+  if (error.code === '23505') return 'follower';
+
+  console.error(`[broker-check] Leader claim insert error:`, error);
+  return 'error';
 }
 
 /**
- * Check broker-level cache: find most recent credit check for this broker
- * within the TTL window, regardless of which load_email triggered it.
+ * Leader: update the decision row with the OTR result.
  */
-async function getBrokerCacheHit(
+async function completeDecision(
   tenantId: string,
   brokerKey: string,
-  customerId: string | null,
-  mcNumber: string | null,
-  brokerName: string
-): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null } | null> {
-  const cutoff = new Date(Date.now() - BROKER_CACHE_TTL_MS).toISOString();
-
-  // Build query matching ANY of the broker_key dimensions
-  let query = supabase
+  windowStart: Date,
+  approvalStatus: string,
+  rawResponse: Record<string, unknown> | null
+): Promise<void> {
+  const { error } = await supabase
     .from('broker_credit_checks')
-    .select('approval_status, customer_id, mc_number')
+    .update({
+      approval_status: approvalStatus,
+      status: 'complete',
+      raw_response: rawResponse,
+      checked_at: new Date().toISOString(),
+    })
     .eq('tenant_id', tenantId)
-    .gte('checked_at', cutoff)
-    .order('checked_at', { ascending: false })
-    .limit(1);
+    .eq('broker_key', brokerKey)
+    .eq('decision_window_start', windowStart.toISOString());
 
-  // Match by the strongest identifier available (same priority as broker_key derivation)
-  if (customerId) {
-    query = query.eq('customer_id', customerId);
-  } else if (mcNumber) {
-    query = query.eq('mc_number', mcNumber);
-  } else {
-    query = query.eq('broker_name', brokerName);
+  if (error) {
+    console.error(`[broker-check] Failed to complete decision:`, error);
+  }
+}
+
+/**
+ * Leader: mark decision as error so followers don't wait forever.
+ */
+async function errorDecision(
+  tenantId: string,
+  brokerKey: string,
+  windowStart: Date,
+  errorMsg: string
+): Promise<void> {
+  await supabase
+    .from('broker_credit_checks')
+    .update({
+      approval_status: 'unchecked',
+      status: 'error',
+      raw_response: { error: errorMsg } as any,
+      checked_at: new Date().toISOString(),
+    })
+    .eq('tenant_id', tenantId)
+    .eq('broker_key', brokerKey)
+    .eq('decision_window_start', windowStart.toISOString());
+}
+
+/**
+ * Follower: poll for the leader's decision to complete.
+ * Returns the approval_status once complete, or 'unchecked' on timeout.
+ */
+async function waitForLeaderDecision(
+  tenantId: string,
+  brokerKey: string,
+  windowStart: Date
+): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null }> {
+  const deadline = Date.now() + FOLLOWER_MAX_WAIT_MS;
+
+  while (Date.now() < deadline) {
+    const { data } = await supabase
+      .from('broker_credit_checks')
+      .select('approval_status, customer_id, mc_number, status')
+      .eq('tenant_id', tenantId)
+      .eq('broker_key', brokerKey)
+      .eq('decision_window_start', windowStart.toISOString())
+      .limit(1);
+
+    const row = data?.[0];
+    if (row) {
+      if (row.status === 'complete' || row.status === 'error') {
+        return {
+          approvalStatus: row.approval_status || 'unchecked',
+          customerId: row.customer_id,
+          mcNumber: row.mc_number,
+        };
+      }
+    }
+
+    await sleep(FOLLOWER_POLL_MS);
   }
 
-  const { data } = await query;
+  console.warn(`[broker-check] Follower timed out waiting for leader (broker_key="${brokerKey}")`);
+  return { approvalStatus: 'unchecked', customerId: null, mcNumber: null };
+}
+
+/**
+ * Check for a completed decision in the current 30-min window (cache hit).
+ */
+async function getExistingDecision(
+  tenantId: string,
+  brokerKey: string,
+  windowStart: Date
+): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null } | null> {
+  const { data } = await supabase
+    .from('broker_credit_checks')
+    .select('approval_status, customer_id, mc_number, status')
+    .eq('tenant_id', tenantId)
+    .eq('broker_key', brokerKey)
+    .eq('decision_window_start', windowStart.toISOString())
+    .eq('status', 'complete')
+    .limit(1);
 
   if (data && data.length > 0) {
     return {
@@ -130,8 +234,7 @@ async function getAllMatchesForLoad(
 
 /**
  * Fan-out: Upsert broker_credit_checks for ALL matches on a load_email_id.
- * 
- * @param isCacheFanout - If true, only insert MISSING matches (don't overwrite existing audit data)
+ * These per-match rows drive the UI badge via realtime.
  */
 async function fanOutCreditCheckToMatches(
   tenantId: string,
@@ -139,26 +242,23 @@ async function fanOutCreditCheckToMatches(
   matchIds: string[],
   customerId: string | null,
   brokerName: string,
+  brokerKey: string,
   mcNumber: string | null,
   approvalStatus: string,
   rawResponse: Record<string, unknown> | null,
   isCacheFanout: boolean = false
 ): Promise<void> {
-  if (matchIds.length === 0) {
-    console.log(`[broker-check] No matches to fan-out for load ${loadEmailId}`);
-    return;
-  }
+  if (matchIds.length === 0) return;
 
   let targetMatchIds = matchIds;
   if (isCacheFanout) {
     const existingMatchIds = await getExistingCheckedMatchIds(tenantId, loadEmailId);
     targetMatchIds = matchIds.filter(id => !existingMatchIds.has(id));
-
     if (targetMatchIds.length === 0) {
       console.log(`[broker-check] Cache fan-out: all ${matchIds.length} matches already have checks`);
       return;
     }
-    console.log(`[broker-check] Cache fan-out: filling gaps for ${targetMatchIds.length} of ${matchIds.length} matches`);
+    console.log(`[broker-check] Cache fan-out: filling ${targetMatchIds.length} of ${matchIds.length} matches`);
   }
 
   const rows = targetMatchIds.map(matchId => {
@@ -166,15 +266,15 @@ async function fanOutCreditCheckToMatches(
       tenant_id: tenantId,
       customer_id: customerId,
       broker_name: brokerName,
+      broker_key: brokerKey,
       approval_status: approvalStatus,
+      status: 'complete',
       load_email_id: loadEmailId,
       match_id: matchId,
       raw_response: rawResponse,
       checked_at: new Date().toISOString(),
     };
-    if (mcNumber) {
-      row.mc_number = mcNumber;
-    }
+    if (mcNumber) row.mc_number = mcNumber;
     return row;
   });
 
@@ -189,20 +289,17 @@ async function fanOutCreditCheckToMatches(
 
   if (error) {
     if (isCacheFanout && error.code === '23505') {
-      console.log(`[broker-check] Cache fan-out: race-condition duplicate (safe to ignore)`);
+      console.log(`[broker-check] Cache fan-out: race-condition duplicate (safe)`);
       return;
     }
-    console.error(`[broker-check] Fan-out ${isCacheFanout ? 'insert' : 'upsert'} failed:`, error);
+    console.error(`[broker-check] Fan-out failed:`, error);
   } else {
-    console.log(`[broker-check] Fan-out complete: ${targetMatchIds.length} matches for load ${loadEmailId}`);
+    console.log(`[broker-check] Fan-out: ${targetMatchIds.length} matches for load ${loadEmailId}`);
   }
 }
 
 // ─── Customer helpers ────────────────────────────────────────────────────────
 
-/**
- * Find customer using RPC that searches BOTH name AND alias_names.
- */
 async function findCustomerByBrokerName(
   tenantId: string,
   brokerName: string
@@ -217,30 +314,23 @@ async function findCustomerByBrokerName(
     return null;
   }
 
-  const rows = data as MatchedCustomer[] | null;
-  return rows?.[0] ?? null;
+  return (data as MatchedCustomer[] | null)?.[0] ?? null;
 }
 
-/**
- * Learn new alias if broker name differs from saved customer name.
- */
 async function learnAliasIfNew(
   tenantId: string,
   customer: MatchedCustomer,
   brokerName: string
 ): Promise<boolean> {
   const normalizedBroker = normalizeName(brokerName);
-  const normalizedCustomerName = normalizeName(customer.name);
-
-  if (normalizedBroker === normalizedCustomerName) return false;
+  if (normalizedBroker === normalizeName(customer.name)) return false;
 
   const aliases = customer.alias_names ?? [];
   if (aliases.some(a => normalizeName(a) === normalizedBroker)) return false;
 
-  const trimmedBroker = brokerName.trim();
   const { error } = await supabase
     .from('customers')
-    .update({ alias_names: [...aliases, trimmedBroker] })
+    .update({ alias_names: [...aliases, brokerName.trim()] })
     .eq('tenant_id', tenantId)
     .eq('id', customer.id);
 
@@ -249,13 +339,10 @@ async function learnAliasIfNew(
     return false;
   }
 
-  console.log(`[broker-check] Learned new alias "${trimmedBroker}" for customer "${customer.name}"`);
+  console.log(`[broker-check] Learned alias "${brokerName.trim()}" for "${customer.name}"`);
   return true;
 }
 
-/**
- * Find or create customer by broker name and MC number.
- */
 async function findOrCreateCustomer(
   tenantId: string,
   brokerName: string,
@@ -267,7 +354,6 @@ async function findOrCreateCustomer(
   savedMcNumber: string | null;
   aliasLearned: boolean;
 }> {
-  // Step 1: Try RPC match (name + alias_names)
   const matchedCustomer = await findCustomerByBrokerName(tenantId, brokerName);
 
   if (matchedCustomer) {
@@ -281,7 +367,6 @@ async function findOrCreateCustomer(
     };
   }
 
-  // Step 2: If no name match but MC exists, try MC lookup
   if (mcNumber) {
     const { data: existingByMc } = await supabase
       .from('customers')
@@ -302,7 +387,6 @@ async function findOrCreateCustomer(
       };
     }
 
-    // Step 3: Create new customer
     const { data: newCustomer, error: createError } = await supabase
       .from('customers')
       .insert({
@@ -318,7 +402,6 @@ async function findOrCreateCustomer(
 
     if (createError) {
       if (createError.code === '23505') {
-        console.log(`[broker-check] Customer already exists (race condition), fetching existing`);
         const { data: existing } = await supabase
           .from('customers')
           .select('id, mc_number, otr_approval_status')
@@ -337,7 +420,7 @@ async function findOrCreateCustomer(
       return { customerId: null, created: false, existingStatus: null, savedMcNumber: null, aliasLearned: false };
     }
 
-    console.log(`[broker-check] Created new customer: ${brokerName} (MC: ${mcNumber})`);
+    console.log(`[broker-check] Created customer: ${brokerName} (MC: ${mcNumber})`);
     return { customerId: newCustomer?.id || null, created: true, existingStatus: null, savedMcNumber: mcNumber, aliasLearned: false };
   }
 
@@ -346,9 +429,6 @@ async function findOrCreateCustomer(
 
 // ─── OTR API ─────────────────────────────────────────────────────────────────
 
-/**
- * Call the check-broker-credit edge function to perform OTR check.
- */
 async function callOtrCheck(
   tenantId: string,
   mcNumber: string,
@@ -378,15 +458,11 @@ async function callOtrCheck(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[broker-check] OTR API error: ${response.status} - ${errorText}`);
-      if (response.status === 404) {
-        return { success: true, approvalStatus: 'not_found' };
-      }
+      if (response.status === 404) return { success: true, approvalStatus: 'not_found' };
       return { success: false, approvalStatus: 'unchecked', error: errorText };
     }
 
     const result = await response.json() as { success?: boolean; approval_status?: string };
-    console.log(`[broker-check] OTR check result: ${result.approval_status || 'unknown'}`);
-
     return {
       success: result.success ?? false,
       approvalStatus: result.approval_status || 'unchecked',
@@ -404,16 +480,16 @@ async function callOtrCheck(
 // ─── Main entry point ────────────────────────────────────────────────────────
 
 /**
- * Main function: Check broker credit for a load email after matches are created.
- * 
+ * Check broker credit with leader-election concurrency control.
+ *
  * Flow:
- * 1. Resolve broker identity (customer_id / mc_number / name)
- * 2. Derive broker_key for cache lookup
- * 3. Acquire advisory lock on (tenant_id, broker_key)
- * 4. Check broker-level cache (30-min TTL)
- *    - cache_hit  → reuse decision, fan-out to matches
- *    - cache_miss → call OTR once, fan-out result
- * 5. Release lock (automatic with advisory xact lock)
+ * 1. Resolve broker identity → derive broker_key
+ * 2. Compute 30-min decision_window_start
+ * 3. Check for existing 'complete' decision → cache_hit
+ * 4. If miss: try INSERT 'pending' row (leader election)
+ *    - Leader: call OTR → UPDATE 'complete'
+ *    - Follower: poll until 'complete'
+ * 5. Fan-out result to all match rows → instant UI badge
  */
 export async function checkBrokerCredit(
   tenantId: string,
@@ -426,86 +502,125 @@ export async function checkBrokerCredit(
   const emailMcNumber = parsedData.mc_number;
 
   if (!brokerName) {
-    console.log(`[broker-check] Skipped - no broker name found (raw: ${rawBrokerName?.slice(0, 50) || 'none'})`);
+    console.log(`[broker-check] Skipped - no broker name (raw: ${rawBrokerName?.slice(0, 50) || 'none'})`);
     return { success: false, error: 'No broker name' };
   }
 
-  // Fetch ALL matches for fan-out
   const allMatchIds = await getAllMatchesForLoad(tenantId, loadEmailId);
 
-  // Resolve customer identity
-  const { customerId, created, existingStatus, savedMcNumber, aliasLearned } = await findOrCreateCustomer(
-    tenantId,
-    brokerName,
-    emailMcNumber
+  // Resolve customer
+  const { customerId, created, savedMcNumber, aliasLearned } = await findOrCreateCustomer(
+    tenantId, brokerName, emailMcNumber
   );
 
   const mcNumber = emailMcNumber || savedMcNumber;
-
-  // Derive broker_key for cache: customer_id > mc_number > normalized name
   const brokerKey = deriveBrokerKey(customerId, mcNumber, brokerName);
+  const windowStart = computeDecisionWindow();
 
   console.log(`[broker-check] Broker: "${brokerName}", broker_key: "${brokerKey}", MC: ${mcNumber || 'none'}, Matches: ${allMatchIds.length}${aliasLearned ? ', Alias learned!' : ''}`);
 
-  // If no MC, can't call OTR — write unchecked rows for UI
+  // No MC → can't call OTR, write unchecked rows for badge
   if (!mcNumber) {
-    console.log(`[broker-check] cache_miss broker_key="${brokerKey}" tenant_id="${tenantId}" reason=no_mc`);
+    console.log(`[broker-check] cache_miss broker_key="${brokerKey}" tenant="${tenantId}" reason=no_mc`);
     await fanOutCreditCheckToMatches(
-      tenantId, loadEmailId, allMatchIds, customerId, brokerName,
+      tenantId, loadEmailId, allMatchIds, customerId, brokerName, brokerKey,
       null, 'unchecked', { reason: 'no_mc_number' }
     );
     return { success: true, approvalStatus: 'unchecked', customerId, customerCreated: created, aliasLearned };
   }
 
-  // ── Advisory lock + cache check ──
-  const lockAcquired = await acquireAdvisoryLock(tenantId, brokerKey);
-  if (!lockAcquired) {
-    console.log(`[broker-check] Could not acquire advisory lock for broker_key="${brokerKey}", proceeding anyway`);
+  // ── Step 1: Check for existing complete decision (fast cache hit) ──
+  const existing = await getExistingDecision(tenantId, brokerKey, windowStart);
+  if (existing) {
+    console.log(`[broker-check] cache_hit broker_key="${brokerKey}" tenant="${tenantId}" status="${existing.approvalStatus}"`);
+    await fanOutCreditCheckToMatches(
+      tenantId, loadEmailId, allMatchIds, existing.customerId ?? customerId,
+      brokerName, brokerKey, existing.mcNumber ?? mcNumber, existing.approvalStatus,
+      { reason: 'broker_cache_hit', broker_key: brokerKey },
+      true // isCacheFanout
+    );
+    return { success: true, approvalStatus: existing.approvalStatus, customerId, customerCreated: created, aliasLearned };
   }
 
-  // Check broker-level cache (30-min TTL)
-  const cached = await getBrokerCacheHit(tenantId, brokerKey, customerId, mcNumber, brokerName);
+  // ── Step 2: Leader election via UNIQUE insert ──
+  console.log(`[broker-check] cache_miss broker_key="${brokerKey}" tenant="${tenantId}" → attempting leader claim`);
 
-  if (cached) {
-    console.log(`[broker-check] cache_hit broker_key="${brokerKey}" tenant_id="${tenantId}" status="${cached.approvalStatus}"`);
+  const role = await tryClaimLeader(
+    tenantId, brokerKey, windowStart, customerId, brokerName, mcNumber, loadEmailId, matchId || null
+  );
 
-    // Fan-out cached result to any missing match rows (instant badge update)
+  let approvalStatus: string;
+
+  if (role === 'leader') {
+    // ── Leader: call OTR, then update decision row ──
+    console.log(`[broker-check] LEADER for broker_key="${brokerKey}" → calling OTR`);
+    const otrResult = await callOtrCheck(
+      tenantId, mcNumber, brokerName, customerId, loadEmailId, matchId || null
+    );
+    approvalStatus = otrResult.approvalStatus;
+
+    if (otrResult.success) {
+      await completeDecision(tenantId, brokerKey, windowStart, approvalStatus, { otr_result: true });
+    } else {
+      await errorDecision(tenantId, brokerKey, windowStart, otrResult.error || 'unknown');
+    }
+
+    // Fan-out to ALL matches (leader writes fresh rows)
     await fanOutCreditCheckToMatches(
-      tenantId, loadEmailId, allMatchIds, cached.customerId ?? customerId,
-      brokerName, cached.mcNumber ?? mcNumber, cached.approvalStatus,
-      { reason: 'broker_cache_hit', broker_key: brokerKey },
-      true // isCacheFanout — only fill gaps
+      tenantId, loadEmailId, allMatchIds, customerId, brokerName, brokerKey,
+      mcNumber, approvalStatus, { otr_result: true, broker_key: brokerKey }
     );
 
-    return { success: true, approvalStatus: cached.approvalStatus, customerId, customerCreated: created, aliasLearned };
+    return {
+      success: otrResult.success,
+      approvalStatus,
+      customerId,
+      customerCreated: created,
+      aliasLearned,
+      error: otrResult.error,
+    };
+
+  } else if (role === 'follower') {
+    // ── Follower: wait for leader to complete ──
+    console.log(`[broker-check] FOLLOWER for broker_key="${brokerKey}" → waiting for leader`);
+    const decision = await waitForLeaderDecision(tenantId, brokerKey, windowStart);
+    approvalStatus = decision.approvalStatus;
+
+    // Fan-out cached result to this load's matches
+    await fanOutCreditCheckToMatches(
+      tenantId, loadEmailId, allMatchIds, decision.customerId ?? customerId,
+      brokerName, brokerKey, decision.mcNumber ?? mcNumber, approvalStatus,
+      { reason: 'follower_reuse', broker_key: brokerKey },
+      true // isCacheFanout
+    );
+
+    return { success: true, approvalStatus, customerId, customerCreated: created, aliasLearned };
+
+  } else {
+    // ── Error: fall back to calling OTR directly ──
+    console.warn(`[broker-check] Leader claim error for broker_key="${brokerKey}", falling back to direct OTR call`);
+    const otrResult = await callOtrCheck(
+      tenantId, mcNumber, brokerName, customerId, loadEmailId, matchId || null
+    );
+
+    await fanOutCreditCheckToMatches(
+      tenantId, loadEmailId, allMatchIds, customerId, brokerName, brokerKey,
+      mcNumber, otrResult.approvalStatus, { otr_result: true, fallback: true }
+    );
+
+    return {
+      success: otrResult.success,
+      approvalStatus: otrResult.approvalStatus,
+      customerId,
+      customerCreated: created,
+      aliasLearned,
+      error: otrResult.error,
+    };
   }
-
-  // cache_miss → call OTR once
-  console.log(`[broker-check] cache_miss broker_key="${brokerKey}" tenant_id="${tenantId}" → calling OTR`);
-
-  const otrResult = await callOtrCheck(
-    tenantId, mcNumber, brokerName, customerId, loadEmailId, matchId || null
-  );
-
-  // Fan-out fresh OTR result to ALL matches
-  await fanOutCreditCheckToMatches(
-    tenantId, loadEmailId, allMatchIds, customerId, brokerName,
-    mcNumber, otrResult.approvalStatus, { otr_result: true, broker_key: brokerKey }
-  );
-
-  return {
-    success: otrResult.success,
-    approvalStatus: otrResult.approvalStatus,
-    customerId,
-    customerCreated: created,
-    aliasLearned,
-    error: otrResult.error,
-  };
 }
 
 /**
- * Trigger broker check for a load email (called after matching).
- * Non-blocking, fire-and-forget.
+ * Trigger broker check (fire-and-forget, called after matching).
  */
 export function triggerBrokerCheck(
   tenantId: string,
@@ -516,7 +631,7 @@ export function triggerBrokerCheck(
   checkBrokerCredit(tenantId, loadEmailId, parsedData, matchId)
     .then((result) => {
       if (result.customerCreated) {
-        console.log(`[broker-check] Created new customer for ${parsedData.broker_company || parsedData.broker}`);
+        console.log(`[broker-check] Created customer for ${parsedData.broker_company || parsedData.broker}`);
       }
       if (result.aliasLearned) {
         console.log(`[broker-check] Learned new alias for broker match`);
