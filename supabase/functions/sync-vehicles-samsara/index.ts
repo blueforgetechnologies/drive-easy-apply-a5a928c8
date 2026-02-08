@@ -215,7 +215,7 @@ async function syncTenantVehicles(
     // Fetch vehicles for this tenant only
     const { data: dbVehicles, error: dbError } = await supabase
       .from('vehicles')
-      .select('id, vin, vehicle_number, oil_change_due')
+      .select('id, vin, vehicle_number, oil_change_due, odometer, speed, stopped_status, heading, last_location, fault_codes, provider_status, provider, provider_id, fuel_level, oil_change_remaining')
       .eq('tenant_id', tenantId)
       .not('vin', 'is', null);
 
@@ -309,6 +309,7 @@ async function syncTenantVehicles(
       total: dbVehicles.length,
       matched: 0,
       updated: 0,
+      skipped: 0,
       notFound: [] as string[],
       errors: [] as any[],
       faultCodesFound: faultCodesByVin.size,
@@ -324,9 +325,7 @@ async function syncTenantVehicles(
 
       results.matched++;
 
-      const updateData: any = {
-        last_updated: new Date().toISOString(),
-      };
+      const updateData: any = {};
 
       // Extract odometer
       if (samsaraVehicle.obdOdometerMeters?.[0]?.value) {
@@ -339,26 +338,24 @@ async function syncTenantVehicles(
       }
 
       // Extract speed, heading, and location
-      // NOTE: Use a small threshold to avoid misclassifying GPS drift as movement.
-      // This aligns better with Samsara's idling vs parked classification.
       if (samsaraVehicle.gps?.[0]?.speedMilesPerHour !== undefined) {
         const rawSpeed = samsaraVehicle.gps[0].speedMilesPerHour;
         updateData.speed = Math.round(rawSpeed);
         updateData.stopped_status = rawSpeed <= 2 ? 'Stopped' : 'Moving';
       }
 
-      // Engine state (used to distinguish IDLING vs PARKED when stopped)
-      // Samsara returns engineStates as an array of readings, newest first.
+      // Engine state
       const engineState = samsaraVehicle.engineStates?.[0]?.value;
       if (engineState) {
         updateData.provider_status = engineState;
       }
 
-      // Extract heading (0-360 degrees, 0 = North)
+      // Heading
       if (samsaraVehicle.gps?.[0]?.headingDegrees !== undefined) {
         updateData.heading = Math.round(samsaraVehicle.gps[0].headingDegrees);
       }
 
+      // Location
       if (samsaraVehicle.gps?.[0]?.latitude && samsaraVehicle.gps?.[0]?.longitude) {
         const lat = samsaraVehicle.gps[0].latitude;
         const lng = samsaraVehicle.gps[0].longitude;
@@ -375,6 +372,20 @@ async function syncTenantVehicles(
       // Provider info
       updateData.provider = 'Samsara';
       updateData.provider_id = samsaraVehicle.id;
+
+      // ====================================================================
+      // CONDITIONAL UPDATE: Only write if something actually changed
+      // This prevents unnecessary realtime broadcasts for parked/unchanged vehicles
+      // ====================================================================
+      const hasChanged = hasVehicleDataChanged(dbVehicle, updateData);
+
+      if (!hasChanged) {
+        results.skipped++;
+        continue;
+      }
+
+      // Only set last_updated when we actually write
+      updateData.last_updated = new Date().toISOString();
 
       // Update vehicle - scoped to tenant for safety
       const { error: updateError } = await supabase
@@ -406,6 +417,60 @@ async function syncTenantVehicles(
     console.error(`Error syncing tenant ${tenantId}:`, error);
     return { error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+/**
+ * Compare current DB values against incoming Samsara values.
+ * Returns true if any meaningful field has changed, false if identical.
+ * Uses thresholds for GPS (0.0005° ≈ 55m) and odometer (1 mile) to avoid
+ * noise from GPS drift and rounding on parked vehicles.
+ */
+function hasVehicleDataChanged(dbVehicle: any, newData: any): boolean {
+  // Location change (with threshold to ignore GPS drift)
+  if (newData.last_location && dbVehicle.last_location) {
+    const [oldLat, oldLng] = dbVehicle.last_location.split(',').map((s: string) => parseFloat(s.trim()));
+    const [newLat, newLng] = newData.last_location.split(',').map((s: string) => parseFloat(s.trim()));
+    if (!isNaN(oldLat) && !isNaN(newLat)) {
+      const latDiff = Math.abs(oldLat - newLat);
+      const lngDiff = Math.abs(oldLng - newLng);
+      if (latDiff > 0.0005 || lngDiff > 0.0005) return true;
+    }
+  } else if (newData.last_location !== dbVehicle.last_location) {
+    return true;
+  }
+
+  // Speed change
+  if (newData.speed !== undefined && newData.speed !== dbVehicle.speed) return true;
+
+  // Stopped status change (Stopped ↔ Moving)
+  if (newData.stopped_status && newData.stopped_status !== dbVehicle.stopped_status) return true;
+
+  // Engine state change (Off → On, On → Idle, etc.)
+  if (newData.provider_status && newData.provider_status !== dbVehicle.provider_status) return true;
+
+  // Odometer change (with 1-mile threshold to avoid rounding noise)
+  if (newData.odometer !== undefined && dbVehicle.odometer !== null) {
+    if (Math.abs(newData.odometer - dbVehicle.odometer) > 1) return true;
+  } else if (newData.odometer !== undefined && dbVehicle.odometer === null) {
+    return true;
+  }
+
+  // Heading change (>5° threshold)
+  if (newData.heading !== undefined && dbVehicle.heading !== null) {
+    if (Math.abs(newData.heading - dbVehicle.heading) > 5) return true;
+  } else if (newData.heading !== undefined && dbVehicle.heading === null) {
+    return true;
+  }
+
+  // Fault codes change
+  const oldFaults = JSON.stringify(dbVehicle.fault_codes || []);
+  const newFaults = JSON.stringify(newData.fault_codes || []);
+  if (oldFaults !== newFaults) return true;
+
+  // Provider ID change (first-time link)
+  if (newData.provider_id && newData.provider_id !== dbVehicle.provider_id) return true;
+
+  return false;
 }
 
 function extractFaultCodes(vehicle: any): string[] {
