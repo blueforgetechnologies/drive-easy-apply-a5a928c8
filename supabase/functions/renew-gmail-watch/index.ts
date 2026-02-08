@@ -2,11 +2,15 @@
  * Daily Gmail Watch Renewal
  * 
  * Ensures Gmail Pub/Sub push notifications stay active by calling
- * gmail.users.watch() for every tenant with valid Gmail tokens.
- * Gmail watch subscriptions expire after ~7 days, so this daily job
- * prevents stubs from silently stopping.
+ * gmail.users.watch() for every active tenant with valid Gmail tokens.
+ * Gmail watch subscriptions expire after ~7 days, so this runs every 12h.
  * 
- * Triggered via pg_cron daily.
+ * Key behaviors:
+ * - Only marks needs_reauth=true on invalid_grant (revoked token)
+ * - Stores watch_expiry after each successful watch() call
+ * - Only processes tokens updated in the last 7 days (active tenants)
+ * 
+ * Triggered via pg_cron every 12 hours.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -54,14 +58,15 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
   const startTime = Date.now();
 
-  console.log('[renew-gmail-watch] Starting daily watch renewal...');
+  console.log('[renew-gmail-watch] Starting watch renewal...');
 
   try {
-    // Get all valid Gmail tokens
+    // Only get tokens that are active (updated in last 7 days) and don't need reauth
     const { data: tokens, error: tokensError } = await supabase
       .from('gmail_tokens')
       .select('id, user_email, tenant_id, access_token, refresh_token, token_expiry, needs_reauth')
-      .eq('needs_reauth', false);
+      .eq('needs_reauth', false)
+      .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
     if (tokensError) {
       console.error('[renew-gmail-watch] Failed to fetch tokens:', tokensError.message);
@@ -72,23 +77,24 @@ Deno.serve(async (req) => {
     }
 
     if (!tokens || tokens.length === 0) {
-      console.log('[renew-gmail-watch] No Gmail tokens to renew');
-      return new Response(JSON.stringify({ success: true, message: 'No tokens', elapsed_ms: Date.now() - startTime }), {
+      console.log('[renew-gmail-watch] No active Gmail tokens to renew');
+      return new Response(JSON.stringify({ success: true, message: 'No active tokens', elapsed_ms: Date.now() - startTime }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[renew-gmail-watch] Processing ${tokens.length} Gmail accounts`);
+    console.log(`[renew-gmail-watch] Processing ${tokens.length} active Gmail accounts`);
 
     const results = { renewed: 0, refreshed: 0, failed: 0, errors: [] as string[] };
 
     for (const token of tokens) {
       try {
-        // Refresh token if expired
+        // Refresh token if expired or expiring within 5 minutes
         let accessToken = token.access_token;
         const tokenExpiry = token.token_expiry ? new Date(token.token_expiry) : new Date(0);
+        const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000);
 
-        if (tokenExpiry < new Date()) {
+        if (tokenExpiry < fiveMinFromNow) {
           const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -104,14 +110,20 @@ Deno.serve(async (req) => {
             const errText = await refreshRes.text();
             console.error(`[renew-gmail-watch] Token refresh failed for ${token.user_email}: ${refreshRes.status} ${errText}`);
 
-            // Mark as needing reauth
-            await supabase
-              .from('gmail_tokens')
-              .update({ needs_reauth: true, reauth_reason: `Daily refresh failed: ${refreshRes.status}` })
-              .eq('id', token.id);
+            // ONLY mark needs_reauth on invalid_grant (token revoked/expired permanently)
+            const isInvalidGrant = errText.includes('invalid_grant');
+            if (isInvalidGrant) {
+              await supabase
+                .from('gmail_tokens')
+                .update({ needs_reauth: true, reauth_reason: 'invalid_grant: refresh token revoked or expired' })
+                .eq('id', token.id);
+              results.errors.push(`${token.user_email}: invalid_grant - marked needs_reauth`);
+            } else {
+              // Transient failure - log but do NOT mark needs_reauth
+              results.errors.push(`${token.user_email}: refresh failed ${refreshRes.status} (transient, will retry next cycle)`);
+            }
 
             results.failed++;
-            results.errors.push(`${token.user_email}: refresh failed ${refreshRes.status}`);
             continue;
           }
 
@@ -153,7 +165,19 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        console.log(`[renew-gmail-watch] ✓ ${token.user_email} watch renewed, expiration: ${(watchData as any).expiration}`);
+        // Store watch_expiry from Gmail response (expiration is in ms epoch)
+        const expirationMs = (watchData as any).expiration;
+        const watchExpiry = expirationMs ? new Date(Number(expirationMs)).toISOString() : null;
+
+        await supabase
+          .from('gmail_tokens')
+          .update({
+            watch_expiry: watchExpiry,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', token.id);
+
+        console.log(`[renew-gmail-watch] ✓ ${token.user_email} watch renewed, expiry: ${watchExpiry}`);
         results.renewed++;
       } catch (err) {
         const errMsg = `${token.user_email}: ${err instanceof Error ? err.message : String(err)}`;
