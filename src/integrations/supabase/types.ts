@@ -2156,6 +2156,7 @@ export type Database = {
           token_expiry: string
           updated_at: string | null
           user_email: string
+          watch_expiry: string | null
         }
         Insert: {
           access_token: string
@@ -2168,6 +2169,7 @@ export type Database = {
           token_expiry: string
           updated_at?: string | null
           user_email: string
+          watch_expiry?: string | null
         }
         Update: {
           access_token?: string
@@ -2180,6 +2182,7 @@ export type Database = {
           token_expiry?: string
           updated_at?: string | null
           user_email?: string
+          watch_expiry?: string | null
         }
         Relationships: [
           {
