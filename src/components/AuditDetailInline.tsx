@@ -82,6 +82,11 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
         billing_notes: notes || load?.billing_notes 
       };
       
+      // When failing a load, clear financial_status so it doesn't remain in Ready for Audit
+      if (newStatus === "action_needed") {
+        updateData.financial_status = null;
+      }
+      
       const { error } = await supabase
         .from("loads")
         .update(updateData)
