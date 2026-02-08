@@ -1,6 +1,11 @@
 import { supabase } from './supabase.js';
 
-const MAPBOX_TOKEN = process.env.VITE_MAPBOX_TOKEN;
+const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN;
+
+// Startup diagnostic: warn if no token available
+if (!MAPBOX_TOKEN) {
+  console.warn('[geocode] ⚠️ NO MAPBOX_TOKEN found in env — all geocoding will be skipped. Set MAPBOX_TOKEN in .env');
+}
 
 // Timeout for geocode operations
 const GEOCODE_TIMEOUT_MS = 10_000;
