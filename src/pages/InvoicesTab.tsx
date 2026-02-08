@@ -670,11 +670,13 @@ export default function InvoicesTab() {
       if (otrError) {
         console.error("OTR retry error:", otrError);
         toast.error(`OTR retry failed: ${otrError.message}`);
+        loadData();
       } else if (otrResult?.success) {
         toast.success(`Invoice ${invoice.invoice_number} resubmitted to OTR Solutions`);
         loadData();
       } else {
-        toast.error(`OTR returned: ${otrResult?.error || 'Unknown error'}`);
+        toast.error(`OTR rejected: ${otrResult?.error || 'Unknown error'}`);
+        loadData();
       }
     } catch (error) {
       console.error("Error retrying OTR submission:", error);
@@ -709,11 +711,13 @@ export default function InvoicesTab() {
         if (otrError) {
           console.error("OTR submission error:", otrError);
           toast.error(`OTR submission failed: ${otrError.message}`);
+          loadData();
         } else if (otrResult?.success) {
           toast.success(`Invoice ${invoice.invoice_number} submitted to OTR Solutions`);
           loadData();
         } else {
-          toast.error(`OTR returned: ${otrResult?.error || 'Unknown error'}`);
+          toast.error(`OTR rejected: ${otrResult?.error || 'Unknown error'}`);
+          loadData();
         }
       } else if (invoice.billing_method === 'direct_email') {
         // Direct email

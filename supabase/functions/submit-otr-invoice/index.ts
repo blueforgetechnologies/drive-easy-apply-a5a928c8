@@ -271,16 +271,18 @@ async function submitInvoiceToOtr(
     if (!response.ok) {
       const otr_error_message = extractOtrErrorMessage(data, responseText);
       
-      // Handle 409 Conflict: OTR returns invoicePkey even on conflict - treat as success if we got a pkey
-      if (response.status === 409 && data.invoicePkey) {
-        console.log(`[OTR 409 WITH PKEY] Invoice created despite conflict. invoicePkey: ${data.invoicePkey}, invoiceExists: ${data.invoiceExists}`);
+      // Handle 409 Conflict: duplicate PO# or invoice already exists
+      if (response.status === 409) {
+        const errorMsg = extractOtrErrorMessage(data, responseText);
+        console.error(`[OTR 409 CONFLICT] invoicePkey: ${data.invoicePkey}, invoiceExists: ${data.invoiceExists}, message: ${errorMsg}`);
         return {
-          success: true,
+          success: false,
           invoice_id: data.invoicePkey?.toString(),
           invoice_pkey: data.invoicePkey,
-          status: data.invoiceExists ? 'existing' : 'created',
+          status: 'rejected_duplicate',
           raw_response: data,
-          attempt_id
+          attempt_id,
+          error: `OTR rejected: ${errorMsg || 'Duplicate PO# or Invoice# already exists for this client'}`
         };
       }
       
@@ -888,6 +890,8 @@ serve(async (req) => {
         .from('invoices')
         .update({
           otr_submitted_at: result.success ? new Date().toISOString() : null,
+          otr_status: result.success ? (result.status || 'submitted') : 'failed',
+          otr_invoice_id: result.invoice_id || null,
         })
         .eq('id', invoice_id);
     }
