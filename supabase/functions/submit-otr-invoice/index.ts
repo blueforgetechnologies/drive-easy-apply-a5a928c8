@@ -271,7 +271,7 @@ async function submitInvoiceToOtr(
     if (!response.ok) {
       const otr_error_message = extractOtrErrorMessage(data, responseText);
       
-      // Handle 409 Conflict: duplicate PO# or invoice already exists
+      // Handle 409 Conflict: use actual error message from OTR response
       if (response.status === 409) {
         const errorMsg = extractOtrErrorMessage(data, responseText);
         console.error(`[OTR 409 CONFLICT] invoicePkey: ${data.invoicePkey}, invoiceExists: ${data.invoiceExists}, message: ${errorMsg}`);
@@ -279,10 +279,10 @@ async function submitInvoiceToOtr(
           success: false,
           invoice_id: data.invoicePkey?.toString(),
           invoice_pkey: data.invoicePkey,
-          status: 'rejected_duplicate',
+          status: 'rejected',
           raw_response: data,
           attempt_id,
-          error: `OTR rejected: ${errorMsg || 'Duplicate PO# or Invoice# already exists for this client'}`
+          error: `OTR rejected (409): ${errorMsg || 'Request conflict - check PO# and Invoice# uniqueness'}`
         };
       }
       
