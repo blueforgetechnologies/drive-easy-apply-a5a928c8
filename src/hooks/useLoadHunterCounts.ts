@@ -143,7 +143,8 @@ export function useLoadHunterCounts(options: UseLoadHunterCountsOptions = {}): L
     },
     enabled: isReady,
     placeholderData: { unreviewedCount: 0, skippedCount: 0, bidCount: 0, bookedCount: 0, missedCount: 0 },
-    staleTime: 15_000, // Refresh frequently for real-time feel
+    staleTime: 15_000,
+    refetchInterval: 30_000, // Poll every 30s (replaces load_emails realtime)
     refetchOnWindowFocus: true,
   });
 

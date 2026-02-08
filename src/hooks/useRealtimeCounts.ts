@@ -72,10 +72,7 @@ const TABLE_QUERY_KEY_MAP: Record<string, string[]> = {
     "driver-invites",
     "pending-invites",
   ],
-  load_emails: [
-    "load-hunter-counts",
-    "load-hunter-data",
-  ],
+  // load_emails removed from realtime — uses 30s polling instead
 };
 
 // All tables to subscribe to

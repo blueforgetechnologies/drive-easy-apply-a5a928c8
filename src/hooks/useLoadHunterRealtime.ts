@@ -63,28 +63,9 @@ export function useLoadHunterRealtime({
 
     console.log(`[Realtime] Setting up tenant-scoped channels for tenant: ${tenantId}`);
 
-    // Subscribe to load_emails changes
-    emailsChannelRef.current = supabase
-      .channel(`load-emails-changes-${tenantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'load_emails',
-          filter: `tenant_id=eq.${tenantId}`
-        },
-        (payload) => {
-          const newEmail = payload.new as any;
-          if (newEmail?.tenant_id !== tenantId) {
-            console.warn('[Realtime] Ignoring cross-tenant email insert');
-            return;
-          }
-          console.log(`[Realtime] New load email for tenant ${tenantId}:`, payload);
-          onEmailInsert(payload);
-        }
-      )
-      .subscribe();
+    // load_emails removed from realtime to reduce broadcast costs
+    // Load Hunter now uses 30s polling instead
+    emailsChannelRef.current = null;
 
     // Subscribe to hunt_plans changes
     huntPlansChannelRef.current = supabase

@@ -1192,14 +1192,16 @@ export default function LoadHunterTab() {
     checkAndMarkMissedLoads();
     deactivateStaleMatches(); // One-time call on mount; cron handles recurring
     
-    // Only run missed load check periodically (local operation, no edge function)
-    const missedCheckInterval = setInterval(() => {
-      console.log('⏰ Running missed load check (15 min)');
+    // 30s polling replaces load_emails realtime subscription (cost optimization)
+    const pollingInterval = setInterval(() => {
+      console.log('⏰ 30s poll: refreshing emails, matches, missed loads');
+      loadLoadEmails();
+      loadHuntMatches();
+      loadUnreviewedMatches();
       checkAndMarkMissedLoads();
-      // deactivateStaleMatches removed - now handled by pg_cron every 1 minute
-    }, 30 * 1000);
+    }, 30_000);
     
-    return () => clearInterval(missedCheckInterval);
+    return () => clearInterval(pollingInterval);
   }, []);
 
   // fetchMapboxToken is now provided by useLoadHunterData hook
