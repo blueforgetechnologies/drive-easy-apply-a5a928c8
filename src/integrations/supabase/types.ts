@@ -7059,6 +7059,7 @@ export type Database = {
         Returns: number
       }
       auto_archive_rejected_applications: { Args: never; Returns: undefined }
+      batch_update_tenant_last_email: { Args: never; Returns: number }
       can_access_feature: {
         Args: { p_feature_key: string; p_tenant_id: string; p_user_id: string }
         Returns: boolean
@@ -7194,6 +7195,7 @@ export type Database = {
         Returns: undefined
       }
       complete_gmail_stub: { Args: { p_id: string }; Returns: undefined }
+      ensure_load_id: { Args: { p_email_id: string }; Returns: string }
       fail_email_queue_item: {
         Args: { p_attempts: number; p_error: string; p_id: string }
         Returns: undefined
@@ -7260,6 +7262,14 @@ export type Database = {
           per_request_delay_ms: number
           restart_requested_at: string
         }[]
+      }
+      handle_gmail_stub: {
+        Args: {
+          p_email_address: string
+          p_history_id: string
+          p_queue_limit?: number
+        }
+        Returns: Json
       }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
