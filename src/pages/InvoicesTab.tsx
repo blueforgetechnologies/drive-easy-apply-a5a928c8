@@ -1307,6 +1307,7 @@ export default function InvoicesTab() {
           otr_status: invoiceToReturn.otr_status,
           amount_paid: invoiceToReturn.amount_paid,
         } : null}
+        onSuccess={loadData}
       />
     </div>
   );

@@ -28,12 +28,14 @@ interface ReturnToAuditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: InvoiceForReturn | null;
+  onSuccess?: () => void;
 }
 
 export default function ReturnToAuditDialog({
   open,
   onOpenChange,
   invoice,
+  onSuccess,
 }: ReturnToAuditDialogProps) {
   const queryClient = useQueryClient();
   const tenantId = useTenantId();
@@ -309,6 +311,7 @@ export default function ReturnToAuditDialog({
         `Invoice ${invoice_number} cancelled. ${load_count} load(s) returned to Ready for Audit.`
       );
       onOpenChange(false);
+      onSuccess?.();
     },
     onError: (error) => {
       console.error("Return to audit error:", error);
