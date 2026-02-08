@@ -250,7 +250,6 @@ async function handleStubOnlyMode(
     history_id: historyId
   };
   
-  // Structured log entry (will be emitted at end)
   const structuredLog: Record<string, any> = {
     mode: 'stub_only',
     email_address: emailAddress,
@@ -260,46 +259,31 @@ async function handleStubOnlyMode(
   };
   
   try {
-    // Step 1: O(1) Circuit Breaker Check
-    const breaker = await checkCircuitBreaker();
+    // CONSOLIDATED RPC: Single DB call replaces 3-4 separate calls
+    // Handles: tenant resolution + circuit breaker + stub insert
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('handle_gmail_stub', {
+      p_email_address: emailAddress,
+      p_history_id: historyId,
+      p_queue_limit: QUEUE_DEPTH_LIMIT
+    });
     
-    if (breaker.open) {
-      result.breaker_status = 'open';
-      result.breaker_reason = breaker.reason;
-      structuredLog.reason = `breaker_open:${breaker.reason}`;
-      
-      // Resolve tenant for logging (even though we're dropping)
-      const { tenantId } = await resolveTenantFromAlias(emailAddress);
-      result.tenant_id = tenantId || undefined;
-      structuredLog.resolved_tenant = !!tenantId;
-      structuredLog.tenant_id = tenantId;
-      
-      // Log dropped stub
-      const breakerType = breaker.reason === 'worker_stale' ? 'stall_detector' : 'queue_depth';
-      await logCircuitBreakerEvent(tenantId, emailAddress, historyId, breaker.reason, breakerType);
-      
-      result.success = true; // Successfully handled (by dropping)
-      result.elapsed_ms = Date.now() - startTime;
-      structuredLog.elapsed_ms = result.elapsed_ms;
-      structuredLog.action = 'dropped';
-      
-      // Emit structured log
-      console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
-      
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (rpcError) {
+      console.error('[stub-only] handle_gmail_stub RPC error:', rpcError);
+      // FAIL-OPEN: If RPC fails, try legacy path
+      throw new Error(`RPC failed: ${rpcError.message}`);
     }
     
-    // Step 2: Resolve Tenant (FAIL-CLOSED)
-    const { tenantId, tenantName } = await resolveTenantFromAlias(emailAddress);
+    const action = rpcResult?.action as string;
+    const tenantId = rpcResult?.tenant_id as string | undefined;
+    const tenantName = rpcResult?.tenant_name as string | undefined;
+    
     structuredLog.resolved_tenant = !!tenantId;
     structuredLog.tenant_id = tenantId;
     structuredLog.tenant_name = tenantName;
+    result.tenant_id = tenantId;
     
-    if (!tenantId) {
-      // Unknown tenant - quarantine and return success
+    if (action === 'quarantine') {
+      // No tenant found - quarantine the stub
       structuredLog.reason = 'no_tenant_for_alias';
       structuredLog.action = 'quarantined';
       await quarantineStub(emailAddress, historyId, 'no_tenant_for_alias');
@@ -308,31 +292,56 @@ async function handleStubOnlyMode(
       result.elapsed_ms = Date.now() - startTime;
       structuredLog.elapsed_ms = result.elapsed_ms;
       
-      // Emit structured log
       console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
-      
       return new Response(JSON.stringify(result), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
-    result.tenant_id = tenantId;
+    if (action === 'dropped') {
+      result.breaker_status = 'open';
+      result.breaker_reason = rpcResult?.reason;
+      result.success = true;
+      result.elapsed_ms = Date.now() - startTime;
+      structuredLog.reason = `breaker_open:${rpcResult?.reason}`;
+      structuredLog.action = 'dropped';
+      structuredLog.elapsed_ms = result.elapsed_ms;
+      
+      console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
-    // Step 3: Insert Stub (ON CONFLICT DO NOTHING)
-    const inserted = await insertStub(tenantId, emailAddress, historyId);
-    result.stub_inserted = inserted;
+    if (action === 'duplicate') {
+      result.stub_inserted = false;
+      result.success = true;
+      result.elapsed_ms = Date.now() - startTime;
+      structuredLog.reason = 'stub_duplicate';
+      structuredLog.action = 'dedupe_skipped';
+      structuredLog.stub_inserted = false;
+      structuredLog.elapsed_ms = result.elapsed_ms;
+      
+      console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // action === 'created'
+    result.stub_inserted = true;
     result.success = true;
     result.elapsed_ms = Date.now() - startTime;
-    
-    structuredLog.stub_inserted = inserted;
-    structuredLog.reason = inserted ? 'stub_inserted' : 'stub_duplicate';
-    structuredLog.action = inserted ? 'inserted' : 'dedupe_skipped';
+    structuredLog.stub_inserted = true;
+    structuredLog.reason = 'stub_inserted';
+    structuredLog.action = 'inserted';
+    structuredLog.stub_id = rpcResult?.stub_id;
     structuredLog.elapsed_ms = result.elapsed_ms;
     
-    // Emit structured log
     console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
-    
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -348,9 +357,7 @@ async function handleStubOnlyMode(
     structuredLog.elapsed_ms = result.elapsed_ms;
     structuredLog.action = 'error';
     
-    // Emit structured log even on error
     console.log(`[stub-only] STRUCTURED: ${JSON.stringify(structuredLog)}`);
-    
     return new Response(JSON.stringify(result), {
       status: 200, // Always 200 to Pub/Sub
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
