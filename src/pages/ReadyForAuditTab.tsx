@@ -45,7 +45,9 @@ export default function ReadyForAuditTab() {
         // Include: ready_for_audit, set_aside, OR any load with pending_invoice financial status
         // The financial_status check is the primary billing-ready indicator
         .or("status.in.(ready_for_audit,set_aside),financial_status.eq.pending_invoice")
-        .neq("financial_status", "invoiced")
+        // Exclude already-invoiced loads. Use .or() to allow NULLs through
+        // (PostgREST .neq() excludes NULLs, which would hide ready_for_audit loads with no financial_status)
+        .or("financial_status.is.null,financial_status.neq.invoiced")
         .order("completed_at", { ascending: false });
 
       // Apply tenant scoping
