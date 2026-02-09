@@ -805,12 +805,34 @@ export default function LoadsTab() {
 
   const handleDeleteLoad = async (id: string) => {
     try {
+      // 1. Fetch attached documents so we can clean up storage files
+      const { data: docs } = await supabase
+        .from("load_documents" as any)
+        .select("file_url")
+        .eq("load_id", id);
+
+      // 2. Delete the load (cascades to load_documents, load_stops, load_expenses, carrier_rate_history)
       const { error } = await supabase
         .from("loads" as any)
         .delete()
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        // Handle FK constraint errors from invoices/settlements gracefully
+        if (error.code === "23503") {
+          throw new Error("This load is linked to an invoice or settlement. Remove those first before deleting.");
+        }
+        throw error;
+      }
+
+      // 3. Clean up storage files (best-effort, don't fail the delete)
+      if (docs && docs.length > 0) {
+        const filePaths = docs.map((d: any) => d.file_url).filter(Boolean);
+        if (filePaths.length > 0) {
+          await supabase.storage.from("load-documents").remove(filePaths);
+        }
+      }
+
       toast.success("Load deleted successfully");
       loadData();
     } catch (error: any) {
