@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck, History } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck, History, Calculator, Loader2 } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
@@ -117,6 +117,7 @@ export default function LoadsTab() {
   const [vehiclesRequiringApproval, setVehiclesRequiringApproval] = useState<string[]>([]);
   const [rateHistoryDialogOpen, setRateHistoryDialogOpen] = useState(false);
   const [selectedLoadForHistory, setSelectedLoadForHistory] = useState<{ id: string; loadNumber: string } | null>(null);
+  const [calculatingMiles, setCalculatingMiles] = useState(false);
   const ROWS_PER_PAGE = 14;
   
   // Permission checks for Load Approval features
@@ -1504,7 +1505,54 @@ export default function LoadsTab() {
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="estimated_miles" className="text-xs font-medium text-muted-foreground">Loaded Miles</Label>
-                      <Input id="estimated_miles" type="number" value={formData.estimated_miles} onChange={(e) => setFormData({ ...formData, estimated_miles: e.target.value })} className="h-8" />
+                      <div className="flex gap-1">
+                        <Input id="estimated_miles" type="number" value={formData.estimated_miles} onChange={(e) => setFormData({ ...formData, estimated_miles: e.target.value })} className="h-8" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          title="Calculate loaded miles from pickup → delivery"
+                          disabled={calculatingMiles}
+                          onClick={async () => {
+                            const originQuery = [formData.shipper_address, formData.shipper_city, formData.shipper_state, formData.shipper_zip].filter(Boolean).join(', ');
+                            const destQuery = [formData.receiver_address, formData.receiver_city, formData.receiver_state, formData.receiver_zip].filter(Boolean).join(', ');
+                            if (!originQuery || !destQuery) {
+                              toast.error("Enter pickup and delivery city/state to calculate miles");
+                              return;
+                            }
+                            setCalculatingMiles(true);
+                            try {
+                              const { data: tokenData } = await supabase.functions.invoke('get-mapbox-token');
+                              const token = tokenData?.token;
+                              if (!token) throw new Error("No map token available");
+
+                              const geocode = async (q: string) => {
+                                const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${token}&country=US&limit=1`);
+                                const d = await res.json();
+                                return d.features?.[0]?.center as [number, number] | undefined;
+                              };
+                              const [originCoords, destCoords] = await Promise.all([geocode(originQuery), geocode(destQuery)]);
+                              if (!originCoords || !destCoords) throw new Error("Could not geocode locations");
+
+                              const dirRes = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${originCoords[0]},${originCoords[1]};${destCoords[0]},${destCoords[1]}?access_token=${token}&overview=false`);
+                              const dirData = await dirRes.json();
+                              const meters = dirData.routes?.[0]?.distance;
+                              if (!meters) throw new Error("No route found");
+
+                              const miles = Math.round(meters * 0.000621371);
+                              setFormData(prev => ({ ...prev, estimated_miles: String(miles) }));
+                              toast.success(`Loaded miles calculated: ${miles} mi`);
+                            } catch (err: any) {
+                              toast.error(err.message || "Failed to calculate miles");
+                            } finally {
+                              setCalculatingMiles(false);
+                            }
+                          }}
+                        >
+                          {calculatingMiles ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
