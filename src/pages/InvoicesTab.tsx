@@ -1162,29 +1162,29 @@ export default function InvoicesTab() {
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Invoice #</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Customer</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+             <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[80px]">Inv #</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[140px]">Customer</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[130px]">
                 <div>To Email</div>
                 <div className="text-muted-foreground font-normal normal-case">CC (Acct)</div>
               </TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                <div>Billing Method</div>
-                <div className="text-muted-foreground font-normal normal-case">Credit Approval</div>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[100px]">
+                <div>Billing</div>
+                <div className="text-muted-foreground font-normal normal-case">Credit</div>
               </TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Docs</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Delivery</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[120px]">Docs</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[80px]">Delivery</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[80px]">
                 <div>Amount</div>
                 <div className="text-muted-foreground font-normal normal-case">Balance</div>
               </TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 min-w-[220px]">
                 <div>Last Attempt</div>
                 <div className="text-muted-foreground font-normal normal-case">Notes</div>
               </TableHead>
               {(filter === 'needs_setup' || filter === 'ready') && (
-                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-2 w-[70px]">Actions</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -1296,7 +1296,7 @@ export default function InvoicesTab() {
                           return <span className="text-muted-foreground">—</span>;
                         })()}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]" title={
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[320px]" title={
                         (invoice.billing_method === 'otr' && invoice.otr_error_message) 
                           ? invoice.otr_error_message 
                           : (invoice.last_attempt_error || invoice.notes || '')
