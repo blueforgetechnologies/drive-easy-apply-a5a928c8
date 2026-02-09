@@ -33,6 +33,9 @@ interface Invoice {
   otr_status: string | null;
   otr_submitted_at: string | null;
   otr_invoice_id: string | null;
+  otr_error_message: string | null;
+  otr_raw_response: any | null;
+  otr_failed_at: string | null;
   billing_method: 'unknown' | 'otr' | 'direct_email' | null;
   customers?: { 
     mc_number: string | null; 
@@ -928,24 +931,46 @@ export default function InvoicesTab() {
     
     if (invoice.otr_status === 'failed') {
       return (
-        <div className="flex items-center gap-1">
-          <Badge variant="destructive" className="text-xs">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            Failed
-          </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2"
-            onClick={(e) => retryOtrSubmission(invoice, e)}
-            disabled={retryingInvoiceId === invoice.id}
-          >
-            {retryingInvoiceId === invoice.id ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3 w-3" />
-            )}
-          </Button>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="text-xs cursor-help">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Failed
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-xs">
+                  <p className="font-semibold text-xs mb-1">OTR Response:</p>
+                  <p className="text-xs">{invoice.otr_error_message || 'No error details available'}</p>
+                  {invoice.otr_failed_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Failed: {format(new Date(invoice.otr_failed_at), 'MMM d, yyyy h:mm a')}
+                    </p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={(e) => retryOtrSubmission(invoice, e)}
+              disabled={retryingInvoiceId === invoice.id}
+            >
+              {retryingInvoiceId === invoice.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
+          {invoice.otr_error_message && (
+            <span className="text-xs text-destructive truncate max-w-[200px]" title={invoice.otr_error_message}>
+              {invoice.otr_error_message}
+            </span>
+          )}
         </div>
       );
     }

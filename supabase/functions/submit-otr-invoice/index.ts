@@ -886,13 +886,23 @@ serve(async (req) => {
 
     // Update invoice with OTR submission status
     if (invoice_id) {
+      const invoiceUpdate: Record<string, unknown> = {
+        otr_submitted_at: result.success ? new Date().toISOString() : null,
+        otr_status: result.success ? (result.status || 'submitted') : 'failed',
+        otr_invoice_id: result.invoice_id || null,
+        otr_raw_response: result.raw_response || null,
+      };
+      if (!result.success) {
+        invoiceUpdate.otr_error_message = result.error || 'Unknown OTR error';
+        invoiceUpdate.otr_failed_at = new Date().toISOString();
+      } else {
+        // Clear previous failure data on success
+        invoiceUpdate.otr_error_message = null;
+        invoiceUpdate.otr_failed_at = null;
+      }
       await adminClient
         .from('invoices')
-        .update({
-          otr_submitted_at: result.success ? new Date().toISOString() : null,
-          otr_status: result.success ? (result.status || 'submitted') : 'failed',
-          otr_invoice_id: result.invoice_id || null,
-        })
+        .update(invoiceUpdate)
         .eq('id', invoice_id);
     }
 
