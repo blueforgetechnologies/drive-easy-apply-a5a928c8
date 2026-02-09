@@ -1902,10 +1902,10 @@ export default function LoadsTab() {
           { key: "at_delivery", label: "Delivery", count: statusCounts.at_delivery, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
           { key: "delivered", label: "Delivered", count: statusCounts.delivered, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
           { key: "completed", label: "Completed", count: statusCounts.completed, activeClass: "btn-glossy-success", badgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green" },
-          { key: "closed", label: "CLOSED", count: statusCounts.closed, activeClass: "bg-black text-white dark:bg-white dark:text-black", badgeClass: "bg-white/20 text-white dark:bg-black/20 dark:text-black", softBadgeClass: "badge-inset" },
           { key: "ready_for_audit", label: "Ready for Audit", count: statusCounts.ready_for_audit, activeClass: "btn-glossy-primary", badgeClass: "badge-inset-primary", softBadgeClass: "badge-inset-soft-blue" },
           { key: "cancelled", label: "Cancelled", count: statusCounts.cancelled, activeClass: "btn-glossy-danger", badgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red" },
           { key: "tonu", label: "TONU", count: statusCounts.tonu, activeClass: "btn-glossy-warning", badgeClass: "badge-inset-warning", softBadgeClass: "badge-inset-soft-orange" },
+          { key: "closed", label: "CLOSED", count: statusCounts.closed, activeClass: "bg-black text-white dark:bg-white dark:text-black", badgeClass: "bg-white/20 text-white dark:bg-black/20 dark:text-black", softBadgeClass: "badge-inset" },
         ].map((status) => (
           <Button
             key={status.key}
