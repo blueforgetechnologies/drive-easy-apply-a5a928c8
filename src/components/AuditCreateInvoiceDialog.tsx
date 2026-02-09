@@ -155,7 +155,7 @@ export default function AuditCreateInvoiceDialog({
       // Determine billing method based on credit approval
       const creditApproval = customer?.otr_approval_status || customer?.factoring_approval;
       const isApproved = creditApproval?.toLowerCase() === 'approved';
-      const billingMethod = isApproved ? 'otr' : null;
+      const billingMethod = isApproved ? 'otr' : 'direct_email';
 
       const invoiceData = {
         tenant_id: tenantId,
