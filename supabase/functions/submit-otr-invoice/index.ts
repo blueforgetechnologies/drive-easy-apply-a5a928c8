@@ -21,12 +21,16 @@ interface OtrPostInvoicePayload {
   ClientDOT: string;         // Your carrier DOT number (2391750 for Talbi)
   FromCity: string;          // Pickup city
   FromState: string;         // Pickup state (2-letter)
+  FromZip?: string;          // Pickup zip code
   ToCity: string;            // Delivery city
   ToState: string;           // Delivery state (2-letter)
+  ToZip?: string;            // Delivery zip code
   PoNumber: string;          // PO/Reference number
   InvoiceNo: string;         // Invoice number
   InvoiceDate: string;       // YYYY-MM-DD format (ISO, do not localize)
   InvoiceAmount: number;     // Invoice amount
+  ShippingDate?: string;     // Pickup/shipping date (YYYY-MM-DD)
+  DeliveryDate?: string;     // Delivery date (YYYY-MM-DD)
   
   // Optional fields
   TermPkey?: number;
@@ -736,6 +740,27 @@ serve(async (req) => {
       InvoiceDate: invoiceDate,
       InvoiceAmount: invoiceAmount,
     };
+
+    // Add zip codes if available
+    if (load.pickup_zip) {
+      otrPayload.FromZip = String(load.pickup_zip).trim();
+    }
+    if (load.delivery_zip) {
+      otrPayload.ToZip = String(load.delivery_zip).trim();
+    }
+
+    // Add shipping date (pickup_date) if available
+    if (load.pickup_date) {
+      // Ensure YYYY-MM-DD format
+      const pickupDateStr = String(load.pickup_date);
+      otrPayload.ShippingDate = pickupDateStr.includes('T') ? pickupDateStr.split('T')[0] : pickupDateStr;
+    }
+
+    // Add delivery date if available
+    if (load.delivery_date) {
+      const deliveryDateStr = String(load.delivery_date);
+      otrPayload.DeliveryDate = deliveryDateStr.includes('T') ? deliveryDateStr.split('T')[0] : deliveryDateStr;
+    }
 
     if (load.weight) {
       otrPayload.Weight = load.weight;
