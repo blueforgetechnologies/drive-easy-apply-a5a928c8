@@ -427,7 +427,7 @@ export default function InvoiceDetail() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/dashboard/invoices")}>
+            <Button variant="outline" size="icon" onClick={() => navigate("/dashboard/accounting?subtab=invoices")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
