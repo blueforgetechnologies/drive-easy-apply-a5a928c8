@@ -2051,8 +2051,8 @@ export default function LoadsTab() {
                                 {load.vehicle?.vehicle_number || "N/A"}
                               </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
-                                {load.driver?.personal_info?.firstName && load.driver?.personal_info?.lastName
-                                  ? `${load.driver.personal_info.firstName} ${load.driver.personal_info.lastName}`
+                                {(load.driver?.personal_info?.firstName || load.driver?.personal_info?.lastName)
+                                  ? `${load.driver.personal_info.firstName || ''} ${load.driver.personal_info.lastName || ''}`.trim()
                                   : "-"}
                               </div>
                             </TableCell>
