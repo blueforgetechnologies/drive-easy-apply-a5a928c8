@@ -2495,6 +2495,7 @@ export type Database = {
       invoice_loads: {
         Row: {
           amount: number | null
+          billing_reference_number: string | null
           description: string | null
           id: string
           invoice_id: string | null
@@ -2503,6 +2504,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          billing_reference_number?: string | null
           description?: string | null
           id?: string
           invoice_id?: string | null
@@ -2511,6 +2513,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          billing_reference_number?: string | null
           description?: string | null
           id?: string
           invoice_id?: string | null

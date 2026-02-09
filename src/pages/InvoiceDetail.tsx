@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2, RefreshCw, Mail } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Send, Download, DollarSign, Loader2, RefreshCw, Mail, Pencil, Check, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,6 +20,61 @@ interface InvoiceLoad {
   load_id: string;
   amount: number;
   description: string;
+  billing_reference_number: string | null;
+  reference_number: string | null; // from the load
+}
+
+function BillingReferenceCell({ invoiceLoad, isFailed, onSave }: {
+  invoiceLoad: InvoiceLoad;
+  isFailed: boolean;
+  onSave: (val: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(invoiceLoad.billing_reference_number || "");
+  const display = invoiceLoad.billing_reference_number || invoiceLoad.reference_number || "—";
+  const hasOverride = !!invoiceLoad.billing_reference_number;
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={invoiceLoad.reference_number || "Enter ID"}
+          className="h-7 text-xs w-32"
+          autoFocus
+        />
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={async () => {
+          await onSave(value);
+          setEditing(false);
+        }}>
+          <Check className="h-3 w-3" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+          setValue(invoiceLoad.billing_reference_number || "");
+          setEditing(false);
+        }}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className={`text-sm ${hasOverride ? "font-medium text-primary" : "text-muted-foreground"}`}>
+        {display}
+      </span>
+      {hasOverride && invoiceLoad.reference_number && invoiceLoad.billing_reference_number !== invoiceLoad.reference_number && (
+        <span className="text-xs text-muted-foreground line-through ml-1">{invoiceLoad.reference_number}</span>
+      )}
+      {isFailed && (
+        <Button size="icon" variant="ghost" className="h-6 w-6 ml-1" onClick={() => setEditing(true)}>
+          <Pencil className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export default function InvoiceDetail() {
@@ -56,12 +111,27 @@ export default function InvoiceDetail() {
       if (invoiceError) throw invoiceError;
       setInvoice(invoiceData);
 
-      // Load invoice loads
+      // Load invoice loads with load reference_number
       const { data: loadsData } = await supabase
         .from("invoice_loads" as any)
         .select("*")
         .eq("invoice_id", id);
-      setInvoiceLoads((loadsData as any) || []);
+      
+      // Enrich with load reference_number
+      const enrichedLoads = await Promise.all(
+        ((loadsData as any) || []).map(async (il: any) => {
+          const { data: loadInfo } = await supabase
+            .from("loads" as any)
+            .select("reference_number")
+            .eq("id", il.load_id)
+            .single();
+          return {
+            ...il,
+            reference_number: (loadInfo as any)?.reference_number || null,
+          };
+        })
+      );
+      setInvoiceLoads(enrichedLoads);
 
       // Load available completed loads
       const { data: availData } = await supabase
@@ -498,6 +568,7 @@ export default function InvoiceDetail() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Description</TableHead>
+                        <TableHead>Billing Load ID</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         {invoice.status === "draft" && <TableHead className="w-[50px]"></TableHead>}
                       </TableRow>
@@ -506,6 +577,25 @@ export default function InvoiceDetail() {
                       {invoiceLoads.map((load) => (
                         <TableRow key={load.id}>
                           <TableCell>{load.description}</TableCell>
+                          <TableCell>
+                            <BillingReferenceCell
+                              invoiceLoad={load}
+                              isFailed={invoice.status === 'failed'}
+                              onSave={async (newVal) => {
+                                try {
+                                  const { error } = await supabase
+                                    .from("invoice_loads" as any)
+                                    .update({ billing_reference_number: newVal || null })
+                                    .eq("id", load.id);
+                                  if (error) throw error;
+                                  toast.success("Billing Load ID updated");
+                                  loadData();
+                                } catch (err: any) {
+                                  toast.error("Failed to update: " + err.message);
+                                }
+                              }}
+                            />
+                          </TableCell>
                           <TableCell className="text-right">${load.amount?.toFixed(2)}</TableCell>
                           {invoice.status === "draft" && (
                             <TableCell>
