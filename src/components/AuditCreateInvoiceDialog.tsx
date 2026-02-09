@@ -152,6 +152,11 @@ export default function AuditCreateInvoiceDialog({
       // ============================================================
       toast.loading("Creating invoice record...", { id: "audit-invoice" });
       
+      // Determine billing method based on credit approval
+      const creditApproval = customer?.otr_approval_status || customer?.factoring_approval;
+      const isApproved = creditApproval?.toLowerCase() === 'approved';
+      const billingMethod = isApproved ? 'otr' : null;
+
       const invoiceData = {
         tenant_id: tenantId,
         invoice_number: createdInvoiceNumber,
@@ -168,6 +173,7 @@ export default function AuditCreateInvoiceDialog({
         amount_paid: 0,
         balance_due: load.rate || 0,
         notes: finalNotes || null,
+        ...(billingMethod && { billing_method: billingMethod }),
       };
 
       const { data: invoice, error: invoiceError } = await supabase
