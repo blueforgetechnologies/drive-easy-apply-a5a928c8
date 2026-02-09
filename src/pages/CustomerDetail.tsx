@@ -15,6 +15,7 @@ import {
   CheckCircle, XCircle, DollarSign, ShieldCheck, Loader2,
   FileText
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 
 interface CustomerData {
@@ -67,6 +68,13 @@ export default function CustomerDetail() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [checkingFactoring, setCheckingFactoring] = useState(false);
+  const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({
+    name: true,
+    mc_number: true,
+    dot_number: true,
+    phone: true,
+    address: true,
+  });
 
   useEffect(() => {
     loadCustomer();
@@ -171,6 +179,7 @@ export default function CustomerDetail() {
         return;
       }
       setLookupResult(data);
+      setSelectedFields({ name: true, mc_number: true, dot_number: true, phone: true, address: true });
       setLookupDialogOpen(true);
     } catch (error: any) {
       setLookupError(error.message || "Failed to fetch FMCSA data");
@@ -182,15 +191,24 @@ export default function CustomerDetail() {
 
   const handleApplyLookupResult = () => {
     if (customer && lookupResult) {
-      setCustomer({
-        ...customer,
-        name: lookupResult.dba_name || lookupResult.name || customer.name,
-        mc_number: lookupResult.mc_number || customer.mc_number,
-        dot_number: lookupResult.usdot || customer.dot_number,
-        phone: lookupResult.phone || customer.phone,
-        address: lookupResult.physical_address || customer.address,
-      });
-      toast.success("Company information applied");
+      const updates: Partial<CustomerData> = {};
+      if (selectedFields.name && (lookupResult.dba_name || lookupResult.name)) {
+        updates.name = lookupResult.dba_name || lookupResult.name || customer.name;
+      }
+      if (selectedFields.mc_number && lookupResult.mc_number) {
+        updates.mc_number = lookupResult.mc_number;
+      }
+      if (selectedFields.dot_number && lookupResult.usdot) {
+        updates.dot_number = lookupResult.usdot;
+      }
+      if (selectedFields.phone && lookupResult.phone) {
+        updates.phone = lookupResult.phone;
+      }
+      if (selectedFields.address && lookupResult.physical_address) {
+        updates.address = lookupResult.physical_address;
+      }
+      setCustomer({ ...customer, ...updates });
+      toast.success("Selected fields applied");
     }
     setLookupDialogOpen(false);
     setLookupResult(null);
@@ -550,15 +568,34 @@ export default function CustomerDetail() {
               </p>
             </div>
           ) : lookupResult && (
-            <div className="space-y-2 py-4 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Company:</span><span>{lookupResult.dba_name || lookupResult.name || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Legal Name:</span><span>{lookupResult.name || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">USDOT:</span><span>{lookupResult.usdot || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">MC Number:</span><span>{lookupResult.mc_number || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Phone:</span><span>{lookupResult.phone || '—'}</span></div>
+            <div className="space-y-3 py-4 text-sm">
+              {[
+                { key: "name", label: "Company", value: lookupResult.dba_name || lookupResult.name || '—' },
+                { key: null, label: "Legal Name", value: lookupResult.name || '—' },
+                { key: "dot_number", label: "USDOT", value: lookupResult.usdot || '—' },
+                { key: "mc_number", label: "MC Number", value: lookupResult.mc_number || '—' },
+                { key: "phone", label: "Phone", value: lookupResult.phone || '—' },
+                { key: "address", label: "Address", value: lookupResult.physical_address || '—' },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center gap-3">
+                  {row.key ? (
+                    <Checkbox
+                      checked={selectedFields[row.key] ?? false}
+                      onCheckedChange={(checked) =>
+                        setSelectedFields((prev) => ({ ...prev, [row.key!]: !!checked }))
+                      }
+                    />
+                  ) : (
+                    <div className="w-4" />
+                  )}
+                  <span className="text-muted-foreground w-24 shrink-0">{row.label}:</span>
+                  <span className="font-medium truncate">{row.value}</span>
+                </div>
+              ))}
               {lookupResult.safer_status && (
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">SAFER Status:</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-4" />
+                  <span className="text-muted-foreground w-24 shrink-0">SAFER Status:</span>
                   <Badge variant={lookupResult.safer_status === 'NOT AUTHORIZED' ? 'destructive' : 'default'}>
                     {lookupResult.safer_status}
                   </Badge>
@@ -573,7 +610,7 @@ export default function CustomerDetail() {
             ) : (
               <>
                 <Button variant="outline" onClick={() => setLookupDialogOpen(false)}>Discard</Button>
-                <Button onClick={handleApplyLookupResult} className="bg-green-600 hover:bg-green-700">Apply</Button>
+                <Button onClick={handleApplyLookupResult} className="bg-green-600 hover:bg-green-700">Apply Selected</Button>
               </>
             )}
           </DialogFooter>
