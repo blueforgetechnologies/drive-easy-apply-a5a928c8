@@ -554,10 +554,13 @@ serve(async (req) => {
     // Determine load_id
     let load_id = providedLoadId;
     
+    // Track billing_reference_number override from invoice_loads
+    let billingReferenceNumber: string | null = null;
+    
     if (!load_id && invoice_id) {
       const { data: invoiceLoads, error: invoiceLoadsError } = await adminClient
         .from('invoice_loads')
-        .select('load_id')
+        .select('load_id, billing_reference_number')
         .eq('invoice_id', invoice_id)
         .eq('tenant_id', tenant_id);
       
@@ -567,7 +570,21 @@ serve(async (req) => {
       
       if (invoiceLoads && invoiceLoads.length > 0) {
         load_id = invoiceLoads[0].load_id;
-        console.log(`[submit-otr-invoice] Found load_id ${load_id} from invoice ${invoice_id}`);
+        billingReferenceNumber = (invoiceLoads[0] as any).billing_reference_number || null;
+        console.log(`[submit-otr-invoice] Found load_id ${load_id} from invoice ${invoice_id}, billing_reference_number: ${billingReferenceNumber || '(none)'}`);
+      }
+    } else if (invoice_id) {
+      // load_id was provided directly, but still check for billing_reference_number override
+      const { data: invoiceLoads } = await adminClient
+        .from('invoice_loads')
+        .select('billing_reference_number')
+        .eq('invoice_id', invoice_id)
+        .eq('load_id', load_id)
+        .eq('tenant_id', tenant_id)
+        .limit(1);
+      
+      if (invoiceLoads && invoiceLoads.length > 0) {
+        billingReferenceNumber = (invoiceLoads[0] as any).billing_reference_number || null;
       }
     }
 
@@ -692,7 +709,9 @@ serve(async (req) => {
       invoiceNumber = String(load.load_number || `INV-${Date.now()}`);
     }
 
-    const poNumber = String(load.reference_number || load.po_number || load.load_number || invoiceNumber);
+    // Billing reference override takes priority over load's reference_number
+    const poNumber = String(billingReferenceNumber || load.reference_number || load.po_number || load.load_number || invoiceNumber);
+    console.log(`[submit-otr-invoice] PoNumber resolved: "${poNumber}" (billing_override: ${billingReferenceNumber ? 'YES' : 'no'})`);
     
     if (invoiceAmount <= 0) {
       return new Response(
