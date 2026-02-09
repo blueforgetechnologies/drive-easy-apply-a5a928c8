@@ -695,6 +695,7 @@ export default function AuditDetailInline({ loadId, onClose, allLoadIds, onNavig
       <AuditCreateInvoiceDialog
         open={createInvoiceDialogOpen}
         onOpenChange={setCreateInvoiceDialogOpen}
+        onSuccess={onClose}
         load={load ? {
           id: load.id,
           load_number: load.load_number,
