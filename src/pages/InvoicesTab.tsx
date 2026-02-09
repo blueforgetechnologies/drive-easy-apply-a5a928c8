@@ -56,6 +56,7 @@ interface LoadDocStatus {
 interface LoadInfo {
   id: string;
   load_number: string;
+  reference_number: string | null;
 }
 
 interface InvoiceWithDeliveryInfo extends Invoice {
@@ -71,6 +72,7 @@ interface InvoiceWithDeliveryInfo extends Invoice {
   last_attempt_error: string | null;
   credit_approval_status: 'approved' | 'denied' | 'pending' | 'unknown';
   credit_approval_source: 'otr' | 'factoring' | null;
+  customer_load_ids: string[];
 }
 
 interface Customer {
@@ -252,7 +254,7 @@ export default function InvoicesTab() {
           loadChunks.map(async (chunk) => {
             let loadQuery = supabase
               .from("loads" as any)
-              .select("id, load_number")
+              .select("id, load_number, reference_number")
               .in("id", chunk);
 
             if (shouldFilter && tenantId) {
@@ -494,6 +496,11 @@ export default function InvoicesTab() {
         }
       }
       
+      // Collect customer load IDs (reference_number) from associated loads
+      const customerLoadIds = loadIds
+        .map(lid => loadInfoMap.get(lid)?.reference_number)
+        .filter((r): r is string => !!r);
+
       return {
         ...invoice,
         delivery_status,
@@ -508,6 +515,7 @@ export default function InvoicesTab() {
         last_attempt_error: latestLog?.error || null,
         credit_approval_status: creditApproval.status,
         credit_approval_source: creditApproval.source,
+        customer_load_ids: customerLoadIds,
       };
     });
   }, [allInvoices, latestLogByInvoice, loadsByInvoice, docsPerLoad, accountingEmail, loadInfoMap]);
@@ -1163,7 +1171,10 @@ export default function InvoicesTab() {
         <Table>
           <TableHeader>
              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Invoice #</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Invoice #</div>
+                <div className="text-muted-foreground font-normal normal-case">Customer Load</div>
+              </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Customer</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>To Email</div>
@@ -1209,11 +1220,16 @@ export default function InvoicesTab() {
                     className="cursor-pointer hover:bg-muted/50" 
                     onClick={() => viewInvoiceDetail(invoice.id)}
                   >
-                    <TableCell className="font-medium text-primary py-2 px-3">
+                     <TableCell className="font-medium text-primary py-2 px-3">
                       <div className="flex items-center gap-2">
                         {invoice.invoice_number}
                         {getMissingInfoTooltip(invoice)}
                       </div>
+                      {invoice.customer_load_ids.length > 0 && (
+                        <div className="text-xs text-muted-foreground truncate max-w-[120px]" title={invoice.customer_load_ids.join(', ')}>
+                          {invoice.customer_load_ids.join(', ')}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="py-2 px-3">
                       {invoice.customer_id ? (
