@@ -1174,15 +1174,15 @@ export default function InvoicesTab() {
                 <div className="text-muted-foreground font-normal normal-case">Credit Approval</div>
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Docs</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                <div>Delivery</div>
-                <div className="text-muted-foreground font-normal normal-case">Last Attempt</div>
-              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Delivery</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Amount</div>
                 <div className="text-muted-foreground font-normal normal-case">Balance</div>
               </TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Notes</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Last Attempt</div>
+                <div className="text-muted-foreground font-normal normal-case">Notes</div>
+              </TableHead>
               {(filter === 'needs_setup' || filter === 'ready') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
               )}
@@ -1191,7 +1191,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 9 : 8} className="py-12 text-center">
+                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 10 : 9} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1248,94 +1248,65 @@ export default function InvoicesTab() {
                       <div>{getCreditApprovalBadge(invoice)}</div>
                     </TableCell>
                     <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
-                    {/* Delivery / Last Attempt stacked */}
-                    {/* Delivery / Last Attempt / OTR detail stacked */}
+                    {/* Delivery standalone */}
                     <TableCell className="py-2 px-3">
-                      <div className="mb-1">{getDeliveryStatusBadge(invoice)}</div>
-                      {/* OTR-specific detail merged here */}
+                      <div>{getDeliveryStatusBadge(invoice)}</div>
+                      {/* OTR-specific inline detail */}
                       {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          OTR: <span className="text-success font-medium">Submitted</span>
+                          <span className="text-success font-medium">OTR Submitted</span>
                         </div>
                       )}
                       {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
-                        <div className="flex flex-col gap-0.5 mt-0.5">
-                          <div className="flex items-center gap-1">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-xs text-destructive cursor-help truncate max-w-[160px]" title={invoice.otr_error_message || ''}>
-                                    {invoice.otr_error_message || 'OTR error'}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="max-w-xs">
-                                  <p className="font-semibold text-xs mb-1">OTR Response:</p>
-                                  <p className="text-xs">{invoice.otr_error_message || 'No error details available'}</p>
-                                  {invoice.otr_failed_at && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Failed: {format(new Date(invoice.otr_failed_at), 'MMM d, yyyy h:mm a')}
-                                    </p>
-                                  )}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0"
-                              onClick={(e) => retryOtrSubmission(invoice, e)}
-                              disabled={retryingInvoiceId === invoice.id}
-                            >
-                              {retryingInvoiceId === invoice.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      {/* Last attempt fallback for non-OTR or no OTR detail */}
-                      {!(invoice.billing_method === 'otr' && (invoice.otr_submitted_at || invoice.otr_status === 'failed')) && (
-                        <div className="text-xs text-muted-foreground">
-                          {invoice.last_attempt_at ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className={invoice.last_attempt_status === 'failed' ? 'text-destructive' : ''}>
-                                    {formatDistanceToNow(new Date(invoice.last_attempt_at), { addSuffix: true })}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-xs">
-                                    <p>{format(new Date(invoice.last_attempt_at), "MMM d, yyyy h:mm a")}</p>
-                                    {invoice.last_attempt_error && (
-                                      <p className="text-destructive mt-1">{invoice.last_attempt_error}</p>
-                                    )}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <span>—</span>
-                          )}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="badge-puffy badge-puffy-red text-[10px]">OTR Failed</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0"
+                            onClick={(e) => retryOtrSubmission(invoice, e)}
+                            disabled={retryingInvoiceId === invoice.id}
+                          >
+                            {retryingInvoiceId === invoice.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3" />
+                            )}
+                          </Button>
                         </div>
                       )}
                     </TableCell>
-                    {/* Amount / Balance stacked */}
+                    {/* Last Attempt / Notes stacked */}
                     <TableCell className="py-2 px-3">
-                      <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
-                      <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
-                    </TableCell>
-                    {/* Notes standalone */}
-                    <TableCell className="py-2 px-3">
-                      {invoice.notes ? (
-                        <div className="text-xs text-muted-foreground truncate max-w-[180px]" title={invoice.notes}>
-                          {invoice.notes}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
+                      <div className="text-xs">
+                        {(() => {
+                          // For OTR failures, show the failed_at timestamp
+                          const attemptDate = invoice.billing_method === 'otr' && invoice.otr_failed_at
+                            ? invoice.otr_failed_at
+                            : invoice.last_attempt_at;
+                          if (attemptDate) {
+                            return (
+                              <span className={invoice.last_attempt_status === 'failed' || invoice.otr_status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}>
+                                {format(new Date(attemptDate), "MMM d, h:mm a")}
+                              </span>
+                            );
+                          }
+                          return <span className="text-muted-foreground">—</span>;
+                        })()}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]" title={
+                        (invoice.billing_method === 'otr' && invoice.otr_error_message) 
+                          ? invoice.otr_error_message 
+                          : (invoice.last_attempt_error || invoice.notes || '')
+                      }>
+                        {(() => {
+                          // Priority: OTR error > last attempt error > notes
+                          const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
+                            ? invoice.otr_error_message
+                            : (invoice.last_attempt_error || invoice.notes);
+                          return noteText || '—';
+                        })()}
+                      </div>
                     </TableCell>
                     {filter === 'needs_setup' && (
                       <TableCell>
