@@ -440,162 +440,168 @@ export default function AuditCreateInvoiceDialog({
         onOpenChange(newOpen);
       }}
     >
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-            <ShieldAlert className="h-5 w-5" />
-            Override Required
-          </DialogTitle>
-          <DialogDescription>
-            {verificationState === "has_failures" 
-              ? "Some verification checks failed. You must confirm override to proceed."
-              : "Verification is incomplete. Please verify manually or run AI verification first."
-            }
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* Fixed Header */}
+        <div className="px-6 pt-6 pb-4 border-b bg-background">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <ShieldAlert className="h-5 w-5" />
+              Override Required
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {verificationState === "has_failures" 
+                ? "Some verification checks failed. Confirm override to proceed."
+                : "Verification is incomplete. Verify manually before proceeding."
+              }
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-4 py-2">
-          {/* Load Summary */}
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Load</span>
-              <span className="text-sm">{load.load_number}</span>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* Load Summary - Compact */}
+          <div className="bg-muted/50 rounded-lg p-3 grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <span className="text-muted-foreground text-xs block">Load</span>
+              <span className="font-medium">{load.load_number}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Customer</span>
-              <span className="text-sm">{load.customers?.name || "Unknown"}</span>
+            <div>
+              <span className="text-muted-foreground text-xs block">Customer</span>
+              <span className="font-medium truncate block">{load.customers?.name || "Unknown"}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Rate</span>
-              <span className="text-sm font-medium">
-                {load.rate ? `$${load.rate.toLocaleString()}` : "—"}
-              </span>
+            <div>
+              <span className="text-muted-foreground text-xs block">Rate</span>
+              <span className="font-semibold">{load.rate ? `$${load.rate.toLocaleString()}` : "—"}</span>
             </div>
           </div>
 
-          {/* Warning Banner with Audit Notice */}
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-700 dark:text-amber-300">
-                  You are overriding AI verification
-                </p>
-                <p className="text-muted-foreground mt-1">
-                  This override will be <span className="font-medium">logged for audit purposes</span>. 
-                  Ensure you have manually verified all documents before proceeding.
-                </p>
-              </div>
-            </div>
+          {/* Warning Banner - Compact */}
+          <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              This override will be <span className="font-medium text-foreground">logged for audit purposes</span>.
+            </p>
           </div>
 
-          {/* Failed Items */}
-          {failedItems.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-destructive">Failed Checks ({failedItems.length})</Label>
-              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
-                {failedItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 text-sm">
-                    <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-                    <span>{item.label}</span>
+          {/* Verification Issues - Compact Grid */}
+          {(failedItems.length > 0 || incompleteItems.length > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              {failedItems.length > 0 && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2.5">
+                  <span className="text-xs font-medium text-destructive mb-1.5 block">
+                    Failed ({failedItems.length})
+                  </span>
+                  <div className="space-y-1">
+                    {failedItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-1.5 text-xs">
+                        <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Incomplete Items */}
-          {incompleteItems.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Not Verified ({incompleteItems.length})</Label>
-              <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
-                {incompleteItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="h-4 w-4 rounded-full border border-muted-foreground/30 flex-shrink-0" />
-                    <span>{item.label}</span>
+                </div>
+              )}
+              {incompleteItems.length > 0 && (
+                <div className="bg-muted/50 border rounded-lg p-2.5">
+                  <span className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Not Verified ({incompleteItems.length})
+                  </span>
+                  <div className="space-y-1">
+                    {incompleteItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <div className="h-3 w-3 rounded-full border border-muted-foreground/30 flex-shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Invoice Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="invoice_date">Invoice Date</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="invoice_date" className="text-xs">Invoice Date</Label>
               <Input
                 id="invoice_date"
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
+            <div className="space-y-1">
+              <Label htmlFor="due_date" className="text-xs">Due Date</Label>
               <Input
                 id="due_date"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
           </div>
 
           {/* Override Confirmation */}
-          <div className="border border-amber-500/30 rounded-lg p-3 space-y-3 bg-amber-500/5">
-            <div className="flex items-start gap-2">
+          <div className="border border-amber-500/30 rounded-lg p-3 space-y-2.5 bg-amber-500/5">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="override_confirm"
                 checked={overrideConfirmed}
                 onCheckedChange={(checked) => setOverrideConfirmed(!!checked)}
-                className="mt-0.5"
               />
               <Label 
                 htmlFor="override_confirm" 
-                className="text-sm font-normal cursor-pointer leading-tight"
+                className="text-sm font-normal cursor-pointer"
               >
                 I confirm I manually verified this load
               </Label>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="override_reason" className="text-sm">
-                Override Reason <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="override_reason"
-                value={overrideReason}
-                onChange={(e) => setOverrideReason(e.target.value)}
-                placeholder="Explain why you are overriding the verification (e.g., 'Manually verified RC and BOL match expected values')"
-                className="min-h-[80px] resize-none text-sm"
-              />
-              {overrideConfirmed && !overrideReason.trim() && (
-                <p className="text-xs text-destructive">Override reason is required</p>
-              )}
-            </div>
+            {overrideConfirmed && (
+              <div className="space-y-1.5">
+                <Label htmlFor="override_reason" className="text-xs">
+                  Override Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="override_reason"
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="e.g., 'Manually verified RC and BOL match expected values'"
+                  className="min-h-[60px] resize-none text-sm"
+                  autoFocus
+                />
+                {!overrideReason.trim() && (
+                  <p className="text-xs text-destructive">Required</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        {/* Fixed Footer */}
+        <div className="px-6 py-4 border-t bg-background flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm} 
             disabled={!canProceed || createInvoiceMutation.isPending}
             variant="destructive"
-            className="gap-2"
+            size="sm"
+            className="gap-1.5"
           >
             {createInvoiceMutation.isPending ? (
               <>Creating...</>
             ) : (
               <>
-                <ShieldAlert className="h-4 w-4" />
+                <ShieldAlert className="h-3.5 w-3.5" />
                 Override & Create Invoice
               </>
             )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
