@@ -123,6 +123,7 @@ export function InviteUserDialog() {
           phone: phone.trim() || undefined,
           inviterName: profile?.full_name || user.email || "Admin",
           tenantName: effectiveTenant?.name || undefined,
+          tenantId: effectiveTenant?.id || undefined,
           isExistingUser: !!existingUser,
         },
         headers: {
