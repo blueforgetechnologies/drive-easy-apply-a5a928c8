@@ -1263,7 +1263,7 @@ export default function LoadsTab() {
                         </SelectTrigger>
                         <SelectContent>
                           {vehicles
-                            .filter((v: any) => !formData.carrier_id || v.carrier_id === formData.carrier_id)
+                            .filter((v: any) => !formData.carrier_id || !v.carrier_id || v.carrier_id === formData.carrier_id)
                             .map((v: any) => (
                               <SelectItem key={v.id} value={v.id}>{v.vehicle_number || v.id.slice(0, 8)}</SelectItem>
                             ))}
