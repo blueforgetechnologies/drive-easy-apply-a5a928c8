@@ -2560,7 +2560,10 @@ export type Database = {
           invoice_date: string | null
           invoice_number: string
           notes: string | null
+          otr_error_message: string | null
+          otr_failed_at: string | null
           otr_invoice_id: string | null
+          otr_raw_response: Json | null
           otr_status: string | null
           otr_submitted_at: string | null
           paid_at: string | null
@@ -2594,7 +2597,10 @@ export type Database = {
           invoice_date?: string | null
           invoice_number: string
           notes?: string | null
+          otr_error_message?: string | null
+          otr_failed_at?: string | null
           otr_invoice_id?: string | null
+          otr_raw_response?: Json | null
           otr_status?: string | null
           otr_submitted_at?: string | null
           paid_at?: string | null
@@ -2628,7 +2634,10 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string
           notes?: string | null
+          otr_error_message?: string | null
+          otr_failed_at?: string | null
           otr_invoice_id?: string | null
+          otr_raw_response?: Json | null
           otr_status?: string | null
           otr_submitted_at?: string | null
           paid_at?: string | null
