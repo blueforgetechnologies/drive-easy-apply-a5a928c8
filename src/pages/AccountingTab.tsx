@@ -47,21 +47,27 @@ export default function AccountingTab() {
 
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <div className="flex items-center gap-0 w-max sm:w-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => handleSubTabChange(tab.key)}
-              className={`h-[28px] px-3 text-[12px] font-medium rounded-none first:rounded-l-full last:rounded-r-full border-0 transition-all flex items-center gap-1.5 ${
-                activeSubTab === tab.key 
-                  ? 'btn-glossy-primary text-white' 
-                  : 'btn-glossy text-gray-700 hover:opacity-90'
-              }`}
-            >
-              {tab.label}
-              <span className={`${activeSubTab === tab.key ? 'badge-inset-dark' : 'badge-inset'} text-[10px] h-5`}>
-                {tab.count}
-              </span>
-            </button>
+          {tabs.map((tab, index) => (
+            <div key={tab.key} className="flex items-center">
+              {index === 1 && <div className="w-10" />}
+              <button
+                onClick={() => handleSubTabChange(tab.key)}
+                className={`h-[28px] px-3 text-[12px] font-medium transition-all flex items-center gap-1.5 ${
+                  index === 0 ? 'rounded-full' : 
+                  index === 1 ? 'rounded-l-full' :
+                  index === tabs.length - 1 ? 'rounded-r-full' : 'rounded-none'
+                } border-0 ${
+                  activeSubTab === tab.key 
+                    ? 'btn-glossy-primary text-white' 
+                    : 'btn-glossy text-gray-700 hover:opacity-90'
+                }`}
+              >
+                {tab.label}
+                <span className={`${activeSubTab === tab.key ? 'badge-inset-dark' : 'badge-inset'} text-[10px] h-5`}>
+                  {tab.count}
+                </span>
+              </button>
+            </div>
           ))}
         </div>
       </div>
