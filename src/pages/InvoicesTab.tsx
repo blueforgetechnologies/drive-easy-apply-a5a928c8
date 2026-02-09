@@ -1250,14 +1250,9 @@ export default function InvoicesTab() {
                     <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
                     {/* Delivery standalone */}
                     <TableCell className="py-2 px-3">
-                      <div>{getDeliveryStatusBadge(invoice)}</div>
-                      {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          <span className="text-success font-medium">OTR Submitted</span>
-                        </div>
-                      )}
-                      {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
-                        <div className="flex items-center gap-1 mt-0.5">
+                      <div className="flex items-center gap-1">
+                        {getDeliveryStatusBadge(invoice)}
+                        {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1271,6 +1266,11 @@ export default function InvoicesTab() {
                               <RefreshCw className="h-3 w-3" />
                             )}
                           </Button>
+                        )}
+                      </div>
+                      {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          <span className="text-success font-medium">OTR Submitted</span>
                         </div>
                       )}
                     </TableCell>
