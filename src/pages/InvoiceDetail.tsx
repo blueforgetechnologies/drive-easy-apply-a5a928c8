@@ -568,6 +568,7 @@ export default function InvoiceDetail() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Description</TableHead>
+                        <TableHead>Original Load ID</TableHead>
                         <TableHead>Billing Load ID</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         {invoice.status === "draft" && <TableHead className="w-[50px]"></TableHead>}
@@ -577,6 +578,9 @@ export default function InvoiceDetail() {
                       {invoiceLoads.map((load) => (
                         <TableRow key={load.id}>
                           <TableCell>{load.description}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {load.reference_number || "—"}
+                          </TableCell>
                           <TableCell>
                             <BillingReferenceCell
                               invoiceLoad={load}
