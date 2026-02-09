@@ -391,9 +391,9 @@ export default function InvoicesTab() {
         missing.push('billing_method');
       }
       
-      // Check customer email
+      // Check customer email (not needed for OTR billing)
       const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
-      if (!customerEmail) {
+      if (!customerEmail && invoice.billing_method !== 'otr') {
         missing.push('to_email');
       }
       
@@ -1251,12 +1251,23 @@ export default function InvoicesTab() {
                     </TableCell>
                     {/* To Email / CC (Acct) stacked */}
                     <TableCell className="py-2 px-3">
-                      <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
-                        {customerEmail || <span className="text-destructive">Missing</span>}
-                      </div>
-                      <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
-                        {accountingEmail || <span className="text-destructive">Missing</span>}
-                      </div>
+                      {invoice.billing_method === 'otr' ? (
+                        <>
+                          <div className="text-xs text-muted-foreground italic">Not Applicable</div>
+                          <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
+                            {accountingEmail || <span className="text-destructive">Missing</span>}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
+                            {customerEmail || <span className="text-destructive">Missing</span>}
+                          </div>
+                          <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
+                            {accountingEmail || <span className="text-destructive">Missing</span>}
+                          </div>
+                        </>
+                      )}
                     </TableCell>
                     {/* Billing Method / Credit Approval stacked */}
                     <TableCell className="py-2 px-3">
