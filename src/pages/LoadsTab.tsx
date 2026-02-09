@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck, History, Calculator, Loader2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Truck, MapPin, DollarSign, Download, X, Check, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, FileText, CheckCircle2, ExternalLink, ShieldCheck, History, Calculator, Loader2, User } from "lucide-react";
 import { AddCustomerDialog } from "@/components/AddCustomerDialog";
 import { RateConfirmationUploader } from "@/components/RateConfirmationUploader";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
@@ -104,6 +104,7 @@ export default function LoadsTab() {
   const [selectedLoadIds, setSelectedLoadIds] = useState<string[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [carriers, setCarriers] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: "", to: "" });
@@ -244,6 +245,8 @@ export default function LoadsTab() {
     equipment_type: "",
     vehicle_size: "",
     carrier_id: "",
+    assigned_vehicle_id: "",
+    assigned_driver_id: "",
   });
   const [defaultCarrierId, setDefaultCarrierId] = useState<string | null>(null);
   const [currentUserDispatcherId, setCurrentUserDispatcherId] = useState<string | null>(null);
@@ -272,17 +275,19 @@ export default function LoadsTab() {
       const { data: { user } } = await supabase.auth.getUser();
       
       // Use tenant-scoped queries for all tenant-owned tables
-      const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult, vehiclesApprovalResult] = await Promise.all([
+      const [driversResult, vehiclesResult, customersResult, companyProfileResult, dispatcherResult, vehiclesApprovalResult, carriersResult] = await Promise.all([
         query("applications").select("id, personal_info").eq("driver_status", "active"),
-        query("vehicles").select("id, vehicle_number, requires_load_approval").eq("status", "active"),
+        query("vehicles").select("id, vehicle_number, requires_load_approval, carrier_id, driver_1_id, driver_2_id, assigned_driver_id, truck_type, contractor_percentage").eq("status", "active"),
         query("customers").select("id, name, contact_name, mc_number, email, phone, city, state").eq("status", "active"),
         supabase.from("company_profile").select("default_carrier_id").limit(1).maybeSingle(),
         user?.id ? query("dispatchers").select("id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
         query("vehicles").select("id").eq("requires_load_approval", true),
+        query("carriers").select("id, name").eq("status", "active"),
       ]);
       
       if (driversResult.data) setDrivers(driversResult.data);
       if (vehiclesResult.data) setVehicles(vehiclesResult.data);
+      if (carriersResult.data) setCarriers(carriersResult.data);
       if (customersResult.data) setCustomers(customersResult.data);
       if (vehiclesApprovalResult.data) {
         setVehiclesRequiringApproval(vehiclesApprovalResult.data.map((v: any) => v.id));
@@ -671,6 +676,8 @@ export default function LoadsTab() {
           rate: formData.rate ? parseFloat(formData.rate) : null,
           customer_id: formData.customer_id || null,
           carrier_id: formData.carrier_id || null,
+          assigned_vehicle_id: formData.assigned_vehicle_id || null,
+          assigned_driver_id: formData.assigned_driver_id || null,
           assigned_dispatcher_id: currentUserDispatcherId || null,
           load_owner_id: currentUserDispatcherId || null,
         })
@@ -791,6 +798,8 @@ export default function LoadsTab() {
         equipment_type: "",
         vehicle_size: "",
         carrier_id: defaultCarrierId || "",
+        assigned_vehicle_id: "",
+        assigned_driver_id: "",
       });
       loadData();
     } catch (error: any) {
@@ -1207,6 +1216,81 @@ export default function LoadsTab() {
               </div>
             
               <form onSubmit={handleAddLoad} className="space-y-4">
+                {/* Carrier / Truck / Driver Assignment */}
+                <div className="rounded-lg border border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-100/80 to-blue-50/40 dark:from-blue-950/40 dark:to-blue-900/20 p-3 space-y-2">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-blue-300/60 dark:border-blue-700/60">
+                    <div className="p-1 rounded-md bg-blue-500/20">
+                      <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="font-semibold text-sm text-blue-700 dark:text-blue-400">Carrier / Truck / Driver</h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="carrier_select" className="text-xs font-medium text-muted-foreground">Carrier</Label>
+                      <Select
+                        value={formData.carrier_id}
+                        onValueChange={(value) => {
+                          setFormData(prev => ({ ...prev, carrier_id: value, assigned_vehicle_id: "", assigned_driver_id: "" }));
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select carrier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {carriers.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="truck_select" className="text-xs font-medium text-muted-foreground">Truck ID</Label>
+                      <Select
+                        value={formData.assigned_vehicle_id}
+                        onValueChange={(value) => {
+                          const vehicle = vehicles.find((v: any) => v.id === value);
+                          const driverId = vehicle?.assigned_driver_id || vehicle?.driver_1_id || "";
+                          setFormData(prev => ({
+                            ...prev,
+                            assigned_vehicle_id: value,
+                            assigned_driver_id: driverId,
+                            carrier_id: vehicle?.carrier_id || prev.carrier_id,
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select truck" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vehicles
+                            .filter((v: any) => !formData.carrier_id || v.carrier_id === formData.carrier_id)
+                            .map((v: any) => (
+                              <SelectItem key={v.id} value={v.id}>{v.vehicle_number || v.id.slice(0, 8)}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="driver_select" className="text-xs font-medium text-muted-foreground">Driver</Label>
+                      <Select
+                        value={formData.assigned_driver_id}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_driver_id: value }))}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Auto-populated from truck" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivers.map((d: any) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.personal_info?.firstName} {d.personal_info?.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Load Identification - Compact 3 column grid */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
