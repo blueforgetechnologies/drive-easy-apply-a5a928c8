@@ -1251,7 +1251,6 @@ export default function InvoicesTab() {
                     {/* Delivery standalone */}
                     <TableCell className="py-2 px-3">
                       <div>{getDeliveryStatusBadge(invoice)}</div>
-                      {/* OTR-specific inline detail */}
                       {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
                         <div className="text-xs text-muted-foreground mt-0.5">
                           <span className="text-success font-medium">OTR Submitted</span>
@@ -1259,7 +1258,6 @@ export default function InvoicesTab() {
                       )}
                       {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className="badge-puffy badge-puffy-red text-[10px]">OTR Failed</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1276,11 +1274,15 @@ export default function InvoicesTab() {
                         </div>
                       )}
                     </TableCell>
+                    {/* Amount / Balance stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
+                      <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
+                    </TableCell>
                     {/* Last Attempt / Notes stacked */}
                     <TableCell className="py-2 px-3">
                       <div className="text-xs">
                         {(() => {
-                          // For OTR failures, show the failed_at timestamp
                           const attemptDate = invoice.billing_method === 'otr' && invoice.otr_failed_at
                             ? invoice.otr_failed_at
                             : invoice.last_attempt_at;
@@ -1300,7 +1302,6 @@ export default function InvoicesTab() {
                           : (invoice.last_attempt_error || invoice.notes || '')
                       }>
                         {(() => {
-                          // Priority: OTR error > last attempt error > notes
                           const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
                             ? invoice.otr_error_message
                             : (invoice.last_attempt_error || invoice.notes);
