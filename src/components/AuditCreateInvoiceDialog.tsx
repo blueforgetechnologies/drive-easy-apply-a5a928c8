@@ -148,14 +148,62 @@ export default function AuditCreateInvoiceDialog({
       createdInvoiceNumber = String(invoiceNumber);
 
       // ============================================================
+      // STEP 1.5: Trigger fresh broker credit check via OTR API
+      // ============================================================
+      let billingMethod: string | null = null;
+      
+      // Look up the customer's MC number for the credit check
+      let customerMcNumber: string | null = null;
+      if (load.customer_id) {
+        const { data: custData } = await supabase
+          .from("customers")
+          .select("mc_number")
+          .eq("id", load.customer_id)
+          .single();
+        customerMcNumber = (custData as any)?.mc_number || null;
+      }
+
+      if (customerMcNumber) {
+        toast.loading("Checking broker credit...", { id: "audit-invoice" });
+        try {
+          const { data: creditResult, error: creditError } = await supabase.functions.invoke(
+            "check-broker-credit",
+            {
+              body: {
+                tenant_id: tenantId,
+                mc_number: customerMcNumber,
+                broker_name: customer?.name || "Unknown",
+                customer_id: load.customer_id,
+                force_check: true,
+              },
+            }
+          );
+
+          if (!creditError && creditResult?.success) {
+            const freshStatus = creditResult.approval_status;
+            console.log(`[audit-invoice] Fresh broker credit status: ${freshStatus}`);
+            billingMethod = freshStatus === 'approved' ? 'otr' : 'direct_email';
+          } else {
+            console.warn("[audit-invoice] Broker credit check failed, falling back to stored status:", creditError || creditResult);
+            // Fallback to stored status
+            const creditApproval = customer?.otr_approval_status || customer?.factoring_approval;
+            billingMethod = creditApproval?.toLowerCase() === 'approved' ? 'otr' : 'direct_email';
+          }
+        } catch (e) {
+          console.warn("[audit-invoice] Broker credit check exception, falling back:", e);
+          const creditApproval = customer?.otr_approval_status || customer?.factoring_approval;
+          billingMethod = creditApproval?.toLowerCase() === 'approved' ? 'otr' : 'direct_email';
+        }
+      } else {
+        // No MC number available — can't check OTR, default to direct email
+        console.log("[audit-invoice] No MC number for customer, defaulting to direct_email");
+        billingMethod = 'direct_email';
+      }
+
+      // ============================================================
       // STEP 2: Create invoice record (status='draft')
       // ============================================================
       toast.loading("Creating invoice record...", { id: "audit-invoice" });
-      
-      // Determine billing method based on credit approval
-      const creditApproval = customer?.otr_approval_status || customer?.factoring_approval;
-      const isApproved = creditApproval?.toLowerCase() === 'approved';
-      const billingMethod = isApproved ? 'otr' : 'direct_email';
 
       const invoiceData = {
         tenant_id: tenantId,
