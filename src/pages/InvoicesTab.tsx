@@ -761,38 +761,37 @@ export default function InvoicesTab() {
   const getDeliveryStatusBadge = (inv: InvoiceWithDeliveryInfo) => {
     switch (inv.delivery_status) {
       case 'delivered':
-        return <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Delivered</Badge>;
+        return <span className="badge-puffy badge-puffy-green text-xs">Delivered</span>;
       case 'failed':
-        return <Badge variant="destructive" className="text-xs">Failed</Badge>;
+        return <span className="badge-puffy badge-puffy-red text-xs">Failed</span>;
       case 'sending':
-        // Show raw status in tooltip for sending state
         const rawStatus = inv.last_attempt_status || 'sending';
         return (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs">Sending</Badge>
+                <span className="badge-puffy badge-puffy-amber text-xs">Sending</span>
               </TooltipTrigger>
               <TooltipContent>Status: {rawStatus}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );
       case 'ready':
-        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-xs">Ready</Badge>;
+        return <span className="badge-puffy badge-puffy-blue text-xs">Ready</span>;
       case 'needs_setup':
       default:
-        return <Badge variant="outline" className="text-xs">Needs Setup</Badge>;
+        return <span className="badge-puffy badge-puffy-outline text-xs">Needs Setup</span>;
     }
   };
   
   const getBillingMethodBadge = (method: string | null) => {
     switch (method) {
       case 'otr':
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">OTR Solutions</Badge>;
+        return <span className="badge-puffy badge-puffy-amber text-xs">OTR Solutions</span>;
       case 'direct_email':
-        return <Badge variant="secondary" className="text-xs">Bill Broker</Badge>;
+        return <span className="badge-puffy badge-puffy-secondary text-xs">Bill Broker</span>;
       default:
-        return <Badge variant="outline" className="text-xs text-muted-foreground">Not Set</Badge>;
+        return <span className="badge-puffy badge-puffy-outline text-xs">Not Set</span>;
     }
   };
 
@@ -815,11 +814,11 @@ export default function InvoicesTab() {
     
     switch (inv.credit_approval_status) {
       case 'approved':
-        return wrapWithSource(<Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">Approved</Badge>);
+        return wrapWithSource(<span className="badge-puffy badge-puffy-green text-xs">Approved</span>);
       case 'denied':
-        return wrapWithSource(<Badge variant="destructive" className="text-xs">Denied</Badge>);
+        return wrapWithSource(<span className="badge-puffy badge-puffy-red text-xs">Denied</span>);
       case 'pending':
-        return wrapWithSource(<Badge variant="secondary" className="text-xs">Pending</Badge>);
+        return wrapWithSource(<span className="badge-puffy badge-puffy-secondary text-xs">Pending</span>);
       case 'unknown':
       default:
         return (
@@ -922,10 +921,10 @@ export default function InvoicesTab() {
     
     if (invoice.otr_submitted_at) {
       return (
-        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
+        <span className="badge-puffy badge-puffy-green text-xs inline-flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
           Submitted
-        </Badge>
+        </span>
       );
     }
     
@@ -936,10 +935,10 @@ export default function InvoicesTab() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="text-xs cursor-help">
-                    <AlertCircle className="h-3 w-3 mr-1" />
+                  <span className="badge-puffy badge-puffy-red text-xs inline-flex items-center gap-1 cursor-help">
+                    <AlertCircle className="h-3 w-3" />
                     Failed
-                  </Badge>
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="left" className="max-w-xs">
                   <p className="font-semibold text-xs mb-1">OTR Response:</p>
@@ -976,9 +975,9 @@ export default function InvoicesTab() {
     }
     
     return (
-      <Badge variant="outline" className="text-xs">
+      <span className="badge-puffy badge-puffy-outline text-xs">
         {invoice.otr_status || '—'}
-      </Badge>
+      </span>
     );
   };
 
@@ -1164,27 +1163,38 @@ export default function InvoicesTab() {
         <Table>
           <TableHeader>
             <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-              <TableHead className="text-primary font-medium uppercase text-xs">Invoice #</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Customer</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Billing Method</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Credit Approved</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">To Email</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">CC (Acct)</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Docs</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Delivery</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Last Attempt</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Amount</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Balance</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">OTR Status</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Invoice #</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Customer</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>To Email</div>
+                <div className="text-muted-foreground font-normal normal-case">CC (Acct)</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Billing Method</div>
+                <div className="text-muted-foreground font-normal normal-case">Credit Approval</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Docs</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Delivery</div>
+                <div className="text-muted-foreground font-normal normal-case">Last Attempt</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Amount</div>
+                <div className="text-muted-foreground font-normal normal-case">Balance</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>OTR Status</div>
+                <div className="text-muted-foreground font-normal normal-case">Notes</div>
+              </TableHead>
               {(filter === 'needs_setup' || filter === 'ready') && (
-                <TableHead className="text-primary font-medium uppercase text-xs">Actions</TableHead>
+                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 13 : 12} className="py-12 text-center">
+                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 9 : 8} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1202,13 +1212,13 @@ export default function InvoicesTab() {
                     className="cursor-pointer hover:bg-muted/50" 
                     onClick={() => viewInvoiceDetail(invoice.id)}
                   >
-                    <TableCell className="font-medium text-primary">
+                    <TableCell className="font-medium text-primary py-2 px-3">
                       <div className="flex items-center gap-2">
                         {invoice.invoice_number}
                         {getMissingInfoTooltip(invoice)}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2 px-3">
                       {invoice.customer_id ? (
                         <div
                           className="cursor-pointer hover:underline"
@@ -1226,42 +1236,62 @@ export default function InvoicesTab() {
                         <div className="text-sm">{invoice.customer_name || "—"}</div>
                       )}
                     </TableCell>
-                    <TableCell>{getBillingMethodBadge(invoice.billing_method)}</TableCell>
-                    <TableCell>{getCreditApprovalBadge(invoice)}</TableCell>
-                    <TableCell className="text-xs max-w-[120px] truncate" title={customerEmail || ""}>
-                      {customerEmail || <span className="text-red-500">Missing</span>}
+                    {/* To Email / CC (Acct) stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
+                        {customerEmail || <span className="text-destructive">Missing</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
+                        {accountingEmail || <span className="text-destructive">Missing</span>}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-xs max-w-[120px] truncate" title={accountingEmail || ""}>
-                      {accountingEmail || <span className="text-red-500">Missing</span>}
+                    {/* Billing Method / Credit Approval stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
+                      <div>{getCreditApprovalBadge(invoice)}</div>
                     </TableCell>
-                    <TableCell>{getDocsChecklist(invoice)}</TableCell>
-                    <TableCell>{getDeliveryStatusBadge(invoice)}</TableCell>
-                    <TableCell className="text-xs">
-                      {invoice.last_attempt_at ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className={invoice.last_attempt_status === 'failed' ? 'text-red-500' : ''}>
-                                {formatDistanceToNow(new Date(invoice.last_attempt_at), { addSuffix: true })}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs">
-                                <p>{format(new Date(invoice.last_attempt_at), "MMM d, yyyy h:mm a")}</p>
-                                {invoice.last_attempt_error && (
-                                  <p className="text-red-400 mt-1">{invoice.last_attempt_error}</p>
-                                )}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                    <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
+                    {/* Delivery / Last Attempt stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div className="mb-1">{getDeliveryStatusBadge(invoice)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {invoice.last_attempt_at ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={invoice.last_attempt_status === 'failed' ? 'text-destructive' : ''}>
+                                  {formatDistanceToNow(new Date(invoice.last_attempt_at), { addSuffix: true })}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs">
+                                  <p>{format(new Date(invoice.last_attempt_at), "MMM d, yyyy h:mm a")}</p>
+                                  {invoice.last_attempt_error && (
+                                    <p className="text-destructive mt-1">{invoice.last_attempt_error}</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span>—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    {/* Amount / Balance stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
+                      <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
+                    </TableCell>
+                    {/* OTR Status / Notes stacked */}
+                    <TableCell className="py-2 px-3">
+                      <div>{getOtrStatusBadge(invoice)}</div>
+                      {invoice.notes && (
+                        <div className="text-xs text-muted-foreground truncate max-w-[160px] mt-0.5" title={invoice.notes}>
+                          {invoice.notes}
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell>{formatCurrency(invoice.total_amount)}</TableCell>
-                    <TableCell>{formatCurrency(invoice.balance_due)}</TableCell>
-                    <TableCell>{getOtrStatusBadge(invoice)}</TableCell>
                     {filter === 'needs_setup' && (
                       <TableCell>
                         <TooltipProvider>

@@ -199,12 +199,12 @@ export default function ReadyForAuditTab() {
                         <div className="flex items-center gap-2">
                           <div className="font-medium text-sm">{load.load_number}</div>
                           {isReturned && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-blue-400 to-blue-600 text-white shadow-sm" title="Invoice was cancelled - load returned to audit">
+                            <span className="badge-puffy badge-puffy-blue text-[10px]" title="Invoice was cancelled - load returned to audit">
                               Returned
                             </span>
                           )}
                           {isSetAside && !isReturned && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-b from-amber-400 to-amber-600 text-white shadow-sm">
+                            <span className="badge-puffy badge-puffy-amber text-[10px]">
                               Set Aside
                             </span>
                           )}
