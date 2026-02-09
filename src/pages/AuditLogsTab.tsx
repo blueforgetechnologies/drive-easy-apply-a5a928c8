@@ -41,13 +41,17 @@ export default function AuditLogsTab() {
     log.field_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getActionColor = (action: string) => {
+  const getActionBadgeClass = (action: string) => {
     switch (action) {
-      case "created": return "bg-green-500";
-      case "updated": return "bg-blue-500";
-      case "deleted": return "bg-red-500";
-      case "status_changed": return "bg-yellow-500";
-      default: return "bg-gray-500";
+      case "created": return "badge-puffy badge-puffy-green";
+      case "updated": return "badge-puffy badge-puffy-blue";
+      case "deleted": return "badge-puffy badge-puffy-red";
+      case "status_changed": return "badge-puffy badge-puffy-amber";
+      case "hire": return "badge-puffy badge-puffy-green";
+      case "approve": return "badge-puffy badge-puffy-blue";
+      case "invoice_return_to_audit": return "badge-puffy badge-puffy-blue";
+      case "audit_create_invoice_override": return "badge-puffy badge-puffy-amber";
+      default: return "badge-puffy badge-puffy-outline";
     }
   };
 
@@ -77,20 +81,26 @@ export default function AuditLogsTab() {
         <Table>
           <TableHeader>
             <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
-              <TableHead className="text-primary font-medium uppercase text-xs">Action</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Entity Type</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Field</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Old Value</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">New Value</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">User</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">Timestamp</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs">IP Address</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Action</div>
+                <div className="text-muted-foreground font-normal normal-case">Entity Type</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Field</TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Old Value</div>
+                <div className="text-muted-foreground font-normal normal-case">New Value</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>User</div>
+                <div className="text-muted-foreground font-normal normal-case">IP Address</div>
+              </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Timestamp</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center">
+                <TableCell colSpan={5} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No audit logs</p>
@@ -101,18 +111,27 @@ export default function AuditLogsTab() {
             ) : (
               filteredLogs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-muted/50">
-                  <TableCell>
-                    <Badge className={getActionColor(log.action)}>
-                      {log.action}
-                    </Badge>
+                  {/* Action / Entity Type stacked */}
+                  <TableCell className="py-2 px-3">
+                    <div className="mb-1">
+                      <span className={`${getActionBadgeClass(log.action)} text-xs`}>
+                        {log.action}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground capitalize">{log.entity_type}</div>
                   </TableCell>
-                  <TableCell className="font-medium capitalize">{log.entity_type}</TableCell>
-                  <TableCell className="text-muted-foreground">{log.field_name || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-[200px] truncate">{log.old_value || "—"}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{log.new_value || "—"}</TableCell>
-                  <TableCell>{log.user_name || "System"}</TableCell>
-                  <TableCell>{format(new Date(log.timestamp), "MM/dd/yyyy h:mm a")}</TableCell>
-                  <TableCell className="text-muted-foreground">{log.ip_address || "—"}</TableCell>
+                  <TableCell className="py-2 px-3 text-sm text-muted-foreground">{log.field_name || "—"}</TableCell>
+                  {/* Old Value / New Value stacked */}
+                  <TableCell className="py-2 px-3">
+                    <div className="text-xs text-muted-foreground truncate max-w-[250px]">{log.old_value || "—"}</div>
+                    <div className="text-xs truncate max-w-[250px] mt-0.5">{log.new_value || "—"}</div>
+                  </TableCell>
+                  {/* User / IP Address stacked */}
+                  <TableCell className="py-2 px-3">
+                    <div className="text-sm">{log.user_name || "System"}</div>
+                    <div className="text-xs text-muted-foreground">{log.ip_address || "—"}</div>
+                  </TableCell>
+                  <TableCell className="py-2 px-3 text-sm">{format(new Date(log.timestamp), "MM/dd/yyyy h:mm a")}</TableCell>
                 </TableRow>
               ))
             )}
