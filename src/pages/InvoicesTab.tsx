@@ -697,6 +697,28 @@ export default function InvoicesTab() {
     }
   };
 
+  const handleBackToNeedsSetup = async (invoice: InvoiceWithDeliveryInfo) => {
+    if (!tenantId) {
+      toast.error("Tenant context missing");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("invoices" as any)
+        .update({ billing_method: null } as any)
+        .eq("id", invoice.id)
+        .eq("tenant_id", tenantId);
+
+      if (error) throw error;
+
+      toast.success(`Invoice ${invoice.invoice_number} moved back to Needs Setup`);
+      loadData();
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`);
+    }
+  };
+
   const handleSendInvoice = async (invoice: InvoiceWithDeliveryInfo) => {
     if (!tenantId) {
       toast.error("Tenant context missing");
@@ -1367,22 +1389,48 @@ export default function InvoicesTab() {
                     )}
                     {filter === 'ready' && (
                       <TableCell>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                          disabled={sendingInvoiceId === invoice.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSendInvoice(invoice);
-                          }}
-                        >
-                          {sendingInvoiceId === invoice.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Send className="h-3.5 w-3.5" />
-                          )}
-                          {invoice.billing_method === 'otr' ? 'Submit' : 'Send'}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                            disabled={sendingInvoiceId === invoice.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendInvoice(invoice);
+                            }}
+                          >
+                            {sendingInvoiceId === invoice.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                            {invoice.billing_method === 'otr' ? 'Submit' : 'Send'}
+                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBackToNeedsSetup(invoice);
+                                  }}
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  Back to Need Setup
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-[220px] text-xs">
+                                <p className="font-medium mb-1">Back to Need Setup</p>
+                                <p className="text-muted-foreground">
+                                  Clears billing method so the invoice moves back to Needs Setup for reconfiguration.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
