@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -48,6 +48,8 @@ interface AuditCreateInvoiceDialogProps {
   rateConfirmationItems?: VerificationItem[];
   /** Bill of Lading verification items from the audit sidebar */
   billOfLadingItems?: VerificationItem[];
+  /** Called after invoice is successfully created */
+  onSuccess?: () => void;
 }
 
 export default function AuditCreateInvoiceDialog({
@@ -57,8 +59,9 @@ export default function AuditCreateInvoiceDialog({
   auditNotes = "",
   rateConfirmationItems = [],
   billOfLadingItems = [],
+  onSuccess,
 }: AuditCreateInvoiceDialogProps) {
-  const navigate = useNavigate();
+  
   const queryClient = useQueryClient();
   const tenantId = useTenantId();
 
@@ -302,9 +305,7 @@ export default function AuditCreateInvoiceDialog({
 
       toast.success(`Invoice ${invoiceNumber} created successfully`);
       onOpenChange(false);
-      
-      // Navigate to invoice detail
-      navigate(`/dashboard/invoice/${invoiceId}`);
+      onSuccess?.();
     },
     onError: (error) => {
       console.error("Create invoice error:", error);
