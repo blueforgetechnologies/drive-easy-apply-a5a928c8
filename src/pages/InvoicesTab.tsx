@@ -1235,7 +1235,7 @@ export default function InvoicesTab() {
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Payment</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                <div>Last Attempt</div>
+                <div>{['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter) ? 'Delivered On' : 'Last Attempt'}</div>
                 <div className="text-muted-foreground font-normal normal-case">Notes</div>
               </TableHead>
               {(filter === 'needs_setup' || filter === 'ready') && (
@@ -1404,10 +1404,26 @@ export default function InvoicesTab() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    {/* Last Attempt / Notes stacked */}
+                    {/* Delivered On / Last Attempt + Notes stacked */}
                     <TableCell className="py-2 px-3">
                       <div className="text-xs">
                         {(() => {
+                          const isDeliveredContext = ['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter);
+                          if (isDeliveredContext) {
+                            // Show delivered/accepted date
+                            const deliveredDate = invoice.billing_method === 'otr' 
+                              ? invoice.otr_submitted_at 
+                              : invoice.sent_at;
+                            if (deliveredDate) {
+                              return (
+                                <span className="text-success">
+                                  {format(new Date(deliveredDate), "MMM d, h:mm a")}
+                                </span>
+                              );
+                            }
+                            return <span className="text-muted-foreground">—</span>;
+                          }
+                          // Failed/other tabs: show last attempt
                           const attemptDate = invoice.billing_method === 'otr' && invoice.otr_failed_at
                             ? invoice.otr_failed_at
                             : invoice.last_attempt_at;
