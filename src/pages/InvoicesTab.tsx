@@ -36,6 +36,7 @@ interface Invoice {
   otr_error_message: string | null;
   otr_raw_response: any | null;
   otr_failed_at: string | null;
+  payment_status: 'pending' | 'paid';
   billing_method: 'unknown' | 'otr' | 'direct_email' | null;
   customers?: { 
     mc_number: string | null; 
@@ -1212,6 +1213,7 @@ export default function InvoicesTab() {
                 <div>Amount</div>
                 <div className="text-muted-foreground font-normal normal-case">Balance</div>
               </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Payment</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Last Attempt</div>
                 <div className="text-muted-foreground font-normal normal-case">Notes</div>
@@ -1224,7 +1226,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 10 : 9} className="py-12 text-center">
+                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 11 : 10} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1327,6 +1329,53 @@ export default function InvoicesTab() {
                     <TableCell className="py-2 px-3">
                       <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
                       <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
+                    </TableCell>
+                    {/* Payment Status */}
+                    <TableCell className="py-2 px-3">
+                      <Select
+                        value={(invoice as any).payment_status || 'pending'}
+                        onValueChange={async (value) => {
+                          try {
+                            const { error } = await supabase
+                              .from('invoices' as any)
+                              .update({ payment_status: value } as any)
+                              .eq('id', invoice.id);
+                            if (error) throw error;
+                            setAllInvoices(prev => prev.map(inv => 
+                              inv.id === invoice.id ? { ...inv, payment_status: value as 'pending' | 'paid' } : inv
+                            ));
+                            toast.success(`Payment status updated to ${value}`);
+                          } catch (err) {
+                            toast.error('Failed to update payment status');
+                            console.error(err);
+                          }
+                        }}
+                      >
+                        <SelectTrigger 
+                          className={`h-7 w-[100px] text-xs font-medium border-0 ${
+                            (invoice as any).payment_status === 'paid' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                              : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                              Pending
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="paid">
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-green-500" />
+                              Paid
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     {/* Last Attempt / Notes stacked */}
                     <TableCell className="py-2 px-3">
