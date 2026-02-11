@@ -104,7 +104,7 @@ interface LoadDocument {
   uploaded_at: string;
 }
 
-type OperationalTab = 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'paid' | 'overdue';
+type OperationalTab = 'needs_setup' | 'ready' | 'delivered' | 'failed' | 'pending_payment' | 'paid' | 'overdue';
 
 // Helper to chunk arrays for IN queries
 function chunkArray<T>(arr: T[], size: number): T[][] {
@@ -527,12 +527,18 @@ export default function InvoicesTab() {
     const ready: InvoiceWithDeliveryInfo[] = [];
     const delivered: InvoiceWithDeliveryInfo[] = [];
     const failed: InvoiceWithDeliveryInfo[] = [];
+    const pending_payment: InvoiceWithDeliveryInfo[] = [];
     const paid: InvoiceWithDeliveryInfo[] = [];
     const overdue: InvoiceWithDeliveryInfo[] = [];
 
     for (const inv of invoicesWithDeliveryInfo) {
-      if (inv.status === 'paid') {
+      // Payment status takes priority for routing to Paid/Pending tabs
+      if (inv.payment_status === 'paid' || inv.status === 'paid') {
         paid.push(inv);
+        continue;
+      }
+      if (inv.payment_status === 'pending' && (inv.delivery_status === 'delivered' || inv.delivery_status === 'failed')) {
+        pending_payment.push(inv);
         continue;
       }
       if (inv.status === 'overdue') {
@@ -549,7 +555,6 @@ export default function InvoicesTab() {
           break;
         case 'ready':
         case 'sending':
-          // Both ready and sending go to the Ready tab
           ready.push(inv);
           break;
         case 'delivered':
@@ -561,7 +566,7 @@ export default function InvoicesTab() {
       }
     }
 
-    return { needs_setup, ready, delivered, failed, paid, overdue };
+    return { needs_setup, ready, delivered, failed, pending_payment, paid, overdue };
   }, [invoicesWithDeliveryInfo]);
 
   // Get filtered invoices based on current tab
@@ -1056,6 +1061,7 @@ export default function InvoicesTab() {
     ready: categorizedInvoices.ready.length,
     delivered: categorizedInvoices.delivered.length,
     failed: categorizedInvoices.failed.length,
+    pending_payment: categorizedInvoices.pending_payment.length,
     paid: categorizedInvoices.paid.length,
     overdue: categorizedInvoices.overdue.length,
   };
@@ -1145,6 +1151,7 @@ export default function InvoicesTab() {
               { key: "delivered", label: "Delivered", icon: CheckCircle2, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green", tooltip: "Successfully sent via email or OTR" },
               { key: "failed", label: "Failed", icon: XCircle, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red", tooltip: "Delivery failed — retry available" },
               { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green", tooltip: "Fully paid invoices" },
+              { key: "pending_payment", label: "Pending", icon: null, activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset-soft-amber", tooltip: "Delivered invoices awaiting payment" },
               { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red", tooltip: "Past due date with balance remaining" },
             ].map((status) => (
               <Tooltip key={status.key}>
@@ -1336,13 +1343,18 @@ export default function InvoicesTab() {
                         value={(invoice as any).payment_status || 'pending'}
                         onValueChange={async (value) => {
                           try {
+                            const updateData: any = { payment_status: value };
+                            // When marked as paid, also set invoice status to 'paid'
+                            if (value === 'paid') {
+                              updateData.status = 'paid';
+                            }
                             const { error } = await supabase
                               .from('invoices' as any)
-                              .update({ payment_status: value } as any)
+                              .update(updateData)
                               .eq('id', invoice.id);
                             if (error) throw error;
                             setAllInvoices(prev => prev.map(inv => 
-                              inv.id === invoice.id ? { ...inv, payment_status: value as 'pending' | 'paid' } : inv
+                              inv.id === invoice.id ? { ...inv, payment_status: value as 'pending' | 'paid', ...(value === 'paid' ? { status: 'paid' } : {}) } : inv
                             ));
                             toast.success(`Payment status updated to ${value}`);
                           } catch (err) {
