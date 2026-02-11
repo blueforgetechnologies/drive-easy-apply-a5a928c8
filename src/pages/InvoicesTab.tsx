@@ -1281,7 +1281,7 @@ export default function InvoicesTab() {
                   {filter === 'paid' ? 'Paid Date' : 'Notes'}
                 </div>
               </TableHead>
-              {filter === 'paid' && (
+              {(filter === 'paid' || filter === 'pending_payment') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Marked By</TableHead>
               )}
               {(filter === 'needs_setup' || filter === 'ready' || filter === 'failed') && (
@@ -1292,7 +1292,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={filter === 'paid' ? 11 : (filter === 'needs_setup' || filter === 'ready' || filter === 'failed') ? 11 : 10} className="py-12 text-center">
+                <TableCell colSpan={(filter === 'paid' || filter === 'pending_payment') ? 11 : (filter === 'needs_setup' || filter === 'ready' || filter === 'failed') ? 11 : 10} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1404,19 +1404,25 @@ export default function InvoicesTab() {
                           try {
                             const actualValue = value === '_unset' ? null : value;
                             const updateData: any = { payment_status: actualValue };
+                            // Get current user's name for any payment status change
+                            const { data: { user } } = await supabase.auth.getUser();
+                            let userName: string | null = null;
+                            if (user) {
+                              const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('full_name')
+                                .eq('id', user.id)
+                                .single();
+                              userName = profile?.full_name || user.email || null;
+                            }
                             if (actualValue === 'paid') {
                               updateData.status = 'paid';
                               updateData.paid_at = new Date().toISOString();
-                              // Get current user's name
-                              const { data: { user } } = await supabase.auth.getUser();
-                              if (user) {
-                                const { data: profile } = await supabase
-                                  .from('profiles')
-                                  .select('full_name')
-                                  .eq('id', user.id)
-                                  .single();
-                                updateData.paid_by_name = profile?.full_name || user.email;
-                              }
+                              updateData.paid_by_name = userName;
+                            } else if (actualValue === 'pending') {
+                              updateData.status = 'ready';
+                              updateData.paid_at = null;
+                              updateData.paid_by_name = userName;
                             } else {
                               updateData.paid_at = null;
                               updateData.paid_by_name = null;
@@ -1520,7 +1526,7 @@ export default function InvoicesTab() {
                         </div>
                       )}
                     </TableCell>
-                    {filter === 'paid' && (
+                    {(filter === 'paid' || filter === 'pending_payment') && (
                       <TableCell className="py-2 px-3">
                         <span className="text-xs text-muted-foreground">
                           {(invoice as any).paid_by_name || '—'}
