@@ -726,6 +726,45 @@ export default function InvoicesTab() {
     }
   };
 
+  const handleBackToReady = async (invoice: InvoiceWithDeliveryInfo) => {
+    if (!tenantId) {
+      toast.error("Tenant context missing");
+      return;
+    }
+
+    try {
+      const updatePayload: any = {
+        status: 'ready',
+        delivery_status: null,
+      };
+
+      // Clear OTR failure fields if OTR method
+      if (invoice.billing_method === 'otr') {
+        updatePayload.otr_status = null;
+        updatePayload.otr_error_message = null;
+        updatePayload.otr_failed_at = null;
+        updatePayload.otr_submitted_at = null;
+        updatePayload.otr_raw_response = null;
+      }
+
+      // Clear direct email failure fields
+      updatePayload.sent_at = null;
+
+      const { error } = await supabase
+        .from("invoices" as any)
+        .update(updatePayload)
+        .eq("id", invoice.id)
+        .eq("tenant_id", tenantId);
+
+      if (error) throw error;
+
+      toast.success(`Invoice ${invoice.invoice_number} moved back to Ready to Send`);
+      loadData();
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`);
+    }
+  };
+
   const handleSendInvoice = async (invoice: InvoiceWithDeliveryInfo) => {
     if (!tenantId) {
       toast.error("Tenant context missing");
@@ -1238,7 +1277,7 @@ export default function InvoicesTab() {
                 <div>{['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter) ? 'Delivered On' : 'Last Attempt'}</div>
                 <div className="text-muted-foreground font-normal normal-case">Notes</div>
               </TableHead>
-              {(filter === 'needs_setup' || filter === 'ready') && (
+              {(filter === 'needs_setup' || filter === 'ready' || filter === 'failed') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
               )}
             </TableRow>
@@ -1523,6 +1562,34 @@ export default function InvoicesTab() {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
+                      </TableCell>
+                    )}
+                    {filter === 'failed' && (
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBackToReady(invoice);
+                                }}
+                              >
+                                <Undo2 className="h-3.5 w-3.5" />
+                                Back to Ready
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[220px] text-xs">
+                              <p className="font-medium mb-1">Back to Ready to Send</p>
+                              <p className="text-muted-foreground">
+                                Clears failure state so the invoice can be re-submitted.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                     )}
                   </TableRow>
