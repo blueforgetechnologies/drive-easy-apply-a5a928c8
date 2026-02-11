@@ -2573,7 +2573,7 @@ export type Database = {
           payment_date: string | null
           payment_method: string | null
           payment_reference: string | null
-          payment_status: string
+          payment_status: string | null
           payment_terms: string | null
           sent_at: string | null
           status: string | null
@@ -2611,7 +2611,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
-          payment_status?: string
+          payment_status?: string | null
           payment_terms?: string | null
           sent_at?: string | null
           status?: string | null
@@ -2649,7 +2649,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
-          payment_status?: string
+          payment_status?: string | null
           payment_terms?: string | null
           sent_at?: string | null
           status?: string | null

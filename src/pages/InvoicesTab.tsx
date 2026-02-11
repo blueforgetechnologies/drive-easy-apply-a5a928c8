@@ -36,7 +36,7 @@ interface Invoice {
   otr_error_message: string | null;
   otr_raw_response: any | null;
   otr_failed_at: string | null;
-  payment_status: 'pending' | 'paid' | 'delivered' | 'failed';
+  payment_status: 'pending' | 'paid' | null;
   billing_method: 'unknown' | 'otr' | 'direct_email' | null;
   customers?: { 
     mc_number: string | null; 
@@ -532,17 +532,13 @@ export default function InvoicesTab() {
     const overdue: InvoiceWithDeliveryInfo[] = [];
 
     for (const inv of invoicesWithDeliveryInfo) {
-      // Payment status drives tab routing
+      // Payment status: paid → Paid tab, pending → Pending tab
       if (inv.payment_status === 'paid' || inv.status === 'paid') {
         paid.push(inv);
         continue;
       }
       if (inv.payment_status === 'pending') {
         pending_payment.push(inv);
-        continue;
-      }
-      if (inv.payment_status === 'failed') {
-        failed.push(inv);
         continue;
       }
       if (inv.status === 'overdue') {
@@ -553,12 +549,7 @@ export default function InvoicesTab() {
         continue;
       }
 
-      // For invoices with payment_status = 'delivered', route by delivery_status
-      if (inv.payment_status === 'delivered' && inv.delivery_status === 'delivered') {
-        delivered.push(inv);
-        continue;
-      }
-
+      // payment_status is NULL — route by delivery_status
       switch (inv.delivery_status) {
         case 'needs_setup':
           needs_setup.push(inv);
@@ -760,15 +751,12 @@ export default function InvoicesTab() {
         if (otrError) {
           console.error("OTR submission error:", otrError);
           toast.error(`OTR submission failed: ${otrError.message}`);
-          await supabase.from('invoices' as any).update({ payment_status: 'failed' } as any).eq('id', invoice.id);
           loadData();
         } else if (otrResult?.success) {
           toast.success(`Invoice ${invoice.invoice_number} submitted to OTR Solutions`);
-          await supabase.from('invoices' as any).update({ payment_status: 'delivered' } as any).eq('id', invoice.id);
           loadData();
         } else {
           toast.error(`OTR rejected: ${otrResult?.error || 'Unknown error'}`);
-          await supabase.from('invoices' as any).update({ payment_status: 'failed' } as any).eq('id', invoice.id);
           loadData();
         }
       } else if (invoice.billing_method === 'direct_email') {
@@ -786,16 +774,11 @@ export default function InvoicesTab() {
         if (emailError) {
           console.error("Email send error:", emailError);
           toast.error(`Email failed: ${emailError.message}`);
-          await supabase.from('invoices' as any).update({ payment_status: 'failed' } as any).eq('id', invoice.id);
-          loadData();
         } else if (emailResult?.success) {
           toast.success(`Invoice ${invoice.invoice_number} sent via email`);
-          await supabase.from('invoices' as any).update({ payment_status: 'delivered' } as any).eq('id', invoice.id);
           loadData();
         } else {
           toast.error(`Email failed: ${emailResult?.error || 'Unknown error'}`);
-          await supabase.from('invoices' as any).update({ payment_status: 'failed' } as any).eq('id', invoice.id);
-          loadData();
         }
       } else {
         toast.error("No billing method configured");
@@ -1358,11 +1341,12 @@ export default function InvoicesTab() {
                     {/* Payment Status */}
                     <TableCell className="py-2 px-3">
                       <Select
-                        value={(invoice as any).payment_status || 'pending'}
+                        value={(invoice as any).payment_status || '_unset'}
                         onValueChange={async (value) => {
                           try {
-                            const updateData: any = { payment_status: value };
-                            if (value === 'paid') {
+                            const actualValue = value === '_unset' ? null : value;
+                            const updateData: any = { payment_status: actualValue };
+                            if (actualValue === 'paid') {
                               updateData.status = 'paid';
                             }
                             const { error } = await supabase
@@ -1371,9 +1355,9 @@ export default function InvoicesTab() {
                               .eq('id', invoice.id);
                             if (error) throw error;
                             setAllInvoices(prev => prev.map(inv => 
-                              inv.id === invoice.id ? { ...inv, payment_status: value as any, ...(value === 'paid' ? { status: 'paid' } : {}) } : inv
+                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, ...(actualValue === 'paid' ? { status: 'paid' } : {}) } : inv
                             ));
-                            toast.success(`Payment status updated to ${value}`);
+                            toast.success(`Payment status updated to ${actualValue || 'unset'}`);
                           } catch (err) {
                             toast.error('Failed to update payment status');
                             console.error(err);
@@ -1381,32 +1365,18 @@ export default function InvoicesTab() {
                         }}
                       >
                         <SelectTrigger 
-                          className={`h-7 w-[110px] text-xs font-medium border-0 ${
+                          className={`h-7 w-[100px] text-xs font-medium border-0 ${
                             (invoice as any).payment_status === 'paid' 
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
                               : (invoice as any).payment_status === 'pending'
                               ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              : (invoice as any).payment_status === 'failed'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'bg-muted/60 text-muted-foreground'
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="delivered">
-                            <span className="flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-blue-500" />
-                              Delivered
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="failed">
-                            <span className="flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-red-500" />
-                              Failed
-                            </span>
-                          </SelectItem>
                           <SelectItem value="pending">
                             <span className="flex items-center gap-1.5">
                               <span className="h-2 w-2 rounded-full bg-yellow-500" />
