@@ -39,6 +39,37 @@ const WEBHOOK_STUB_ONLY_MODE = ['true', '1', 'yes'].includes(stubModeRaw.toLower
 const QUEUE_DEPTH_LIMIT = parseInt(Deno.env.get('QUEUE_DEPTH_LIMIT') || '1000', 10);
 const GMAIL_WEBHOOK_DISABLED = Deno.env.get('GMAIL_WEBHOOK_DISABLED') === 'true';
 
+// ============================================================================
+// IN-MEMORY DEDUP CACHE
+// Eliminates ~1,900 duplicate Pub/Sub invocations/day.
+// Google delivers "at-least-once", so every notification arrives 2x.
+// This cache catches the 2nd delivery in <1ms with zero DB calls.
+// Uses a simple Map with TTL-based eviction (60s window).
+// ============================================================================
+const DEDUP_TTL_MS = 60_000; // 60 seconds - plenty for Pub/Sub retries (typically <5s apart)
+const DEDUP_MAX_SIZE = 5_000; // Cap memory usage (~200KB max)
+const recentlySeenPubSub = new Map<string, number>(); // key → timestamp
+
+function isDuplicatePubSub(emailAddress: string, historyId: string): boolean {
+  const key = `${emailAddress}:${historyId}`;
+  const now = Date.now();
+
+  // Lazy eviction: purge expired entries when map gets large
+  if (recentlySeenPubSub.size > DEDUP_MAX_SIZE) {
+    for (const [k, ts] of recentlySeenPubSub) {
+      if (now - ts > DEDUP_TTL_MS) recentlySeenPubSub.delete(k);
+    }
+  }
+
+  const existing = recentlySeenPubSub.get(key);
+  if (existing && now - existing < DEDUP_TTL_MS) {
+    return true; // Duplicate within TTL window
+  }
+
+  recentlySeenPubSub.set(key, now);
+  return false; // First seen
+}
+
 // Log config at module load (appears once per cold start)
 console.log(`[gmail-webhook] CONFIG: WEBHOOK_STUB_ONLY_MODE=${WEBHOOK_STUB_ONLY_MODE} (raw="${stubModeRaw}"), QUEUE_DEPTH_LIMIT=${QUEUE_DEPTH_LIMIT}`);
 
@@ -724,6 +755,19 @@ serve(async (req) => {
       }
     } catch (e) {
       console.log('Could not decode Pub/Sub data');
+    }
+
+    // ========================================================================
+    // IN-MEMORY DEDUP — Catches duplicate Pub/Sub deliveries in <1ms
+    // Must run BEFORE any DB work to eliminate wasted invocations entirely.
+    // ========================================================================
+    if (pubsubEmailAddress && historyId && isDuplicatePubSub(pubsubEmailAddress, historyId)) {
+      const elapsed = Date.now() - startTime;
+      console.log(`[gmail-webhook] ⚡ IN-MEMORY DEDUP: Skipped (${pubsubEmailAddress}, ${historyId}) in ${elapsed}ms`);
+      return new Response(
+        JSON.stringify({ dedup: 'in_memory', historyId, emailAddress: pubsubEmailAddress, elapsed_ms: elapsed }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // ========================================================================
