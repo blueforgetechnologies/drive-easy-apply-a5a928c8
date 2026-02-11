@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -1154,31 +1154,43 @@ export default function InvoicesTab() {
               { key: "paid", label: "Paid", icon: null, activeClass: "btn-glossy-success", activeBadgeClass: "badge-inset-success", softBadgeClass: "badge-inset-soft-green", tooltip: "Fully paid invoices" },
               { key: "pending_payment", label: "Pending", icon: null, activeClass: "btn-glossy-warning", activeBadgeClass: "badge-inset", softBadgeClass: "badge-inset-soft-amber", tooltip: "Delivered invoices awaiting payment" },
               { key: "overdue", label: "Overdue", icon: null, activeClass: "btn-glossy-danger", activeBadgeClass: "badge-inset-danger", softBadgeClass: "badge-inset-soft-red", tooltip: "Past due date with balance remaining" },
-            ].map((status) => (
-              <Tooltip key={status.key}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setInvoiceFilter(status.key)}
-                    className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${
-                      filter === status.key 
-                        ? `${status.activeClass} text-white` 
-                        : 'btn-glossy text-gray-700'
-                    }`}
-                  >
-                    {status.icon && <status.icon className="h-3 w-3" />}
-                    {status.label}
-                    <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
-                      {tabCounts[status.key as keyof typeof tabCounts]}
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {status.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            ))}
+            ].map((status, index, arr) => {
+              // Insert a button-width spacer between "Failed" and "Paid"
+              const isAfterFailed = status.key === 'paid';
+              const isLastBeforeGap = status.key === 'failed';
+              return (
+                <React.Fragment key={status.key}>
+                  {isAfterFailed && <div className="w-9" />}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setInvoiceFilter(status.key)}
+                        className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
+                          isLastBeforeGap ? 'rounded-none first:rounded-l-full rounded-r-full' :
+                          isAfterFailed ? 'rounded-none rounded-l-full' :
+                          'rounded-none first:rounded-l-full last:rounded-r-full'
+                        } ${
+                          filter === status.key 
+                            ? `${status.activeClass} text-white` 
+                            : 'btn-glossy text-gray-700'
+                        }`}
+                      >
+                        {status.icon && <status.icon className="h-3 w-3" />}
+                        {status.label}
+                        <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                          {tabCounts[status.key as keyof typeof tabCounts]}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {status.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                </React.Fragment>
+              );
+            })}
           </div>
         </TooltipProvider>
 
