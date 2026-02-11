@@ -37,6 +37,8 @@ interface Invoice {
   otr_raw_response: any | null;
   otr_failed_at: string | null;
   payment_status: 'pending' | 'paid' | null;
+  paid_at: string | null;
+  paid_by_name: string | null;
   billing_method: 'unknown' | 'otr' | 'direct_email' | null;
   customers?: { 
     mc_number: string | null; 
@@ -1275,8 +1277,13 @@ export default function InvoicesTab() {
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Payment</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>{['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter) ? 'Delivered On' : 'Last Attempt'}</div>
-                <div className="text-muted-foreground font-normal normal-case">Notes</div>
+                <div className="text-muted-foreground font-normal normal-case">
+                  {filter === 'paid' ? 'Paid Date' : 'Notes'}
+                </div>
               </TableHead>
+              {filter === 'paid' && (
+                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Marked By</TableHead>
+              )}
               {(filter === 'needs_setup' || filter === 'ready' || filter === 'failed') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
               )}
@@ -1285,7 +1292,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={(filter === 'needs_setup' || filter === 'ready') ? 11 : 10} className="py-12 text-center">
+                <TableCell colSpan={filter === 'paid' ? 11 : (filter === 'needs_setup' || filter === 'ready' || filter === 'failed') ? 11 : 10} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1399,6 +1406,20 @@ export default function InvoicesTab() {
                             const updateData: any = { payment_status: actualValue };
                             if (actualValue === 'paid') {
                               updateData.status = 'paid';
+                              updateData.paid_at = new Date().toISOString();
+                              // Get current user's name
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (user) {
+                                const { data: profile } = await supabase
+                                  .from('profiles')
+                                  .select('full_name')
+                                  .eq('id', user.id)
+                                  .single();
+                                updateData.paid_by_name = profile?.full_name || user.email;
+                              }
+                            } else {
+                              updateData.paid_at = null;
+                              updateData.paid_by_name = null;
                             }
                             const { error } = await supabase
                               .from('invoices' as any)
@@ -1406,7 +1427,7 @@ export default function InvoicesTab() {
                               .eq('id', invoice.id);
                             if (error) throw error;
                             setAllInvoices(prev => prev.map(inv => 
-                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, ...(actualValue === 'paid' ? { status: 'paid' } : {}) } : inv
+                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name, ...(actualValue === 'paid' ? { status: 'paid' } : {}) } : inv
                             ));
                             toast.success(`Payment status updated to ${actualValue || 'unset'}`);
                           } catch (err) {
@@ -1476,19 +1497,35 @@ export default function InvoicesTab() {
                           return <span className="text-muted-foreground">—</span>;
                         })()}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[320px]" title={
-                        (invoice.billing_method === 'otr' && invoice.otr_error_message) 
-                          ? invoice.otr_error_message 
-                          : (invoice.last_attempt_error || invoice.notes || '')
-                      }>
-                        {(() => {
-                          const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
-                            ? invoice.otr_error_message
-                            : (invoice.last_attempt_error || invoice.notes);
-                          return noteText || '—';
-                        })()}
-                      </div>
+                      {filter === 'paid' ? (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {(invoice as any).paid_at 
+                            ? format(new Date((invoice as any).paid_at), "MMM d, h:mm a")
+                            : '—'
+                          }
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[320px]" title={
+                          (invoice.billing_method === 'otr' && invoice.otr_error_message) 
+                            ? invoice.otr_error_message 
+                            : (invoice.last_attempt_error || invoice.notes || '')
+                        }>
+                          {(() => {
+                            const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
+                              ? invoice.otr_error_message
+                              : (invoice.last_attempt_error || invoice.notes);
+                            return noteText || '—';
+                          })()}
+                        </div>
+                      )}
                     </TableCell>
+                    {filter === 'paid' && (
+                      <TableCell className="py-2 px-3">
+                        <span className="text-xs text-muted-foreground">
+                          {(invoice as any).paid_by_name || '—'}
+                        </span>
+                      </TableCell>
+                    )}
                     {filter === 'needs_setup' && (
                       <TableCell>
                         <TooltipProvider>
