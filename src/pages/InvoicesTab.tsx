@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
@@ -136,6 +136,7 @@ export default function InvoicesTab() {
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -584,6 +585,30 @@ export default function InvoicesTab() {
       (inv.customer_name || "").toLowerCase().includes(searchLower)
     );
   }, [filter, categorizedInvoices, searchQuery]);
+
+  // Group paid invoices by paid_at date for batch view
+  const batchGroups = useMemo(() => {
+    if (filter !== 'paid' || !batchMode) return null;
+    const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number }>();
+    
+    filteredInvoices.forEach(inv => {
+      const paidAt = (inv as any).paid_at;
+      const dateKey = paidAt ? format(new Date(paidAt), 'yyyy-MM-dd') : 'unknown';
+      const dateLabel = paidAt ? format(new Date(paidAt), 'EEEE, MMMM d, yyyy') : 'No Date';
+      
+      if (!groups.has(dateKey)) {
+        groups.set(dateKey, { label: dateLabel, invoices: [], total: 0 });
+      }
+      const group = groups.get(dateKey)!;
+      group.invoices.push(inv);
+      group.total += inv.total_amount;
+    });
+
+    // Sort by date descending
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, val]) => ({ dateKey: key, ...val }));
+  }, [filteredInvoices, filter, batchMode]);
 
   const loadCustomers = async () => {
     if (shouldFilter && !tenantId) return;
@@ -1098,6 +1123,335 @@ export default function InvoicesTab() {
     }).format(amount);
   };
 
+  const renderInvoiceRow = (invoice: InvoiceWithDeliveryInfo) => {
+    const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
+    return (
+      <TableRow 
+        key={invoice.id} 
+        className="cursor-pointer hover:bg-muted/50" 
+        onClick={() => viewInvoiceDetail(invoice.id)}
+      >
+        <TableCell className="font-medium text-primary py-2 px-3">
+          <div className="flex items-center gap-2">
+            {invoice.invoice_number}
+            {getMissingInfoTooltip(invoice)}
+          </div>
+          {invoice.customer_load_ids.length > 0 && (
+            <div className="text-xs text-muted-foreground truncate max-w-[120px]" title={invoice.customer_load_ids.join(', ')}>
+              {invoice.customer_load_ids.join(', ')}
+            </div>
+          )}
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          {invoice.customer_id ? (
+            <div
+              className="cursor-pointer hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/dashboard/customer/${invoice.customer_id}`);
+              }}
+            >
+              <div className="text-primary text-sm">{invoice.customer_name || "—"}</div>
+              {invoice.customers?.mc_number && (
+                <div className="text-xs text-muted-foreground">MC-{invoice.customers.mc_number}</div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm">{invoice.customer_name || "—"}</div>
+          )}
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          {invoice.billing_method === 'otr' ? (
+            <>
+              <div className="text-xs text-muted-foreground italic">Not Applicable</div>
+              <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
+                {accountingEmail || <span className="text-destructive">Missing</span>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
+                {customerEmail || <span className="text-destructive">Missing</span>}
+              </div>
+              <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
+                {accountingEmail || <span className="text-destructive">Missing</span>}
+              </div>
+            </>
+          )}
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
+          <div>{getCreditApprovalBadge(invoice)}</div>
+        </TableCell>
+        <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
+        <TableCell className="py-2 px-3">
+          <div className="flex items-center gap-1">
+            {getDeliveryStatusBadge(invoice)}
+            {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0"
+                onClick={(e) => retryOtrSubmission(invoice, e)}
+                disabled={retryingInvoiceId === invoice.id}
+              >
+                {retryingInvoiceId === invoice.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+              </Button>
+            )}
+          </div>
+          {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              <span className="text-success font-medium">OTR Submitted</span>
+            </div>
+          )}
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
+          <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          <Select
+            value={(invoice as any).payment_status || '_unset'}
+            onValueChange={async (value) => {
+              try {
+                const actualValue = value === '_unset' ? null : value;
+                const updateData: any = { payment_status: actualValue };
+                const { data: { user } } = await supabase.auth.getUser();
+                let userName: string | null = null;
+                if (user) {
+                  const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single();
+                  userName = profile?.full_name || user.email || null;
+                }
+                if (actualValue === 'paid') {
+                  updateData.status = 'paid';
+                  updateData.paid_at = new Date().toISOString();
+                  updateData.paid_by_name = userName;
+                } else if (actualValue === 'pending') {
+                  updateData.status = 'ready';
+                  updateData.paid_at = null;
+                  updateData.paid_by_name = userName;
+                } else {
+                  updateData.paid_at = null;
+                  updateData.paid_by_name = null;
+                  updateData.status = 'ready';
+                }
+                const { error } = await supabase
+                  .from('invoices' as any)
+                  .update(updateData)
+                  .eq('id', invoice.id);
+                if (error) throw error;
+                setAllInvoices(prev => prev.map(inv => 
+                  inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, status: updateData.status, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name } : inv
+                ));
+                toast.success(`Payment status updated to ${actualValue || 'unset'}`);
+              } catch (err) {
+                toast.error('Failed to update payment status');
+                console.error(err);
+              }
+            }}
+          >
+            <SelectTrigger 
+              className={`h-7 w-[100px] text-xs font-medium border-0 ${
+                (invoice as any).payment_status === 'paid' 
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                  : (invoice as any).payment_status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  : 'bg-muted/60 text-muted-foreground'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                  Pending
+                </span>
+              </SelectItem>
+              <SelectItem value="paid">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  Paid
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell className="py-2 px-3">
+          <div className="text-xs">
+            {(() => {
+              const isDeliveredContext = ['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter);
+              if (isDeliveredContext) {
+                const deliveredDate = invoice.billing_method === 'otr' 
+                  ? invoice.otr_submitted_at 
+                  : invoice.sent_at;
+                if (deliveredDate) {
+                  return (
+                    <span className="text-success">
+                      {format(new Date(deliveredDate), "MMM d, h:mm a")}
+                    </span>
+                  );
+                }
+                return <span className="text-muted-foreground">—</span>;
+              }
+              const attemptDate = invoice.billing_method === 'otr' && invoice.otr_failed_at
+                ? invoice.otr_failed_at
+                : invoice.last_attempt_at;
+              if (attemptDate) {
+                return (
+                  <span className={invoice.last_attempt_status === 'failed' || invoice.otr_status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}>
+                    {format(new Date(attemptDate), "MMM d, h:mm a")}
+                  </span>
+                );
+              }
+              return <span className="text-muted-foreground">—</span>;
+            })()}
+          </div>
+          {filter === 'paid' ? (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {(invoice as any).paid_at 
+                ? format(new Date((invoice as any).paid_at), "MMM d, h:mm a")
+                : '—'
+              }
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[320px]" title={
+              (invoice.billing_method === 'otr' && invoice.otr_error_message) 
+                ? invoice.otr_error_message 
+                : (invoice.last_attempt_error || invoice.notes || '')
+            }>
+              {(() => {
+                const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
+                  ? invoice.otr_error_message
+                  : (invoice.last_attempt_error || invoice.notes);
+                return noteText || '—';
+              })()}
+            </div>
+          )}
+        </TableCell>
+        {(filter === 'paid' || filter === 'pending_payment') && (
+          <TableCell className="py-2 px-3">
+            <span className="text-xs text-muted-foreground">
+              {(invoice as any).paid_by_name || '—'}
+            </span>
+          </TableCell>
+        )}
+        {filter === 'needs_setup' && (
+          <TableCell>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInvoiceToReturn(invoice);
+                      setReturnDialogOpen(true);
+                    }}
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Return
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-[220px] text-xs">
+                  <p className="font-medium mb-1">Return to Audit</p>
+                  <p className="text-muted-foreground">
+                    Allowed only if invoice is still internal (no email sent, no OTR submission, no payments).
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </TableCell>
+        )}
+        {filter === 'ready' && (
+          <TableCell>
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                disabled={sendingInvoiceId === invoice.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSendInvoice(invoice);
+                }}
+              >
+                {sendingInvoiceId === invoice.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                {invoice.billing_method === 'otr' ? 'Submit' : 'Send'}
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBackToNeedsSetup(invoice);
+                      }}
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Back to Need Setup
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-[220px] text-xs">
+                    <p className="font-medium mb-1">Back to Need Setup</p>
+                    <p className="text-muted-foreground">
+                      Clears billing method so the invoice moves back to Needs Setup for reconfiguration.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </TableCell>
+        )}
+        {filter === 'failed' && (
+          <TableCell>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBackToReady(invoice);
+                    }}
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Back to Ready
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-[220px] text-xs">
+                  <p className="font-medium mb-1">Back to Ready to Send</p>
+                  <p className="text-muted-foreground">
+                    Clears failure state so the invoice can be re-submitted.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </TableCell>
+        )}
+      </TableRow>
+    );
+  };
+
   const tabCounts = {
     needs_setup: categorizedInvoices.needs_setup.length,
     ready: categorizedInvoices.ready.length,
@@ -1204,26 +1558,47 @@ export default function InvoicesTab() {
                   {isAfterFailed && <div className="w-9" />}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setInvoiceFilter(status.key)}
-                        className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
-                          isLastBeforeGap ? 'rounded-none first:rounded-l-full rounded-r-full' :
-                          isAfterFailed ? 'rounded-none rounded-l-full' :
-                          'rounded-none first:rounded-l-full last:rounded-r-full'
-                        } ${
-                          filter === status.key 
-                            ? `${status.activeClass} text-white` 
-                            : 'btn-glossy text-gray-700'
-                        }`}
-                      >
-                        {status.icon && <status.icon className="h-3 w-3" />}
-                        {status.label}
-                        <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
-                          {tabCounts[status.key as keyof typeof tabCounts]}
-                        </span>
-                      </Button>
+                      <div className="inline-flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setInvoiceFilter(status.key)}
+                          className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
+                            isLastBeforeGap ? 'rounded-none first:rounded-l-full rounded-r-full' :
+                            isAfterFailed ? `rounded-none rounded-l-full ${status.key === 'paid' && batchMode ? '' : ''}` :
+                            'rounded-none first:rounded-l-full last:rounded-r-full'
+                          } ${
+                            filter === status.key 
+                              ? `${status.activeClass} text-white` 
+                              : 'btn-glossy text-gray-700'
+                          }`}
+                        >
+                          {status.icon && <status.icon className="h-3 w-3" />}
+                          {status.label}
+                          <span className={`${filter === status.key ? status.activeBadgeClass : status.softBadgeClass} text-[10px] h-5`}>
+                            {tabCounts[status.key as keyof typeof tabCounts]}
+                          </span>
+                        </Button>
+                        {status.key === 'paid' && filter === 'paid' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBatchMode(!batchMode);
+                            }}
+                            className={`h-[28px] px-2 text-[10px] font-bold uppercase tracking-wider border-l transition-all duration-300 ${
+                              batchMode
+                                ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.4)]'
+                                : 'bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted hover:text-foreground'
+                            }`}
+                            title={batchMode ? 'Switch to list view' : 'Group by paid date'}
+                          >
+                            <span className="flex items-center gap-1">
+                              <Layers className="h-3 w-3" />
+                              Batch
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       {status.tooltip}
@@ -1300,345 +1675,32 @@ export default function InvoicesTab() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : (
-              filteredInvoices.map((invoice) => {
-                const customerEmail = invoice.customers?.billing_email || invoice.customers?.email;
-                
-                return (
-                  <TableRow 
-                    key={invoice.id} 
-                    className="cursor-pointer hover:bg-muted/50" 
-                    onClick={() => viewInvoiceDetail(invoice.id)}
-                  >
-                     <TableCell className="font-medium text-primary py-2 px-3">
-                      <div className="flex items-center gap-2">
-                        {invoice.invoice_number}
-                        {getMissingInfoTooltip(invoice)}
-                      </div>
-                      {invoice.customer_load_ids.length > 0 && (
-                        <div className="text-xs text-muted-foreground truncate max-w-[120px]" title={invoice.customer_load_ids.join(', ')}>
-                          {invoice.customer_load_ids.join(', ')}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-2 px-3">
-                      {invoice.customer_id ? (
-                        <div
-                          className="cursor-pointer hover:underline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/customer/${invoice.customer_id}`);
-                          }}
-                        >
-                          <div className="text-primary text-sm">{invoice.customer_name || "—"}</div>
-                          {invoice.customers?.mc_number && (
-                            <div className="text-xs text-muted-foreground">MC-{invoice.customers.mc_number}</div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-sm">{invoice.customer_name || "—"}</div>
-                      )}
-                    </TableCell>
-                    {/* To Email / CC (Acct) stacked */}
-                    <TableCell className="py-2 px-3">
-                      {invoice.billing_method === 'otr' ? (
-                        <>
-                          <div className="text-xs text-muted-foreground italic">Not Applicable</div>
-                          <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
-                            {accountingEmail || <span className="text-destructive">Missing</span>}
+            ) : batchMode && batchGroups ? (
+              batchGroups.map((batch) => (
+                <React.Fragment key={batch.dateKey}>
+                  <TableRow className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-t-2 border-violet-200 dark:border-violet-800">
+                    <TableCell colSpan={11} className="py-2.5 px-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-sm">
+                            <Layers className="h-3.5 w-3.5 text-white" />
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
-                            {customerEmail || <span className="text-destructive">Missing</span>}
-                          </div>
-                          <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
-                            {accountingEmail || <span className="text-destructive">Missing</span>}
-                          </div>
-                        </>
-                      )}
-                    </TableCell>
-                    {/* Billing Method / Credit Approval stacked */}
-                    <TableCell className="py-2 px-3">
-                      <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
-                      <div>{getCreditApprovalBadge(invoice)}</div>
-                    </TableCell>
-                    <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
-                    {/* Delivery standalone */}
-                    <TableCell className="py-2 px-3">
-                      <div className="flex items-center gap-1">
-                        {getDeliveryStatusBadge(invoice)}
-                        {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0"
-                            onClick={(e) => retryOtrSubmission(invoice, e)}
-                            disabled={retryingInvoiceId === invoice.id}
-                          >
-                            {retryingInvoiceId === invoice.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-3 w-3" />
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          <span className="text-success font-medium">OTR Submitted</span>
+                          <span className="font-semibold text-sm text-foreground">{batch.label}</span>
+                          <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">
+                            {batch.invoices.length} invoice{batch.invoices.length !== 1 ? 's' : ''}
+                          </Badge>
                         </div>
-                      )}
-                    </TableCell>
-                    {/* Amount / Balance stacked */}
-                    <TableCell className="py-2 px-3">
-                      <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
-                      <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
-                    </TableCell>
-                    {/* Payment Status */}
-                    <TableCell className="py-2 px-3">
-                      <Select
-                        value={(invoice as any).payment_status || '_unset'}
-                        onValueChange={async (value) => {
-                          try {
-                            const actualValue = value === '_unset' ? null : value;
-                            const updateData: any = { payment_status: actualValue };
-                            // Get current user's name for any payment status change
-                            const { data: { user } } = await supabase.auth.getUser();
-                            let userName: string | null = null;
-                            if (user) {
-                              const { data: profile } = await supabase
-                                .from('profiles')
-                                .select('full_name')
-                                .eq('id', user.id)
-                                .single();
-                              userName = profile?.full_name || user.email || null;
-                            }
-                            if (actualValue === 'paid') {
-                              updateData.status = 'paid';
-                              updateData.paid_at = new Date().toISOString();
-                              updateData.paid_by_name = userName;
-                            } else if (actualValue === 'pending') {
-                              updateData.status = 'ready';
-                              updateData.paid_at = null;
-                              updateData.paid_by_name = userName;
-                            } else {
-                              updateData.paid_at = null;
-                              updateData.paid_by_name = null;
-                              updateData.status = 'ready';
-                            }
-                            const { error } = await supabase
-                              .from('invoices' as any)
-                              .update(updateData)
-                              .eq('id', invoice.id);
-                            if (error) throw error;
-                            setAllInvoices(prev => prev.map(inv => 
-                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, status: updateData.status, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name } : inv
-                            ));
-                            toast.success(`Payment status updated to ${actualValue || 'unset'}`);
-                          } catch (err) {
-                            toast.error('Failed to update payment status');
-                            console.error(err);
-                          }
-                        }}
-                      >
-                        <SelectTrigger 
-                          className={`h-7 w-[100px] text-xs font-medium border-0 ${
-                            (invoice as any).payment_status === 'paid' 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                              : (invoice as any).payment_status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              : 'bg-muted/60 text-muted-foreground'
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">
-                            <span className="flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                              Pending
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="paid">
-                            <span className="flex items-center gap-1.5">
-                              <span className="h-2 w-2 rounded-full bg-green-500" />
-                              Paid
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    {/* Delivered On / Last Attempt + Notes stacked */}
-                    <TableCell className="py-2 px-3">
-                      <div className="text-xs">
-                        {(() => {
-                          const isDeliveredContext = ['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter);
-                          if (isDeliveredContext) {
-                            // Show delivered/accepted date
-                            const deliveredDate = invoice.billing_method === 'otr' 
-                              ? invoice.otr_submitted_at 
-                              : invoice.sent_at;
-                            if (deliveredDate) {
-                              return (
-                                <span className="text-success">
-                                  {format(new Date(deliveredDate), "MMM d, h:mm a")}
-                                </span>
-                              );
-                            }
-                            return <span className="text-muted-foreground">—</span>;
-                          }
-                          // Failed/other tabs: show last attempt
-                          const attemptDate = invoice.billing_method === 'otr' && invoice.otr_failed_at
-                            ? invoice.otr_failed_at
-                            : invoice.last_attempt_at;
-                          if (attemptDate) {
-                            return (
-                              <span className={invoice.last_attempt_status === 'failed' || invoice.otr_status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}>
-                                {format(new Date(attemptDate), "MMM d, h:mm a")}
-                              </span>
-                            );
-                          }
-                          return <span className="text-muted-foreground">—</span>;
-                        })()}
-                      </div>
-                      {filter === 'paid' ? (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {(invoice as any).paid_at 
-                            ? format(new Date((invoice as any).paid_at), "MMM d, h:mm a")
-                            : '—'
-                          }
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[320px]" title={
-                          (invoice.billing_method === 'otr' && invoice.otr_error_message) 
-                            ? invoice.otr_error_message 
-                            : (invoice.last_attempt_error || invoice.notes || '')
-                        }>
-                          {(() => {
-                            const noteText = invoice.billing_method === 'otr' && invoice.otr_error_message
-                              ? invoice.otr_error_message
-                              : (invoice.last_attempt_error || invoice.notes);
-                            return noteText || '—';
-                          })()}
-                        </div>
-                      )}
-                    </TableCell>
-                    {(filter === 'paid' || filter === 'pending_payment') && (
-                      <TableCell className="py-2 px-3">
-                        <span className="text-xs text-muted-foreground">
-                          {(invoice as any).paid_by_name || '—'}
+                        <span className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                          {formatCurrency(batch.total)}
                         </span>
-                      </TableCell>
-                    )}
-                    {filter === 'needs_setup' && (
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setInvoiceToReturn(invoice);
-                                  setReturnDialogOpen(true);
-                                }}
-                              >
-                                <Undo2 className="h-3.5 w-3.5" />
-                                Return
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-[220px] text-xs">
-                              <p className="font-medium mb-1">Return to Audit</p>
-                              <p className="text-muted-foreground">
-                                Allowed only if invoice is still internal (no email sent, no OTR submission, no payments).
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                    )}
-                    {filter === 'ready' && (
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            size="sm"
-                            className="h-7 px-3 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                            disabled={sendingInvoiceId === invoice.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSendInvoice(invoice);
-                            }}
-                          >
-                            {sendingInvoiceId === invoice.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Send className="h-3.5 w-3.5" />
-                            )}
-                            {invoice.billing_method === 'otr' ? 'Submit' : 'Send'}
-                          </Button>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBackToNeedsSetup(invoice);
-                                  }}
-                                >
-                                  <Undo2 className="h-3.5 w-3.5" />
-                                  Back to Need Setup
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="max-w-[220px] text-xs">
-                                <p className="font-medium mb-1">Back to Need Setup</p>
-                                <p className="text-muted-foreground">
-                                  Clears billing method so the invoice moves back to Needs Setup for reconfiguration.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
-                    )}
-                    {filter === 'failed' && (
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleBackToReady(invoice);
-                                }}
-                              >
-                                <Undo2 className="h-3.5 w-3.5" />
-                                Back to Ready
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-[220px] text-xs">
-                              <p className="font-medium mb-1">Back to Ready to Send</p>
-                              <p className="text-muted-foreground">
-                                Clears failure state so the invoice can be re-submitted.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                    )}
+                      </div>
+                    </TableCell>
                   </TableRow>
-                );
-              })
+                  {batch.invoices.map((invoice) => renderInvoiceRow(invoice))}
+                </React.Fragment>
+              ))
+            ) : (
+              filteredInvoices.map((invoice) => renderInvoiceRow(invoice))
             )}
           </TableBody>
         </Table>
