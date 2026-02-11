@@ -1420,6 +1420,7 @@ export default function InvoicesTab() {
                             } else {
                               updateData.paid_at = null;
                               updateData.paid_by_name = null;
+                              updateData.status = 'ready';
                             }
                             const { error } = await supabase
                               .from('invoices' as any)
@@ -1427,7 +1428,7 @@ export default function InvoicesTab() {
                               .eq('id', invoice.id);
                             if (error) throw error;
                             setAllInvoices(prev => prev.map(inv => 
-                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name, ...(actualValue === 'paid' ? { status: 'paid' } : {}) } : inv
+                              inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, status: updateData.status, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name } : inv
                             ));
                             toast.success(`Payment status updated to ${actualValue || 'unset'}`);
                           } catch (err) {
