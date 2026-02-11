@@ -2570,6 +2570,7 @@ export type Database = {
           otr_status: string | null
           otr_submitted_at: string | null
           paid_at: string | null
+          paid_by_name: string | null
           payment_date: string | null
           payment_method: string | null
           payment_reference: string | null
@@ -2608,6 +2609,7 @@ export type Database = {
           otr_status?: string | null
           otr_submitted_at?: string | null
           paid_at?: string | null
+          paid_by_name?: string | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -2646,6 +2648,7 @@ export type Database = {
           otr_status?: string | null
           otr_submitted_at?: string | null
           paid_at?: string | null
+          paid_by_name?: string | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
