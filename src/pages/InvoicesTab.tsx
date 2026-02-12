@@ -587,18 +587,18 @@ export default function InvoicesTab() {
     );
   }, [filter, categorizedInvoices, searchQuery]);
 
-  // Group paid invoices by paid_at date for batch view
+  // Group paid invoices by delivered (sent_at) date for batch view
   const batchGroups = useMemo(() => {
     if (filter !== 'paid' || !batchMode) return null;
-    const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number }>();
+    const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number; dateKey: string }>();
     
     filteredInvoices.forEach(inv => {
-      const paidAt = (inv as any).paid_at;
-      const dateKey = paidAt ? format(new Date(paidAt), 'yyyy-MM-dd') : 'unknown';
-      const dateLabel = paidAt ? format(new Date(paidAt), 'EEEE, MMMM d, yyyy') : 'No Date';
+      const deliveredAt = inv.sent_at;
+      const dateKey = deliveredAt ? format(new Date(deliveredAt), 'yyyy-MM-dd') : 'unknown';
+      const dateLabel = deliveredAt ? format(new Date(deliveredAt), 'EEEE, MMMM d, yyyy') : 'No Delivery Date';
       
       if (!groups.has(dateKey)) {
-        groups.set(dateKey, { label: dateLabel, invoices: [], total: 0 });
+        groups.set(dateKey, { label: dateLabel, invoices: [], total: 0, dateKey });
       }
       const group = groups.get(dateKey)!;
       group.invoices.push(inv);
