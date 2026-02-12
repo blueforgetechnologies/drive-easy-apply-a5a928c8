@@ -25,7 +25,9 @@ export default function DevelopmentTab() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setSearchParams({ tab: value });
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    setSearchParams(next);
   };
 
   return (

@@ -118,21 +118,27 @@ export default function CarrierDashboard() {
   const handleCarrierSelect = (carrierId: string) => {
     setSelectedCarrier(carrierId);
     setCarrierSearch("");
+    const next = new URLSearchParams(searchParams);
+    next.set("dashboard", "carrier");
     if (carrierId === "all") {
-      setSearchParams({ dashboard: "carrier" });
+      next.delete("carrier");
     } else {
-      setSearchParams({ dashboard: "carrier", carrier: carrierId });
+      next.set("carrier", carrierId);
     }
+    setSearchParams(next);
   };
 
   const handleDispatcherSelect = (dispatcherId: string) => {
     setSelectedDispatcher(dispatcherId);
     setDispatcherSearch("");
+    const next = new URLSearchParams(searchParams);
+    next.set("dashboard", "dispatcher");
     if (dispatcherId === "all") {
-      setSearchParams({ dashboard: "dispatcher" });
+      next.delete("dispatcher");
     } else {
-      setSearchParams({ dashboard: "dispatcher", dispatcher: dispatcherId });
+      next.set("dispatcher", dispatcherId);
     }
+    setSearchParams(next);
   };
 
   const loadCarriers = async () => {

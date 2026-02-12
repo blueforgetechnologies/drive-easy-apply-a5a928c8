@@ -383,7 +383,9 @@ export default function UsersTab() {
           <Button
             variant={filter === "invitations" ? "default" : "outline"}
             onClick={() => {
-              setSearchParams({ filter: "invitations" });
+              const next = new URLSearchParams(searchParams);
+              next.set("filter", "invitations");
+              setSearchParams(next);
               setSearchQuery("");
             }}
             className={filter === "invitations" ? "bg-primary text-primary-foreground" : ""}
@@ -393,7 +395,9 @@ export default function UsersTab() {
           <Button
             variant={filter === "active" ? "default" : "outline"}
             onClick={() => {
-              setSearchParams({ filter: "active" });
+              const next = new URLSearchParams(searchParams);
+              next.set("filter", "active");
+              setSearchParams(next);
               setSearchQuery("");
             }}
             className={filter === "active" ? "bg-green-600 text-white hover:bg-green-700" : ""}
@@ -403,7 +407,9 @@ export default function UsersTab() {
           <Button
             variant={filter === "inactive" ? "default" : "outline"}
             onClick={() => {
-              setSearchParams({ filter: "inactive" });
+              const next = new URLSearchParams(searchParams);
+              next.set("filter", "inactive");
+              setSearchParams(next);
               setSearchQuery("");
             }}
             className={filter === "inactive" ? "bg-muted text-muted-foreground" : ""}
