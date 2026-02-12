@@ -108,11 +108,16 @@ export default function CarrierDashboard() {
     setDashboardType(type);
     setLoads([]);
     setVehicles([]);
-    if (type === "carrier") {
-      setSearchParams(selectedCarrier !== "all" ? { dashboard: type, carrier: selectedCarrier } : { dashboard: type });
-    } else {
-      setSearchParams(selectedDispatcher !== "all" ? { dashboard: type, dispatcher: selectedDispatcher } : { dashboard: type });
+    const next = new URLSearchParams(searchParams);
+    next.set("dashboard", type);
+    next.delete("carrier");
+    next.delete("dispatcher");
+    if (type === "carrier" && selectedCarrier !== "all") {
+      next.set("carrier", selectedCarrier);
+    } else if (type === "dispatcher" && selectedDispatcher !== "all") {
+      next.set("dispatcher", selectedDispatcher);
     }
+    setSearchParams(next);
   };
 
   const handleCarrierSelect = (carrierId: string) => {
