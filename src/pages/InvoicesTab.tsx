@@ -60,6 +60,10 @@ interface LoadInfo {
   id: string;
   load_number: string;
   reference_number: string | null;
+  pickup_city: string | null;
+  pickup_state: string | null;
+  delivery_city: string | null;
+  delivery_state: string | null;
 }
 
 interface InvoiceWithDeliveryInfo extends Invoice {
@@ -259,7 +263,7 @@ export default function InvoicesTab() {
           loadChunks.map(async (chunk) => {
             let loadQuery = supabase
               .from("loads" as any)
-              .select("id, load_number, reference_number")
+              .select("id, load_number, reference_number, pickup_city, pickup_state, delivery_city, delivery_state")
               .in("id", chunk);
 
             if (shouldFilter && tenantId) {
@@ -1162,7 +1166,21 @@ export default function InvoicesTab() {
           )}
         </TableCell>
         <TableCell className="py-2 px-3">
-          {invoice.billing_method === 'otr' ? (
+          {filter === 'paid' ? (() => {
+            const invoiceLoadIds = loadsByInvoice.get(invoice.id) || [];
+            const firstLoadId = invoiceLoadIds[0];
+            const loadInfo = firstLoadId ? loadInfoMap.get(firstLoadId) : null;
+            if (loadInfo?.pickup_city || loadInfo?.delivery_city) {
+              const origin = [loadInfo.pickup_city, loadInfo.pickup_state].filter(Boolean).join(', ');
+              const dest = [loadInfo.delivery_city, loadInfo.delivery_state].filter(Boolean).join(', ');
+              return (
+                <div className="text-xs font-medium whitespace-nowrap">
+                  {origin?.toUpperCase() || '—'} - {dest?.toUpperCase() || '—'}
+                </div>
+              );
+            }
+            return <span className="text-xs text-muted-foreground">—</span>;
+          })() : invoice.billing_method === 'otr' ? (
             <>
               <div className="text-xs text-muted-foreground italic">Not Applicable</div>
               <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
@@ -1638,10 +1656,16 @@ export default function InvoicesTab() {
                 <div className="text-muted-foreground font-normal normal-case">Customer Load</div>
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Customer</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                <div>To Email</div>
-                <div className="text-muted-foreground font-normal normal-case">CC (Acct)</div>
-              </TableHead>
+              {filter === 'paid' ? (
+                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                  <div>From → To</div>
+                </TableHead>
+              ) : (
+                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                  <div>To Email</div>
+                  <div className="text-muted-foreground font-normal normal-case">CC (Acct)</div>
+                </TableHead>
+              )}
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Billing Method</div>
                 <div className="text-muted-foreground font-normal normal-case">Credit Approval</div>
