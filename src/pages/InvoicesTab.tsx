@@ -1564,9 +1564,11 @@ export default function InvoicesTab() {
                           size="sm"
                           onClick={() => setInvoiceFilter(status.key)}
                           className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
-                            isLastBeforeGap ? 'rounded-none first:rounded-l-full rounded-r-full' :
-                            isAfterFailed ? `rounded-none rounded-l-full ${status.key === 'paid' && batchMode ? '' : ''}` :
-                            'rounded-none first:rounded-l-full last:rounded-r-full'
+                            status.key === 'needs_setup' ? 'rounded-l-full rounded-r-none' :
+                            status.key === 'failed' ? 'rounded-r-full rounded-l-none' :
+                            status.key === 'paid' ? 'rounded-l-full rounded-r-none' :
+                            status.key === 'overdue' ? 'rounded-r-full rounded-l-none' :
+                            'rounded-none'
                           } ${
                             filter === status.key 
                               ? `${status.activeClass} text-white` 
