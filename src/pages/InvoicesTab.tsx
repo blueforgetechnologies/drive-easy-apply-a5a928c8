@@ -1257,6 +1257,11 @@ export default function InvoicesTab() {
                   updateData.status = 'ready';
                   updateData.paid_at = null;
                   updateData.paid_by_name = userName;
+                } else if (actualValue === 'back_to_delivered') {
+                  updateData.payment_status = null;
+                  updateData.paid_at = null;
+                  updateData.paid_by_name = null;
+                  updateData.status = 'ready';
                 } else {
                   updateData.paid_at = null;
                   updateData.paid_by_name = null;
@@ -1268,9 +1273,10 @@ export default function InvoicesTab() {
                   .eq('id', invoice.id);
                 if (error) throw error;
                 setAllInvoices(prev => prev.map(inv => 
-                  inv.id === invoice.id ? { ...inv, payment_status: actualValue as any, status: updateData.status, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name } : inv
+                  inv.id === invoice.id ? { ...inv, payment_status: updateData.payment_status ?? actualValue as any, status: updateData.status, paid_at: updateData.paid_at, paid_by_name: updateData.paid_by_name } : inv
                 ));
-                toast.success(`Payment status updated to ${actualValue || 'unset'}`);
+                const label = actualValue === 'back_to_delivered' ? 'Sent back to Delivered' : `Payment status updated to ${actualValue || 'unset'}`;
+                toast.success(label);
               } catch (err) {
                 toast.error('Failed to update payment status');
                 console.error(err);
@@ -1300,6 +1306,12 @@ export default function InvoicesTab() {
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-green-500" />
                   Paid
+                </span>
+              </SelectItem>
+              <SelectItem value="back_to_delivered">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  Back to Delivered
                 </span>
               </SelectItem>
             </SelectContent>
