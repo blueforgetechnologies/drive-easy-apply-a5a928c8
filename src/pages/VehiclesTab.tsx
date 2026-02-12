@@ -760,7 +760,9 @@ export default function VehiclesTab() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setSearchParams({ filter: status.key });
+                        const next = new URLSearchParams(searchParams);
+                        next.set("filter", status.key);
+                        setSearchParams(next);
                         setSearchQuery("");
                       }}
                       className={`h-[28px] px-2 text-[12px] font-medium gap-1 border-0 ${

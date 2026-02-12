@@ -10,7 +10,9 @@ export default function ToolsTab() {
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
-    setSearchParams({ subtab: value });
+    const next = new URLSearchParams(searchParams);
+    next.set("subtab", value);
+    setSearchParams(next);
   };
 
   return (

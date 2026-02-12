@@ -30,7 +30,9 @@ export default function BusinessManagerTab() {
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
-    setSearchParams({ subtab: value });
+    const next = new URLSearchParams(searchParams);
+    next.set("subtab", value);
+    setSearchParams(next);
   };
 
   // Tab configuration with glossy styling and counts

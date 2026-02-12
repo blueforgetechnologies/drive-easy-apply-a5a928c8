@@ -649,7 +649,9 @@ export default function CarriersTab() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSearchParams({ filter: status.key });
+                    const next = new URLSearchParams(searchParams);
+                    next.set("filter", status.key);
+                    setSearchParams(next);
                     setSearchQuery("");
                   }}
                   className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-none first:rounded-l-full last:rounded-r-full border-0 ${

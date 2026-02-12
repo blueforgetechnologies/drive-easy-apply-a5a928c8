@@ -745,7 +745,9 @@ export default function DriversTab() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSearchParams({ filter: status.key });
+                    const next = new URLSearchParams(searchParams);
+                    next.set("filter", status.key);
+                    setSearchParams(next);
                     setSearchQuery("");
                   }}
                   className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 border-0 ${
@@ -772,7 +774,9 @@ export default function DriversTab() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setSearchParams({ filter: "invitations" });
+                  const next = new URLSearchParams(searchParams);
+                  next.set("filter", "invitations");
+                  setSearchParams(next);
                   setSearchQuery("");
                   loadInvitations();
                 }}
@@ -790,7 +794,9 @@ export default function DriversTab() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setSearchParams({ filter: "applications" });
+                  const next = new URLSearchParams(searchParams);
+                  next.set("filter", "applications");
+                  setSearchParams(next);
                   setSearchQuery("");
                 }}
                 className={`h-[28px] px-2.5 text-[12px] font-medium gap-1 rounded-r-full rounded-l-none border-0 ${

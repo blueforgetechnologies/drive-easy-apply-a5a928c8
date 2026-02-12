@@ -95,7 +95,9 @@ export default function SettingsTab() {
 
   const handleSubTabChange = (value: string) => {
     setActiveSubTab(value);
-    setSearchParams({ subtab: value });
+    const next = new URLSearchParams(searchParams);
+    next.set("subtab", value);
+    setSearchParams(next);
   };
 
   // Don't render tabs while permissions are loading
