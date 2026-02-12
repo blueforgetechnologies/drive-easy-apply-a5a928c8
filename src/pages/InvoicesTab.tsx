@@ -137,6 +137,7 @@ export default function InvoicesTab() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
   const [batchMode, setBatchMode] = useState(false);
+  const [collapsedBatches, setCollapsedBatches] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -1680,12 +1681,30 @@ export default function InvoicesTab() {
             ) : batchMode && batchGroups ? (
               batchGroups.map((batch) => (
                 <React.Fragment key={batch.dateKey}>
-                  <TableRow className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-t-2 border-violet-200 dark:border-violet-800">
+                  <TableRow 
+                    className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-t-2 border-violet-200 dark:border-violet-800 cursor-pointer hover:from-violet-100 hover:to-indigo-100 dark:hover:from-violet-950/50 dark:hover:to-indigo-950/50 transition-colors"
+                    onClick={() => {
+                      setCollapsedBatches(prev => {
+                        const next = new Set(prev);
+                        if (next.has(batch.dateKey)) {
+                          next.delete(batch.dateKey);
+                        } else {
+                          next.add(batch.dateKey);
+                        }
+                        return next;
+                      });
+                    }}
+                  >
                     <TableCell colSpan={11} className="py-2.5 px-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <div className="h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-sm">
-                            <Layers className="h-3.5 w-3.5 text-white" />
+                            <svg 
+                              className={`h-3.5 w-3.5 text-white transition-transform duration-200 ${collapsedBatches.has(batch.dateKey) ? '-rotate-90' : 'rotate-0'}`} 
+                              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
                           </div>
                           <span className="font-semibold text-sm text-foreground">{batch.label}</span>
                           <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">
@@ -1698,7 +1717,7 @@ export default function InvoicesTab() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  {batch.invoices.map((invoice) => renderInvoiceRow(invoice))}
+                  {!collapsedBatches.has(batch.dateKey) && batch.invoices.map((invoice) => renderInvoiceRow(invoice))}
                 </React.Fragment>
               ))
             ) : (
