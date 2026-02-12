@@ -593,7 +593,7 @@ export default function InvoicesTab() {
     const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number; dateKey: string }>();
     
     filteredInvoices.forEach(inv => {
-      const deliveredAt = inv.sent_at;
+      const deliveredAt = inv.billing_method === 'otr' ? inv.otr_submitted_at : inv.sent_at;
       const dateKey = deliveredAt ? format(new Date(deliveredAt), 'yyyy-MM-dd') : 'unknown';
       const dateLabel = deliveredAt ? format(new Date(deliveredAt), 'EEEE, MMMM d, yyyy') : 'No Delivery Date';
       
