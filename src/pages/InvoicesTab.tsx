@@ -949,7 +949,6 @@ export default function InvoicesTab() {
     try {
       const updatePayload: any = {
         status: 'ready',
-        delivery_status: null,
       };
 
       // Clear OTR failure fields if OTR method
