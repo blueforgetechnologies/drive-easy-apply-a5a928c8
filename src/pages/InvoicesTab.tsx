@@ -660,7 +660,7 @@ export default function InvoicesTab() {
   // Group invoices by delivered date for batch view (paid & delivered tabs)
   const batchGroups = useMemo(() => {
     if ((filter !== 'paid' && filter !== 'delivered') || !batchMode) return null;
-    const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number; dateKey: string }>();
+    const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number; expectedPayout: number; dateKey: string }>();
     
     filteredInvoices.forEach(inv => {
       const deliveredAt = inv.billing_method === 'otr' ? inv.otr_submitted_at : inv.sent_at;
@@ -668,18 +668,21 @@ export default function InvoicesTab() {
       const dateLabel = deliveredAt ? format(new Date(deliveredAt), 'EEEE, MMMM d, yyyy') : 'No Delivery Date';
       
       if (!groups.has(dateKey)) {
-        groups.set(dateKey, { label: dateLabel, invoices: [], total: 0, dateKey });
+        groups.set(dateKey, { label: dateLabel, invoices: [], total: 0, expectedPayout: 0, dateKey });
       }
       const group = groups.get(dateKey)!;
       group.invoices.push(inv);
       group.total += inv.total_amount;
+      group.expectedPayout += factoringPercentage > 0
+        ? inv.total_amount * (1 - factoringPercentage / 100)
+        : inv.total_amount;
     });
 
     // Sort by date descending
     return Array.from(groups.entries())
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([key, val]) => ({ dateKey: key, ...val }));
-  }, [filteredInvoices, filter, batchMode]);
+  }, [filteredInvoices, filter, batchMode, factoringPercentage]);
 
   const loadCustomers = async () => {
     if (shouldFilter && !tenantId) return;
@@ -1905,11 +1908,22 @@ export default function InvoicesTab() {
                             </a>
                           )}
                         </div>
-                        <span className={`text-sm font-bold ${
-                          filter === 'delivered' ? 'text-emerald-700 dark:text-emerald-300' : 'text-violet-700 dark:text-violet-300'
-                        }`}>
-                          {formatCurrency(batch.total)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-bold ${
+                            filter === 'delivered' ? 'text-emerald-700 dark:text-emerald-300' : 'text-violet-700 dark:text-violet-300'
+                          }`}>
+                            {formatCurrency(batch.total)}
+                          </span>
+                          {factoringPercentage > 0 && (
+                            <>
+                              <span className="text-muted-foreground text-xs">→</span>
+                              <span className="text-sm font-bold text-primary">
+                                {formatCurrency(batch.expectedPayout)}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">after {factoringPercentage}% fee</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
