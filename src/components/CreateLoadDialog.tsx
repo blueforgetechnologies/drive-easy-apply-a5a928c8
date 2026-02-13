@@ -395,6 +395,7 @@ export function CreateLoadDialog({
           load_number: loadNumber,
           load_type: loadType,
           shipper_load_id: shipperLoadId || null,
+          reference_number: shipperLoadId || null,
           tenant_id: tenantId,
           status: "available",
           // Broker fields
