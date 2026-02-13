@@ -1592,12 +1592,16 @@ export default function InvoicesTab() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setInvoiceFilter(status.key)}
-                          className={`h-[28px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
-                            status.key === 'needs_setup' ? 'rounded-l-full rounded-r-none' :
-                            status.key === 'failed' ? 'rounded-r-full rounded-l-none' :
-                            status.key === 'paid' ? 'rounded-l-full rounded-r-none' :
-                            status.key === 'overdue' ? 'rounded-r-full rounded-l-none' :
-                            'rounded-none'
+                          className={`h-[30px] px-3 text-[12px] font-medium gap-1.5 border-0 ${
+                            (() => {
+                              const showBatch = (status.key === 'paid' && filter === 'paid') || (status.key === 'delivered' && filter === 'delivered');
+                              if (status.key === 'needs_setup') return 'rounded-l-full rounded-r-none';
+                              if (status.key === 'failed') return 'rounded-r-full rounded-l-none';
+                              if (status.key === 'paid') return showBatch ? 'rounded-l-full rounded-r-none' : 'rounded-l-full rounded-r-none';
+                              if (status.key === 'overdue') return 'rounded-r-full rounded-l-none';
+                              if (status.key === 'delivered') return showBatch ? 'rounded-l-none rounded-r-none' : 'rounded-none';
+                              return 'rounded-none';
+                            })()
                           } ${
                             filter === status.key 
                               ? `${status.activeClass} text-white` 
@@ -1610,25 +1614,30 @@ export default function InvoicesTab() {
                             {tabCounts[status.key as keyof typeof tabCounts]}
                           </span>
                         </Button>
-                        {(status.key === 'paid' && filter === 'paid') || (status.key === 'delivered' && filter === 'delivered') ? (
+                        {((status.key === 'paid' && filter === 'paid') || (status.key === 'delivered' && filter === 'delivered')) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setBatchMode(!batchMode);
                             }}
-                            className={`h-[28px] px-2 text-[10px] font-bold uppercase tracking-wider border-l transition-all duration-300 ${
+                            className={`h-[30px] px-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${
+                              status.key === 'delivered' ? 'rounded-r-none' :
+                              status.key === 'paid' ? 'rounded-r-none' : ''
+                            } ${
                               batchMode
-                                ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.4)]'
-                                : 'bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted hover:text-foreground'
+                                ? filter === 'delivered' 
+                                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-[0_2px_10px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/20'
+                                  : 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-[0_2px_10px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/20'
+                                : 'bg-muted/60 text-muted-foreground border-l border-border/30 hover:bg-muted hover:text-foreground'
                             }`}
-                            title={batchMode ? 'Switch to list view' : 'Group by paid date'}
+                            title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
                             <span className="flex items-center gap-1">
                               <Layers className="h-3 w-3" />
                               Batch
                             </span>
                           </button>
-                        ) : null}
+                        )}
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
@@ -1716,7 +1725,11 @@ export default function InvoicesTab() {
               batchGroups.map((batch) => (
                 <React.Fragment key={batch.dateKey}>
                   <TableRow 
-                    className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-t-2 border-violet-200 dark:border-violet-800 cursor-pointer hover:from-violet-100 hover:to-indigo-100 dark:hover:from-violet-950/50 dark:hover:to-indigo-950/50 transition-colors"
+                    className={`cursor-pointer transition-colors border-t-2 ${
+                      filter === 'delivered' 
+                        ? 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border-emerald-200 dark:border-emerald-800 hover:from-emerald-100 hover:to-green-100 dark:hover:from-emerald-950/50 dark:hover:to-green-950/50'
+                        : 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-violet-200 dark:border-violet-800 hover:from-violet-100 hover:to-indigo-100 dark:hover:from-violet-950/50 dark:hover:to-indigo-950/50'
+                    }`}
                     onClick={() => {
                       setCollapsedBatches(prev => {
                         const next = new Set(prev);
@@ -1732,7 +1745,11 @@ export default function InvoicesTab() {
                     <TableCell colSpan={11} className="py-2.5 px-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-sm">
+                          <div className={`h-6 w-6 rounded-md flex items-center justify-center shadow-sm ${
+                            filter === 'delivered' 
+                              ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
+                              : 'bg-gradient-to-br from-violet-500 to-indigo-500'
+                          }`}>
                             <svg 
                               className={`h-3.5 w-3.5 text-white transition-transform duration-200 ${collapsedBatches.has(batch.dateKey) ? '-rotate-90' : 'rotate-0'}`} 
                               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
@@ -1741,11 +1758,17 @@ export default function InvoicesTab() {
                             </svg>
                           </div>
                           <span className="font-semibold text-sm text-foreground">{batch.label}</span>
-                          <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">
+                          <Badge variant="secondary" className={`text-[10px] border-0 ${
+                            filter === 'delivered'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                              : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                          }`}>
                             {batch.invoices.length} invoice{batch.invoices.length !== 1 ? 's' : ''}
                           </Badge>
                         </div>
-                        <span className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                        <span className={`text-sm font-bold ${
+                          filter === 'delivered' ? 'text-emerald-700 dark:text-emerald-300' : 'text-violet-700 dark:text-violet-300'
+                        }`}>
                           {formatCurrency(batch.total)}
                         </span>
                       </div>
