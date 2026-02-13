@@ -1665,8 +1665,12 @@ export default function InvoicesTab() {
                                     setMovingInvoiceId(null);
                                   }}
                                 >
-                                  {batch.dateKey === 'unknown' ? 'No Date' : format(new Date(batch.dateKey), 'MMM d, yyyy')}
-                                  {isCurrent && ' ✓'}
+                                  <span className="flex flex-col">
+                                    <span>{batch.dateKey === 'unknown' ? 'No Date' : format(new Date(batch.dateKey), 'MMM d, yyyy')}{isCurrent && ' ✓'}</span>
+                                    {batchSchedules[batch.dateKey]?.schedule_name && (
+                                      <span className="text-[9px] text-muted-foreground truncate max-w-[160px]">{batchSchedules[batch.dateKey].schedule_name}</span>
+                                    )}
+                                  </span>
                                 </button>
                               );
                             })}
