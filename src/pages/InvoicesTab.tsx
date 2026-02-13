@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -148,6 +149,7 @@ export default function InvoicesTab() {
   const [uploadingSchedule, setUploadingSchedule] = useState<string | null>(null);
   const [verifyingSchedule, setVerifyingSchedule] = useState<string | null>(null);
   const [markingBatchPaid, setMarkingBatchPaid] = useState<string | null>(null);
+  const [scheduleToRemove, setScheduleToRemove] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -2056,7 +2058,7 @@ export default function InvoicesTab() {
                                 View
                               </a>
                               <button
-                                onClick={(e) => { e.stopPropagation(); if (window.confirm('Are you sure you want to remove this schedule? This will clear the schedule name and verification results.')) removeSchedulePdf(batch.dateKey); }}
+                                onClick={(e) => { e.stopPropagation(); setScheduleToRemove(batch.dateKey); }}
                                 className="h-4 w-4 rounded-full flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
                                 title="Remove schedule"
                               >
@@ -2138,6 +2140,22 @@ export default function InvoicesTab() {
         } : null}
         onSuccess={loadData}
       />
+      <AlertDialog open={!!scheduleToRemove} onOpenChange={(open) => !open && setScheduleToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Schedule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this schedule? This will clear the schedule name and verification results.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (scheduleToRemove) removeSchedulePdf(scheduleToRemove); setScheduleToRemove(null); }}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
