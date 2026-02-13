@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +62,7 @@ export default function CustomerDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
+  const originalCustomerRef = useRef<CustomerData | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupDialogOpen, setLookupDialogOpen] = useState(false);
   const [lookupResult, setLookupResult] = useState<FMCSAResult | null>(null);
@@ -90,6 +91,7 @@ export default function CustomerDetail() {
 
       if (error) throw error;
       setCustomer(data);
+      originalCustomerRef.current = data;
     } catch (error: any) {
       toast.error("Failed to load customer details");
       console.error(error);
@@ -161,13 +163,25 @@ export default function CustomerDetail() {
   // Auto-save a single field immediately (for critical fields like MC/DOT)
   const autoSaveField = async (field: keyof CustomerData, value: any) => {
     if (!id) return;
+    const trimmedValue = typeof value === 'string' ? value.trim() : value;
+    const originalValue = originalCustomerRef.current?.[field] || null;
+    const normalizedOriginal = typeof originalValue === 'string' ? originalValue.trim() : originalValue;
+    // Skip save if value hasn't changed from what was loaded
+    if ((trimmedValue || null) === (normalizedOriginal || null)) {
+      console.log(`[AutoSave] ${field} unchanged, skipping`);
+      return;
+    }
     try {
       const { error } = await supabase
         .from("customers")
-        .update({ [field]: value || null })
+        .update({ [field]: trimmedValue || null })
         .eq("id", id);
       if (error) throw error;
-      console.log(`[AutoSave] ${field} saved:`, value);
+      // Update the original ref so subsequent blurs don't re-save
+      if (originalCustomerRef.current) {
+        originalCustomerRef.current = { ...originalCustomerRef.current, [field]: trimmedValue || null };
+      }
+      console.log(`[AutoSave] ${field} saved:`, trimmedValue);
     } catch (err: any) {
       console.error(`[AutoSave] Failed to save ${field}:`, err);
       if (err.message?.includes('customers_mc_number_tenant_unique') || err.code === '23505') {
