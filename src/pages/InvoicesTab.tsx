@@ -1623,8 +1623,8 @@ export default function InvoicesTab() {
                             className={`h-[30px] w-[30px] flex items-center justify-center transition-all duration-300 rounded-none border-l border-white/30 ${
                               filter === 'delivered'
                                 ? batchMode
-                                  ? 'btn-glossy-success text-white'
-                                  : 'bg-gradient-to-b from-emerald-300 to-green-400 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-emerald-400 hover:to-green-500 hover:text-white'
+                                  ? 'btn-glossy-primary text-white'
+                                  : 'bg-gradient-to-b from-violet-400 to-purple-500 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-violet-500 hover:to-purple-600 hover:text-white'
                                 : batchMode
                                   ? 'btn-glossy-primary text-white'
                                   : 'bg-gradient-to-b from-violet-400 to-purple-500 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-violet-500 hover:to-purple-600 hover:text-white'
