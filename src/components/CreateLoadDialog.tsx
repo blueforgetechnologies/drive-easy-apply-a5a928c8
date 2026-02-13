@@ -627,23 +627,23 @@ export function CreateLoadDialog({
 
          <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Form */}
-          <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
             {/* Rate Confirmation Upload */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-md bg-blue-500/10">
+                <div className="p-1.5 rounded-lg bg-blue-500/15 shadow-sm border border-blue-200/50 dark:border-blue-700/40">
                   <FileText className="h-4 w-4 text-blue-500" />
                 </div>
-                <h3 className="font-semibold text-sm text-blue-600 dark:text-blue-400">Quick Fill from Rate Confirmation</h3>
+                <h3 className="font-bold text-sm text-blue-600 dark:text-blue-400">Quick Fill from Rate Confirmation</h3>
               </div>
               <RateConfirmationUploader
                 onDataExtracted={handleRCExtracted}
                 onFileSelected={(file) => setRateConfirmationFile(file)}
               />
               {matchedCustomerId && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/30">
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-green-500/10 border-2 border-green-500/30 shadow-sm shadow-green-500/10">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-green-600 font-medium">
+                  <span className="text-sm text-green-600 font-semibold">
                     Customer matched: {customers.find((c) => c.id === matchedCustomerId)?.name}
                   </span>
                 </div>
@@ -663,19 +663,19 @@ export function CreateLoadDialog({
             </div>
 
             {/* Carrier / Truck / Driver */}
-            <SectionCard icon={<Truck className="h-3.5 w-3.5" />} title="Carrier / Truck / Driver" color="blue">
-              <div className="grid grid-cols-3 gap-2">
-                <Field label="Carrier">
+            <GlossySection icon={<Truck className="h-3.5 w-3.5" />} title="Carrier / Truck / Driver" color="blue">
+              <div className="grid grid-cols-3 gap-3">
+                <GlossyField label="Carrier">
                   <Select value={carrierId} onValueChange={(v) => { setCarrierId(v); setVehicleId(""); setDriverId(""); }}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Select carrier" /></SelectTrigger>
+                    <SelectTrigger className="h-9 rounded-lg shadow-sm border-2"><SelectValue placeholder="Select carrier" /></SelectTrigger>
                     <SelectContent>
                       {carriers.map((c: any) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </Field>
-                <Field label="Truck ID">
+                </GlossyField>
+                <GlossyField label="Truck ID">
                   <Select
                     value={vehicleId}
                     onValueChange={(v) => {
@@ -685,7 +685,7 @@ export function CreateLoadDialog({
                       if (vehicle?.carrier_id) setCarrierId(vehicle.carrier_id);
                     }}
                   >
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Select truck" /></SelectTrigger>
+                    <SelectTrigger className="h-9 rounded-lg shadow-sm border-2"><SelectValue placeholder="Select truck" /></SelectTrigger>
                     <SelectContent>
                       {vehicles
                         .filter((v: any) => !carrierId || !v.carrier_id || v.carrier_id === carrierId)
@@ -694,10 +694,10 @@ export function CreateLoadDialog({
                         ))}
                     </SelectContent>
                   </Select>
-                </Field>
-                <Field label="Driver">
+                </GlossyField>
+                <GlossyField label="Driver">
                   <Select value={driverId} onValueChange={setDriverId}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Auto from truck" /></SelectTrigger>
+                    <SelectTrigger className="h-9 rounded-lg shadow-sm border-2"><SelectValue placeholder="Auto from truck" /></SelectTrigger>
                     <SelectContent>
                       {drivers.map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>
@@ -706,35 +706,35 @@ export function CreateLoadDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                </Field>
+                </GlossyField>
               </div>
-            </SectionCard>
+            </GlossySection>
 
             {/* Load Identification */}
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Our Load Number">
-                <Input value={loadNumber} onChange={(e) => setLoadNumber(e.target.value)} className="h-8" required />
-              </Field>
-              <Field label="Customer Load ID">
-                <Input value={shipperLoadId} onChange={(e) => setShipperLoadId(e.target.value)} placeholder="Pro#, Order#..." className="h-8" />
-              </Field>
-              <Field label="Load Type">
+              <GlossyField label="Our Load Number">
+                <Input value={loadNumber} onChange={(e) => setLoadNumber(e.target.value)} className="h-9 rounded-lg shadow-sm border-2 font-semibold" required />
+              </GlossyField>
+              <GlossyField label="Customer Load ID">
+                <Input value={shipperLoadId} onChange={(e) => setShipperLoadId(e.target.value)} placeholder="Pro#, Order#..." className="h-9 rounded-lg shadow-sm border-2" />
+              </GlossyField>
+              <GlossyField label="Load Type">
                 <Select value={loadType} onValueChange={setLoadType}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 rounded-lg shadow-sm border-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="internal">Internal</SelectItem>
                     <SelectItem value="broker">Broker</SelectItem>
                     <SelectItem value="load_board">Load Board</SelectItem>
                   </SelectContent>
                 </Select>
-              </Field>
+              </GlossyField>
             </div>
 
             {/* Customer/Broker */}
-            <SectionCard icon={<DollarSign className="h-3.5 w-3.5" />} title="Customer/Broker Information" color="amber">
-              <div className="grid grid-cols-4 gap-2">
+            <GlossySection icon={<DollarSign className="h-3.5 w-3.5" />} title="Customer/Broker Information" color="amber">
+              <div className="grid grid-cols-4 gap-2.5">
                 <div className="col-span-2">
-                  <Field label="Company Name">
+                  <GlossyField label="Company Name">
                     <SearchableEntitySelect
                       entities={customers.map((c) => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
                       value={brokerName}
@@ -759,48 +759,48 @@ export function CreateLoadDialog({
                         return;
                       }}
                       entityType="customer"
-                      className="h-8"
+                      className="h-9 rounded-lg shadow-sm border-2"
                     />
-                  </Field>
+                  </GlossyField>
                 </div>
                 <div className="col-span-2">
-                  <Field label="Address">
-                    <Input value={brokerAddress} onChange={(e) => setBrokerAddress(e.target.value)} className="h-8" />
-                  </Field>
+                  <GlossyField label="Address">
+                    <Input value={brokerAddress} onChange={(e) => setBrokerAddress(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" />
+                  </GlossyField>
                 </div>
-                <Field label="City"><Input value={brokerCity} onChange={(e) => setBrokerCity(e.target.value)} className="h-8" /></Field>
-                <Field label="State"><Input value={brokerState} onChange={(e) => setBrokerState(e.target.value)} className="h-8" placeholder="CA" /></Field>
-                <Field label="ZIP"><Input value={brokerZip} onChange={(e) => setBrokerZip(e.target.value)} className="h-8" /></Field>
-                <Field label="MC#"><Input value={brokerMcNumber} onChange={(e) => setBrokerMcNumber(e.target.value)} className="h-8" /></Field>
-                <Field label="Contact"><Input value={brokerContact} onChange={(e) => setBrokerContact(e.target.value)} className="h-8" /></Field>
-                <Field label="Phone"><Input value={brokerPhone} onChange={(e) => setBrokerPhone(e.target.value)} className="h-8" /></Field>
-                <div className="col-span-2"><Field label="Email"><Input value={brokerEmail} onChange={(e) => setBrokerEmail(e.target.value)} className="h-8" /></Field></div>
+                <GlossyField label="City"><Input value={brokerCity} onChange={(e) => setBrokerCity(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="State"><Input value={brokerState} onChange={(e) => setBrokerState(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" placeholder="CA" /></GlossyField>
+                <GlossyField label="ZIP"><Input value={brokerZip} onChange={(e) => setBrokerZip(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="MC#"><Input value={brokerMcNumber} onChange={(e) => setBrokerMcNumber(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="Contact"><Input value={brokerContact} onChange={(e) => setBrokerContact(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="Phone"><Input value={brokerPhone} onChange={(e) => setBrokerPhone(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <div className="col-span-2"><GlossyField label="Email"><Input value={brokerEmail} onChange={(e) => setBrokerEmail(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField></div>
               </div>
-            </SectionCard>
+            </GlossySection>
 
-            {/* Billing Party section removed - merged into Financial below */}
-
-            {/* === STOPS + MAP SECTION === */}
-            <div className="space-y-1.5">
+            {/* === ROUTE STOPS === */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-emerald-500" />
-                  <h3 className="font-semibold text-xs">Route Stops</h3>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{stops.length} stops</Badge>
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-emerald-500/15 shadow-sm border border-emerald-200/50 dark:border-emerald-700/40">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <h3 className="font-bold text-sm">Route Stops</h3>
+                  <Badge variant="secondary" className="text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">{stops.length} stops</Badge>
                 </div>
-                <div className="flex gap-1.5">
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => addStop("pickup")}>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5 rounded-lg shadow-sm border-2 font-semibold hover:-translate-y-px active:translate-y-px transition-all" onClick={() => addStop("pickup")}>
                     <Plus className="h-3 w-3" /> Pickup
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => addStop("delivery")}>
+                  <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5 rounded-lg shadow-sm border-2 font-semibold hover:-translate-y-px active:translate-y-px transition-all" onClick={() => addStop("delivery")}>
                     <Plus className="h-3 w-3" /> Drop
                   </Button>
                 </div>
               </div>
 
-              <div className="rounded-lg border bg-background divide-y divide-border">
+              <div className="space-y-2.5">
                 {stops.map((stop, idx) => (
-                  <StopCard
+                  <GlossyStopCard
                     key={stop.id}
                     stop={stop}
                     index={idx}
@@ -815,11 +815,11 @@ export function CreateLoadDialog({
             </div>
 
             {/* Equipment & Cargo */}
-            <SectionCard icon={<Package className="h-3.5 w-3.5" />} title="Equipment & Cargo" color="slate">
-              <div className="grid grid-cols-4 gap-2">
-                <Field label="Equipment">
+            <GlossySection icon={<Package className="h-3.5 w-3.5" />} title="Equipment & Cargo" color="slate">
+              <div className="grid grid-cols-4 gap-2.5">
+                <GlossyField label="Equipment">
                   <Select value={equipmentType} onValueChange={setEquipmentType}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger className="h-9 rounded-lg shadow-sm border-2"><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="dry_van">Dry Van</SelectItem>
                       <SelectItem value="reefer">Reefer</SelectItem>
@@ -831,27 +831,27 @@ export function CreateLoadDialog({
                       <SelectItem value="lowboy">Lowboy</SelectItem>
                     </SelectContent>
                   </Select>
-                </Field>
-                <Field label="Size"><Input value={vehicleSize} onChange={(e) => setVehicleSize(e.target.value)} placeholder="53ft" className="h-8" /></Field>
-                <Field label="Weight (lbs)"><Input type="number" value={cargoWeight} onChange={(e) => setCargoWeight(e.target.value)} className="h-8" /></Field>
-                <Field label="Pieces"><Input type="number" value={cargoPieces} onChange={(e) => setCargoPieces(e.target.value)} className="h-8" /></Field>
-                <div className="col-span-3"><Field label="Cargo Description"><Textarea value={cargoDescription} onChange={(e) => setCargoDescription(e.target.value)} rows={1} className="min-h-[32px] resize-none" /></Field></div>
-                <Field label="Loaded Miles">
-                  <div className="flex gap-1">
-                    <Input type="number" value={estimatedMiles} onChange={(e) => setEstimatedMiles(e.target.value)} className="h-8" />
-                    <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" disabled={calculatingMiles} onClick={calculateMiles}>
+                </GlossyField>
+                <GlossyField label="Size"><Input value={vehicleSize} onChange={(e) => setVehicleSize(e.target.value)} placeholder="53ft" className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="Weight (lbs)"><Input type="number" value={cargoWeight} onChange={(e) => setCargoWeight(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <GlossyField label="Pieces"><Input type="number" value={cargoPieces} onChange={(e) => setCargoPieces(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" /></GlossyField>
+                <div className="col-span-3"><GlossyField label="Cargo Description"><Textarea value={cargoDescription} onChange={(e) => setCargoDescription(e.target.value)} rows={1} className="min-h-[36px] resize-none rounded-lg shadow-sm border-2" /></GlossyField></div>
+                <GlossyField label="Loaded Miles">
+                  <div className="flex gap-1.5">
+                    <Input type="number" value={estimatedMiles} onChange={(e) => setEstimatedMiles(e.target.value)} className="h-9 rounded-lg shadow-sm border-2" />
+                    <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-lg shadow-sm border-2 hover:-translate-y-px active:translate-y-px transition-all" disabled={calculatingMiles} onClick={calculateMiles}>
                       {calculatingMiles ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
-                </Field>
+                </GlossyField>
               </div>
-            </SectionCard>
+            </GlossySection>
 
             {/* Financial & Billing */}
-            <SectionCard icon={<DollarSign className="h-3.5 w-3.5" />} title="Financial & Billing" color="green">
-              <div className="grid grid-cols-4 gap-2">
+            <GlossySection icon={<DollarSign className="h-3.5 w-3.5" />} title="Financial & Billing" color="green">
+              <div className="grid grid-cols-4 gap-2.5">
                 <div className="col-span-3">
-                  <Field label="Customer (Who Pays)">
+                  <GlossyField label="Customer (Who Pays)">
                     <SearchableEntitySelect
                       entities={customers.map((c) => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
                       value={customers.find((c) => c.id === customerId)?.name || ""}
@@ -859,39 +859,39 @@ export function CreateLoadDialog({
                       onSelect={(entity) => setCustomerId(entity.id)}
                       onAddNew={async () => { toast.error("Please add customers from the Customers tab"); return; }}
                       entityType="customer"
-                      className="h-8"
+                      className="h-9 rounded-lg shadow-sm border-2"
                     />
-                  </Field>
+                  </GlossyField>
                 </div>
-                <Field label="Rate ($)">
-                  <Input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-8" />
-                </Field>
+                <GlossyField label="Rate ($)">
+                  <Input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 rounded-lg shadow-sm border-2 font-bold text-primary" />
+                </GlossyField>
               </div>
-              <div className="border-t mt-2 pt-2">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1.5">Invoice To (Billing Party)</p>
+              <div className="border-t-2 border-dashed border-border/60 mt-3 pt-3">
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2">Invoice To (Billing Party)</p>
                 <div className="grid grid-cols-4 gap-2">
-                  <div className="col-span-2"><Field label="Company"><Input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Defaults to Customer/Broker" className="h-7 text-xs" /></Field></div>
-                  <Field label="Contact"><Input value={billingContact} onChange={(e) => setBillingContact(e.target.value)} className="h-7 text-xs" /></Field>
-                  <Field label="Phone"><Input value={billingPhone} onChange={(e) => setBillingPhone(e.target.value)} className="h-7 text-xs" /></Field>
-                  <div className="col-span-2"><Field label="Address"><Input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="h-7 text-xs" /></Field></div>
-                  <Field label="City"><Input value={billingCity} onChange={(e) => setBillingCity(e.target.value)} className="h-7 text-xs" /></Field>
-                  <Field label="St / ZIP">
-                    <div className="flex gap-1">
-                      <Input value={billingState} onChange={(e) => setBillingState(e.target.value)} placeholder="ST" className="h-7 text-xs w-14" />
-                      <Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="ZIP" className="h-7 text-xs" />
+                  <div className="col-span-2"><GlossyField label="Company"><Input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Defaults to Customer/Broker" className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField></div>
+                  <GlossyField label="Contact"><Input value={billingContact} onChange={(e) => setBillingContact(e.target.value)} className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField>
+                  <GlossyField label="Phone"><Input value={billingPhone} onChange={(e) => setBillingPhone(e.target.value)} className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField>
+                  <div className="col-span-2"><GlossyField label="Address"><Input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField></div>
+                  <GlossyField label="City"><Input value={billingCity} onChange={(e) => setBillingCity(e.target.value)} className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField>
+                  <GlossyField label="St / ZIP">
+                    <div className="flex gap-1.5">
+                      <Input value={billingState} onChange={(e) => setBillingState(e.target.value)} placeholder="ST" className="h-8 text-xs w-14 rounded-lg shadow-sm border-2" />
+                      <Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="ZIP" className="h-8 text-xs rounded-lg shadow-sm border-2" />
                     </div>
-                  </Field>
-                  <div className="col-span-2"><Field label="Email"><Input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} className="h-7 text-xs" /></Field></div>
+                  </GlossyField>
+                  <div className="col-span-2"><GlossyField label="Email"><Input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} className="h-8 text-xs rounded-lg shadow-sm border-2" /></GlossyField></div>
                 </div>
               </div>
-            </SectionCard>
+            </GlossySection>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-1 pb-3">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10">
+            <div className="flex gap-3 pt-2 pb-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-11 rounded-xl border-2 shadow-md font-semibold text-sm hover:-translate-y-px active:translate-y-px transition-all">
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} className="flex-1 h-10 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
+              <Button onClick={handleSubmit} className="flex-1 h-11 rounded-xl shadow-lg shadow-primary/25 font-bold text-sm bg-gradient-to-b from-primary to-primary/85 border-b-[3px] border-b-primary/60 hover:-translate-y-px active:translate-y-px transition-all">
                 Create Load
               </Button>
             </div>
@@ -999,49 +999,47 @@ export function CreateLoadDialog({
 
 // === Sub-components ===
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function GlossyField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-0.5">
-      <Label className="text-[11px] font-medium text-muted-foreground leading-none">{label}</Label>
+    <div className="space-y-1">
+      <Label className="text-[11px] font-semibold text-muted-foreground leading-none uppercase tracking-wide">{label}</Label>
       {children}
     </div>
   );
 }
 
-const sectionColors: Record<string, { border: string; bg: string; icon: string; text: string }> = {
+const glossySectionColors: Record<string, { border: string; bg: string; icon: string; text: string; shadow: string }> = {
   blue: {
-    border: "border-blue-200 dark:border-blue-800/60",
-    bg: "bg-gradient-to-br from-blue-100/80 to-blue-50/40 dark:from-blue-950/40 dark:to-blue-900/20",
-    icon: "bg-blue-500/20",
+    border: "border-blue-200/80 dark:border-blue-700/50",
+    bg: "bg-gradient-to-br from-blue-50/90 via-background to-blue-50/30 dark:from-blue-950/50 dark:via-background dark:to-blue-950/20",
+    icon: "bg-blue-500/15 border border-blue-200/60 dark:border-blue-700/40",
     text: "text-blue-700 dark:text-blue-400",
+    shadow: "shadow-md shadow-blue-500/8",
   },
   amber: {
-    border: "border-amber-200 dark:border-amber-800/60",
-    bg: "bg-gradient-to-br from-amber-100/80 to-amber-50/40 dark:from-amber-950/40 dark:to-amber-900/20",
-    icon: "bg-amber-500/20",
+    border: "border-amber-200/80 dark:border-amber-700/50",
+    bg: "bg-gradient-to-br from-amber-50/90 via-background to-amber-50/30 dark:from-amber-950/50 dark:via-background dark:to-amber-950/20",
+    icon: "bg-amber-500/15 border border-amber-200/60 dark:border-amber-700/40",
     text: "text-amber-700 dark:text-amber-400",
-  },
-  violet: {
-    border: "border-violet-200 dark:border-violet-800/60",
-    bg: "bg-gradient-to-br from-violet-100/80 to-violet-50/40 dark:from-violet-950/40 dark:to-violet-900/20",
-    icon: "bg-violet-500/20",
-    text: "text-violet-700 dark:text-violet-400",
+    shadow: "shadow-md shadow-amber-500/8",
   },
   slate: {
-    border: "border-slate-200 dark:border-slate-700/60",
-    bg: "bg-gradient-to-br from-slate-100/80 to-slate-50/40 dark:from-slate-900/50 dark:to-slate-800/30",
-    icon: "bg-slate-500/20",
+    border: "border-slate-200/80 dark:border-slate-600/50",
+    bg: "bg-gradient-to-br from-slate-50/90 via-background to-slate-50/30 dark:from-slate-900/60 dark:via-background dark:to-slate-900/20",
+    icon: "bg-slate-500/15 border border-slate-200/60 dark:border-slate-600/40",
     text: "text-slate-700 dark:text-slate-400",
+    shadow: "shadow-md shadow-slate-500/8",
   },
   green: {
-    border: "border-green-200 dark:border-green-800/60",
-    bg: "bg-gradient-to-br from-green-100/80 to-green-50/40 dark:from-green-950/40 dark:to-green-900/20",
-    icon: "bg-green-500/20",
+    border: "border-green-200/80 dark:border-green-700/50",
+    bg: "bg-gradient-to-br from-green-50/90 via-background to-green-50/30 dark:from-green-950/50 dark:via-background dark:to-green-950/20",
+    icon: "bg-green-500/15 border border-green-200/60 dark:border-green-700/40",
     text: "text-green-700 dark:text-green-400",
+    shadow: "shadow-md shadow-green-500/8",
   },
 };
 
-function SectionCard({
+function GlossySection({
   icon,
   title,
   color,
@@ -1052,19 +1050,19 @@ function SectionCard({
   color: string;
   children: React.ReactNode;
 }) {
-  const c = sectionColors[color] || sectionColors.slate;
+  const c = glossySectionColors[color] || glossySectionColors.slate;
   return (
-    <div className={`rounded-lg border ${c.border} ${c.bg} p-2.5 space-y-1.5`}>
-      <div className={`flex items-center gap-1.5 pb-1 border-b ${c.border}`}>
-        <div className={`p-0.5 rounded ${c.icon}`}>{icon}</div>
-        <h3 className={`font-semibold text-xs ${c.text}`}>{title}</h3>
+    <div className={`rounded-xl border-2 ${c.border} ${c.bg} ${c.shadow} p-3.5 space-y-2.5`}>
+      <div className={`flex items-center gap-2 pb-2 border-b-2 ${c.border}`}>
+        <div className={`p-1 rounded-lg ${c.icon} shadow-sm`}>{icon}</div>
+        <h3 className={`font-bold text-xs ${c.text} tracking-wide`}>{title}</h3>
       </div>
       {children}
     </div>
   );
 }
 
-function StopCard({
+function GlossyStopCard({
   stop,
   index,
   total,
@@ -1082,77 +1080,67 @@ function StopCard({
   canRemove: boolean;
 }) {
   const isPickup = stop.type === "pickup";
-  const accentColor = isPickup ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
+  const accentBorder = isPickup
+    ? "border-emerald-300/80 dark:border-emerald-700/50"
+    : "border-rose-300/80 dark:border-rose-700/50";
+  const accentBg = isPickup
+    ? "bg-gradient-to-r from-emerald-50/80 via-background to-background dark:from-emerald-950/30 dark:via-background dark:to-background"
+    : "bg-gradient-to-r from-rose-50/80 via-background to-background dark:from-rose-950/30 dark:via-background dark:to-background";
+  const accentShadow = isPickup ? "shadow-md shadow-emerald-500/8" : "shadow-md shadow-rose-500/8";
   const dotColor = isPickup ? "bg-emerald-500" : "bg-rose-500";
+  const accentText = isPickup ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400";
+  const labelBg = isPickup ? "bg-emerald-500/10" : "bg-rose-500/10";
 
-  const inlineInput = (field: keyof Stop, placeholder: string, opts?: { type?: string; className?: string }) => (
-    <input
+  const styledInput = (field: keyof Stop, placeholder: string, opts?: { type?: string; className?: string }) => (
+    <Input
       type={opts?.type || "text"}
       value={stop[field]}
       onChange={(e) => onUpdate(field, e.target.value)}
       placeholder={placeholder}
-      className={`bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none text-xs py-0.5 w-full transition-colors ${opts?.className || ""}`}
+      className={`h-8 text-xs rounded-lg shadow-sm border-2 ${opts?.className || ""}`}
     />
   );
 
   return (
-    <div className="py-2.5 px-2.5 group">
-      <div className="flex items-start gap-2">
-        {/* Left: location & contact */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`} />
-            <span className={`font-semibold text-[11px] ${accentColor}`}>
-              {isPickup ? "PU" : "DEL"} #{typeIndex}
-            </span>
-            <span className="text-[10px] text-muted-foreground">{index + 1}/{total}</span>
-            {canRemove && (
-              <button type="button" onClick={onRemove} className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
+    <div className={`rounded-xl border-2 ${accentBorder} ${accentBg} ${accentShadow} p-3 group transition-all hover:shadow-lg`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dotColor} shadow-sm shadow-current`} />
+          <span className={`font-bold text-xs ${accentText} ${labelBg} px-2 py-0.5 rounded-md`}>
+            {isPickup ? "PU" : "DEL"} #{typeIndex}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-medium bg-muted/60 px-1.5 py-0.5 rounded">{index + 1}/{total}</span>
+        </div>
+        {canRemove && (
+          <button type="button" onClick={onRemove} className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shadow-sm border border-transparent hover:border-destructive/20">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {/* Content */}
+      <div className="flex gap-4">
+        {/* Left: Location & Contact */}
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="grid grid-cols-2 gap-2">
+            <GlossyField label="Facility">{styledInput("name", "Facility name", { className: "font-semibold" })}</GlossyField>
+            <GlossyField label="Contact">{styledInput("contact", "—")}</GlossyField>
           </div>
-          <div className="grid grid-cols-[1fr_1fr] gap-x-3 gap-y-0">
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Facility</span>
-              {inlineInput("name", "Facility name", { className: "font-medium" })}
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Contact</span>
-              {inlineInput("contact", "—")}
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Address</span>
-              {inlineInput("address", "Street address")}
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Phone</span>
-              {inlineInput("phone", "—")}
-            </div>
-            <div className="flex items-baseline gap-1 col-span-2">
-              <span className="text-[10px] text-muted-foreground w-10 shrink-0">City/St</span>
-              <div className="flex gap-1 flex-1">
-                {inlineInput("city", "City", { className: "flex-1" })}
-                {inlineInput("state", "ST", { className: "w-8 text-center uppercase" })}
-                {inlineInput("zip", "ZIP", { className: "w-16" })}
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <GlossyField label="Address">{styledInput("address", "Street address")}</GlossyField>
+            <GlossyField label="Phone">{styledInput("phone", "—")}</GlossyField>
+          </div>
+          <div className="grid grid-cols-[1fr_60px_80px] gap-2">
+            <GlossyField label="City">{styledInput("city", "City")}</GlossyField>
+            <GlossyField label="State">{styledInput("state", "ST", { className: "text-center uppercase" })}</GlossyField>
+            <GlossyField label="ZIP">{styledInput("zip", "ZIP")}</GlossyField>
           </div>
         </div>
-        {/* Right: date, time, notes */}
-        <div className="w-40 shrink-0 border-l border-border/40 pl-2 space-y-0">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Date</span>
-            {inlineInput("date", "—", { type: "date" })}
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Time</span>
-            {inlineInput("time", "—", { type: "time" })}
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Notes</span>
-            {inlineInput("notes", "—")}
-          </div>
+        {/* Right: Date/Time/Notes */}
+        <div className="w-44 shrink-0 border-l-2 border-dashed border-border/50 pl-3 space-y-1.5">
+          <GlossyField label="Date">{styledInput("date", "MM/DD/YYYY", { type: "date" })}</GlossyField>
+          <GlossyField label="Time">{styledInput("time", "HH:MM", { type: "time" })}</GlossyField>
+          <GlossyField label="Notes">{styledInput("notes", "—")}</GlossyField>
         </div>
       </div>
     </div>
