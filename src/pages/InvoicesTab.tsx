@@ -2086,7 +2086,7 @@ export default function InvoicesTab() {
                           {batchSchedules[batch.dateKey]?.verification_results?.all_matched && (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                           )}
-                          {batchSchedules[batch.dateKey]?.verification_results?.all_matched && (
+                          {batchSchedules[batch.dateKey]?.verification_results?.all_matched && filter !== 'paid' && (
                             <Button
                               variant="default"
                               size="sm"
