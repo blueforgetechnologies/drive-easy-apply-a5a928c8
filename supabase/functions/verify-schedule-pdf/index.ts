@@ -93,8 +93,11 @@ Also find the TOTAL NET PAYMENT shown on the schedule.
 
 Our expected total net payment is: $${totalExpected.toFixed(2)}
 
+Also find the SCHEDULE NUMBER / SCHEDULER NUMBER shown on the document (e.g. "TALB-2096").
+
 Return a JSON object with this EXACT structure:
 {
+  "schedule_number": "<the scheduler/schedule number from the document, e.g. TALB-2096>",
   "invoices": {
     "<invoice_number>": {
       "found": true/false,
@@ -159,8 +162,11 @@ IMPORTANT: Use the exact invoice numbers as keys. Return numbers without $ signs
     }
 
     // Build verification results
+    const scheduleNumber = parsed.schedule_number || null;
+
     const verificationResults: Record<string, any> = {
       invoices: {},
+      schedule_number: scheduleNumber,
       total_schedule_net: parsed.total_schedule_net ?? null,
       total_expected_net: totalExpected,
       all_matched: true,
@@ -203,9 +209,15 @@ IMPORTANT: Use the exact invoice numbers as keys. Return numbers without $ signs
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Update verification results and auto-set schedule name if extracted
+    const updatePayload: Record<string, any> = { verification_results: verificationResults };
+    if (scheduleNumber) {
+      updatePayload.schedule_name = scheduleNumber;
+    }
+
     const { error: updateError } = await serviceClient
       .from("invoice_batch_schedules")
-      .update({ verification_results: verificationResults })
+      .update(updatePayload)
       .eq("id", batchScheduleId)
       .eq("tenant_id", tenant_id);
 
@@ -216,7 +228,7 @@ IMPORTANT: Use the exact invoice numbers as keys. Return numbers without $ signs
     console.log("[verify-schedule-pdf] Verification complete. All matched:", verificationResults.all_matched);
 
     return new Response(
-      JSON.stringify({ success: true, verification: verificationResults }),
+      JSON.stringify({ success: true, verification: verificationResults, schedule_number: scheduleNumber }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
