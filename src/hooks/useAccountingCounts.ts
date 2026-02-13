@@ -84,7 +84,8 @@ export function useAccountingCounts(): AccountingCounts {
       ] = await Promise.all([
         query("loads")
           .select("id", { count: "exact", head: true })
-          .eq("financial_status", "pending_invoice"),
+          .or("status.in.(ready_for_audit,set_aside),financial_status.eq.pending_invoice")
+          .or("financial_status.is.null,financial_status.neq.invoiced"),
         query("invoices")
           .select("id, status, billing_method, customer_id, otr_submitted_at, otr_status, customers(email, billing_email, otr_approval_status, factoring_approval)"),
         query("company_profile")
