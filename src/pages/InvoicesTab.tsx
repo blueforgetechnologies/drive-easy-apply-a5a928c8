@@ -1625,7 +1625,7 @@ export default function InvoicesTab() {
                                 ? filter === 'delivered'
                                   ? 'bg-gradient-to-b from-emerald-500 to-green-600 text-white shadow-[0_2px_8px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/30'
                                   : 'bg-gradient-to-b from-violet-500 to-indigo-600 text-white shadow-[0_2px_8px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/30'
-                                : 'bg-gradient-to-b from-white to-gray-100 dark:from-gray-700 dark:to-gray-800 text-muted-foreground border-l border-border/40 shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_3px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.95)] hover:text-foreground'
+                                : 'btn-glossy text-gray-700 border-l border-border/40'
                             }`}
                             title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
