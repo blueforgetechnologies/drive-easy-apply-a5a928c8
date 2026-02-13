@@ -980,7 +980,7 @@ export function CreateLoadDialog({
           </div>
 
           {/* Far Right Panel - Map */}
-          <div className="w-80 border-l overflow-hidden hidden lg:block">
+          <div className="w-[480px] border-l overflow-hidden hidden lg:block">
             {mapStops.length >= 2 ? (
               <div className="h-full">
                 <LoadRouteMap stops={mapStops} />
