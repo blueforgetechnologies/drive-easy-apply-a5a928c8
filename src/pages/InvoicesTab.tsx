@@ -1265,7 +1265,7 @@ export default function InvoicesTab() {
             </>
           )}
         </TableCell>
-        <TableCell className="py-2 px-3">
+        <TableCell className="py-2 px-3 whitespace-nowrap">
           <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
           <div className="flex items-center gap-1">
             {getDeliveryStatusBadge(invoice)}
@@ -1286,12 +1286,12 @@ export default function InvoicesTab() {
             )}
           </div>
         </TableCell>
-        <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
-        <TableCell className="py-2 px-3">
+        <TableCell className="py-2 px-3 whitespace-nowrap">{getDocsChecklist(invoice)}</TableCell>
+        <TableCell className="py-2 px-3 whitespace-nowrap">
           <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
           <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
         </TableCell>
-        <TableCell className="py-2 px-3">
+        <TableCell className="py-2 px-3 whitespace-nowrap">
           {factoringPercentage > 0 ? (
             <>
               <div className="font-medium text-sm">{formatCurrency(invoice.total_amount * (1 - factoringPercentage / 100))}</div>
@@ -1734,7 +1734,7 @@ export default function InvoicesTab() {
       </div>
 
       <div className="overflow-x-auto">
-        <Table>
+        <Table className="min-w-[1200px]">
           <TableHeader>
              <TableRow className="border-l-4 border-l-primary border-b-0 bg-background">
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
