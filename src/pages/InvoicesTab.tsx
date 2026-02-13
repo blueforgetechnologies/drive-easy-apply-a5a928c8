@@ -1220,7 +1220,10 @@ export default function InvoicesTab() {
             >
               <div className="text-primary text-sm">{invoice.customer_name || "—"}</div>
               {invoice.customers?.mc_number && (
-                <div className="text-xs text-muted-foreground">MC-{invoice.customers.mc_number}</div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>MC-{invoice.customers.mc_number}</span>
+                  {getCreditApprovalBadge(invoice)}
+                </div>
               )}
             </div>
           ) : (
@@ -1261,8 +1264,7 @@ export default function InvoicesTab() {
           )}
         </TableCell>
         <TableCell className="py-2 px-3">
-          <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
-          <div>{getCreditApprovalBadge(invoice)}</div>
+          <div>{getBillingMethodBadge(invoice.billing_method)}</div>
         </TableCell>
         <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
         <TableCell className="py-2 px-3">
@@ -1747,7 +1749,6 @@ export default function InvoicesTab() {
               )}
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Billing Method</div>
-                <div className="text-muted-foreground font-normal normal-case">Credit Approval</div>
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Docs</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Delivery</TableHead>
