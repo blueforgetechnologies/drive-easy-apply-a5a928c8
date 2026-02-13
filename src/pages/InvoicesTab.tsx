@@ -1624,10 +1624,10 @@ export default function InvoicesTab() {
                               filter === 'delivered'
                                 ? batchMode
                                   ? 'btn-glossy-primary text-white'
-                                  : 'bg-gradient-to-b from-violet-400 to-purple-500 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-violet-500 hover:to-purple-600 hover:text-white'
+                                  : 'text-white/80 border border-purple-400 border-b-[3px] border-b-purple-600 shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,0.3),inset_0_-1px_3px_rgba(0,0,0,0.08)] bg-[linear-gradient(180deg,hsl(270,60%,65%)_0%,hsl(270,55%,55%)_35%,hsl(270,50%,48%)_100%)] hover:bg-[linear-gradient(180deg,hsl(270,60%,70%)_0%,hsl(270,55%,60%)_35%,hsl(270,50%,52%)_100%)] hover:-translate-y-px hover:text-white active:translate-y-px active:border-b'
                                 : batchMode
                                   ? 'btn-glossy-primary text-white'
-                                  : 'bg-gradient-to-b from-violet-400 to-purple-500 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-violet-500 hover:to-purple-600 hover:text-white'
+                                  : 'text-white/80 border border-purple-400 border-b-[3px] border-b-purple-600 shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,0.3),inset_0_-1px_3px_rgba(0,0,0,0.08)] bg-[linear-gradient(180deg,hsl(270,60%,65%)_0%,hsl(270,55%,55%)_35%,hsl(270,50%,48%)_100%)] hover:bg-[linear-gradient(180deg,hsl(270,60%,70%)_0%,hsl(270,55%,60%)_35%,hsl(270,50%,52%)_100%)] hover:-translate-y-px hover:text-white active:translate-y-px active:border-b'
                             }`}
                             title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
