@@ -2056,7 +2056,7 @@ export default function InvoicesTab() {
                                 View
                               </a>
                               <button
-                                onClick={(e) => { e.stopPropagation(); removeSchedulePdf(batch.dateKey); }}
+                                onClick={(e) => { e.stopPropagation(); if (window.confirm('Are you sure you want to remove this schedule? This will clear the schedule name and verification results.')) removeSchedulePdf(batch.dateKey); }}
                                 className="h-4 w-4 rounded-full flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
                                 title="Remove schedule"
                               >
