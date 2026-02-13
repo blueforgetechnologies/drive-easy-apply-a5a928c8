@@ -607,11 +607,11 @@ export function CreateLoadDialog({
           </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+         <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Form */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
             {/* Rate Confirmation Upload */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-md bg-blue-500/10">
                   <FileText className="h-4 w-4 text-blue-500" />
@@ -775,14 +775,12 @@ export function CreateLoadDialog({
             </SectionCard>
 
             {/* === STOPS SECTION === */}
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-emerald-500/10">
-                    <MapPin className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <h3 className="font-semibold text-sm">Route Stops</h3>
-                  <Badge variant="secondary" className="text-xs">{stops.length} stops</Badge>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                  <h3 className="font-semibold text-xs">Route Stops</h3>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{stops.length} stops</Badge>
                 </div>
                 <div className="flex gap-1.5">
                   <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => addStop("pickup")}>
@@ -800,6 +798,7 @@ export function CreateLoadDialog({
                   stop={stop}
                   index={idx}
                   total={stops.length}
+                  typeIndex={stop.type === "pickup" ? pickups.indexOf(stop) + 1 : deliveries.indexOf(stop) + 1}
                   onUpdate={(field, val) => updateStop(stop.id, field, val)}
                   onRemove={() => removeStop(stop.id)}
                   canRemove={stops.length > 2}
@@ -863,7 +862,7 @@ export function CreateLoadDialog({
             </SectionCard>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-2 pb-6">
+            <div className="flex gap-3 pt-1 pb-3">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10">
                 Cancel
               </Button>
@@ -874,26 +873,21 @@ export function CreateLoadDialog({
           </div>
 
           {/* Right Panel - Route Summary */}
-          <div className="w-80 border-l bg-muted/30 overflow-y-auto hidden lg:block">
-            <div className="p-4 space-y-4">
+          <div className="w-72 border-l bg-muted/30 overflow-y-auto hidden lg:block">
+            <div className="p-3 space-y-3">
               {/* Route Timeline */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Route Overview</h3>
+              <div className="space-y-1">
+                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Route Overview</h3>
                 <div className="space-y-0">
                   {stops.map((stop, idx) => (
-                    <div key={stop.id} className="flex gap-3">
-                      {/* Timeline line */}
+                    <div key={stop.id} className="flex gap-2">
                       <div className="flex flex-col items-center">
-                        <div className={`w-3 h-3 rounded-full border-2 ${
-                          stop.type === "pickup"
-                            ? "border-emerald-500 bg-emerald-500/20"
-                            : "border-rose-500 bg-rose-500/20"
+                        <div className={`w-2.5 h-2.5 rounded-full border-2 ${
+                          stop.type === "pickup" ? "border-emerald-500 bg-emerald-500/20" : "border-rose-500 bg-rose-500/20"
                         }`} />
-                        {idx < stops.length - 1 && (
-                          <div className="w-0.5 h-8 bg-border" />
-                        )}
+                        {idx < stops.length - 1 && <div className="w-0.5 flex-1 bg-border" />}
                       </div>
-                      <div className="pb-3 -mt-0.5">
+                      <div className="pb-2 -mt-0.5 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
                             stop.type === "pickup"
@@ -927,8 +921,8 @@ export function CreateLoadDialog({
               </div>
 
               {/* Load Summary */}
-              <div className="rounded-lg border bg-background p-3 space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Load Summary</h3>
+              <div className="rounded-lg border bg-background p-2.5 space-y-1">
+                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Load Summary</h3>
                 <SummaryRow label="Load #" value={loadNumber} />
                 <SummaryRow label="Customer" value={brokerName || "—"} />
                 <SummaryRow label="Equipment" value={equipmentType?.replace("_", " ") || "—"} />
@@ -942,8 +936,8 @@ export function CreateLoadDialog({
 
               {/* Assigned Resources */}
               {(carrierId || vehicleId || driverId) && (
-                <div className="rounded-lg border bg-background p-3 space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assigned</h3>
+                <div className="rounded-lg border bg-background p-2.5 space-y-1">
+                  <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Assigned</h3>
                   {carrierId && <SummaryRow label="Carrier" value={carriers.find((c: any) => c.id === carrierId)?.name || "—"} />}
                   {vehicleId && <SummaryRow label="Truck" value={vehicles.find((v: any) => v.id === vehicleId)?.vehicle_number || "—"} />}
                   {driverId && (
@@ -969,8 +963,8 @@ export function CreateLoadDialog({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+    <div className="space-y-0.5">
+      <Label className="text-[11px] font-medium text-muted-foreground leading-none">{label}</Label>
       {children}
     </div>
   );
@@ -1022,10 +1016,10 @@ function SectionCard({
 }) {
   const c = sectionColors[color] || sectionColors.slate;
   return (
-    <div className={`rounded-lg border ${c.border} ${c.bg} p-3 space-y-2`}>
-      <div className={`flex items-center gap-2 pb-1.5 border-b ${c.border}`}>
-        <div className={`p-1 rounded-md ${c.icon}`}>{icon}</div>
-        <h3 className={`font-semibold text-sm ${c.text}`}>{title}</h3>
+    <div className={`rounded-lg border ${c.border} ${c.bg} p-2.5 space-y-1.5`}>
+      <div className={`flex items-center gap-1.5 pb-1 border-b ${c.border}`}>
+        <div className={`p-0.5 rounded ${c.icon}`}>{icon}</div>
+        <h3 className={`font-semibold text-xs ${c.text}`}>{title}</h3>
       </div>
       {children}
     </div>
@@ -1036,6 +1030,7 @@ function StopCard({
   stop,
   index,
   total,
+  typeIndex,
   onUpdate,
   onRemove,
   canRemove,
@@ -1043,6 +1038,7 @@ function StopCard({
   stop: Stop;
   index: number;
   total: number;
+  typeIndex: number;
   onUpdate: (field: keyof Stop, value: string) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -1063,66 +1059,32 @@ function StopCard({
     : "text-rose-600 dark:text-rose-400";
 
   return (
-    <div className={`rounded-lg border ${borderColor} ${bgColor} p-3 space-y-2`}>
-      <div className={`flex items-center justify-between pb-1.5 border-b ${borderColor}`}>
-        <div className="flex items-center gap-2">
-          <div className={`p-1 rounded-md ${iconBg}`}>
-            <MapPin className={`h-3.5 w-3.5 ${iconColor}`} />
-          </div>
-          <h3 className={`font-semibold text-sm ${textColor}`}>
-            {isPickup ? "Pickup" : "Delivery"} #{index + 1}
-          </h3>
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
-            isPickup ? "border-emerald-500/50 text-emerald-600" : "border-rose-500/50 text-rose-600"
-          }`}>
-            Stop {index + 1} of {total}
-          </Badge>
+    <div className={`rounded-lg border ${borderColor} ${bgColor} p-2 space-y-1`}>
+      <div className={`flex items-center justify-between pb-1 border-b ${borderColor}`}>
+        <div className="flex items-center gap-1.5">
+          <MapPin className={`h-3 w-3 ${iconColor}`} />
+          <span className={`font-semibold text-xs ${textColor}`}>
+            {isPickup ? "PU" : "DEL"} #{typeIndex}
+          </span>
+          <span className="text-[10px] text-muted-foreground">Stop {index + 1}/{total}</span>
         </div>
         {canRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
+          <button type="button" onClick={onRemove} className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+            <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-2">
-        <div className="col-span-2">
-          <Field label="Company / Facility">
-            <Input value={stop.name} onChange={(e) => onUpdate("name", e.target.value)} className="h-8" placeholder="Facility name" />
-          </Field>
-        </div>
-        <div className="col-span-2">
-          <Field label="Address">
-            <Input value={stop.address} onChange={(e) => onUpdate("address", e.target.value)} className="h-8" />
-          </Field>
-        </div>
-        <Field label="City">
-          <Input value={stop.city} onChange={(e) => onUpdate("city", e.target.value)} className="h-8" required />
-        </Field>
-        <Field label="State">
-          <Input value={stop.state} onChange={(e) => onUpdate("state", e.target.value)} className="h-8" placeholder="CA" required />
-        </Field>
-        <Field label="ZIP">
-          <Input value={stop.zip} onChange={(e) => onUpdate("zip", e.target.value)} className="h-8" />
-        </Field>
-        <Field label="Contact">
-          <Input value={stop.contact} onChange={(e) => onUpdate("contact", e.target.value)} className="h-8" />
-        </Field>
-        <Field label="Phone">
-          <Input value={stop.phone} onChange={(e) => onUpdate("phone", e.target.value)} className="h-8" />
-        </Field>
-        <Field label="Date">
-          <Input type="date" value={stop.date} onChange={(e) => onUpdate("date", e.target.value)} className="h-8" />
-        </Field>
-        <Field label="Time">
-          <Input type="time" value={stop.time} onChange={(e) => onUpdate("time", e.target.value)} className="h-8" />
-        </Field>
-        <Field label="Notes">
-          <Input value={stop.notes} onChange={(e) => onUpdate("notes", e.target.value)} className="h-8" placeholder="Special instructions" />
-        </Field>
+      <div className="grid grid-cols-5 gap-x-2 gap-y-1">
+        <Field label="Facility"><Input value={stop.name} onChange={(e) => onUpdate("name", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Address"><Input value={stop.address} onChange={(e) => onUpdate("address", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="City"><Input value={stop.city} onChange={(e) => onUpdate("city", e.target.value)} className="h-7 text-xs" required /></Field>
+        <Field label="State"><Input value={stop.state} onChange={(e) => onUpdate("state", e.target.value)} className="h-7 text-xs" required /></Field>
+        <Field label="ZIP"><Input value={stop.zip} onChange={(e) => onUpdate("zip", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Contact"><Input value={stop.contact} onChange={(e) => onUpdate("contact", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Phone"><Input value={stop.phone} onChange={(e) => onUpdate("phone", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Date"><Input type="date" value={stop.date} onChange={(e) => onUpdate("date", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Time"><Input type="time" value={stop.time} onChange={(e) => onUpdate("time", e.target.value)} className="h-7 text-xs" /></Field>
+        <Field label="Notes"><Input value={stop.notes} onChange={(e) => onUpdate("notes", e.target.value)} className="h-7 text-xs" /></Field>
       </div>
     </div>
   );
@@ -1130,7 +1092,7 @@ function StopCard({
 
 function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="flex justify-between items-center text-sm">
+    <div className="flex justify-between items-center text-xs">
       <span className="text-muted-foreground">{label}</span>
       <span className={highlight ? "font-bold text-primary" : "font-medium"}>{value}</span>
     </div>
