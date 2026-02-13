@@ -133,6 +133,7 @@ export default function InvoicesTab() {
   const [loadInfoMap, setLoadInfoMap] = useState<Map<string, LoadInfo>>(new Map());
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [accountingEmail, setAccountingEmail] = useState<string | null>(null);
+  const [factoringPercentage, setFactoringPercentage] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -233,7 +234,7 @@ export default function InvoicesTab() {
     try {
       let query = supabase
         .from("company_profile")
-        .select("accounting_email")
+        .select("accounting_email, factoring_percentage")
         .limit(1);
       
       if (shouldFilter && tenantId) {
@@ -243,6 +244,7 @@ export default function InvoicesTab() {
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
         setAccountingEmail((data[0] as any).accounting_email || null);
+        setFactoringPercentage((data[0] as any).factoring_percentage || 0);
       }
     } catch (error) {
       console.error("Error loading company profile:", error);
@@ -1290,6 +1292,16 @@ export default function InvoicesTab() {
           <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
         </TableCell>
         <TableCell className="py-2 px-3">
+          {factoringPercentage > 0 ? (
+            <>
+              <div className="font-medium text-sm">{formatCurrency(invoice.total_amount * (1 - factoringPercentage / 100))}</div>
+              <div className="text-xs text-muted-foreground">-{factoringPercentage}%</div>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </TableCell>
+        <TableCell className="py-2 px-3">
           <Select
             value={(invoice as any).payment_status || '_unset'}
             onValueChange={async (value) => {
@@ -1749,6 +1761,9 @@ export default function InvoicesTab() {
                 <div>Amount</div>
                 <div className="text-muted-foreground font-normal normal-case">Balance</div>
               </TableHead>
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>Expected Payout</div>
+              </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Payment</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>{['paid', 'pending_payment', 'overdue', 'delivered'].includes(filter) ? 'Delivered On' : 'Last Attempt'}</div>
@@ -1767,7 +1782,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="py-12 text-center">
+                <TableCell colSpan={11} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1796,7 +1811,7 @@ export default function InvoicesTab() {
                       });
                     }}
                   >
-                    <TableCell colSpan={10} className="py-2.5 px-3">
+                    <TableCell colSpan={11} className="py-2.5 px-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <div className={`h-6 w-6 rounded-md flex items-center justify-center shadow-sm ${
