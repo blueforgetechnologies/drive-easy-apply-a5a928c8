@@ -1283,11 +1283,6 @@ export default function InvoicesTab() {
               </Button>
             )}
           </div>
-          {invoice.billing_method === 'otr' && invoice.otr_submitted_at && (
-            <div className="text-xs text-muted-foreground mt-0.5">
-              <span className="text-success font-medium">OTR Submitted</span>
-            </div>
-          )}
         </TableCell>
         <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
         <TableCell className="py-2 px-3">
