@@ -891,19 +891,8 @@ export function CreateLoadDialog({
           </div>
 
           {/* Right Panel - Route Summary */}
-          <div className="w-72 border-l bg-muted/30 overflow-y-auto hidden lg:block">
-            <div className="p-3 space-y-3">
-              {/* Map */}
-              <div className="rounded-lg border overflow-hidden h-48 min-h-[180px]">
-                {mapStops.length >= 2 ? (
-                  <LoadRouteMap stops={mapStops} />
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground">
-                    Add pickup & delivery to see route
-                  </div>
-                )}
-              </div>
-
+          <div className="w-[420px] border-l bg-muted/30 overflow-y-auto hidden lg:flex lg:flex-col">
+            <div className="p-3 space-y-3 flex flex-col flex-1">
               {/* Route Timeline */}
               <div className="space-y-1">
                 <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Route Overview</h3>
@@ -947,6 +936,17 @@ export function CreateLoadDialog({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Map - large, between route overview and summary */}
+              <div className="rounded-lg border overflow-hidden flex-1 min-h-[280px]">
+                {mapStops.length >= 2 ? (
+                  <LoadRouteMap stops={mapStops} />
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground">
+                    Add pickup & delivery to see route
+                  </div>
+                )}
               </div>
 
               {/* Load Summary */}
