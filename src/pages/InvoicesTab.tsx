@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers, ArrowRight, Upload, Paperclip } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers, ArrowRight, Upload, Paperclip, X } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
@@ -267,6 +267,22 @@ export default function InvoicesTab() {
     } finally {
       setVerifyingSchedule(null);
     }
+  };
+
+  const removeSchedulePdf = async (dateKey: string) => {
+    if (!tenantId) return;
+    const existing = batchSchedules[dateKey];
+    if (!existing?.id) return;
+    await supabase.from('invoice_batch_schedules').update({ 
+      schedule_pdf_url: null, 
+      schedule_name: '',
+      verification_results: null 
+    }).eq('id', existing.id);
+    setBatchSchedules(prev => ({
+      ...prev,
+      [dateKey]: { ...prev[dateKey], schedule_pdf_url: null, schedule_name: '', verification_results: null },
+    }));
+    toast.success('Schedule removed');
   };
 
   const markBatchAsPaid = async (batch: { dateKey: string; invoices: InvoiceWithDeliveryInfo[] }) => {
@@ -2005,17 +2021,26 @@ export default function InvoicesTab() {
                             </Tooltip>
                           </TooltipProvider>
                           {batchSchedules[batch.dateKey]?.schedule_pdf_url && (
-                            <a
-                              href={batchSchedules[batch.dateKey].schedule_pdf_url!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className={`text-[10px] underline ${
-                                filter === 'delivered' ? 'text-emerald-600' : 'text-violet-600'
-                              }`}
-                            >
-                              View
-                            </a>
+                            <>
+                              <a
+                                href={batchSchedules[batch.dateKey].schedule_pdf_url!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className={`text-[10px] underline ${
+                                  filter === 'delivered' ? 'text-emerald-600' : 'text-violet-600'
+                                }`}
+                              >
+                                View
+                              </a>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeSchedulePdf(batch.dateKey); }}
+                                className="h-4 w-4 rounded-full flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                                title="Remove schedule"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
