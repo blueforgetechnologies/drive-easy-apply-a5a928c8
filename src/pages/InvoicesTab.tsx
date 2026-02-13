@@ -254,12 +254,15 @@ export default function InvoicesTab() {
   const triggerScheduleVerification = async (dateKey: string, scheduleUrl: string, batchInvoices: InvoiceWithDeliveryInfo[], batchScheduleId: string) => {
     setVerifyingSchedule(dateKey);
     try {
-      const invoicesPayload = batchInvoices.map(inv => ({
-        invoice_number: inv.invoice_number,
-        expected_payout: factoringPercentage > 0 
-          ? inv.total_amount * (1 - factoringPercentage / 100)
-          : inv.total_amount,
-      }));
+      const invoicesPayload = batchInvoices.map(inv => {
+        const flatFee = (inv.customers as any)?.factoring_flat_fee || 0;
+        return {
+          invoice_number: inv.invoice_number,
+          expected_payout: factoringPercentage > 0 
+            ? inv.total_amount * (1 - factoringPercentage / 100) - flatFee
+            : inv.total_amount,
+        };
+      });
 
       const { data: { session } } = await supabase.auth.getSession();
       const resp = await supabase.functions.invoke('verify-schedule-pdf', {
@@ -429,7 +432,7 @@ export default function InvoicesTab() {
       // Step 1: Load ALL invoices first
       let invoicesQuery = supabase
         .from("invoices" as any)
-        .select("*, customers(mc_number, email, billing_email, otr_approval_status, factoring_approval)")
+        .select("*, customers(mc_number, email, billing_email, otr_approval_status, factoring_approval, factoring_flat_fee)")
         .order("created_at", { ascending: false });
       
       if (shouldFilter && tenantId) {
@@ -843,8 +846,9 @@ export default function InvoicesTab() {
       const group = groups.get(dateKey)!;
       group.invoices.push(inv);
       group.total += inv.total_amount;
+      const flatFee = (inv.customers as any)?.factoring_flat_fee || 0;
       group.expectedPayout += factoringPercentage > 0
-        ? inv.total_amount * (1 - factoringPercentage / 100)
+        ? inv.total_amount * (1 - factoringPercentage / 100) - flatFee
         : inv.total_amount;
     });
 
@@ -1467,8 +1471,18 @@ export default function InvoicesTab() {
           {factoringPercentage > 0 ? (
             <div className="flex items-center gap-1">
               <div>
-                <div className="font-medium text-sm">{formatCurrency(invoice.total_amount * (1 - factoringPercentage / 100))}</div>
-                <div className="text-xs text-muted-foreground">-{factoringPercentage}%</div>
+                {(() => {
+                  const flatFee = (invoice.customers as any)?.factoring_flat_fee || 0;
+                  const payout = invoice.total_amount * (1 - factoringPercentage / 100) - flatFee;
+                  return (
+                    <>
+                      <div className="font-medium text-sm">{formatCurrency(payout)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        -{factoringPercentage}%{flatFee > 0 ? ` -$${flatFee.toFixed(2)}` : ''}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               {(() => {
                 // Check if this invoice has verification results from any batch

@@ -1025,6 +1025,7 @@ export type Database = {
           email: string | null
           email_secondary: string | null
           factoring_approval: string | null
+          factoring_flat_fee: number | null
           id: string
           mc_number: string | null
           name: string
@@ -1057,6 +1058,7 @@ export type Database = {
           email?: string | null
           email_secondary?: string | null
           factoring_approval?: string | null
+          factoring_flat_fee?: number | null
           id?: string
           mc_number?: string | null
           name: string
@@ -1089,6 +1091,7 @@ export type Database = {
           email?: string | null
           email_secondary?: string | null
           factoring_approval?: string | null
+          factoring_flat_fee?: number | null
           id?: string
           mc_number?: string | null
           name?: string
