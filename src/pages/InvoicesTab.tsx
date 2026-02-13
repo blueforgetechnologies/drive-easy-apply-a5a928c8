@@ -1818,6 +1818,18 @@ export default function InvoicesTab() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!batchMode) {
+                                // Collapse all batches by default when entering batch mode
+                                const allKeys = new Set<string>();
+                                filteredInvoices.forEach(inv => {
+                                  const deliveredAt = inv.billing_method === 'otr' ? inv.otr_submitted_at : inv.sent_at;
+                                  const dateKey = deliveredAt ? format(new Date(deliveredAt), 'yyyy-MM-dd') : 'unknown';
+                                  allKeys.add(dateKey);
+                                });
+                                setCollapsedBatches(allKeys);
+                              } else {
+                                setCollapsedBatches(new Set());
+                              }
                               setBatchMode(!batchMode);
                             }}
                             className={`h-[30px] w-[30px] flex items-center justify-center transition-all duration-300 rounded-none border-l border-white/30 ${
