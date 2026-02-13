@@ -1976,28 +1976,38 @@ export default function InvoicesTab() {
                             {batch.invoices.length} invoice{batch.invoices.length !== 1 ? 's' : ''}
                           </Badge>
                           <ArrowRight className="h-3.5 w-3.5 text-muted-foreground mx-1" />
-                          <input
-                            type="text"
-                            placeholder="Schedule name..."
-                            value={batchSchedules[batch.dateKey]?.schedule_name || ''}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBatchSchedules(prev => ({
-                                ...prev,
-                                [batch.dateKey]: { ...prev[batch.dateKey], schedule_name: val, schedule_pdf_url: prev[batch.dateKey]?.schedule_pdf_url || null }
-                              }));
-                            }}
-                            onBlur={(e) => saveScheduleName(batch.dateKey, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                (e.target as HTMLInputElement).blur();
-                              }
-                            }}
-                            className={`h-6 text-xs px-2 py-0 border rounded bg-background/80 w-44 focus:outline-none focus:ring-1 ${
-                              filter === 'delivered' ? 'border-emerald-300 focus:ring-emerald-400' : 'border-violet-300 focus:ring-violet-400'
-                            } ${savingSchedule === batch.dateKey ? 'opacity-50' : ''}`}
-                          />
+                          {batchSchedules[batch.dateKey]?.schedule_name ? (
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                              filter === 'delivered' ? 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/30' : 'text-violet-700 bg-violet-50 dark:text-violet-300 dark:bg-violet-900/30'
+                            }`} onClick={(e) => e.stopPropagation()}>
+                              Scheduler Number: {batchSchedules[batch.dateKey].schedule_name}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="Schedule name..."
+                              value=""
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setBatchSchedules(prev => ({
+                                  ...prev,
+                                  [batch.dateKey]: { ...prev[batch.dateKey], schedule_name: val, schedule_pdf_url: prev[batch.dateKey]?.schedule_pdf_url || null }
+                                }));
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value.trim()) saveScheduleName(batch.dateKey, e.target.value.trim());
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                              }}
+                              className={`h-6 text-xs px-2 py-0 border rounded bg-background/80 w-44 focus:outline-none focus:ring-1 ${
+                                filter === 'delivered' ? 'border-emerald-300 focus:ring-emerald-400' : 'border-violet-300 focus:ring-violet-400'
+                              } ${savingSchedule === batch.dateKey ? 'opacity-50' : ''}`}
+                            />
+                          )}
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
