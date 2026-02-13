@@ -1631,10 +1631,7 @@ export default function InvoicesTab() {
                             }`}
                             title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
-                            <span className="flex items-center gap-1">
-                              <Layers className="h-3 w-3" />
-                              Batch
-                            </span>
+                            <Layers className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
