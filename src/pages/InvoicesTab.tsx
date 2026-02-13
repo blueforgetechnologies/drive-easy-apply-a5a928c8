@@ -247,9 +247,14 @@ export default function InvoicesTab() {
       });
 
       if (resp.data?.success && resp.data?.verification) {
+        const scheduleNumber = resp.data.schedule_number || resp.data.verification.schedule_number;
         setBatchSchedules(prev => ({
           ...prev,
-          [dateKey]: { ...prev[dateKey], verification_results: resp.data.verification },
+          [dateKey]: { 
+            ...prev[dateKey], 
+            verification_results: resp.data.verification,
+            schedule_name: scheduleNumber || prev[dateKey]?.schedule_name || '',
+          },
         }));
         const allMatch = resp.data.verification.all_matched;
         toast.success(allMatch ? 'Schedule verified — all amounts match!' : 'Schedule verified — some amounts differ');
