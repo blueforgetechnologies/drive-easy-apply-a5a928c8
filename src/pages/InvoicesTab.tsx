@@ -1202,7 +1202,7 @@ export default function InvoicesTab() {
       >
         <TableCell className="py-2 px-3">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-primary">{invoice.invoice_number}</span>
+            <span className="font-bold text-sm text-primary bg-primary/10 px-2 py-0.5 rounded-md shadow-sm">{invoice.invoice_number}</span>
             {getMissingInfoTooltip(invoice)}
           </div>
           {invoice.customer_load_ids.length > 0 && (
@@ -1220,7 +1220,7 @@ export default function InvoicesTab() {
                 navigate(`/dashboard/customer/${invoice.customer_id}`);
               }}
             >
-              <div className="font-bold text-sm text-primary">{invoice.customer_name || "—"}</div>
+              <div className="font-bold text-sm text-primary bg-primary/10 px-2 py-0.5 rounded-md shadow-sm inline-block">{invoice.customer_name || "—"}</div>
               {invoice.customers?.mc_number && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>MC-{invoice.customers.mc_number}</span>
@@ -1229,7 +1229,7 @@ export default function InvoicesTab() {
               )}
             </div>
           ) : (
-            <div className="font-bold text-sm">{invoice.customer_name || "—"}</div>
+            <div className="font-bold text-sm bg-primary/10 px-2 py-0.5 rounded-md shadow-sm inline-block">{invoice.customer_name || "—"}</div>
           )}
         </TableCell>
         <TableCell className="py-2 px-3">
