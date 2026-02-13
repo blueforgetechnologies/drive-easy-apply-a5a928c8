@@ -1620,15 +1620,14 @@ export default function InvoicesTab() {
                               e.stopPropagation();
                               setBatchMode(!batchMode);
                             }}
-                            className={`h-[30px] px-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${
-                              status.key === 'delivered' ? 'rounded-r-none' :
-                              status.key === 'paid' ? 'rounded-r-none' : ''
-                            } ${
-                              batchMode
-                                ? filter === 'delivered' 
-                                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-[0_2px_10px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/20'
-                                  : 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-[0_2px_10px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] border-l border-white/20'
-                                : 'bg-muted/60 text-muted-foreground border-l border-border/30 hover:bg-muted hover:text-foreground'
+                            className={`h-[30px] px-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none ${
+                              filter === 'delivered'
+                                ? batchMode
+                                  ? 'bg-gradient-to-r from-green-600 to-emerald-700 text-white shadow-[0_2px_10px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] border-l border-white/30'
+                                  : 'bg-gradient-to-r from-emerald-400/80 to-green-500/80 text-white/80 border-l border-white/20 hover:text-white hover:from-emerald-500 hover:to-green-600'
+                                : batchMode
+                                  ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-[0_2px_10px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] border-l border-white/30'
+                                  : 'bg-gradient-to-r from-violet-400/80 to-indigo-500/80 text-white/80 border-l border-white/20 hover:text-white hover:from-violet-500 hover:to-indigo-600'
                             }`}
                             title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
