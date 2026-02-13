@@ -140,7 +140,13 @@ export default function CustomerDetail() {
       toast.success("Customer updated successfully");
     } catch (error: any) {
       console.error('[CustomerDetail] Save error:', error);
-      toast.error("Failed to update customer: " + error.message);
+      if (error.message?.includes('customers_mc_number_tenant_unique') || error.code === '23505') {
+        toast.error("MC number already in use by another customer");
+      } else {
+        toast.error("Failed to update customer: " + error.message);
+      }
+      // Reload to reset local state to DB truth
+      await loadCustomer();
     } finally {
       setSaving(false);
     }
@@ -164,7 +170,13 @@ export default function CustomerDetail() {
       console.log(`[AutoSave] ${field} saved:`, value);
     } catch (err: any) {
       console.error(`[AutoSave] Failed to save ${field}:`, err);
-      toast.error(`Failed to auto-save ${field}`);
+      if (err.message?.includes('customers_mc_number_tenant_unique') || err.code === '23505') {
+        toast.error("This MC number is already assigned to another customer");
+      } else {
+        toast.error(`Failed to auto-save ${field}`);
+      }
+      // Reload to reset local state
+      await loadCustomer();
     }
   };
 
