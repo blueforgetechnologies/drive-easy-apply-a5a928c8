@@ -329,6 +329,24 @@ CRITICAL: If there are multiple pickups or deliveries, capture EACH as a separat
       extractedData.customer_zip = extractedData.customer_zip || extractedData.billing_party_zip;
     }
     
+    // Normalize equipment_type to match select options
+    if (extractedData.equipment_type) {
+      const eqMap: Record<string, string> = {
+        'dry van': 'dry_van', 'dryvan': 'dry_van', 'van': 'dry_van', 'd-st': 'dry_van', 'dry_van': 'dry_van',
+        'reefer': 'reefer', 'refrigerated': 'reefer', 'temp_control': 'reefer',
+        'flatbed': 'flatbed', 'flat bed': 'flatbed', 'flat': 'flatbed',
+        'step deck': 'step_deck', 'stepdeck': 'step_deck', 'step_deck': 'step_deck',
+        'box truck': 'box_truck', 'boxtruck': 'box_truck', 'box_truck': 'box_truck', 'straight truck': 'box_truck',
+        'sprinter': 'sprinter', 'cargo van': 'sprinter',
+        'conestoga': 'conestoga',
+        'lowboy': 'lowboy', 'low boy': 'lowboy',
+      };
+      const normalized = eqMap[extractedData.equipment_type.toLowerCase().trim()];
+      if (normalized) {
+        extractedData.equipment_type = normalized;
+      }
+    }
+    
     // Ensure stops array exists and populate from legacy fields if needed
     if (!extractedData.stops || extractedData.stops.length === 0) {
       extractedData.stops = [];
