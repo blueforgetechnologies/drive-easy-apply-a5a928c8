@@ -1264,10 +1264,7 @@ export default function InvoicesTab() {
           )}
         </TableCell>
         <TableCell className="py-2 px-3">
-          <div>{getBillingMethodBadge(invoice.billing_method)}</div>
-        </TableCell>
-        <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
-        <TableCell className="py-2 px-3">
+          <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
           <div className="flex items-center gap-1">
             {getDeliveryStatusBadge(invoice)}
             {invoice.billing_method === 'otr' && invoice.otr_status === 'failed' && !invoice.otr_submitted_at && (
@@ -1292,6 +1289,7 @@ export default function InvoicesTab() {
             </div>
           )}
         </TableCell>
+        <TableCell className="py-2 px-3">{getDocsChecklist(invoice)}</TableCell>
         <TableCell className="py-2 px-3">
           <div className="font-medium text-sm">{formatCurrency(invoice.total_amount)}</div>
           <div className="text-xs text-muted-foreground">{formatCurrency(invoice.balance_due)}</div>
@@ -1749,9 +1747,9 @@ export default function InvoicesTab() {
               )}
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Billing Method</div>
+                <div className="text-muted-foreground font-normal normal-case">Delivery</div>
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Docs</TableHead>
-              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Delivery</TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Amount</div>
                 <div className="text-muted-foreground font-normal normal-case">Balance</div>
@@ -1774,7 +1772,7 @@ export default function InvoicesTab() {
           <TableBody>
             {filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={(filter === 'paid' || filter === 'pending_payment') ? 11 : (filter === 'needs_setup' || filter === 'ready' || filter === 'failed') ? 11 : 10} className="py-12 text-center">
+                <TableCell colSpan={10} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-10 w-10 mb-3 opacity-50" />
                     <p className="text-base font-medium">No {filter.replace('_', ' ')} invoices</p>
@@ -1803,7 +1801,7 @@ export default function InvoicesTab() {
                       });
                     }}
                   >
-                    <TableCell colSpan={11} className="py-2.5 px-3">
+                    <TableCell colSpan={10} className="py-2.5 px-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <div className={`h-6 w-6 rounded-md flex items-center justify-center shadow-sm ${
