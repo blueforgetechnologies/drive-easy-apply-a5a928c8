@@ -961,7 +961,7 @@ export default function InvoicesTab() {
   const getBillingMethodBadge = (method: string | null) => {
     switch (method) {
       case 'otr':
-        return <span className="pill-glossy-green font-bold shadow-sm">OTR Solutions</span>;
+        return <span className="font-bold text-sm text-primary bg-primary/10 px-2 py-0.5 rounded-md shadow-sm inline-block">OTR Solutions</span>;
       case 'direct_email':
         return <span className="badge-puffy badge-puffy-secondary text-xs">Bill Broker</span>;
       default:
