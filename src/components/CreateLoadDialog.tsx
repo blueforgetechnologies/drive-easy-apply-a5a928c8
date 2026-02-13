@@ -780,7 +780,7 @@ export function CreateLoadDialog({
 
             {/* Billing Party section removed - merged into Financial below */}
 
-            {/* === STOPS SECTION === */}
+            {/* === STOPS + MAP SECTION === */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -798,18 +798,33 @@ export function CreateLoadDialog({
                 </div>
               </div>
 
-              {stops.map((stop, idx) => (
-                <StopCard
-                  key={stop.id}
-                  stop={stop}
-                  index={idx}
-                  total={stops.length}
-                  typeIndex={stop.type === "pickup" ? pickups.indexOf(stop) + 1 : deliveries.indexOf(stop) + 1}
-                  onUpdate={(field, val) => updateStop(stop.id, field, val)}
-                  onRemove={() => removeStop(stop.id)}
-                  canRemove={stops.length > 2}
-                />
-              ))}
+              <div className="flex gap-3">
+                {/* Stops list */}
+                <div className="flex-1 min-w-0 rounded-lg border bg-background divide-y divide-border">
+                  {stops.map((stop, idx) => (
+                    <StopCard
+                      key={stop.id}
+                      stop={stop}
+                      index={idx}
+                      total={stops.length}
+                      typeIndex={stop.type === "pickup" ? pickups.indexOf(stop) + 1 : deliveries.indexOf(stop) + 1}
+                      onUpdate={(field, val) => updateStop(stop.id, field, val)}
+                      onRemove={() => removeStop(stop.id)}
+                      canRemove={stops.length > 2}
+                    />
+                  ))}
+                </div>
+                {/* Map alongside stops */}
+                <div className="w-64 shrink-0 rounded-lg border overflow-hidden hidden md:block">
+                  {mapStops.length >= 2 ? (
+                    <LoadRouteMap stops={mapStops} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground p-4 text-center">
+                      Add pickup & delivery to see route
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Equipment & Cargo */}
@@ -896,7 +911,7 @@ export function CreateLoadDialog({
           </div>
 
           {/* Right Panel - Route Summary */}
-          <div className="w-[420px] border-l bg-muted/30 overflow-y-auto hidden lg:flex lg:flex-col">
+          <div className="w-72 border-l bg-muted/30 overflow-y-auto hidden lg:flex lg:flex-col">
             <div className="p-3 space-y-3 flex flex-col flex-1">
               {/* Route Timeline */}
               <div className="space-y-1">
@@ -941,17 +956,6 @@ export function CreateLoadDialog({
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Map - large, between route overview and summary */}
-              <div className="rounded-lg border overflow-hidden flex-1 min-h-[280px]">
-                {mapStops.length >= 2 ? (
-                  <LoadRouteMap stops={mapStops} />
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground">
-                    Add pickup & delivery to see route
-                  </div>
-                )}
               </div>
 
               {/* Load Summary */}
@@ -1092,7 +1096,7 @@ function StopCard({
   );
 
   return (
-    <div className="border-b border-border/50 last:border-b-0 py-1.5 px-1 group">
+    <div className="py-2.5 px-2.5 group">
       <div className="flex items-start gap-2">
         {/* Left: location & contact */}
         <div className="flex-1 min-w-0">
