@@ -384,46 +384,48 @@ All colors MUST be HSL.
   .pill-glossy-green {
     display: inline-flex;
     align-items: center;
-    border-radius: 9999px;
-    padding: 2px 12px;
+    justify-content: center;
+    padding: 4px 10px;
     font-size: 11px;
     font-weight: 600;
-    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(150 30% 96%) 100%);
-    color: hsl(160 60% 35%);
-    border: 1px solid hsl(150 30% 85%);
-    box-shadow: 
-      0 1px 3px rgba(0,0,0,0.06),
-      inset 0 1px 0 rgba(255,255,255,0.9);
+    color: hsl(142 64% 32%);
+    background: linear-gradient(to bottom, hsl(142 50% 90%), hsl(142 45% 95%));
+    border-radius: 9999px;
+    border: 1px solid hsl(142 40% 70% / 0.5);
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+    transition: all 0.2s;
+  }
+  .pill-glossy-green:hover {
+    box-shadow: 0 4px 12px -2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+    transform: scale(1.05);
   }
   .pill-glossy-red {
     display: inline-flex;
     align-items: center;
-    border-radius: 9999px;
-    padding: 2px 12px;
+    justify-content: center;
+    padding: 4px 10px;
     font-size: 11px;
     font-weight: 600;
-    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 40% 96%) 100%);
-    color: hsl(0 65% 45%);
-    border: 1px solid hsl(0 30% 85%);
-    box-shadow: 
-      0 1px 3px rgba(0,0,0,0.06),
-      inset 0 1px 0 rgba(255,255,255,0.9);
+    color: hsl(0 60% 42%);
+    background: linear-gradient(to bottom, hsl(0 50% 92%), hsl(0 45% 96%));
+    border-radius: 9999px;
+    border: 1px solid hsl(0 40% 75% / 0.5);
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+    transition: all 0.2s;
+  }
+  .pill-glossy-red:hover {
+    box-shadow: 0 4px 12px -2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+    transform: scale(1.05);
   }
   .dark .pill-glossy-green {
-    background: linear-gradient(180deg, hsl(152 20% 16%) 0%, hsl(152 15% 12%) 100%);
-    color: hsl(152 50% 60%);
-    border-color: hsl(152 20% 25%);
-    box-shadow: 
-      0 1px 3px rgba(0,0,0,0.2),
-      inset 0 1px 0 rgba(255,255,255,0.05);
+    background: linear-gradient(to bottom, hsl(142 30% 18% / 0.3), hsl(142 25% 14% / 0.2));
+    color: hsl(142 50% 60%);
+    border-color: hsl(142 30% 30% / 0.3);
   }
   .dark .pill-glossy-red {
-    background: linear-gradient(180deg, hsl(0 20% 16%) 0%, hsl(0 15% 12%) 100%);
-    color: hsl(0 55% 60%);
-    border-color: hsl(0 20% 25%);
-    box-shadow: 
-      0 1px 3px rgba(0,0,0,0.2),
-      inset 0 1px 0 rgba(255,255,255,0.05);
+    background: linear-gradient(to bottom, hsl(0 30% 18% / 0.3), hsl(0 25% 14% / 0.2));
+    color: hsl(0 50% 60%);
+    border-color: hsl(0 30% 30% / 0.3);
   }
   .badge-puffy-secondary {
     background: linear-gradient(180deg, hsl(220 14% 96%) 0%, hsl(220 14% 90%) 100%);
