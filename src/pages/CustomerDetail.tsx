@@ -103,34 +103,43 @@ export default function CustomerDetail() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
+      const updatePayload = {
+        name: customer.name,
+        contact_name: customer.contact_name,
+        email: customer.email,
+        email_secondary: customer.email_secondary,
+        phone: customer.phone,
+        phone_secondary: customer.phone_secondary,
+        phone_mobile: customer.phone_mobile,
+        phone_fax: customer.phone_fax,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state,
+        zip: customer.zip,
+        status: customer.status,
+        payment_terms: customer.payment_terms,
+        credit_limit: customer.credit_limit,
+        notes: customer.notes,
+        mc_number: customer.mc_number,
+        dot_number: customer.dot_number,
+        factoring_approval: customer.factoring_approval,
+      };
+      console.log('[CustomerDetail] Saving:', JSON.stringify(updatePayload));
+      const { error, data, count } = await supabase
         .from("customers")
-        .update({
-          name: customer.name,
-          contact_name: customer.contact_name,
-          email: customer.email,
-          email_secondary: customer.email_secondary,
-          phone: customer.phone,
-          phone_secondary: customer.phone_secondary,
-          phone_mobile: customer.phone_mobile,
-          phone_fax: customer.phone_fax,
-          address: customer.address,
-          city: customer.city,
-          state: customer.state,
-          zip: customer.zip,
-          status: customer.status,
-          payment_terms: customer.payment_terms,
-          credit_limit: customer.credit_limit,
-          notes: customer.notes,
-          mc_number: customer.mc_number,
-          dot_number: customer.dot_number,
-          factoring_approval: customer.factoring_approval,
-        })
-        .eq("id", id);
+        .update(updatePayload)
+        .eq("id", id)
+        .select();
 
       if (error) throw error;
+      console.log('[CustomerDetail] Save result:', data, 'count:', count);
+      if (!data || data.length === 0) {
+        toast.error("Save returned no rows — possible permissions issue");
+        return;
+      }
       toast.success("Customer updated successfully");
     } catch (error: any) {
+      console.error('[CustomerDetail] Save error:', error);
       toast.error("Failed to update customer: " + error.message);
     } finally {
       setSaving(false);
