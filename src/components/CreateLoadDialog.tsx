@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import { RateConfirmationUploader, ExtractedLoadData } from "@/components/RateConfirmationUploader";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
 import { NewCustomerPrompt } from "@/components/NewCustomerPrompt";
+import LoadRouteMap from "@/components/LoadRouteMap";
 
 interface Stop {
   id: string;
@@ -588,6 +589,23 @@ export function CreateLoadDialog({
 
   const ratePerMile = rate && estimatedMiles ? (parseFloat(rate) / parseFloat(estimatedMiles)).toFixed(2) : null;
 
+  // Convert stops to LoadRouteMap format
+  const mapStops = useMemo(() => 
+    stops
+      .filter(s => s.city && s.state)
+      .map((s, idx) => ({
+        location_city: s.city,
+        location_state: s.state,
+        location_address: s.address,
+        location_zip: s.zip,
+        location_name: s.name,
+        stop_type: s.type,
+        stop_sequence: idx + 1,
+        scheduled_date: s.date,
+      })),
+    [stops]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden sm:rounded-2xl">
@@ -875,6 +893,17 @@ export function CreateLoadDialog({
           {/* Right Panel - Route Summary */}
           <div className="w-72 border-l bg-muted/30 overflow-y-auto hidden lg:block">
             <div className="p-3 space-y-3">
+              {/* Map */}
+              <div className="rounded-lg border overflow-hidden h-48 min-h-[180px]">
+                {mapStops.length >= 2 ? (
+                  <LoadRouteMap stops={mapStops} />
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground">
+                    Add pickup & delivery to see route
+                  </div>
+                )}
+              </div>
+
               {/* Route Timeline */}
               <div className="space-y-1">
                 <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Route Overview</h3>
