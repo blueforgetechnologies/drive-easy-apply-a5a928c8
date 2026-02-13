@@ -798,32 +798,19 @@ export function CreateLoadDialog({
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                {/* Stops list */}
-                <div className="flex-1 min-w-0 rounded-lg border bg-background divide-y divide-border">
-                  {stops.map((stop, idx) => (
-                    <StopCard
-                      key={stop.id}
-                      stop={stop}
-                      index={idx}
-                      total={stops.length}
-                      typeIndex={stop.type === "pickup" ? pickups.indexOf(stop) + 1 : deliveries.indexOf(stop) + 1}
-                      onUpdate={(field, val) => updateStop(stop.id, field, val)}
-                      onRemove={() => removeStop(stop.id)}
-                      canRemove={stops.length > 2}
-                    />
-                  ))}
-                </div>
-                {/* Map alongside stops */}
-                <div className="w-64 shrink-0 rounded-lg border overflow-hidden hidden md:block">
-                  {mapStops.length >= 2 ? (
-                    <LoadRouteMap stops={mapStops} />
-                  ) : (
-                    <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground p-4 text-center">
-                      Add pickup & delivery to see route
-                    </div>
-                  )}
-                </div>
+              <div className="rounded-lg border bg-background divide-y divide-border">
+                {stops.map((stop, idx) => (
+                  <StopCard
+                    key={stop.id}
+                    stop={stop}
+                    index={idx}
+                    total={stops.length}
+                    typeIndex={stop.type === "pickup" ? pickups.indexOf(stop) + 1 : deliveries.indexOf(stop) + 1}
+                    onUpdate={(field, val) => updateStop(stop.id, field, val)}
+                    onRemove={() => removeStop(stop.id)}
+                    canRemove={stops.length > 2}
+                  />
+                ))}
               </div>
             </div>
 
@@ -990,6 +977,19 @@ export function CreateLoadDialog({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Far Right Panel - Map */}
+          <div className="w-80 border-l overflow-hidden hidden lg:block">
+            {mapStops.length >= 2 ? (
+              <div className="h-full">
+                <LoadRouteMap stops={mapStops} />
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center bg-muted/30 text-xs text-muted-foreground p-4 text-center">
+                Add pickup & delivery to see route
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
