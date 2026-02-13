@@ -143,9 +143,11 @@ export default function InvoicesTab() {
   const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [collapsedBatches, setCollapsedBatches] = useState<Set<string>>(new Set());
-  const [batchSchedules, setBatchSchedules] = useState<Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null }>>({}); 
+  const [batchSchedules, setBatchSchedules] = useState<Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null; verification_results?: any }>>({}); 
   const [savingSchedule, setSavingSchedule] = useState<string | null>(null);
   const [uploadingSchedule, setUploadingSchedule] = useState<string | null>(null);
+  const [verifyingSchedule, setVerifyingSchedule] = useState<string | null>(null);
+  const [markingBatchPaid, setMarkingBatchPaid] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -168,9 +170,9 @@ export default function InvoicesTab() {
         .select('*')
         .eq('tenant_id', tenantId);
       if (data) {
-        const map: Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null }> = {};
+        const map: Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null; verification_results?: any }> = {};
         data.forEach((s: any) => {
-          map[s.batch_date] = { id: s.id, schedule_name: s.schedule_name || '', schedule_pdf_url: s.schedule_pdf_url };
+          map[s.batch_date] = { id: s.id, schedule_name: s.schedule_name || '', schedule_pdf_url: s.schedule_pdf_url, verification_results: s.verification_results };
         });
         setBatchSchedules(map);
       }
@@ -216,8 +218,96 @@ export default function InvoicesTab() {
         setBatchSchedules(prev => ({ ...prev, [dateKey]: { id: data.id, schedule_name: '', schedule_pdf_url: pdfUrl } }));
       }
     }
-    toast.success('Schedule PDF uploaded');
+    toast.success('Schedule PDF uploaded — verifying against invoices...');
     setUploadingSchedule(null);
+
+    // Auto-trigger verification
+    const batchId = batchSchedules[dateKey]?.id || (await supabase.from('invoice_batch_schedules').select('id').eq('tenant_id', tenantId).eq('batch_date', dateKey).single())?.data?.id;
+    if (batchId && batchGroups) {
+      const batch = batchGroups.find(b => b.dateKey === dateKey);
+      if (batch) {
+        triggerScheduleVerification(dateKey, pdfUrl, batch.invoices, batchId);
+      }
+    }
+  };
+
+  const triggerScheduleVerification = async (dateKey: string, scheduleUrl: string, batchInvoices: InvoiceWithDeliveryInfo[], batchScheduleId: string) => {
+    setVerifyingSchedule(dateKey);
+    try {
+      const invoicesPayload = batchInvoices.map(inv => ({
+        invoice_number: inv.invoice_number,
+        expected_payout: factoringPercentage > 0 
+          ? inv.total_amount * (1 - factoringPercentage / 100)
+          : inv.total_amount,
+      }));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await supabase.functions.invoke('verify-schedule-pdf', {
+        body: { scheduleUrl, invoices: invoicesPayload, batchScheduleId },
+      });
+
+      if (resp.data?.success && resp.data?.verification) {
+        setBatchSchedules(prev => ({
+          ...prev,
+          [dateKey]: { ...prev[dateKey], verification_results: resp.data.verification },
+        }));
+        const allMatch = resp.data.verification.all_matched;
+        toast.success(allMatch ? 'Schedule verified — all amounts match!' : 'Schedule verified — some amounts differ');
+      } else {
+        toast.error('Schedule verification failed: ' + (resp.data?.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Verification error:', err);
+      toast.error('Failed to verify schedule');
+    } finally {
+      setVerifyingSchedule(null);
+    }
+  };
+
+  const markBatchAsPaid = async (batch: { dateKey: string; invoices: InvoiceWithDeliveryInfo[] }) => {
+    setMarkingBatchPaid(batch.dateKey);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      let userName: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        userName = profile?.full_name || user.email || null;
+      }
+
+      const now = new Date().toISOString();
+      for (const inv of batch.invoices) {
+        if (inv.payment_status !== 'paid') {
+          await supabase
+            .from('invoices' as any)
+            .update({
+              payment_status: 'paid',
+              status: 'paid',
+              paid_at: now,
+              paid_by_name: userName,
+            })
+            .eq('id', inv.id);
+        }
+      }
+
+      setAllInvoices(prev => prev.map(inv => {
+        const isInBatch = batch.invoices.some(b => b.id === inv.id);
+        if (isInBatch) {
+          return { ...inv, payment_status: 'paid' as any, status: 'paid', paid_at: now, paid_by_name: userName };
+        }
+        return inv;
+      }));
+
+      toast.success(`All ${batch.invoices.length} invoices marked as Paid`);
+    } catch (err) {
+      console.error('Mark batch paid error:', err);
+      toast.error('Failed to mark batch as paid');
+    } finally {
+      setMarkingBatchPaid(null);
+    }
   };
 
   const setInvoiceFilter = (nextFilter: string) => {
@@ -1296,10 +1386,25 @@ export default function InvoicesTab() {
         </TableCell>
         <TableCell className="py-2 px-3 whitespace-nowrap">
           {factoringPercentage > 0 ? (
-            <>
-              <div className="font-medium text-sm">{formatCurrency(invoice.total_amount * (1 - factoringPercentage / 100))}</div>
-              <div className="text-xs text-muted-foreground">-{factoringPercentage}%</div>
-            </>
+            <div className="flex items-center gap-1">
+              <div>
+                <div className="font-medium text-sm">{formatCurrency(invoice.total_amount * (1 - factoringPercentage / 100))}</div>
+                <div className="text-xs text-muted-foreground">-{factoringPercentage}%</div>
+              </div>
+              {(() => {
+                // Check if this invoice has verification results from any batch
+                const deliveredAt = invoice.billing_method === 'otr' ? invoice.otr_submitted_at : invoice.sent_at;
+                const dateKey = deliveredAt ? format(new Date(deliveredAt), 'yyyy-MM-dd') : null;
+                const verification = dateKey ? batchSchedules[dateKey]?.verification_results : null;
+                const invVerification = verification?.invoices?.[invoice.invoice_number];
+                if (invVerification?.matched) {
+                  return <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />;
+                } else if (invVerification && !invVerification.matched) {
+                  return <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />;
+                }
+                return null;
+              })()}
+            </div>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           )}
@@ -1922,6 +2027,31 @@ export default function InvoicesTab() {
                               </span>
                               <span className="text-[10px] text-muted-foreground">after {factoringPercentage}% fee</span>
                             </>
+                          )}
+                          {verifyingSchedule === batch.dateKey && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                          )}
+                          {batchSchedules[batch.dateKey]?.verification_results?.all_matched && (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          )}
+                          {batchSchedules[batch.dateKey]?.verification_results?.all_matched && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white ml-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markBatchAsPaid(batch);
+                              }}
+                              disabled={markingBatchPaid === batch.dateKey}
+                            >
+                              {markingBatchPaid === batch.dateKey ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                              )}
+                              Mark all as PAID
+                            </Button>
                           )}
                         </div>
                       </div>

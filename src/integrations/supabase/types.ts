@@ -2441,6 +2441,7 @@ export type Database = {
           schedule_pdf_url: string | null
           tenant_id: string
           updated_at: string
+          verification_results: Json | null
         }
         Insert: {
           batch_date: string
@@ -2450,6 +2451,7 @@ export type Database = {
           schedule_pdf_url?: string | null
           tenant_id: string
           updated_at?: string
+          verification_results?: Json | null
         }
         Update: {
           batch_date?: string
@@ -2459,6 +2461,7 @@ export type Database = {
           schedule_pdf_url?: string | null
           tenant_id?: string
           updated_at?: string
+          verification_results?: Json | null
         }
         Relationships: [
           {
