@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers, ArrowRight, Upload, Paperclip } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
@@ -142,6 +142,9 @@ export default function InvoicesTab() {
   const [invoiceToReturn, setInvoiceToReturn] = useState<InvoiceWithDeliveryInfo | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [collapsedBatches, setCollapsedBatches] = useState<Set<string>>(new Set());
+  const [batchSchedules, setBatchSchedules] = useState<Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null }>>({}); 
+  const [savingSchedule, setSavingSchedule] = useState<string | null>(null);
+  const [uploadingSchedule, setUploadingSchedule] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -154,6 +157,67 @@ export default function InvoicesTab() {
     loadCustomers();
     loadCompanyProfile();
   }, [tenantId, shouldFilter]);
+
+  // Load batch schedules when batch mode is active
+  useEffect(() => {
+    if (!batchMode || !tenantId) return;
+    const loadSchedules = async () => {
+      const { data } = await supabase
+        .from('invoice_batch_schedules')
+        .select('*')
+        .eq('tenant_id', tenantId);
+      if (data) {
+        const map: Record<string, { id?: string; schedule_name: string; schedule_pdf_url: string | null }> = {};
+        data.forEach((s: any) => {
+          map[s.batch_date] = { id: s.id, schedule_name: s.schedule_name || '', schedule_pdf_url: s.schedule_pdf_url };
+        });
+        setBatchSchedules(map);
+      }
+    };
+    loadSchedules();
+  }, [batchMode, tenantId]);
+
+  const saveScheduleName = async (dateKey: string, name: string) => {
+    if (!tenantId) return;
+    setSavingSchedule(dateKey);
+    const existing = batchSchedules[dateKey];
+    if (existing?.id) {
+      await supabase.from('invoice_batch_schedules').update({ schedule_name: name }).eq('id', existing.id);
+    } else {
+      const { data } = await supabase.from('invoice_batch_schedules').insert({ tenant_id: tenantId, batch_date: dateKey, schedule_name: name }).select().single();
+      if (data) {
+        setBatchSchedules(prev => ({ ...prev, [dateKey]: { id: data.id, schedule_name: name, schedule_pdf_url: null } }));
+      }
+    }
+    setSavingSchedule(null);
+  };
+
+  const uploadSchedulePdf = async (dateKey: string, file: File) => {
+    if (!tenantId) return;
+    setUploadingSchedule(dateKey);
+    const filePath = `${tenantId}/${dateKey}/${file.name}`;
+    const { error: uploadError } = await supabase.storage.from('otr-schedules').upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      toast.error('Failed to upload schedule PDF');
+      setUploadingSchedule(null);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('otr-schedules').getPublicUrl(filePath);
+    const pdfUrl = urlData.publicUrl;
+    
+    const existing = batchSchedules[dateKey];
+    if (existing?.id) {
+      await supabase.from('invoice_batch_schedules').update({ schedule_pdf_url: pdfUrl }).eq('id', existing.id);
+      setBatchSchedules(prev => ({ ...prev, [dateKey]: { ...prev[dateKey], schedule_pdf_url: pdfUrl } }));
+    } else {
+      const { data } = await supabase.from('invoice_batch_schedules').insert({ tenant_id: tenantId, batch_date: dateKey, schedule_pdf_url: pdfUrl }).select().single();
+      if (data) {
+        setBatchSchedules(prev => ({ ...prev, [dateKey]: { id: data.id, schedule_name: '', schedule_pdf_url: pdfUrl } }));
+      }
+    }
+    toast.success('Schedule PDF uploaded');
+    setUploadingSchedule(null);
+  };
 
   const setInvoiceFilter = (nextFilter: string) => {
     const next = new URLSearchParams(searchParams);
@@ -1761,6 +1825,76 @@ export default function InvoicesTab() {
                           }`}>
                             {batch.invoices.length} invoice{batch.invoices.length !== 1 ? 's' : ''}
                           </Badge>
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground mx-1" />
+                          <input
+                            type="text"
+                            placeholder="Schedule name..."
+                            value={batchSchedules[batch.dateKey]?.schedule_name || ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setBatchSchedules(prev => ({
+                                ...prev,
+                                [batch.dateKey]: { ...prev[batch.dateKey], schedule_name: val, schedule_pdf_url: prev[batch.dateKey]?.schedule_pdf_url || null }
+                              }));
+                            }}
+                            onBlur={(e) => saveScheduleName(batch.dateKey, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className={`h-6 text-xs px-2 py-0 border rounded bg-background/80 w-44 focus:outline-none focus:ring-1 ${
+                              filter === 'delivered' ? 'border-emerald-300 focus:ring-emerald-400' : 'border-violet-300 focus:ring-violet-400'
+                            } ${savingSchedule === batch.dateKey ? 'opacity-50' : ''}`}
+                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <label
+                                  className={`h-6 w-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
+                                    batchSchedules[batch.dateKey]?.schedule_pdf_url
+                                      ? filter === 'delivered' ? 'bg-emerald-500 text-white' : 'bg-violet-500 text-white'
+                                      : 'bg-muted hover:bg-muted-foreground/20 text-muted-foreground'
+                                  }`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {uploadingSchedule === batch.dateKey 
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : batchSchedules[batch.dateKey]?.schedule_pdf_url
+                                      ? <FileText className="h-3 w-3" />
+                                      : <Upload className="h-3 w-3" />
+                                  }
+                                  <input
+                                    type="file"
+                                    accept=".pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) uploadSchedulePdf(batch.dateKey, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {batchSchedules[batch.dateKey]?.schedule_pdf_url ? 'Schedule PDF uploaded — click to replace' : 'Upload OTR Schedule PDF'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {batchSchedules[batch.dateKey]?.schedule_pdf_url && (
+                            <a
+                              href={batchSchedules[batch.dateKey].schedule_pdf_url!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className={`text-[10px] underline ${
+                                filter === 'delivered' ? 'text-emerald-600' : 'text-violet-600'
+                              }`}
+                            >
+                              View
+                            </a>
+                          )}
                         </div>
                         <span className={`text-sm font-bold ${
                           filter === 'delivered' ? 'text-emerald-700 dark:text-emerald-300' : 'text-violet-700 dark:text-violet-300'

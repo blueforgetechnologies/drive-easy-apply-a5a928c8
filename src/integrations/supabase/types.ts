@@ -2432,6 +2432,44 @@ export type Database = {
           },
         ]
       }
+      invoice_batch_schedules: {
+        Row: {
+          batch_date: string
+          created_at: string
+          id: string
+          schedule_name: string | null
+          schedule_pdf_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          batch_date: string
+          created_at?: string
+          id?: string
+          schedule_name?: string | null
+          schedule_pdf_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          batch_date?: string
+          created_at?: string
+          id?: string
+          schedule_name?: string | null
+          schedule_pdf_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_batch_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_email_log: {
         Row: {
           attachments: Json | null
