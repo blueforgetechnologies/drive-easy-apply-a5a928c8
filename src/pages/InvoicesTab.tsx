@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers, ArrowRight, Upload, Paperclip, X } from "lucide-react";
+import { Search, Plus, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, Settings, AlertTriangle, XCircle, Mail, HelpCircle, Undo2, Send, Layers, ArrowRight, Upload, Paperclip, X, ArrowRightLeft } from "lucide-react";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
 import ReturnToAuditDialog from "@/components/ReturnToAuditDialog";
 
@@ -150,6 +150,7 @@ export default function InvoicesTab() {
   const [verifyingSchedule, setVerifyingSchedule] = useState<string | null>(null);
   const [markingBatchPaid, setMarkingBatchPaid] = useState<string | null>(null);
   const [scheduleToRemove, setScheduleToRemove] = useState<string | null>(null);
+  const [movingInvoiceId, setMovingInvoiceId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -197,6 +198,17 @@ export default function InvoicesTab() {
     setSavingSchedule(null);
   };
 
+  // Extract scheduler number from filename (e.g. "Scheduler#_4253_8449651_TALB-2096.pdf" -> "TALB-2096")
+  const extractSchedulerFromFilename = (filename: string): string | null => {
+    // Match patterns like TALB-2096, XXXX-1234 at end of filename before extension
+    const match = filename.match(/([A-Z]{3,5}-\d{3,6})\.\w+$/i);
+    if (match) return match[1].toUpperCase();
+    // Try extracting after "Scheduler" keyword
+    const schedulerMatch = filename.match(/[Ss]cheduler[#_\s]*(\d+)[_\s]*(\d+)[_\s]*([A-Z]+-\d+)/i);
+    if (schedulerMatch) return schedulerMatch[3].toUpperCase();
+    return null;
+  };
+
   const uploadSchedulePdf = async (dateKey: string, file: File) => {
     if (!tenantId) return;
     setUploadingSchedule(dateKey);
@@ -210,14 +222,20 @@ export default function InvoicesTab() {
     const { data: urlData } = supabase.storage.from('otr-schedules').getPublicUrl(filePath);
     const pdfUrl = urlData.publicUrl;
     
+    // Extract scheduler number from filename as initial name
+    const extractedName = extractSchedulerFromFilename(file.name);
     const existing = batchSchedules[dateKey];
+    const scheduleName = existing?.schedule_name || extractedName || '';
+    
     if (existing?.id) {
-      await supabase.from('invoice_batch_schedules').update({ schedule_pdf_url: pdfUrl }).eq('id', existing.id);
-      setBatchSchedules(prev => ({ ...prev, [dateKey]: { ...prev[dateKey], schedule_pdf_url: pdfUrl } }));
+      const updateData: any = { schedule_pdf_url: pdfUrl };
+      if (!existing.schedule_name && extractedName) updateData.schedule_name = extractedName;
+      await supabase.from('invoice_batch_schedules').update(updateData).eq('id', existing.id);
+      setBatchSchedules(prev => ({ ...prev, [dateKey]: { ...prev[dateKey], schedule_pdf_url: pdfUrl, schedule_name: prev[dateKey]?.schedule_name || extractedName || '' } }));
     } else {
-      const { data } = await supabase.from('invoice_batch_schedules').insert({ tenant_id: tenantId, batch_date: dateKey, schedule_pdf_url: pdfUrl }).select().single();
+      const { data } = await supabase.from('invoice_batch_schedules').insert({ tenant_id: tenantId, batch_date: dateKey, schedule_pdf_url: pdfUrl, schedule_name: scheduleName }).select().single();
       if (data) {
-        setBatchSchedules(prev => ({ ...prev, [dateKey]: { id: data.id, schedule_name: '', schedule_pdf_url: pdfUrl } }));
+        setBatchSchedules(prev => ({ ...prev, [dateKey]: { id: data.id, schedule_name: scheduleName, schedule_pdf_url: pdfUrl } }));
       }
     }
     toast.success('Schedule PDF uploaded — verifying against invoices...');
@@ -330,6 +348,45 @@ export default function InvoicesTab() {
       toast.error('Failed to mark batch as paid');
     } finally {
       setMarkingBatchPaid(null);
+    }
+  };
+
+  const moveInvoiceToBatch = async (invoice: InvoiceWithDeliveryInfo, targetDateKey: string) => {
+    if (!tenantId) return;
+    setMovingInvoiceId(invoice.id);
+    try {
+      // Build a timestamp for the target date (keep time component from original)
+      const originalDateField = invoice.billing_method === 'otr' ? invoice.otr_submitted_at : invoice.sent_at;
+      const originalTime = originalDateField ? new Date(originalDateField).toISOString().split('T')[1] : '12:00:00.000Z';
+      const newTimestamp = `${targetDateKey}T${originalTime}`;
+      
+      const updateData: any = {};
+      if (invoice.billing_method === 'otr') {
+        updateData.otr_submitted_at = newTimestamp;
+      } else {
+        updateData.sent_at = newTimestamp;
+      }
+      
+      const { error } = await supabase
+        .from('invoices' as any)
+        .update(updateData)
+        .eq('id', invoice.id)
+        .eq('tenant_id', tenantId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setAllInvoices(prev => prev.map(inv => 
+        inv.id === invoice.id 
+          ? { ...inv, ...updateData } 
+          : inv
+      ));
+      
+      toast.success(`Invoice ${invoice.invoice_number} moved to ${format(new Date(targetDateKey), 'MMM d, yyyy')}`);
+    } catch (err: any) {
+      toast.error(`Failed to move invoice: ${err.message}`);
+    } finally {
+      setMovingInvoiceId(null);
     }
   };
 
@@ -1570,9 +1627,73 @@ export default function InvoicesTab() {
         </TableCell>
         {(filter === 'paid' || filter === 'pending_payment') && (
           <TableCell className="py-2 px-3">
-            <span className="text-xs text-muted-foreground">
-              {(invoice as any).paid_by_name || '—'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {(invoice as any).paid_by_name || '—'}
+              </span>
+              {batchMode && batchGroups && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative inline-block">
+                        <button
+                          className="h-5 w-5 rounded flex items-center justify-center bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMovingInvoiceId(movingInvoiceId === invoice.id ? null : invoice.id);
+                          }}
+                          disabled={movingInvoiceId !== null && movingInvoiceId !== invoice.id}
+                        >
+                          {movingInvoiceId === invoice.id ? <X className="h-3 w-3" /> : <ArrowRightLeft className="h-3 w-3" />}
+                        </button>
+                        {movingInvoiceId === invoice.id && (
+                          <div className="absolute right-0 top-6 z-50 bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]" onClick={(e) => e.stopPropagation()}>
+                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5 px-1">Move to batch:</p>
+                            {batchGroups.map(batch => {
+                              const currentDateKey = (() => {
+                                const deliveredAt = invoice.billing_method === 'otr' ? invoice.otr_submitted_at : invoice.sent_at;
+                                return deliveredAt ? format(new Date(deliveredAt), 'yyyy-MM-dd') : 'unknown';
+                              })();
+                              const isCurrent = batch.dateKey === currentDateKey;
+                              return (
+                                <button
+                                  key={batch.dateKey}
+                                  className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted transition-colors ${isCurrent ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                                  disabled={isCurrent}
+                                  onClick={() => {
+                                    moveInvoiceToBatch(invoice, batch.dateKey);
+                                    setMovingInvoiceId(null);
+                                  }}
+                                >
+                                  {batch.dateKey === 'unknown' ? 'No Date' : format(new Date(batch.dateKey), 'MMM d, yyyy')}
+                                  {isCurrent && ' ✓'}
+                                </button>
+                              );
+                            })}
+                            <div className="border-t mt-1.5 pt-1.5">
+                              <div className="flex items-center gap-1 px-1">
+                                <span className="text-[10px] text-muted-foreground">Custom:</span>
+                                <input
+                                  type="date"
+                                  className="h-6 text-xs px-1.5 border rounded bg-background w-full"
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      moveInvoiceToBatch(invoice, e.target.value);
+                                      setMovingInvoiceId(null);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Move to different batch</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
           </TableCell>
         )}
         {filter === 'needs_setup' && (
