@@ -43,6 +43,7 @@ interface CustomerData {
   otr_approval_status: string | null;
   otr_credit_limit: number | null;
   otr_last_checked_at: string | null;
+  factoring_flat_fee: number | null;
 }
 
 interface FMCSAResult {
@@ -127,6 +128,7 @@ export default function CustomerDetail() {
         mc_number: customer.mc_number,
         dot_number: customer.dot_number,
         factoring_approval: customer.factoring_approval,
+        factoring_flat_fee: customer.factoring_flat_fee,
       };
       console.log('[CustomerDetail] Saving:', JSON.stringify(updatePayload));
       const { error, data, count } = await supabase
@@ -449,6 +451,21 @@ export default function CustomerDetail() {
                   {!customer.otr_credit_limit && !customer.otr_last_checked_at && (
                     <span>Not yet checked with OTR Solutions</span>
                   )}
+                  {customer.factoring_flat_fee != null && customer.factoring_flat_fee > 0 && (
+                    <span className="ml-2">• Flat fee: ${customer.factoring_flat_fee.toFixed(2)}/load</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Label className="text-xs text-muted-foreground">Flat Fee ($/load):</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="h-7 w-24 text-xs"
+                    value={customer.factoring_flat_fee ?? ""}
+                    onChange={(e) => setCustomer(prev => prev ? { ...prev, factoring_flat_fee: e.target.value ? parseFloat(e.target.value) : null } : prev)}
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
             </div>
