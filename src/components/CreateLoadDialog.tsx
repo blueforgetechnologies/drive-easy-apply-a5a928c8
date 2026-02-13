@@ -1078,47 +1078,78 @@ function StopCard({
   canRemove: boolean;
 }) {
   const isPickup = stop.type === "pickup";
-  const borderColor = isPickup
-    ? "border-emerald-200 dark:border-emerald-800/60"
-    : "border-rose-200 dark:border-rose-800/60";
-  const bgColor = isPickup
-    ? "bg-gradient-to-br from-emerald-100/80 to-emerald-50/40 dark:from-emerald-950/40 dark:to-emerald-900/20"
-    : "bg-gradient-to-br from-rose-100/80 to-rose-50/40 dark:from-rose-950/40 dark:to-rose-900/20";
-  const iconBg = isPickup ? "bg-emerald-500/20" : "bg-rose-500/20";
-  const textColor = isPickup
-    ? "text-emerald-700 dark:text-emerald-400"
-    : "text-rose-700 dark:text-rose-400";
-  const iconColor = isPickup
-    ? "text-emerald-600 dark:text-emerald-400"
-    : "text-rose-600 dark:text-rose-400";
+  const accentColor = isPickup ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
+  const dotColor = isPickup ? "bg-emerald-500" : "bg-rose-500";
+
+  const inlineInput = (field: keyof Stop, placeholder: string, opts?: { type?: string; className?: string }) => (
+    <input
+      type={opts?.type || "text"}
+      value={stop[field]}
+      onChange={(e) => onUpdate(field, e.target.value)}
+      placeholder={placeholder}
+      className={`bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none text-xs py-0.5 w-full transition-colors ${opts?.className || ""}`}
+    />
+  );
 
   return (
-    <div className={`rounded-lg border ${borderColor} ${bgColor} p-2 space-y-1`}>
-      <div className={`flex items-center justify-between pb-1 border-b ${borderColor}`}>
-        <div className="flex items-center gap-1.5">
-          <MapPin className={`h-3 w-3 ${iconColor}`} />
-          <span className={`font-semibold text-xs ${textColor}`}>
-            {isPickup ? "PU" : "DEL"} #{typeIndex}
-          </span>
-          <span className="text-[10px] text-muted-foreground">Stop {index + 1}/{total}</span>
+    <div className="border-b border-border/50 last:border-b-0 py-1.5 px-1 group">
+      <div className="flex items-start gap-2">
+        {/* Left: location & contact */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`} />
+            <span className={`font-semibold text-[11px] ${accentColor}`}>
+              {isPickup ? "PU" : "DEL"} #{typeIndex}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{index + 1}/{total}</span>
+            {canRemove && (
+              <button type="button" onClick={onRemove} className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-[1fr_1fr] gap-x-3 gap-y-0">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Facility</span>
+              {inlineInput("name", "Facility name", { className: "font-medium" })}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Contact</span>
+              {inlineInput("contact", "—")}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Address</span>
+              {inlineInput("address", "Street address")}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-muted-foreground w-10 shrink-0">Phone</span>
+              {inlineInput("phone", "—")}
+            </div>
+            <div className="flex items-baseline gap-1 col-span-2">
+              <span className="text-[10px] text-muted-foreground w-10 shrink-0">City/St</span>
+              <div className="flex gap-1 flex-1">
+                {inlineInput("city", "City", { className: "flex-1" })}
+                {inlineInput("state", "ST", { className: "w-8 text-center uppercase" })}
+                {inlineInput("zip", "ZIP", { className: "w-16" })}
+              </div>
+            </div>
+          </div>
         </div>
-        {canRemove && (
-          <button type="button" onClick={onRemove} className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-      <div className="grid grid-cols-5 gap-x-2 gap-y-1">
-        <Field label="Facility"><Input value={stop.name} onChange={(e) => onUpdate("name", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Address"><Input value={stop.address} onChange={(e) => onUpdate("address", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="City"><Input value={stop.city} onChange={(e) => onUpdate("city", e.target.value)} className="h-7 text-xs" required /></Field>
-        <Field label="State"><Input value={stop.state} onChange={(e) => onUpdate("state", e.target.value)} className="h-7 text-xs" required /></Field>
-        <Field label="ZIP"><Input value={stop.zip} onChange={(e) => onUpdate("zip", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Contact"><Input value={stop.contact} onChange={(e) => onUpdate("contact", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Phone"><Input value={stop.phone} onChange={(e) => onUpdate("phone", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Date"><Input type="date" value={stop.date} onChange={(e) => onUpdate("date", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Time"><Input type="time" value={stop.time} onChange={(e) => onUpdate("time", e.target.value)} className="h-7 text-xs" /></Field>
-        <Field label="Notes"><Input value={stop.notes} onChange={(e) => onUpdate("notes", e.target.value)} className="h-7 text-xs" /></Field>
+        {/* Right: date, time, notes */}
+        <div className="w-40 shrink-0 border-l border-border/40 pl-2 space-y-0">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Date</span>
+            {inlineInput("date", "—", { type: "date" })}
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Time</span>
+            {inlineInput("time", "—", { type: "time" })}
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] text-muted-foreground w-8 shrink-0">Notes</span>
+            {inlineInput("notes", "—")}
+          </div>
+        </div>
       </div>
     </div>
   );
