@@ -968,22 +968,25 @@ export default function InvoicesTab() {
     const rcComplete = rc_coverage.have === rc_coverage.total && rc_coverage.total > 0;
     const bolComplete = bol_coverage.have === bol_coverage.total && bol_coverage.total > 0;
     
+    const pillBase = "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border";
+    const pillGreen = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800";
+    const pillRed = "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800";
+
     return (
-      <div className="flex items-center gap-1 text-xs">
+      <div className="flex items-center gap-1.5">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-green-500">✓ Inv</span>
+              <span className={`${pillBase} ${pillGreen}`}>Inv</span>
             </TooltipTrigger>
             <TooltipContent>Invoice: Generated</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <span className="text-muted-foreground">/</span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={rcComplete ? "text-green-500" : "text-red-500"}>
-                RC: {rc_coverage.have}/{rc_coverage.total}
+              <span className={`${pillBase} ${rcComplete ? pillGreen : pillRed}`}>
+                RC {rc_coverage.have}/{rc_coverage.total}
               </span>
             </TooltipTrigger>
             <TooltipContent>
@@ -996,12 +999,11 @@ export default function InvoicesTab() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <span className="text-muted-foreground">/</span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={bolComplete ? "text-green-500" : "text-red-500"}>
-                BOL: {bol_coverage.have}/{bol_coverage.total}
+              <span className={`${pillBase} ${bolComplete ? pillGreen : pillRed}`}>
+                BOL {bol_coverage.have}/{bol_coverage.total}
               </span>
             </TooltipTrigger>
             <TooltipContent>
