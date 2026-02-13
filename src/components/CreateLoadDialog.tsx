@@ -778,19 +778,7 @@ export function CreateLoadDialog({
               </div>
             </SectionCard>
 
-            {/* Billing Party */}
-            <SectionCard icon={<FileText className="h-3.5 w-3.5" />} title="Billing Party (Invoice To)" color="violet">
-              <div className="grid grid-cols-4 gap-2">
-                <div className="col-span-2"><Field label="Company Name"><Input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Defaults to Customer/Broker" className="h-8" /></Field></div>
-                <div className="col-span-2"><Field label="Address"><Input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="h-8" /></Field></div>
-                <Field label="City"><Input value={billingCity} onChange={(e) => setBillingCity(e.target.value)} className="h-8" /></Field>
-                <Field label="State"><Input value={billingState} onChange={(e) => setBillingState(e.target.value)} className="h-8" /></Field>
-                <Field label="ZIP"><Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} className="h-8" /></Field>
-                <Field label="Contact"><Input value={billingContact} onChange={(e) => setBillingContact(e.target.value)} className="h-8" /></Field>
-                <div className="col-span-2"><Field label="Phone"><Input value={billingPhone} onChange={(e) => setBillingPhone(e.target.value)} className="h-8" /></Field></div>
-                <div className="col-span-2"><Field label="Email"><Input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} className="h-8" /></Field></div>
-              </div>
-            </SectionCard>
+            {/* Billing Party section removed - merged into Financial below */}
 
             {/* === STOPS SECTION === */}
             <div className="space-y-1.5">
@@ -857,8 +845,8 @@ export function CreateLoadDialog({
               </div>
             </SectionCard>
 
-            {/* Financial */}
-            <SectionCard icon={<DollarSign className="h-3.5 w-3.5" />} title="Financial" color="green">
+            {/* Financial & Billing */}
+            <SectionCard icon={<DollarSign className="h-3.5 w-3.5" />} title="Financial & Billing" color="green">
               <div className="grid grid-cols-4 gap-2">
                 <div className="col-span-3">
                   <Field label="Customer (Who Pays)">
@@ -876,6 +864,23 @@ export function CreateLoadDialog({
                 <Field label="Rate ($)">
                   <Input type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-8" />
                 </Field>
+              </div>
+              <div className="border-t mt-2 pt-2">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1.5">Invoice To (Billing Party)</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="col-span-2"><Field label="Company"><Input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Defaults to Customer/Broker" className="h-7 text-xs" /></Field></div>
+                  <Field label="Contact"><Input value={billingContact} onChange={(e) => setBillingContact(e.target.value)} className="h-7 text-xs" /></Field>
+                  <Field label="Phone"><Input value={billingPhone} onChange={(e) => setBillingPhone(e.target.value)} className="h-7 text-xs" /></Field>
+                  <div className="col-span-2"><Field label="Address"><Input value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="h-7 text-xs" /></Field></div>
+                  <Field label="City"><Input value={billingCity} onChange={(e) => setBillingCity(e.target.value)} className="h-7 text-xs" /></Field>
+                  <Field label="St / ZIP">
+                    <div className="flex gap-1">
+                      <Input value={billingState} onChange={(e) => setBillingState(e.target.value)} placeholder="ST" className="h-7 text-xs w-14" />
+                      <Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="ZIP" className="h-7 text-xs" />
+                    </div>
+                  </Field>
+                  <div className="col-span-2"><Field label="Email"><Input value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} className="h-7 text-xs" /></Field></div>
+                </div>
               </div>
             </SectionCard>
 
