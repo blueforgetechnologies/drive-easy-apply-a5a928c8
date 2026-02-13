@@ -869,7 +869,7 @@ export default function InvoicesTab() {
   const getDeliveryStatusBadge = (inv: InvoiceWithDeliveryInfo) => {
     switch (inv.delivery_status) {
       case 'delivered':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">Delivered</span>;
+        return <span className="pill-glossy-green">Delivered</span>;
       case 'failed':
         return <span className="badge-puffy badge-puffy-red text-xs">Failed</span>;
       case 'sending':
@@ -895,7 +895,7 @@ export default function InvoicesTab() {
   const getBillingMethodBadge = (method: string | null) => {
     switch (method) {
       case 'otr':
-        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">OTR Solutions</span>;
+        return <span className="pill-glossy-green">OTR Solutions</span>;
       case 'direct_email':
         return <span className="badge-puffy badge-puffy-secondary text-xs">Bill Broker</span>;
       default:
@@ -922,7 +922,7 @@ export default function InvoicesTab() {
     
     switch (inv.credit_approval_status) {
       case 'approved':
-        return wrapWithSource(<span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">Approved</span>);
+        return wrapWithSource(<span className="pill-glossy-green">Approved</span>);
       case 'denied':
         return wrapWithSource(<span className="badge-puffy badge-puffy-red text-xs">Denied</span>);
       case 'pending':
@@ -968,16 +968,12 @@ export default function InvoicesTab() {
     const rcComplete = rc_coverage.have === rc_coverage.total && rc_coverage.total > 0;
     const bolComplete = bol_coverage.have === bol_coverage.total && bol_coverage.total > 0;
     
-    const pillBase = "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border";
-    const pillGreen = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800";
-    const pillRed = "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800";
-
     return (
       <div className="flex items-center gap-1.5">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={`${pillBase} ${pillGreen}`}>Inv</span>
+              <span className="pill-glossy-green">Inv</span>
             </TooltipTrigger>
             <TooltipContent>Invoice: Generated</TooltipContent>
           </Tooltip>
@@ -985,7 +981,7 @@ export default function InvoicesTab() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={`${pillBase} ${rcComplete ? pillGreen : pillRed}`}>
+              <span className={rcComplete ? "pill-glossy-green" : "pill-glossy-red"}>
                 RC {rc_coverage.have}/{rc_coverage.total}
               </span>
             </TooltipTrigger>
@@ -1002,7 +998,7 @@ export default function InvoicesTab() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={`${pillBase} ${bolComplete ? pillGreen : pillRed}`}>
+              <span className={bolComplete ? "pill-glossy-green" : "pill-glossy-red"}>
                 BOL {bol_coverage.have}/{bol_coverage.total}
               </span>
             </TooltipTrigger>
