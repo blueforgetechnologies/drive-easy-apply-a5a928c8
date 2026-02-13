@@ -895,7 +895,7 @@ export default function InvoicesTab() {
   const getBillingMethodBadge = (method: string | null) => {
     switch (method) {
       case 'otr':
-        return <span className="text-xs font-bold text-emerald-500">OTR Solutions</span>;
+        return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">OTR Solutions</span>;
       case 'direct_email':
         return <span className="badge-puffy badge-puffy-secondary text-xs">Bill Broker</span>;
       default:
@@ -922,7 +922,7 @@ export default function InvoicesTab() {
     
     switch (inv.credit_approval_status) {
       case 'approved':
-        return wrapWithSource(<span className="text-xs font-bold text-emerald-500">Approved</span>);
+        return wrapWithSource(<span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">Approved</span>);
       case 'denied':
         return wrapWithSource(<span className="badge-puffy badge-puffy-red text-xs">Denied</span>);
       case 'pending':
