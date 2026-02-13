@@ -143,6 +143,22 @@ export default function CustomerDetail() {
     }
   };
 
+  // Auto-save a single field immediately (for critical fields like MC/DOT)
+  const autoSaveField = async (field: keyof CustomerData, value: any) => {
+    if (!id) return;
+    try {
+      const { error } = await supabase
+        .from("customers")
+        .update({ [field]: value || null })
+        .eq("id", id);
+      if (error) throw error;
+      console.log(`[AutoSave] ${field} saved:`, value);
+    } catch (err: any) {
+      console.error(`[AutoSave] Failed to save ${field}:`, err);
+      toast.error(`Failed to auto-save ${field}`);
+    }
+  };
+
   const handleFMCSALookup = async (type: "usdot" | "mc") => {
     const value = type === "usdot" ? customer?.dot_number : customer?.mc_number;
     if (!value?.trim()) {
@@ -498,7 +514,7 @@ export default function CustomerDetail() {
             <div className="flex gap-2">
               <div className="flex-1">
                 <Label className="text-xs">USDOT Number</Label>
-                <Input value={customer.dot_number || ""} onChange={(e) => updateField("dot_number", e.target.value)} className="h-9" placeholder="Enter USDOT" />
+                <Input value={customer.dot_number || ""} onChange={(e) => updateField("dot_number", e.target.value)} onBlur={(e) => autoSaveField("dot_number", e.target.value)} className="h-9" placeholder="Enter USDOT" />
               </div>
               <Button variant="secondary" size="sm" className="mt-5 h-9" onClick={() => handleFMCSALookup("usdot")} disabled={lookupLoading}>
                 <Search className="h-3.5 w-3.5" />
@@ -507,7 +523,7 @@ export default function CustomerDetail() {
             <div className="flex gap-2">
               <div className="flex-1">
                 <Label className="text-xs">MC Number</Label>
-                <Input value={customer.mc_number || ""} onChange={(e) => updateField("mc_number", e.target.value)} className="h-9" placeholder="Enter MC" />
+                <Input value={customer.mc_number || ""} onChange={(e) => updateField("mc_number", e.target.value)} onBlur={(e) => autoSaveField("mc_number", e.target.value)} className="h-9" placeholder="Enter MC" />
               </div>
               <Button variant="secondary" size="sm" className="mt-5 h-9" onClick={() => handleFMCSALookup("mc")} disabled={lookupLoading}>
                 <Search className="h-3.5 w-3.5" />
