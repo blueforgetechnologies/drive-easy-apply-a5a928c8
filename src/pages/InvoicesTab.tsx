@@ -591,9 +591,9 @@ export default function InvoicesTab() {
     );
   }, [filter, categorizedInvoices, searchQuery]);
 
-  // Group paid invoices by delivered (sent_at) date for batch view
+  // Group invoices by delivered date for batch view (paid & delivered tabs)
   const batchGroups = useMemo(() => {
-    if (filter !== 'paid' || !batchMode) return null;
+    if ((filter !== 'paid' && filter !== 'delivered') || !batchMode) return null;
     const groups = new Map<string, { label: string; invoices: InvoiceWithDeliveryInfo[]; total: number; dateKey: string }>();
     
     filteredInvoices.forEach(inv => {
@@ -1610,7 +1610,7 @@ export default function InvoicesTab() {
                             {tabCounts[status.key as keyof typeof tabCounts]}
                           </span>
                         </Button>
-                        {status.key === 'paid' && filter === 'paid' && (
+                        {(status.key === 'paid' && filter === 'paid') || (status.key === 'delivered' && filter === 'delivered') ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1628,7 +1628,7 @@ export default function InvoicesTab() {
                               Batch
                             </span>
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
