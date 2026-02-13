@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Save, Building2, Phone, Mail, MapPin, Search, 
   CheckCircle, XCircle, DollarSign, ShieldCheck, Loader2,
-  FileText
+  FileText, Trash2
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTenantFilter } from "@/hooks/useTenantFilter";
@@ -69,6 +70,7 @@ export default function CustomerDetail() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupType, setLookupType] = useState<"usdot" | "mc">("usdot");
   const [checkingFactoring, setCheckingFactoring] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({
     name: true,
     mc_number: true,
@@ -379,6 +381,42 @@ export default function CustomerDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleting}>
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete <strong>{customer.name}</strong>? This action cannot be undone and will remove all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const { error } = await supabase.from("customers").delete().eq("id", id);
+                      if (error) throw error;
+                      toast.success("Customer deleted successfully");
+                      navigate("/dashboard/business?subtab=customers");
+                    } catch (err: any) {
+                      toast.error("Failed to delete customer: " + err.message);
+                      setDeleting(false);
+                    }
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button onClick={handleSave} disabled={saving} size="sm">
             <Save className="h-4 w-4 mr-1.5" />
             {saving ? "Saving..." : "Save"}
