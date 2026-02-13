@@ -1627,7 +1627,7 @@ export default function InvoicesTab() {
                                   : 'btn-glossy-success text-white/50 opacity-50 hover:opacity-80'
                                 : batchMode
                                   ? 'btn-glossy-primary text-white'
-                                  : 'btn-glossy-primary text-white/50 opacity-50 hover:opacity-80'
+                                  : 'bg-gradient-to-b from-violet-400 to-purple-500 text-white/70 shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.3)] hover:from-violet-500 hover:to-purple-600 hover:text-white'
                             }`}
                             title={batchMode ? 'Switch to list view' : 'Group by delivery date'}
                           >
