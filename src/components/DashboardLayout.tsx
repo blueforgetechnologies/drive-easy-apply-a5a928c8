@@ -25,6 +25,7 @@ import { useFeatureGates } from "@/hooks/useFeatureGates";
 import { useUserPermissions, PERMISSION_CODES } from "@/hooks/useUserPermissions";
 import { useRealtimeCounts } from "@/hooks/useRealtimeCounts";
 import { cn } from "@/lib/utils";
+import { prefetchVisibleTabs, prefetchTab } from "@/lib/prefetchTabs";
 import { toast } from "sonner";
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -384,6 +385,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ...(showDevelopment ? [{ value: "development", icon: FileCode, label: "Development", badge: integrationAlertCount + unmappedTypesCount }] : []),
   ];
 
+  // Prefetch JS chunks for all visible nav tabs once gates resolve
+  useEffect(() => {
+    if (!allGatesReady) return;
+    const visibleKeys = primaryNavItems.map(item => item.value);
+    prefetchVisibleTabs(visibleKeys);
+  }, [allGatesReady, primaryNavItems.length]);
+
   // Combined for mobile menu (includes items from user dropdown)
   const allNavItems = [
     ...primaryNavItems,
@@ -462,6 +470,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <TabsTrigger 
                           key={item.value}
                           value={item.value} 
+                          onMouseEnter={() => prefetchTab(item.value)}
                           className="gap-1.5 h-8 text-[13px] px-2.5 text-white/90 border-0 rounded-md data-[state=active]:text-white data-[state=active]:shadow-none"
                           style={{
                             textShadow: '0 1px 1px rgba(0,0,0,0.3)',
