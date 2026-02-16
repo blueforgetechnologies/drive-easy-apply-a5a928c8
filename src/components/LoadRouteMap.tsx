@@ -139,18 +139,37 @@ function LoadRouteMapComponent({ stops, optimizedStops, requiredBreaks = [], veh
     };
   }, []); // Only run once on mount
 
-  // Geocode address function - uses pre-geocoded coords if available, otherwise calls edge function
+  // Geocode address function - uses pre-geocoded coords if available,
+  // then tries direct geocode_cache lookup (instant), falls back to edge function
   const geocodeAddress = useCallback(async (stop: Stop): Promise<[number, number] | null> => {
     try {
-      // FAST PATH: If stop already has coordinates, use them directly (no API call!)
+      // FAST PATH 1: If stop already has coordinates, use them directly (no API call!)
       if (stop.lat && stop.lng) {
         return [stop.lng, stop.lat];
       }
       
-      const query = `${stop.location_address || ''} ${stop.location_city || ''} ${stop.location_state || ''} ${stop.location_zip || ''}`.trim();
+      const city = stop.location_city?.trim();
+      const state = stop.location_state?.trim();
+      
+      // FAST PATH 2: Direct geocode_cache table lookup (no edge function overhead)
+      if (city && state) {
+        const locationKey = `${city}, ${state}`.toLowerCase();
+        const { data: cached } = await supabase
+          .from('geocode_cache')
+          .select('latitude, longitude')
+          .ilike('location_key', locationKey)
+          .limit(1)
+          .maybeSingle();
+        
+        if (cached?.latitude && cached?.longitude) {
+          return [cached.longitude, cached.latitude];
+        }
+      }
+
+      // SLOW PATH: Fall back to edge function (geocodes + caches for next time)
+      const query = `${stop.location_address || ''} ${city || ''} ${state || ''} ${stop.location_zip || ''}`.trim();
       if (!query) return null;
 
-      // Use the cached geocode edge function
       const { data, error } = await supabase.functions.invoke('geocode', {
         body: { query }
       });
