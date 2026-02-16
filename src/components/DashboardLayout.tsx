@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenantContext } from "@/contexts/TenantContext";
 import { useTenantAlertCounts } from "@/hooks/useTenantAlertCounts";
 import { useIntegrationsAlertsCount } from "@/hooks/useIntegrationsAlertsCount";
-import { useFeatureGate } from "@/hooks/useFeatureGate";
+import { useFeatureGates } from "@/hooks/useFeatureGates";
 import { useUserPermissions, PERMISSION_CODES } from "@/hooks/useUserPermissions";
 import { useRealtimeCounts } from "@/hooks/useRealtimeCounts";
 import { cn } from "@/lib/utils";
@@ -59,16 +59,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     hasCustomRole
   } = useUserPermissions();
   
-  // Use unified feature gates for all gated modules
-  const analyticsGate = useFeatureGate({ featureKey: "analytics", requiresUserGrant: false });
-  const accountingGate = useFeatureGate({ featureKey: "accounting_module", requiresUserGrant: false });
-  const fleetFinancialsGate = useFeatureGate({ featureKey: "fleet_financials", requiresUserGrant: false });
-  const carrierDashboardGate = useFeatureGate({ featureKey: "carrier_dashboard", requiresUserGrant: false });
-  const maintenanceGate = useFeatureGate({ featureKey: "maintenance_module", requiresUserGrant: false });
-  const mapGate = useFeatureGate({ featureKey: "map_view", requiresUserGrant: false });
-  const loadHunterGate = useFeatureGate({ featureKey: "load_hunter_enabled", requiresUserGrant: false });
-  const developmentGate = useFeatureGate({ featureKey: "development_tools", requiresUserGrant: false });
-  const operationsGate = useFeatureGate({ featureKey: "operations_module", requiresUserGrant: false });
+  // Batched feature gates - single set of queries for ALL feature flags
+  const GATE_KEYS = useMemo(() => [
+    "analytics", "accounting_module", "fleet_financials", "carrier_dashboard",
+    "maintenance_module", "map_view", "load_hunter_enabled", "development_tools",
+    "operations_module",
+  ], []);
+  const { isEnabledForTenant: isFeatureEnabled, isLoading: gatesLoading } = useFeatureGates(GATE_KEYS);
 
   // Enable global realtime count updates - this subscribes to all relevant tables
   // and automatically invalidates React Query caches when data changes
@@ -83,26 +80,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return featureEnabled && hasPermission(permissionCode);
   };
 
-  // Analytics: tenant feature enabled + user has tab_analytics permission (no user-level grant needed)
-  const showAnalytics = !analyticsGate.isLoading && !permissionsLoading && 
-    analyticsGate.isEnabledForTenant && 
+  // All gates resolve together now - no more staggered loading
+  const allGatesReady = !gatesLoading && !permissionsLoading;
+
+  // Analytics: tenant feature enabled + user has tab_analytics permission
+  const showAnalytics = allGatesReady && 
+    isFeatureEnabled("analytics") && 
     hasPermission(PERMISSION_CODES.TAB_ANALYTICS);
-  const showAccounting = !accountingGate.isLoading && !permissionsLoading && 
-    canAccessFeature(accountingGate.isEnabledForTenant, PERMISSION_CODES.TAB_ACCOUNTING);
-  const showFleetFinancials = !fleetFinancialsGate.isLoading && !permissionsLoading && 
-    canAccessFeature(fleetFinancialsGate.isEnabledForTenant, PERMISSION_CODES.TAB_FLEET_FINANCIALS);
-  const showCarrierDashboard = !carrierDashboardGate.isLoading && !permissionsLoading && 
-    canAccessFeature(carrierDashboardGate.isEnabledForTenant, PERMISSION_CODES.TAB_CARRIER_DASHBOARD);
-  const showMaintenance = !maintenanceGate.isLoading && !permissionsLoading && 
-    canAccessFeature(maintenanceGate.isEnabledForTenant, PERMISSION_CODES.TAB_MAINTENANCE);
-  const showMap = !mapGate.isLoading && !permissionsLoading && 
-    canAccessFeature(mapGate.isEnabledForTenant, PERMISSION_CODES.TAB_MAP);
-  const showLoadHunter = !loadHunterGate.isLoading && !permissionsLoading && 
-    canAccessFeature(loadHunterGate.isEnabledForTenant, PERMISSION_CODES.TAB_LOAD_HUNTER);
-  const showDevelopment = !developmentGate.isLoading && !permissionsLoading && 
-    canAccessFeature(developmentGate.isEnabledForTenant, PERMISSION_CODES.TAB_DEVELOPMENT);
-  const showOperations = !operationsGate.isLoading && !permissionsLoading && 
-    canAccessFeature(operationsGate.isEnabledForTenant, PERMISSION_CODES.TAB_BUSINESS);
+  const showAccounting = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("accounting_module"), PERMISSION_CODES.TAB_ACCOUNTING);
+  const showFleetFinancials = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("fleet_financials"), PERMISSION_CODES.TAB_FLEET_FINANCIALS);
+  const showCarrierDashboard = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("carrier_dashboard"), PERMISSION_CODES.TAB_CARRIER_DASHBOARD);
+  const showMaintenance = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("maintenance_module"), PERMISSION_CODES.TAB_MAINTENANCE);
+  const showMap = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("map_view"), PERMISSION_CODES.TAB_MAP);
+  const showLoadHunter = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("load_hunter_enabled"), PERMISSION_CODES.TAB_LOAD_HUNTER);
+  const showDevelopment = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("development_tools"), PERMISSION_CODES.TAB_DEVELOPMENT);
+  const showOperations = allGatesReady && 
+    canAccessFeature(isFeatureEnabled("operations_module"), PERMISSION_CODES.TAB_BUSINESS);
   // Loads tab - core feature, but still requires permission
   const showLoads = !permissionsLoading && (isPlatformAdmin || hasPermission(PERMISSION_CODES.TAB_LOADS));
   // Settings tab - check permission
@@ -115,7 +115,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Debug: log gate + permission resolution
   useEffect(() => {
-    if (!analyticsGate.isLoading && !permissionsLoading) {
+    if (allGatesReady) {
       console.log("[DashboardLayout] Access resolved:", {
         hasCustomRole,
         isPlatformAdmin,
@@ -133,7 +133,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       });
     }
   }, [
-    analyticsGate.isLoading,
+    allGatesReady,
     permissionsLoading,
     hasCustomRole,
     showAnalytics,
