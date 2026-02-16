@@ -267,7 +267,11 @@ export function useLoadHunterData({
         if (emailsResult.error) {
           console.error(`📧 Attempt ${attempt} failed:`, emailsResult.error);
           if (attempt === retries) {
-            toast.error('Failed to load emails - please refresh');
+            // Only show toast if we have no data yet (initial load)
+            // Silent fail on background polls — next cycle will retry
+            if (loadEmails.length === 0) {
+              toast.error('Failed to load emails - please refresh');
+            }
             return;
           }
           await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
@@ -279,9 +283,9 @@ export function useLoadHunterData({
         return;
       } catch (err) {
         console.error(`📧 Attempt ${attempt} error:`, err);
-        if (attempt === retries) {
-          toast.error('Failed to load emails - please refresh');
-        }
+        if (attempt === retries && loadEmails.length === 0) {
+           toast.error('Failed to load emails - please refresh');
+         }
         await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
       }
     }
