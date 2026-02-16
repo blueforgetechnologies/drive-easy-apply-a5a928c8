@@ -76,7 +76,18 @@ const IsolationAuditTab = lazy(() => import("./pages/IsolationAuditTab"));
 const TenantIsolationTestsTab = lazy(() => import("./pages/TenantIsolationTestsTab"));
 const CustomerOnboardingTab = lazy(() => import("./pages/CustomerOnboardingTab"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Show cached data instantly on tab revisit, refresh in background
+      staleTime: 30_000, // 30 seconds
+      // Keep unused query data in cache for 5 minutes
+      gcTime: 5 * 60_000,
+      // Don't refetch when window regains focus (user is switching tabs often)
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 /**
  * LazyRoute - Wraps lazy-loaded components with ErrorBoundary + Suspense + DashboardLayout
