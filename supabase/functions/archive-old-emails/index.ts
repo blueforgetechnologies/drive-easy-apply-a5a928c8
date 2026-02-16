@@ -154,6 +154,95 @@ Deno.serve(async (req) => {
     results['cleanup_rate_limits'] = { count: 0, error: String(e) };
   }
 
+  // 9. Purge old storage files from email-payloads (60 days)
+  try {
+    const cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    let totalDeleted = 0;
+
+    // List and delete in batches from email-payloads bucket
+    for (let offset = 0; offset < 5000; offset += 100) {
+      const { data: files, error } = await supabase.storage
+        .from('email-payloads')
+        .list('', { limit: 100, offset, sortBy: { column: 'created_at', order: 'asc' } });
+
+      if (error || !files || files.length === 0) break;
+
+      const oldFiles = files.filter(f => {
+        const created = new Date(f.created_at);
+        return created < cutoff;
+      });
+
+      if (oldFiles.length === 0) break;
+
+      const paths = oldFiles.map(f => f.name);
+      const { error: delError } = await supabase.storage
+        .from('email-payloads')
+        .remove(paths);
+
+      if (delError) {
+        console.error('❌ Storage purge error:', delError.message);
+        break;
+      }
+      totalDeleted += paths.length;
+    }
+
+    results['purge_storage_payloads'] = { count: totalDeleted };
+    console.log(`✅ Purged ${totalDeleted} old email-payload files`);
+  } catch (e) {
+    results['purge_storage_payloads'] = { count: 0, error: String(e) };
+  }
+
+  // 10. Purge old storage files from email-content bucket (60 days)
+  try {
+    const cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    let totalDeleted = 0;
+
+    // email-content uses subdirectories like gmail/{hash_prefix}/
+    // List top-level folders first
+    const { data: providers } = await supabase.storage
+      .from('email-content')
+      .list('', { limit: 100 });
+
+    if (providers) {
+      for (const provider of providers) {
+        if (!provider.id) continue; // skip files, process folders
+        const { data: prefixes } = await supabase.storage
+          .from('email-content')
+          .list(provider.name, { limit: 1000 });
+
+        if (!prefixes) continue;
+
+        for (const prefix of prefixes) {
+          const folderPath = `${provider.name}/${prefix.name}`;
+          const { data: files } = await supabase.storage
+            .from('email-content')
+            .list(folderPath, { limit: 1000, sortBy: { column: 'created_at', order: 'asc' } });
+
+          if (!files) continue;
+
+          const oldFiles = files.filter(f => {
+            const created = new Date(f.created_at);
+            return created < cutoff;
+          });
+
+          if (oldFiles.length > 0) {
+            const paths = oldFiles.map(f => `${folderPath}/${f.name}`);
+            const { error: delError } = await supabase.storage
+              .from('email-content')
+              .remove(paths);
+
+            if (!delError) totalDeleted += paths.length;
+          }
+        }
+      }
+    }
+
+    results['purge_storage_content'] = { count: totalDeleted };
+    console.log(`✅ Purged ${totalDeleted} old email-content files`);
+  } catch (e) {
+    results['purge_storage_content'] = { count: 0, error: String(e) };
+  }
+
   // Get final table sizes for reporting
   const [mainCount, archiveCount] = await Promise.all([
     supabase.from('load_emails').select('id', { count: 'exact', head: true }),

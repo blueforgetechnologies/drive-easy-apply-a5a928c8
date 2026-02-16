@@ -1321,8 +1321,6 @@ export type Database = {
       }
       email_content: {
         Row: {
-          body_html: string | null
-          body_text: string | null
           content_hash: string
           first_seen_at: string
           id: string
@@ -1334,8 +1332,6 @@ export type Database = {
           size_bytes: number | null
         }
         Insert: {
-          body_html?: string | null
-          body_text?: string | null
           content_hash: string
           first_seen_at?: string
           id?: string
@@ -1347,8 +1343,6 @@ export type Database = {
           size_bytes?: number | null
         }
         Update: {
-          body_html?: string | null
-          body_text?: string | null
           content_hash?: string
           first_seen_at?: string
           id?: string
