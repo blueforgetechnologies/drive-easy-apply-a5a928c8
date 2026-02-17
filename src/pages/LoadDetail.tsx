@@ -16,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle, Mail, ChevronDown, ChevronRight, Package, Users, Building, MapPinned, ClipboardCheck, FileDown } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, Plus, Trash2, FileText, DollarSign, AlertCircle, CheckCircle, Mail, ChevronDown, ChevronRight, Package, Users, Building, MapPinned, ClipboardCheck, FileDown, Pencil, Eye } from "lucide-react";
 import { generateRateConfirmation, generateBOL } from "@/lib/generateLoadPdf";
 import { Separator } from "@/components/ui/separator";
 import LoadRouteMap from "@/components/LoadRouteMap";
@@ -56,6 +56,7 @@ export default function LoadDetail() {
   const [optimizing, setOptimizing] = useState(false);
    const [optimizationResult, setOptimizationResult] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [editMode, setEditMode] = useState(false);
   const [newStop, setNewStop] = useState({
     stop_type: "pickup",
     location_name: "",
@@ -855,533 +856,205 @@ export default function LoadDetail() {
         <TabsContent value="overview" className="space-y-1">
           {/* Email Notes Alert */}
           {cleanLoadNotes(originalEmail?.parsed_data?.notes) && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/10 border border-destructive/30">
-              <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
-              <p className="text-xs text-destructive font-medium">{cleanLoadNotes(originalEmail.parsed_data.notes)}</p>
+            <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-800 dark:text-amber-200 whitespace-pre-wrap">{cleanLoadNotes(originalEmail?.parsed_data?.notes)}</div>
             </div>
           )}
 
-          {/* Quick Stats Row */}
-          <div className="grid grid-cols-7 gap-1.5">
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Rate</p>
-              <div className="flex items-center justify-center">
-                <span className="text-sm font-bold text-green-600">$</span>
-                <Input type="number" step="0.01" value={load.rate ?? ""} onChange={(e) => updateField("rate", e.target.value ? Number(e.target.value) : null)} onBlur={handleSave} className="h-6 w-20 text-sm font-bold text-green-600 text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary" placeholder="0" />
-              </div>
-            </div>
-            <div className={`rounded-md px-2 py-1.5 text-center ${!load.empty_miles ? 'bg-red-100 dark:bg-red-900/30' : 'bg-muted/50'}`}>
-              <p className={`text-[10px] uppercase tracking-wide ${!load.empty_miles ? 'text-red-500' : 'text-muted-foreground'}`}>DH Miles</p>
-              <Input type="number" step="0.01" value={load.empty_miles != null ? Math.round(load.empty_miles * 100) / 100 : ""} onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)} onBlur={handleSave} className={`h-6 text-sm font-bold text-center border-0 bg-transparent p-0 focus:ring-1 focus:ring-primary ${!load.empty_miles ? 'text-red-500 placeholder:text-red-400' : ''}`} placeholder="—" />
-            </div>
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Miles</p>
-              <p className="text-sm font-bold">{load.estimated_miles || '—'}</p>
-            </div>
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Weight</p>
-              <p className="text-sm font-bold">{load.cargo_weight || '—'}</p>
-            </div>
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pieces</p>
-              <p className="text-sm font-bold">{load.cargo_pieces || '—'}</p>
-            </div>
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Equip</p>
-              <p className="text-sm font-bold truncate">{load.equipment_type?.replace(/_/g, ' ') || '—'}</p>
-            </div>
-            <div className="bg-muted/50 rounded-md px-2 py-1.5 text-center">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Status</p>
-              <Badge className={`text-[10px] ${getStatusColor(load.status)}`}>{load.status}</Badge>
-            </div>
+          {/* Edit Mode Toggle */}
+          <div className="flex items-center justify-end">
+            <Button
+              variant={editMode ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? <><Eye className="h-3 w-3" /> View Mode</> : <><Pencil className="h-3 w-3" /> Edit Mode</>}
+            </Button>
           </div>
 
-          {/* === COMPACT 2-COL: Customer + Billing === */}
-          <div className="grid md:grid-cols-2 gap-1.5">
-            {/* Customer - Collapsible */}
-            <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-primary/5 to-transparent border-primary/30">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-primary/10 hover:bg-primary/15 transition-colors"
-                onClick={() => toggleSection("customer")}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Building className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                  <span className="text-xs font-bold tracking-tight">CUSTOMER</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {(() => { const c = customers.find(c => c.id === load.customer_id); return c?.name || "Not set"; })()}
-                  </span>
-                  {load.reference_number && <span className="text-[10px] text-muted-foreground">• Ref: {load.reference_number}</span>}
+          {/* === DENSE 3-COLUMN LAYOUT === */}
+          <div className="grid grid-cols-12 gap-3">
+
+            {/* LEFT COL: Customer + Billing + Carrier (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 space-y-3">
+
+              {/* Customer */}
+              <div className="border rounded-lg p-3 space-y-1.5 bg-card">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer</span>
                 </div>
-                {expandedSections.customer ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-              </button>
-              {expandedSections.customer && (
-                <div className="px-3 py-2 space-y-1.5">
-                  <div className="flex items-center gap-1">
-                    <div className="flex-1">
-                      <SearchableEntitySelect
-                        value={(() => { const customer = customers.find(c => c.id === load.customer_id); return customer?.name || ""; })()}
-                        onSelect={(entity) => updateField("customer_id", entity.id)}
-                        entities={customers.map(c => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
-                        placeholder="Search or add customer..."
-                        onAddNew={async (name, data) => {
-                          const { data: newCustomer, error } = await supabase.from("customers").insert([{ name, contact_name: data.contact_name || null, phone: data.phone || null, email: data.email || null, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                          if (error) { toast.error("Failed to add customer"); throw error; }
-                          updateField("customer_id", newCustomer.id);
-                          loadData();
-                          toast.success("Customer added and selected");
-                        }}
-                        entityType="customer"
-                      />
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <SearchableEntitySelect
+                      value={(() => { const customer = customers.find(c => c.id === load.customer_id); return customer?.name || ""; })()}
+                      onSelect={(entity) => updateField("customer_id", entity.id)}
+                      entities={customers.map(c => ({ id: c.id, name: c.name, city: c.city, state: c.state }))}
+                      placeholder="Search or add customer..."
+                      onAddNew={async (name, data) => {
+                        const { data: newCustomer, error } = await supabase.from("customers").insert([{ name, contact_name: data.contact_name || null, phone: data.phone || null, email: data.email || null, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                        if (error) { toast.error("Failed to add customer"); throw error; }
+                        updateField("customer_id", newCustomer.id);
+                        loadData();
+                        toast.success("Customer added and selected");
+                      }}
+                      entityType="customer"
+                    />
+                    <div className="flex gap-1">
+                      {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
                     </div>
-                    {load.customer_id && <EditEntityDialog entityId={load.customer_id} entityType="customer" onEntityUpdated={loadData} />}
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Customer Load ID</Label>
-                    <Input className="h-7 text-xs" value={load.reference_number || ""} onChange={(e) => updateField("reference_number", e.target.value)} placeholder="Customer's reference number" />
-                  </div>
-                  {load.customer_id && (() => {
-                    const customer = customers.find(c => c.id === load.customer_id);
-                    return customer ? (
-                      <div className="text-sm space-y-1 border-t pt-1.5">
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div>
-                            <Label className="text-[10px] font-medium text-muted-foreground">Contact</Label>
-                            <Input className="h-6 text-xs" value={customer.contact_name || ""} onChange={(e) => updateCustomerField(customer.id, "contact_name", e.target.value)} placeholder="Contact Name" />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Ref #</Label>
+                      <Input className="h-6 text-xs" value={load.reference_number || ""} onChange={(e) => updateField("reference_number", e.target.value)} placeholder="Customer ref #" />
+                    </div>
+                    {load.customer_id && (() => {
+                      const customer = customers.find(c => c.id === load.customer_id);
+                      return customer ? (
+                        <div className="space-y-1 border-t pt-1.5">
+                          <div className="grid grid-cols-2 gap-1">
+                            <Input className="h-6 text-xs" value={customer.contact_name || ""} onChange={(e) => updateCustomerField(customer.id, "contact_name", e.target.value)} placeholder="Contact" />
                             <Input className="h-6 text-xs" value={customer.phone || ""} onChange={(e) => updateCustomerField(customer.id, "phone", e.target.value)} placeholder="Phone" />
                           </div>
-                        </div>
-                        <div>
-                          <Label className="text-[10px] font-medium text-muted-foreground">Email</Label>
                           <Input className="h-6 text-xs" value={customer.email || ""} onChange={(e) => updateCustomerField(customer.id, "email", e.target.value)} placeholder="Email" />
-                        </div>
-                        <div className="grid grid-cols-4 gap-1">
-                          <div className="col-span-2">
-                            <Input className="h-6 text-xs" value={customer.address || ""} onChange={(e) => updateCustomerField(customer.id, "address", e.target.value)} placeholder="Address" />
-                          </div>
-                          <div>
+                          <div className="grid grid-cols-4 gap-1">
+                            <Input className="h-6 text-xs col-span-2" value={customer.address || ""} onChange={(e) => updateCustomerField(customer.id, "address", e.target.value)} placeholder="Address" />
                             <Input className="h-6 text-xs" value={customer.city || ""} onChange={(e) => updateCustomerField(customer.id, "city", e.target.value)} placeholder="City" />
+                            <div className="flex gap-1">
+                              <Input className="h-6 text-xs uppercase w-10" value={customer.state || ""} onChange={(e) => updateCustomerField(customer.id, "state", e.target.value.toUpperCase())} maxLength={2} />
+                              <Input className="h-6 text-xs w-14" value={customer.zip || ""} onChange={(e) => updateCustomerField(customer.id, "zip", e.target.value)} />
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Input className="h-6 text-xs uppercase w-12" value={customer.state || ""} onChange={(e) => updateCustomerField(customer.id, "state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                            <Input className="h-6 text-xs w-16" value={customer.zip || ""} onChange={(e) => updateCustomerField(customer.id, "zip", e.target.value)} placeholder="ZIP" />
-                          </div>
-                        </div>
-                      </div>
-                    ) : null;
-                  })()}
-                </div>
-              )}
-            </div>
-
-            {/* Billing Party - Collapsible */}
-            <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-amber-500/5 to-transparent border-amber-500/30">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/15 transition-colors"
-                onClick={() => toggleSection("billing")}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <DollarSign className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
-                  <span className="text-xs font-bold tracking-tight">BILLING PARTY</span>
-                  <span className="text-xs text-muted-foreground truncate">{load.broker_name || "Not set"}</span>
-                  {load.broker_phone && <span className="text-[10px] text-muted-foreground">• {load.broker_phone}</span>}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 text-[9px] px-1.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (load.customer_id) {
-                        const customer = customers.find(c => c.id === load.customer_id);
-                        if (customer) {
-                          updateField("broker_name", customer.name);
-                          updateField("broker_contact", customer.contact_name || "");
-                          updateField("broker_phone", customer.phone || "");
-                          updateField("broker_email", customer.email || "");
-                          updateField("broker_address", customer.address || "");
-                          updateField("broker_city", customer.city || "");
-                          updateField("broker_state", customer.state || "");
-                          updateField("broker_zip", customer.zip || "");
-                          toast.success("Copied from customer");
-                        }
-                      }
-                    }}
-                  >
-                    Same as Customer
-                  </Button>
-                  {expandedSections.billing ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                </div>
-              </button>
-              {expandedSections.billing && (
-                <div className="px-3 py-2 space-y-1.5">
-                  <SearchableEntitySelect
-                    entities={[
-                      ...(companyProfile?.factoring_company_name ? [{ id: "otr_solutions", name: companyProfile.factoring_company_name, contact_name: companyProfile.factoring_contact_name, email: companyProfile.factoring_contact_email, address: companyProfile.factoring_company_address, city: companyProfile.factoring_company_city, state: companyProfile.factoring_company_state, zip: companyProfile.factoring_company_zip }] : []),
-                      ...customers,
-                    ]}
-                    value={load.broker_name || ""}
-                    placeholder="Search billing party..."
-                    entityType="customer"
-                    onSelect={(entity) => {
-                      updateField("broker_name", entity.name);
-                      updateField("broker_contact", entity.contact_name || "");
-                      updateField("broker_phone", entity.phone || "");
-                      updateField("broker_email", entity.email || "");
-                      updateField("broker_address", entity.address || "");
-                      updateField("broker_city", entity.city || "");
-                      updateField("broker_state", entity.state || "");
-                      updateField("broker_zip", entity.zip || "");
-                      toast.success("Filled billing party info");
-                    }}
-                    onAddNew={async (name, data) => {
-                      const { data: newCustomer, error } = await supabase.from("customers").insert([{ name, contact_name: data.contact_name || null, phone: data.phone || null, email: data.email || null, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                      if (error) { toast.error("Failed to add customer"); throw error; }
-                      updateField("broker_name", name);
-                      updateField("broker_contact", data.contact_name || "");
-                      updateField("broker_phone", data.phone || "");
-                      updateField("broker_email", data.email || "");
-                      updateField("broker_address", data.address || "");
-                      updateField("broker_city", data.city || "");
-                      updateField("broker_state", data.state || "");
-                      updateField("broker_zip", data.zip || "");
-                      loadData();
-                      toast.success("Customer added and selected");
-                    }}
-                  />
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <Input className="h-6 text-xs" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
-                    <Input className="h-6 text-xs" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
-                  </div>
-                  <Input className="h-6 text-xs" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
-                  <div className="grid grid-cols-4 gap-1">
-                    <div className="col-span-2">
-                      <Input className="h-6 text-xs" value={(load as any).broker_address || ""} onChange={(e) => updateField("broker_address", e.target.value)} placeholder="Address" />
-                    </div>
-                    <Input className="h-6 text-xs" value={(load as any).broker_city || ""} onChange={(e) => updateField("broker_city", e.target.value)} placeholder="City" />
-                    <div className="flex gap-1">
-                      <Input className="h-6 text-xs uppercase w-12" value={(load as any).broker_state || ""} onChange={(e) => updateField("broker_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                      <Input className="h-6 text-xs w-16" value={(load as any).broker_zip || ""} onChange={(e) => updateField("broker_zip", e.target.value)} placeholder="ZIP" />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* === COMPACT 2-COL: Origin + Destination === */}
-          <div className="grid md:grid-cols-2 gap-1.5">
-            {/* Origin - Collapsible */}
-            <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-blue-500/5 to-transparent border-blue-500/30">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/15 transition-colors"
-                onClick={() => toggleSection("origin")}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <MapPin className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                  <span className="text-xs font-bold tracking-tight text-blue-700 dark:text-blue-400">ORIGIN</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {load.shipper_name || load.pickup_city ? `${load.shipper_name || ""} ${load.pickup_city ? `• ${load.pickup_city}, ${load.pickup_state}` : ""}` : "Not set"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium">{load.pickup_date ? format(new Date(load.pickup_date), 'MMM d') : '—'}</span>
-                  {expandedSections.origin ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                </div>
-              </button>
-              {expandedSections.origin && (
-                <div className="px-3 py-2 space-y-1.5">
-                  <SearchableEntitySelect
-                    entities={locations}
-                    value={load.shipper_name || ""}
-                    placeholder="Search shipper/location..."
-                    entityType="location"
-                    onSelect={(entity) => {
-                      updateField("shipper_name", entity.name);
-                      updateField("pickup_address", entity.address || "");
-                      updateField("pickup_city", entity.city || "");
-                      updateField("pickup_state", entity.state || "");
-                      updateField("pickup_zip", entity.zip || "");
-                      toast.success("Filled shipper info");
-                    }}
-                    onAddNew={async (name, data) => {
-                      const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                      if (error) { toast.error("Failed to add location"); throw error; }
-                      updateField("shipper_name", name);
-                      updateField("pickup_address", data.address || "");
-                      updateField("pickup_city", data.city || "");
-                      updateField("pickup_state", data.state || "");
-                      updateField("pickup_zip", data.zip || "");
-                      loadData();
-                      toast.success("Location added");
-                    }}
-                  />
-                  <div className="grid grid-cols-4 gap-1">
-                    <div className="col-span-2">
-                      <Input className="h-6 text-xs" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
-                    </div>
-                    <Input className="h-6 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
-                    <div className="flex gap-1">
-                      <Input className="h-6 text-xs uppercase w-12" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                      <Input className="h-6 text-xs w-14" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} placeholder="ZIP" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Date</Label>
-                      <Input className="h-6 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Time</Label>
-                      <Input className="h-6 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
-                      <Input className="h-6 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Notes</Label>
-                    <Textarea className="text-xs min-h-[24px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Destination - Collapsible */}
-            <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-green-500/5 to-transparent border-green-500/30">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-3 py-1.5 bg-green-500/10 hover:bg-green-500/15 transition-colors"
-                onClick={() => toggleSection("destination")}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <MapPinned className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-xs font-bold tracking-tight text-green-700 dark:text-green-400">DESTINATION</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {load.receiver_name || load.delivery_city ? `${load.receiver_name || ""} ${load.delivery_city ? `• ${load.delivery_city}, ${load.delivery_state}` : ""}` : "Not set"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium">{load.delivery_date ? format(new Date(load.delivery_date), 'MMM d') : '—'}</span>
-                  {expandedSections.destination ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                </div>
-              </button>
-              {expandedSections.destination && (
-                <div className="px-3 py-2 space-y-1.5">
-                  <SearchableEntitySelect
-                    entities={locations}
-                    value={load.receiver_name || ""}
-                    placeholder="Search receiver/location..."
-                    entityType="location"
-                    onSelect={(entity) => {
-                      updateField("receiver_name", entity.name);
-                      updateField("delivery_address", entity.address || "");
-                      updateField("delivery_city", entity.city || "");
-                      updateField("delivery_state", entity.state || "");
-                      updateField("delivery_zip", entity.zip || "");
-                      toast.success("Filled receiver info");
-                    }}
-                    onAddNew={async (name, data) => {
-                      const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                      if (error) { toast.error("Failed to add location"); throw error; }
-                      updateField("receiver_name", name);
-                      updateField("delivery_address", data.address || "");
-                      updateField("delivery_city", data.city || "");
-                      updateField("delivery_state", data.state || "");
-                      updateField("delivery_zip", data.zip || "");
-                      loadData();
-                      toast.success("Location added");
-                    }}
-                  />
-                  <div className="grid grid-cols-4 gap-1">
-                    <div className="col-span-2">
-                      <Input className="h-6 text-xs" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
-                    </div>
-                    <Input className="h-6 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
-                    <div className="flex gap-1">
-                      <Input className="h-6 text-xs uppercase w-12" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} placeholder="ST" maxLength={2} />
-                      <Input className="h-6 text-xs w-14" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} placeholder="ZIP" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Date</Label>
-                      <Input className="h-6 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Time</Label>
-                      <Input className="h-6 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Phone</Label>
-                      <Input className="h-6 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Notes</Label>
-                    <Textarea className="text-xs min-h-[24px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* === Load Details - Collapsible === */}
-          <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-orange-500/5 to-transparent border-orange-500/30">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/15 transition-colors"
-              onClick={() => toggleSection("loadDetails")}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" />
-                <span className="text-xs font-bold tracking-tight">LOAD DETAILS</span>
-                <span className="text-xs text-muted-foreground">
-                  {load.cargo_pieces || '—'} pcs • {load.cargo_weight || '—'} lbs • {load.equipment_type?.replace('_', ' ') || '—'}
-                </span>
-              </div>
-              {expandedSections.loadDetails ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            {expandedSections.loadDetails && (
-              <div className="px-3 py-2">
-                <div className="grid md:grid-cols-4 gap-3">
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <Label className="text-[10px] font-medium text-muted-foreground">Pieces</Label>
-                        <Input className="h-6 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] font-medium text-muted-foreground">Weight (lbs)</Label>
-                        <Input className="h-6 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Description</Label>
-                      <Input className="h-6 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Truck Type</Label>
-                      <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="dry_van">Dry Van</SelectItem>
-                          <SelectItem value="reefer">Reefer</SelectItem>
-                          <SelectItem value="flatbed">Flatbed</SelectItem>
-                          <SelectItem value="step_deck">Step Deck</SelectItem>
-                          <SelectItem value="box_truck">Box Truck</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Commodity</Label>
-                      <Input className="h-6 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Temp Required</Label>
-                      <Input className="h-6 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <Label className="text-[10px] font-medium text-muted-foreground">Est. Miles</Label>
-                        <Input className="h-6 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] font-medium text-muted-foreground">Actual Miles</Label>
-                        <Input className="h-6 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 pt-1">
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3.5 w-3.5" />
-                        Hazmat
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3.5 w-3.5" />
-                        Team
-                      </label>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Special Instructions</Label>
-                    <Textarea className="text-xs min-h-[50px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={2} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* === Carrier & Assignments - Collapsible === */}
-          <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-violet-500/5 to-transparent border-violet-500/30">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between px-3 py-1.5 bg-violet-500/10 hover:bg-violet-500/15 transition-colors"
-              onClick={() => toggleSection("carrier")}
-            >
-              <div className="flex items-center gap-2">
-                <Truck className="h-3.5 w-3.5 text-violet-600 flex-shrink-0" />
-                <span className="text-xs font-bold tracking-tight">CARRIER & ASSIGNMENTS</span>
-                <span className="text-xs text-muted-foreground">
-                  {(() => {
-                    const c = carriers.find(c => c.id === load.carrier_id);
-                    const v = vehicles.find(v => v.id === load.assigned_vehicle_id);
-                    return [c?.name, v?.vehicle_number].filter(Boolean).join(" • ") || "Not assigned";
-                  })()}
-                </span>
-              </div>
-              {expandedSections.carrier ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            {expandedSections.carrier && (
-              <div className="px-3 py-2">
-                <div className="grid md:grid-cols-4 gap-3">
-                  {/* Carrier */}
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Carrier</Label>
-                    <div className="flex gap-1">
-                      <Select value={load.carrier_id || ""} onValueChange={(value) => {
-                        updateField("carrier_id", value);
-                        if (load.assigned_vehicle_id) {
-                          const currentVehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
-                          if (currentVehicle?.carrier !== value) {
-                            updateField("assigned_vehicle_id", null);
-                            updateField("assigned_driver_id", null);
-                          }
-                        }
-                      }}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background z-50">
-                          {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
-                    </div>
-                    {load.carrier_id && (() => {
-                      const carrier = carriers.find(c => c.id === load.carrier_id);
-                      return carrier ? (
-                        <div className="flex gap-2 mt-0.5 text-[10px]">
-                          <span className={carrier.safer_status?.includes('NOT') ? 'text-red-500' : 'text-green-600'}>{carrier.safer_status || 'Auth'}</span>
-                          <span className="text-muted-foreground">| {carrier.safety_rating || 'No Rating'}</span>
                         </div>
                       ) : null;
                     })()}
                   </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {(() => {
+                      const customer = customers.find(c => c.id === load.customer_id);
+                      return customer ? (
+                        <>
+                          <div className="text-sm font-semibold">{customer.name}</div>
+                          {customer.contact_name && <div className="text-xs text-muted-foreground">{customer.contact_name}</div>}
+                          {customer.phone && <div className="text-xs text-muted-foreground">{customer.phone}</div>}
+                          {customer.email && <div className="text-xs text-muted-foreground">{customer.email}</div>}
+                          {(customer.city || customer.state) && <div className="text-xs text-muted-foreground">{[customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(", ")}</div>}
+                          {load.reference_number && <div className="text-xs mt-1"><span className="text-muted-foreground">Ref: </span><span className="font-medium">{load.reference_number}</span></div>}
+                        </>
+                      ) : <div className="text-xs text-muted-foreground italic">No customer assigned</div>;
+                    })()}
+                  </div>
+                )}
+              </div>
 
-                  {/* Vehicle */}
-                  <div className="space-y-1">
+              {/* Billing Party */}
+              <div className="border rounded-lg p-3 space-y-1.5 bg-card">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Billing Party</span>
+                  </div>
+                  {editMode && (
+                    <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5" onClick={() => {
+                      if (load.customer_id) {
+                        const customer = customers.find(c => c.id === load.customer_id);
+                        if (customer) {
+                          updateField("broker_name", customer.name); updateField("broker_contact", customer.contact_name || "");
+                          updateField("broker_phone", customer.phone || ""); updateField("broker_email", customer.email || "");
+                          updateField("broker_address", customer.address || ""); updateField("broker_city", customer.city || "");
+                          updateField("broker_state", customer.state || ""); updateField("broker_zip", customer.zip || "");
+                          toast.success("Copied from customer");
+                        }
+                      }
+                    }}>Same as Customer</Button>
+                  )}
+                </div>
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <SearchableEntitySelect
+                      entities={[
+                        ...(companyProfile?.factoring_company_name ? [{ id: "otr_solutions", name: companyProfile.factoring_company_name, contact_name: companyProfile.factoring_contact_name, email: companyProfile.factoring_contact_email, address: companyProfile.factoring_company_address, city: companyProfile.factoring_company_city, state: companyProfile.factoring_company_state, zip: companyProfile.factoring_company_zip }] : []),
+                        ...customers,
+                      ]}
+                      value={load.broker_name || ""}
+                      placeholder="Search billing party..."
+                      entityType="customer"
+                      onSelect={(entity) => {
+                        updateField("broker_name", entity.name); updateField("broker_contact", entity.contact_name || "");
+                        updateField("broker_phone", entity.phone || ""); updateField("broker_email", entity.email || "");
+                        updateField("broker_address", entity.address || ""); updateField("broker_city", entity.city || "");
+                        updateField("broker_state", entity.state || ""); updateField("broker_zip", entity.zip || "");
+                        toast.success("Filled billing party info");
+                      }}
+                      onAddNew={async (name, data) => {
+                        const { data: newCustomer, error } = await supabase.from("customers").insert([{ name, contact_name: data.contact_name || null, phone: data.phone || null, email: data.email || null, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                        if (error) { toast.error("Failed to add customer"); throw error; }
+                        updateField("broker_name", name); updateField("broker_contact", data.contact_name || "");
+                        updateField("broker_phone", data.phone || ""); updateField("broker_email", data.email || "");
+                        updateField("broker_address", data.address || ""); updateField("broker_city", data.city || "");
+                        updateField("broker_state", data.state || ""); updateField("broker_zip", data.zip || "");
+                        loadData(); toast.success("Customer added and selected");
+                      }}
+                    />
+                    <div className="grid grid-cols-2 gap-1">
+                      <Input className="h-6 text-xs" value={load.broker_phone || ""} onChange={(e) => updateField("broker_phone", e.target.value)} placeholder="Phone" />
+                      <Input className="h-6 text-xs" value={load.broker_email || ""} onChange={(e) => updateField("broker_email", e.target.value)} placeholder="Email" />
+                    </div>
+                    <Input className="h-6 text-xs" value={load.broker_contact || ""} onChange={(e) => updateField("broker_contact", e.target.value)} placeholder="Contact Person" />
+                    <div className="grid grid-cols-4 gap-1">
+                      <Input className="h-6 text-xs col-span-2" value={(load as any).broker_address || ""} onChange={(e) => updateField("broker_address", e.target.value)} placeholder="Address" />
+                      <Input className="h-6 text-xs" value={(load as any).broker_city || ""} onChange={(e) => updateField("broker_city", e.target.value)} placeholder="City" />
+                      <div className="flex gap-1">
+                        <Input className="h-6 text-xs uppercase w-10" value={(load as any).broker_state || ""} onChange={(e) => updateField("broker_state", e.target.value.toUpperCase())} maxLength={2} />
+                        <Input className="h-6 text-xs w-14" value={(load as any).broker_zip || ""} onChange={(e) => updateField("broker_zip", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {load.broker_name ? (
+                      <>
+                        <div className="text-sm font-semibold">{load.broker_name}</div>
+                        {load.broker_contact && <div className="text-xs text-muted-foreground">{load.broker_contact}</div>}
+                        {load.broker_phone && <div className="text-xs text-muted-foreground">{load.broker_phone}</div>}
+                        {load.broker_email && <div className="text-xs text-muted-foreground">{load.broker_email}</div>}
+                        {((load as any).broker_city || (load as any).broker_state) && <div className="text-xs text-muted-foreground">{[(load as any).broker_address, (load as any).broker_city, (load as any).broker_state, (load as any).broker_zip].filter(Boolean).join(", ")}</div>}
+                      </>
+                    ) : <div className="text-xs text-muted-foreground italic">No billing party set</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* Carrier & Assignments */}
+              <div className="border rounded-lg p-3 space-y-1.5 bg-card">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Truck className="h-3.5 w-3.5 text-violet-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Carrier & Assignments</span>
+                </div>
+                {editMode ? (
+                  <div className="space-y-1.5">
                     <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Truck ID / Vehicle</Label>
+                      <Label className="text-[10px] text-muted-foreground">Carrier</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.carrier_id || ""} onValueChange={(value) => {
+                          updateField("carrier_id", value);
+                          if (load.assigned_vehicle_id) {
+                            const currentVehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+                            if (currentVehicle?.carrier !== value) { updateField("assigned_vehicle_id", null); updateField("assigned_driver_id", null); }
+                          }
+                        }}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Vehicle</Label>
                       {(() => {
                         const carrierVehicles = load.carrier_id ? vehicles.filter(v => v.carrier === load.carrier_id) : vehicles;
                         const hasCarrierVehicles = carrierVehicles.length > 0;
@@ -1414,31 +1087,25 @@ export default function LoadDetail() {
                       })()}
                     </div>
                     <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">DH Miles</Label>
-                      <Input type="number" value={load.empty_miles ?? ""} onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)} placeholder="Enter DH miles" className={`h-6 text-xs ${!load.empty_miles ? 'border-red-500 text-red-500 placeholder:text-red-400' : ''}`} />
+                      <Label className="text-[10px] text-muted-foreground">DH Miles</Label>
+                      <Input type="number" value={load.empty_miles ?? ""} onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)} placeholder="DH miles" className={`h-6 text-xs ${!load.empty_miles ? 'border-destructive text-destructive' : ''}`} />
                     </div>
-                  </div>
-
-                  {/* Driver */}
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Driver</Label>
-                    <div className="flex gap-1">
-                      <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="n/a">N/A</SelectItem>
-                          {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
-                      <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
-                    </div>
-                  </div>
-
-                  {/* Dispatchers */}
-                  <div className="space-y-1">
                     <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Dispatcher</Label>
+                      <Label className="text-[10px] text-muted-foreground">Driver</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background">
+                            <SelectItem value="n/a">N/A</SelectItem>
+                            {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
+                        <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Dispatcher</Label>
                       <div className="flex gap-1">
                         <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
                           <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -1446,11 +1113,10 @@ export default function LoadDetail() {
                             {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        {load.assigned_dispatcher_id && <EditEntityDialog entityId={load.assigned_dispatcher_id} entityType="dispatcher" onEntityUpdated={loadData} />}
                       </div>
                     </div>
                     <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Load Owner</Label>
+                      <Label className="text-[10px] text-muted-foreground">Load Owner</Label>
                       <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
                         <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent className="bg-background z-50">
@@ -1459,95 +1125,296 @@ export default function LoadDetail() {
                       </Select>
                     </div>
                   </div>
+                ) : (
+                  <div className="space-y-1">
+                    {(() => {
+                      const carrier = carriers.find(c => c.id === load.carrier_id);
+                      const vehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+                      const driver = drivers.find(d => d.id === load.assigned_driver_id);
+                      const dispatcher = dispatchers.find(d => d.id === load.assigned_dispatcher_id);
+                      const loadOwner = dispatchers.find(d => d.id === load.load_owner_id);
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Carrier</span><span className="font-medium text-right">{carrier?.name || "—"}</span></div>
+                          {carrier && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Safety</span><span className={`font-medium ${carrier.safer_status?.includes('NOT') ? 'text-destructive' : 'text-green-600'}`}>{carrier.safer_status || "Auth"} · {carrier.safety_rating || "No Rating"}</span></div>}
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Vehicle</span><span className="font-medium">{vehicle ? `${vehicle.vehicle_number} - ${vehicle.make}` : load.external_truck_reference || "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">DH Miles</span><span className={`font-medium ${!load.empty_miles ? 'text-destructive' : ''}`}>{load.empty_miles ?? "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Driver</span><span className="font-medium">{driver?.personal_info ? `${driver.personal_info.firstName} ${driver.personal_info.lastName}` : "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Dispatcher</span><span className="font-medium">{dispatcher ? `${dispatcher.first_name} ${dispatcher.last_name}` : "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Load Owner</span><span className="font-medium">{loadOwner ? `${loadOwner.first_name} ${loadOwner.last_name}` : "—"}</span></div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CENTER COL: Route Overview + Load Details (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 space-y-3">
+
+              {/* Route Overview - Timeline style like reference image */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Route Overview</span>
+                </div>
+
+                <div className="relative">
+                  {/* Vertical line connecting dots */}
+                  <div className="absolute left-[7px] top-3 bottom-3 w-px bg-border" />
+
+                  {/* Pickup */}
+                  <div className="relative pl-6 pb-4">
+                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-green-500 bg-background" />
+                    {editMode ? (
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
+                        <SearchableEntitySelect
+                          entities={locations}
+                          value={load.shipper_name || ""}
+                          placeholder="Search shipper..."
+                          entityType="location"
+                          onSelect={(entity) => {
+                            updateField("shipper_name", entity.name);
+                            updateField("pickup_address", entity.address || ""); updateField("pickup_city", entity.city || "");
+                            updateField("pickup_state", entity.state || ""); updateField("pickup_zip", entity.zip || "");
+                            toast.success("Filled shipper info");
+                          }}
+                          onAddNew={async (name, data) => {
+                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                            if (error) { toast.error("Failed to add location"); throw error; }
+                            updateField("shipper_name", name); updateField("pickup_address", data.address || "");
+                            updateField("pickup_city", data.city || ""); updateField("pickup_state", data.state || "");
+                            updateField("pickup_zip", data.zip || ""); loadData(); toast.success("Location added");
+                          }}
+                        />
+                        <div className="grid grid-cols-4 gap-1">
+                          <Input className="h-6 text-xs col-span-2" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
+                          <Input className="h-6 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
+                          <div className="flex gap-1">
+                            <Input className="h-6 text-xs uppercase w-10" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} maxLength={2} />
+                            <Input className="h-6 text-xs w-14" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <Input className="h-6 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
+                          <Input className="h-6 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
+                          <Input className="h-6 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
+                        </div>
+                        <Textarea className="text-xs min-h-[24px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
+                      </div>
+                    ) : (
+                      <div>
+                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
+                        <div className="text-sm font-bold uppercase">{load.pickup_city && load.pickup_state ? `${load.pickup_city}, ${load.pickup_state}` : "Not set"}</div>
+                        {load.shipper_name && <div className="text-xs text-muted-foreground">{load.shipper_name}</div>}
+                        <div className="text-xs text-muted-foreground">
+                          {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || "—"}
+                        </div>
+                        {load.pickup_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.pickup_notes}</div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delivery */}
+                  <div className="relative pl-6">
+                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-destructive bg-background" />
+                    {editMode ? (
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="text-[9px] h-4 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
+                        <SearchableEntitySelect
+                          entities={locations}
+                          value={load.receiver_name || ""}
+                          placeholder="Search receiver..."
+                          entityType="location"
+                          onSelect={(entity) => {
+                            updateField("receiver_name", entity.name);
+                            updateField("delivery_address", entity.address || ""); updateField("delivery_city", entity.city || "");
+                            updateField("delivery_state", entity.state || ""); updateField("delivery_zip", entity.zip || "");
+                            toast.success("Filled receiver info");
+                          }}
+                          onAddNew={async (name, data) => {
+                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                            if (error) { toast.error("Failed to add location"); throw error; }
+                            updateField("receiver_name", name); updateField("delivery_address", data.address || "");
+                            updateField("delivery_city", data.city || ""); updateField("delivery_state", data.state || "");
+                            updateField("delivery_zip", data.zip || ""); loadData(); toast.success("Location added");
+                          }}
+                        />
+                        <div className="grid grid-cols-4 gap-1">
+                          <Input className="h-6 text-xs col-span-2" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
+                          <Input className="h-6 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
+                          <div className="flex gap-1">
+                            <Input className="h-6 text-xs uppercase w-10" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} maxLength={2} />
+                            <Input className="h-6 text-xs w-14" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <Input className="h-6 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
+                          <Input className="h-6 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
+                          <Input className="h-6 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
+                        </div>
+                        <Textarea className="text-xs min-h-[24px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
+                      </div>
+                    ) : (
+                      <div>
+                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
+                        <div className="text-sm font-bold uppercase">{load.delivery_city && load.delivery_state ? `${load.delivery_city}, ${load.delivery_state}` : "Not set"}</div>
+                        {load.receiver_name && <div className="text-xs text-muted-foreground">{load.receiver_name}</div>}
+                        <div className="text-xs text-muted-foreground">
+                          {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || "—"}
+                        </div>
+                        {load.delivery_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.delivery_notes}</div>}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* === Status & Notes - Collapsible === */}
-          <div className="border rounded-lg overflow-hidden bg-gradient-to-b from-emerald-500/5 to-transparent border-emerald-500/30">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/15 transition-colors"
-              onClick={() => toggleSection("status")}
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
-                <span className="text-xs font-bold tracking-tight">STATUS & NOTES</span>
-                <Badge className={`text-[9px] ${getStatusColor(load.status)}`}>{load.status}</Badge>
-                <span className="text-[10px] text-muted-foreground">• Financial: {load.financial_status || 'pending'} • Settlement: {load.settlement_status || 'unsettled'}</span>
-              </div>
-              {expandedSections.status ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            {expandedSections.status && (
-              <div className="px-3 py-2">
-                <div className="grid md:grid-cols-4 gap-3">
+              {/* Load Details */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Package className="h-3.5 w-3.5 text-orange-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Load Details</span>
+                </div>
+                {editMode ? (
                   <div className="space-y-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Load #</Label>
-                      <Input className="h-6 text-xs" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} />
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Pieces</Label><Input className="h-6 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Weight (lbs)</Label><Input className="h-6 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} /></div>
                     </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Customer Load ID</Label>
-                      <Input className="h-6 text-xs" value={load.reference_number || ""} onChange={(e) => updateField("reference_number", e.target.value)} placeholder="Customer's reference #" />
+                    <div><Label className="text-[10px] text-muted-foreground">Description</Label><Input className="h-6 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} /></div>
+                    <div><Label className="text-[10px] text-muted-foreground">Truck Type</Label>
+                      <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
+                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="dry_van">Dry Van</SelectItem><SelectItem value="reefer">Reefer</SelectItem>
+                          <SelectItem value="flatbed">Flatbed</SelectItem><SelectItem value="step_deck">Step Deck</SelectItem>
+                          <SelectItem value="box_truck">Box Truck</SelectItem><SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Status</Label>
+                    <div><Label className="text-[10px] text-muted-foreground">Commodity</Label><Input className="h-6 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} /></div>
+                    <div><Label className="text-[10px] text-muted-foreground">Temp</Label><Input className="h-6 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" /></div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Est. Miles</Label><Input className="h-6 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Actual Miles</Label><Input className="h-6 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} /></div>
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3.5 w-3.5" />Hazmat</label>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3.5 w-3.5" />Team</label>
+                    </div>
+                    <div><Label className="text-[10px] text-muted-foreground">Special Instructions</Label><Textarea className="text-xs min-h-[32px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={1} /></div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Equipment</span><span className="font-medium">{load.equipment_type?.replace('_', ' ') || "—"}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Pieces / Weight</span><span className="font-medium">{load.cargo_pieces || "—"} pcs · {load.cargo_weight || "—"} lbs</span></div>
+                    {load.cargo_description && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Desc</span><span className="font-medium truncate max-w-[180px]">{load.cargo_description}</span></div>}
+                    {load.commodity_type && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Commodity</span><span className="font-medium">{load.commodity_type}</span></div>}
+                    {load.temperature_required && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Temp</span><span className="font-medium">{load.temperature_required}</span></div>}
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Miles (Est / Act)</span><span className="font-medium">{load.estimated_miles || "—"} / {load.actual_miles || "—"}</span></div>
+                    <div className="flex gap-2 text-xs">
+                      {load.hazmat && <Badge variant="destructive" className="text-[9px] h-4">HAZMAT</Badge>}
+                      {load.team_required && <Badge variant="secondary" className="text-[9px] h-4">TEAM</Badge>}
+                    </div>
+                    {load.special_instructions && <div className="text-[10px] text-muted-foreground italic border-t pt-1 mt-1">{load.special_instructions}</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COL: Status + Financial Summary + Notes (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 space-y-3">
+
+              {/* Status */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</span>
+                </div>
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Load #</Label><Input className="h-6 text-xs" value={load.load_number || ""} onChange={(e) => updateField("load_number", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Ref #</Label><Input className="h-6 text-xs" value={load.reference_number || ""} onChange={(e) => updateField("reference_number", e.target.value)} /></div>
+                    </div>
+                    <div><Label className="text-[10px] text-muted-foreground">Status</Label>
                       <Select value={load.status || "available"} onValueChange={(value) => updateField("status", value)}>
                         <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-background">
-                          <SelectItem value="action_needed">Action Needed</SelectItem>
-                          <SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
-                          <SelectItem value="available">Available</SelectItem>
-                          <SelectItem value="booked">Booked</SelectItem>
-                          <SelectItem value="dispatched">Dispatched</SelectItem>
-                          <SelectItem value="at_pickup">At Pickup</SelectItem>
-                          <SelectItem value="in_transit">In Transit</SelectItem>
-                          <SelectItem value="at_delivery">At Delivery</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
-                          <SelectItem value="tonu">TONU</SelectItem>
+                          <SelectItem value="action_needed">Action Needed</SelectItem><SelectItem value="pending_dispatch">Pending Dispatch</SelectItem>
+                          <SelectItem value="available">Available</SelectItem><SelectItem value="booked">Booked</SelectItem>
+                          <SelectItem value="dispatched">Dispatched</SelectItem><SelectItem value="at_pickup">At Pickup</SelectItem>
+                          <SelectItem value="in_transit">In Transit</SelectItem><SelectItem value="at_delivery">At Delivery</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem><SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="ready_for_audit">Ready for Audit</SelectItem><SelectItem value="tonu">TONU</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Financial Status</Label>
-                      <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="billed">Billed</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] font-medium text-muted-foreground">Settlement</Label>
-                      <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="unsettled">Unsettled</SelectItem>
-                          <SelectItem value="included">Included</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Financial</Label>
+                        <Select value={load.financial_status || "pending"} onValueChange={(value) => updateField("financial_status", value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-background"><SelectItem value="pending">Pending</SelectItem><SelectItem value="billed">Billed</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label className="text-[10px] text-muted-foreground">Settlement</Label>
+                        <Select value={load.settlement_status || "unsettled"} onValueChange={(value) => updateField("settlement_status", value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-background"><SelectItem value="unsettled">Unsettled</SelectItem><SelectItem value="included">Included</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">Dispatch Notes</Label>
-                    <Textarea className="text-xs min-h-[46px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} />
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Status</span><Badge className={`text-[9px] ${getStatusColor(load.status)}`}>{load.status}</Badge></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Financial</span><span className="font-medium capitalize">{load.financial_status || "pending"}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Settlement</span><span className="font-medium capitalize">{load.settlement_status || "unsettled"}</span></div>
                   </div>
-                  <div>
-                    <Label className="text-[10px] font-medium text-muted-foreground">General Notes</Label>
-                    <Textarea className="text-xs min-h-[46px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} />
-                  </div>
+                )}
+              </div>
+
+              {/* Financial Quick Summary */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <DollarSign className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Financial Summary</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Revenue</span><span className="font-bold text-green-600">${totalRevenue.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Carrier Pay</span><span className="font-medium">${carrierPayAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">Expenses</span><span className="font-medium">${totalExpenses.toFixed(2)}</span></div>
+                  <Separator className="my-1" />
+                  <div className="flex justify-between text-xs"><span className="font-semibold">Net Profit</span><span className={`font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-destructive'}`}>${netProfit.toFixed(2)}</span></div>
                 </div>
               </div>
-            )}
+
+              {/* Notes */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes</span>
+                </div>
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <div><Label className="text-[10px] text-muted-foreground">Dispatch Notes</Label><Textarea className="text-xs min-h-[32px]" value={load.dispatch_notes || ""} onChange={(e) => updateField("dispatch_notes", e.target.value)} rows={2} /></div>
+                    <div><Label className="text-[10px] text-muted-foreground">Billing Notes</Label><Textarea className="text-xs min-h-[32px]" value={load.billing_notes || ""} onChange={(e) => updateField("billing_notes", e.target.value)} rows={2} /></div>
+                    <div><Label className="text-[10px] text-muted-foreground">General Notes</Label><Textarea className="text-xs min-h-[32px]" value={load.notes || ""} onChange={(e) => updateField("notes", e.target.value)} rows={2} /></div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {load.dispatch_notes && <div><div className="text-[10px] font-medium text-muted-foreground">Dispatch</div><div className="text-xs whitespace-pre-wrap">{load.dispatch_notes}</div></div>}
+                    {load.billing_notes && <div><div className="text-[10px] font-medium text-muted-foreground">Billing</div><div className="text-xs whitespace-pre-wrap">{load.billing_notes}</div></div>}
+                    {load.notes && <div><div className="text-[10px] font-medium text-muted-foreground">General</div><div className="text-xs whitespace-pre-wrap">{load.notes}</div></div>}
+                    {!load.dispatch_notes && !load.billing_notes && !load.notes && <div className="text-xs text-muted-foreground italic">No notes</div>}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
         </TabsContent>
