@@ -1027,18 +1027,19 @@ export default function LoadDetail() {
                 )}
               </div>
 
-              {/* Route Overview - moved under Billing */}
+              {/* Load Details (Route + Cargo merged) */}
               <div className="border rounded-lg p-3 bg-card">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <MapPin className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Route Overview</span>
+                  <Package className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Load Details</span>
                 </div>
 
-                <div className="relative">
+                {/* Route Timeline */}
+                <div className="relative mb-3">
                   <div className="absolute left-[7px] top-3 bottom-3 w-px bg-border" />
 
                   {/* Pickup */}
-                  <div className="relative pl-6 pb-4">
+                  <div className="relative pl-6 pb-3">
                     <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-green-500 bg-background" />
                     {editMode ? (
                       <div className="space-y-1">
@@ -1143,13 +1144,65 @@ export default function LoadDetail() {
                     )}
                   </div>
                 </div>
+
+                <Separator className="my-2" />
+
+                {/* Cargo & Miles */}
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Truck Type</Label>
+                        <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background">
+                            <SelectItem value="dry_van">Dry Van</SelectItem><SelectItem value="reefer">Reefer</SelectItem>
+                            <SelectItem value="flatbed">Flatbed</SelectItem><SelectItem value="step_deck">Step Deck</SelectItem>
+                            <SelectItem value="box_truck">Box Truck</SelectItem><SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label className="text-[10px] text-muted-foreground">Commodity</Label><Input className="h-6 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Pieces</Label><Input className="h-6 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Weight (lbs)</Label><Input className="h-6 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} /></div>
+                    </div>
+                    <div><Label className="text-[10px] text-muted-foreground">Description</Label><Input className="h-6 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} /></div>
+                    <div><Label className="text-[10px] text-muted-foreground">Temp</Label><Input className="h-6 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" /></div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div><Label className="text-[10px] text-muted-foreground">Est. Miles</Label><Input className="h-6 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Actual Miles</Label><Input className="h-6 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} /></div>
+                      <div><Label className="text-[10px] text-muted-foreground">Empty Miles</Label><Input className="h-6 text-xs" type="number" value={load.empty_miles ?? ""} onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)} /></div>
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3.5 w-3.5" />Hazmat</label>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3.5 w-3.5" />Team</label>
+                    </div>
+                    <div><Label className="text-[10px] text-muted-foreground">Special Instructions</Label><Textarea className="text-xs min-h-[32px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={1} /></div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Equipment</span><span className="font-medium">{load.equipment_type?.replace('_', ' ') || "—"}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Pieces / Weight</span><span className="font-medium">{load.cargo_pieces || "—"} pcs · {load.cargo_weight || "—"} lbs</span></div>
+                    {load.cargo_description && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Desc</span><span className="font-medium truncate max-w-[180px]">{load.cargo_description}</span></div>}
+                    {load.commodity_type && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Commodity</span><span className="font-medium">{load.commodity_type}</span></div>}
+                    {load.temperature_required && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Temp</span><span className="font-medium">{load.temperature_required}</span></div>}
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Miles (Est / Act)</span><span className="font-medium">{load.estimated_miles || "—"} / {load.actual_miles || "—"}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Empty Miles</span><span className={`font-medium ${!load.empty_miles ? 'text-muted-foreground' : ''}`}>{load.empty_miles ?? "—"}</span></div>
+                    <div className="flex gap-2 text-xs">
+                      {load.hazmat && <Badge variant="destructive" className="text-[9px] h-4">HAZMAT</Badge>}
+                      {load.team_required && <Badge variant="secondary" className="text-[9px] h-4">TEAM</Badge>}
+                    </div>
+                    {load.special_instructions && <div className="text-[10px] text-muted-foreground italic border-t pt-1 mt-1">{load.special_instructions}</div>}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* CENTER COL: Carrier & Assignments + Load Details (col-span-4) */}
+            {/* CENTER COL: Carrier & Assignments (col-span-4) */}
             <div className="col-span-12 md:col-span-4 space-y-3">
 
-              {/* Carrier & Assignments - moved to center for fast access */}
+              {/* Carrier & Assignments */}
               <div className="border rounded-lg p-3 space-y-1.5 bg-card">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Truck className="h-3.5 w-3.5 text-violet-600" />
@@ -1209,10 +1262,6 @@ export default function LoadDetail() {
                       })()}
                     </div>
                     <div>
-                      <Label className="text-[10px] text-muted-foreground">DH Miles</Label>
-                      <Input type="number" value={load.empty_miles ?? ""} onChange={(e) => updateField("empty_miles", e.target.value ? Number(e.target.value) : null)} placeholder="DH miles" className={`h-6 text-xs ${!load.empty_miles ? 'border-destructive text-destructive' : ''}`} />
-                    </div>
-                    <div>
                       <Label className="text-[10px] text-muted-foreground">Driver</Label>
                       <div className="flex gap-1">
                         <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
@@ -1260,66 +1309,12 @@ export default function LoadDetail() {
                           <div className="flex justify-between text-xs"><span className="text-muted-foreground">Carrier</span><span className="font-medium text-right">{carrier?.name || "—"}</span></div>
                           {carrier && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Safety</span><span className={`font-medium ${carrier.safer_status?.includes('NOT') ? 'text-destructive' : 'text-green-600'}`}>{carrier.safer_status || "Auth"} · {carrier.safety_rating || "No Rating"}</span></div>}
                           <div className="flex justify-between text-xs"><span className="text-muted-foreground">Vehicle</span><span className="font-medium">{vehicle ? `${vehicle.vehicle_number} - ${vehicle.make}` : load.external_truck_reference || "—"}</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">DH Miles</span><span className={`font-medium ${!load.empty_miles ? 'text-destructive' : ''}`}>{load.empty_miles ?? "—"}</span></div>
                           <div className="flex justify-between text-xs"><span className="text-muted-foreground">Driver</span><span className="font-medium">{driver?.personal_info ? `${driver.personal_info.firstName} ${driver.personal_info.lastName}` : "—"}</span></div>
                           <div className="flex justify-between text-xs"><span className="text-muted-foreground">Dispatcher</span><span className="font-medium">{dispatcher ? `${dispatcher.first_name} ${dispatcher.last_name}` : "—"}</span></div>
                           <div className="flex justify-between text-xs"><span className="text-muted-foreground">Load Owner</span><span className="font-medium">{loadOwner ? `${loadOwner.first_name} ${loadOwner.last_name}` : "—"}</span></div>
                         </>
                       );
                     })()}
-                  </div>
-                )}
-              </div>
-
-
-              {/* Load Details */}
-              <div className="border rounded-lg p-3 bg-card">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Package className="h-3.5 w-3.5 text-orange-600" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Load Details</span>
-                </div>
-                {editMode ? (
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-2 gap-1">
-                      <div><Label className="text-[10px] text-muted-foreground">Pieces</Label><Input className="h-6 text-xs" type="number" value={load.cargo_pieces || ""} onChange={(e) => updateField("cargo_pieces", e.target.value)} /></div>
-                      <div><Label className="text-[10px] text-muted-foreground">Weight (lbs)</Label><Input className="h-6 text-xs" type="number" value={load.cargo_weight || ""} onChange={(e) => updateField("cargo_weight", e.target.value)} /></div>
-                    </div>
-                    <div><Label className="text-[10px] text-muted-foreground">Description</Label><Input className="h-6 text-xs" value={load.cargo_description || ""} onChange={(e) => updateField("cargo_description", e.target.value)} /></div>
-                    <div><Label className="text-[10px] text-muted-foreground">Truck Type</Label>
-                      <Select value={load.equipment_type || ""} onValueChange={(value) => updateField("equipment_type", value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="dry_van">Dry Van</SelectItem><SelectItem value="reefer">Reefer</SelectItem>
-                          <SelectItem value="flatbed">Flatbed</SelectItem><SelectItem value="step_deck">Step Deck</SelectItem>
-                          <SelectItem value="box_truck">Box Truck</SelectItem><SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div><Label className="text-[10px] text-muted-foreground">Commodity</Label><Input className="h-6 text-xs" value={load.commodity_type || ""} onChange={(e) => updateField("commodity_type", e.target.value)} /></div>
-                    <div><Label className="text-[10px] text-muted-foreground">Temp</Label><Input className="h-6 text-xs" value={load.temperature_required || ""} onChange={(e) => updateField("temperature_required", e.target.value)} placeholder="e.g., 35°F" /></div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div><Label className="text-[10px] text-muted-foreground">Est. Miles</Label><Input className="h-6 text-xs" type="number" value={load.estimated_miles || ""} onChange={(e) => updateField("estimated_miles", e.target.value)} /></div>
-                      <div><Label className="text-[10px] text-muted-foreground">Actual Miles</Label><Input className="h-6 text-xs" type="number" value={load.actual_miles || ""} onChange={(e) => updateField("actual_miles", e.target.value)} /></div>
-                    </div>
-                    <div className="flex gap-3 pt-1">
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.hazmat || false} onChange={(e) => updateField("hazmat", e.target.checked)} className="rounded h-3.5 w-3.5" />Hazmat</label>
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer"><input type="checkbox" checked={load.team_required || false} onChange={(e) => updateField("team_required", e.target.checked)} className="rounded h-3.5 w-3.5" />Team</label>
-                    </div>
-                    <div><Label className="text-[10px] text-muted-foreground">Special Instructions</Label><Textarea className="text-xs min-h-[32px]" value={load.special_instructions || ""} onChange={(e) => updateField("special_instructions", e.target.value)} rows={1} /></div>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Equipment</span><span className="font-medium">{load.equipment_type?.replace('_', ' ') || "—"}</span></div>
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Pieces / Weight</span><span className="font-medium">{load.cargo_pieces || "—"} pcs · {load.cargo_weight || "—"} lbs</span></div>
-                    {load.cargo_description && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Desc</span><span className="font-medium truncate max-w-[180px]">{load.cargo_description}</span></div>}
-                    {load.commodity_type && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Commodity</span><span className="font-medium">{load.commodity_type}</span></div>}
-                    {load.temperature_required && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Temp</span><span className="font-medium">{load.temperature_required}</span></div>}
-                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">Miles (Est / Act)</span><span className="font-medium">{load.estimated_miles || "—"} / {load.actual_miles || "—"}</span></div>
-                    <div className="flex gap-2 text-xs">
-                      {load.hazmat && <Badge variant="destructive" className="text-[9px] h-4">HAZMAT</Badge>}
-                      {load.team_required && <Badge variant="secondary" className="text-[9px] h-4">TEAM</Badge>}
-                    </div>
-                    {load.special_instructions && <div className="text-[10px] text-muted-foreground italic border-t pt-1 mt-1">{load.special_instructions}</div>}
                   </div>
                 )}
               </div>
