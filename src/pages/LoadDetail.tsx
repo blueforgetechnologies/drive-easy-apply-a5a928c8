@@ -877,7 +877,7 @@ export default function LoadDetail() {
           {/* === DENSE 3-COLUMN LAYOUT === */}
           <div className="grid grid-cols-12 gap-3">
 
-            {/* LEFT COL: Customer + Billing + Carrier (col-span-4) */}
+            {/* LEFT COL: Customer + Billing + Route (col-span-4) */}
             <div className="col-span-12 md:col-span-4 space-y-3">
 
               {/* Customer */}
@@ -1027,7 +1027,129 @@ export default function LoadDetail() {
                 )}
               </div>
 
-              {/* Carrier & Assignments */}
+              {/* Route Overview - moved under Billing */}
+              <div className="border rounded-lg p-3 bg-card">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Route Overview</span>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute left-[7px] top-3 bottom-3 w-px bg-border" />
+
+                  {/* Pickup */}
+                  <div className="relative pl-6 pb-4">
+                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-green-500 bg-background" />
+                    {editMode ? (
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
+                        <SearchableEntitySelect
+                          entities={locations}
+                          value={load.shipper_name || ""}
+                          placeholder="Search shipper..."
+                          entityType="location"
+                          onSelect={(entity) => {
+                            updateField("shipper_name", entity.name);
+                            updateField("pickup_address", entity.address || ""); updateField("pickup_city", entity.city || "");
+                            updateField("pickup_state", entity.state || ""); updateField("pickup_zip", entity.zip || "");
+                            toast.success("Filled shipper info");
+                          }}
+                          onAddNew={async (name, data) => {
+                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                            if (error) { toast.error("Failed to add location"); throw error; }
+                            updateField("shipper_name", name); updateField("pickup_address", data.address || "");
+                            updateField("pickup_city", data.city || ""); updateField("pickup_state", data.state || "");
+                            updateField("pickup_zip", data.zip || ""); loadData(); toast.success("Location added");
+                          }}
+                        />
+                        <div className="grid grid-cols-4 gap-1">
+                          <Input className="h-6 text-xs col-span-2" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
+                          <Input className="h-6 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
+                          <div className="flex gap-1">
+                            <Input className="h-6 text-xs uppercase w-10" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} maxLength={2} />
+                            <Input className="h-6 text-xs w-14" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <Input className="h-6 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
+                          <Input className="h-6 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
+                          <Input className="h-6 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
+                        </div>
+                        <Textarea className="text-xs min-h-[24px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
+                      </div>
+                    ) : (
+                      <div>
+                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
+                        <div className="text-sm font-bold uppercase">{load.pickup_city && load.pickup_state ? `${load.pickup_city}, ${load.pickup_state}` : "Not set"}</div>
+                        {load.shipper_name && <div className="text-xs text-muted-foreground">{load.shipper_name}</div>}
+                        <div className="text-xs text-muted-foreground">
+                          {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || "—"}
+                        </div>
+                        {load.pickup_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.pickup_notes}</div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delivery */}
+                  <div className="relative pl-6">
+                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-destructive bg-background" />
+                    {editMode ? (
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="text-[9px] h-4 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
+                        <SearchableEntitySelect
+                          entities={locations}
+                          value={load.receiver_name || ""}
+                          placeholder="Search receiver..."
+                          entityType="location"
+                          onSelect={(entity) => {
+                            updateField("receiver_name", entity.name);
+                            updateField("delivery_address", entity.address || ""); updateField("delivery_city", entity.city || "");
+                            updateField("delivery_state", entity.state || ""); updateField("delivery_zip", entity.zip || "");
+                            toast.success("Filled receiver info");
+                          }}
+                          onAddNew={async (name, data) => {
+                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
+                            if (error) { toast.error("Failed to add location"); throw error; }
+                            updateField("receiver_name", name); updateField("delivery_address", data.address || "");
+                            updateField("delivery_city", data.city || ""); updateField("delivery_state", data.state || "");
+                            updateField("delivery_zip", data.zip || ""); loadData(); toast.success("Location added");
+                          }}
+                        />
+                        <div className="grid grid-cols-4 gap-1">
+                          <Input className="h-6 text-xs col-span-2" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
+                          <Input className="h-6 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
+                          <div className="flex gap-1">
+                            <Input className="h-6 text-xs uppercase w-10" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} maxLength={2} />
+                            <Input className="h-6 text-xs w-14" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <Input className="h-6 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
+                          <Input className="h-6 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
+                          <Input className="h-6 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
+                        </div>
+                        <Textarea className="text-xs min-h-[24px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
+                      </div>
+                    ) : (
+                      <div>
+                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
+                        <div className="text-sm font-bold uppercase">{load.delivery_city && load.delivery_state ? `${load.delivery_city}, ${load.delivery_state}` : "Not set"}</div>
+                        {load.receiver_name && <div className="text-xs text-muted-foreground">{load.receiver_name}</div>}
+                        <div className="text-xs text-muted-foreground">
+                          {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || "—"}
+                        </div>
+                        {load.delivery_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.delivery_notes}</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CENTER COL: Carrier & Assignments + Load Details (col-span-4) */}
+            <div className="col-span-12 md:col-span-4 space-y-3">
+
+              {/* Carrier & Assignments - moved to center for fast access */}
               <div className="border rounded-lg p-3 space-y-1.5 bg-card">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Truck className="h-3.5 w-3.5 text-violet-600" />
@@ -1148,129 +1270,7 @@ export default function LoadDetail() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* CENTER COL: Route Overview + Load Details (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 space-y-3">
-
-              {/* Route Overview - Timeline style like reference image */}
-              <div className="border rounded-lg p-3 bg-card">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <MapPin className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Route Overview</span>
-                </div>
-
-                <div className="relative">
-                  {/* Vertical line connecting dots */}
-                  <div className="absolute left-[7px] top-3 bottom-3 w-px bg-border" />
-
-                  {/* Pickup */}
-                  <div className="relative pl-6 pb-4">
-                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-green-500 bg-background" />
-                    {editMode ? (
-                      <div className="space-y-1">
-                        <Badge variant="outline" className="text-[9px] h-4 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
-                        <SearchableEntitySelect
-                          entities={locations}
-                          value={load.shipper_name || ""}
-                          placeholder="Search shipper..."
-                          entityType="location"
-                          onSelect={(entity) => {
-                            updateField("shipper_name", entity.name);
-                            updateField("pickup_address", entity.address || ""); updateField("pickup_city", entity.city || "");
-                            updateField("pickup_state", entity.state || ""); updateField("pickup_zip", entity.zip || "");
-                            toast.success("Filled shipper info");
-                          }}
-                          onAddNew={async (name, data) => {
-                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                            if (error) { toast.error("Failed to add location"); throw error; }
-                            updateField("shipper_name", name); updateField("pickup_address", data.address || "");
-                            updateField("pickup_city", data.city || ""); updateField("pickup_state", data.state || "");
-                            updateField("pickup_zip", data.zip || ""); loadData(); toast.success("Location added");
-                          }}
-                        />
-                        <div className="grid grid-cols-4 gap-1">
-                          <Input className="h-6 text-xs col-span-2" value={load.pickup_address || ""} onChange={(e) => updateField("pickup_address", e.target.value)} placeholder="Address" />
-                          <Input className="h-6 text-xs" value={load.pickup_city || ""} onChange={(e) => updateField("pickup_city", e.target.value)} placeholder="City" />
-                          <div className="flex gap-1">
-                            <Input className="h-6 text-xs uppercase w-10" value={load.pickup_state || ""} onChange={(e) => updateField("pickup_state", e.target.value.toUpperCase())} maxLength={2} />
-                            <Input className="h-6 text-xs w-14" value={load.pickup_zip || ""} onChange={(e) => updateField("pickup_zip", e.target.value)} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <Input className="h-6 text-xs" type="date" value={load.pickup_date ? load.pickup_date.split('T')[0] : ""} onChange={(e) => updateField("pickup_date", e.target.value)} />
-                          <Input className="h-6 text-xs" value={load.pickup_time || ""} onChange={(e) => updateField("pickup_time", e.target.value)} placeholder="Time" />
-                          <Input className="h-6 text-xs" value={load.shipper_phone || ""} onChange={(e) => updateField("shipper_phone", e.target.value)} placeholder="Phone" />
-                        </div>
-                        <Textarea className="text-xs min-h-[24px]" value={load.pickup_notes || ""} onChange={(e) => updateField("pickup_notes", e.target.value)} rows={1} placeholder="Pickup notes..." />
-                      </div>
-                    ) : (
-                      <div>
-                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
-                        <div className="text-sm font-bold uppercase">{load.pickup_city && load.pickup_state ? `${load.pickup_city}, ${load.pickup_state}` : "Not set"}</div>
-                        {load.shipper_name && <div className="text-xs text-muted-foreground">{load.shipper_name}</div>}
-                        <div className="text-xs text-muted-foreground">
-                          {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || "—"}
-                        </div>
-                        {load.pickup_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.pickup_notes}</div>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Delivery */}
-                  <div className="relative pl-6">
-                    <div className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-destructive bg-background" />
-                    {editMode ? (
-                      <div className="space-y-1">
-                        <Badge variant="outline" className="text-[9px] h-4 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
-                        <SearchableEntitySelect
-                          entities={locations}
-                          value={load.receiver_name || ""}
-                          placeholder="Search receiver..."
-                          entityType="location"
-                          onSelect={(entity) => {
-                            updateField("receiver_name", entity.name);
-                            updateField("delivery_address", entity.address || ""); updateField("delivery_city", entity.city || "");
-                            updateField("delivery_state", entity.state || ""); updateField("delivery_zip", entity.zip || "");
-                            toast.success("Filled receiver info");
-                          }}
-                          onAddNew={async (name, data) => {
-                            const { data: newLocation, error } = await supabase.from("locations").insert([{ name, address: data.address || null, city: data.city || null, state: data.state || null, zip: data.zip || null, status: "active", tenant_id: tenantId }]).select().single();
-                            if (error) { toast.error("Failed to add location"); throw error; }
-                            updateField("receiver_name", name); updateField("delivery_address", data.address || "");
-                            updateField("delivery_city", data.city || ""); updateField("delivery_state", data.state || "");
-                            updateField("delivery_zip", data.zip || ""); loadData(); toast.success("Location added");
-                          }}
-                        />
-                        <div className="grid grid-cols-4 gap-1">
-                          <Input className="h-6 text-xs col-span-2" value={load.delivery_address || ""} onChange={(e) => updateField("delivery_address", e.target.value)} placeholder="Address" />
-                          <Input className="h-6 text-xs" value={load.delivery_city || ""} onChange={(e) => updateField("delivery_city", e.target.value)} placeholder="City" />
-                          <div className="flex gap-1">
-                            <Input className="h-6 text-xs uppercase w-10" value={load.delivery_state || ""} onChange={(e) => updateField("delivery_state", e.target.value.toUpperCase())} maxLength={2} />
-                            <Input className="h-6 text-xs w-14" value={load.delivery_zip || ""} onChange={(e) => updateField("delivery_zip", e.target.value)} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <Input className="h-6 text-xs" type="date" value={load.delivery_date ? load.delivery_date.split('T')[0] : ""} onChange={(e) => updateField("delivery_date", e.target.value)} />
-                          <Input className="h-6 text-xs" value={load.delivery_time || ""} onChange={(e) => updateField("delivery_time", e.target.value)} placeholder="Time" />
-                          <Input className="h-6 text-xs" value={load.receiver_phone || ""} onChange={(e) => updateField("receiver_phone", e.target.value)} placeholder="Phone" />
-                        </div>
-                        <Textarea className="text-xs min-h-[24px]" value={load.delivery_notes || ""} onChange={(e) => updateField("delivery_notes", e.target.value)} rows={1} placeholder="Delivery notes..." />
-                      </div>
-                    ) : (
-                      <div>
-                        <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
-                        <div className="text-sm font-bold uppercase">{load.delivery_city && load.delivery_state ? `${load.delivery_city}, ${load.delivery_state}` : "Not set"}</div>
-                        {load.receiver_name && <div className="text-xs text-muted-foreground">{load.receiver_name}</div>}
-                        <div className="text-xs text-muted-foreground">
-                          {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || "—"}
-                        </div>
-                        {load.delivery_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.delivery_notes}</div>}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
 
               {/* Load Details */}
               <div className="border rounded-lg p-3 bg-card">
