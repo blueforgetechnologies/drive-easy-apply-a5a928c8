@@ -1087,7 +1087,7 @@ export default function LoadDetail() {
                         {load.shipper_name && <div className="text-xs text-muted-foreground">{load.shipper_name}</div>}
                         {(load.pickup_address || load.pickup_location) && <div className="text-xs text-muted-foreground">{load.pickup_address || load.pickup_location}{load.pickup_zip ? `, ${load.pickup_zip}` : ""}</div>}
                         <div className="text-xs text-muted-foreground">
-                          {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || (load.pickup_date ? format(new Date(load.pickup_date), 'HH:mm') : "—")}
+                          {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || (load.pickup_date ? String(load.pickup_date).match(/(\d{2}:\d{2})/)?.[1] || "—" : "—")}
                         </div>
                         {load.pickup_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.pickup_notes}</div>}
                       </div>
@@ -1141,7 +1141,7 @@ export default function LoadDetail() {
                         {load.receiver_name && <div className="text-xs text-muted-foreground">{load.receiver_name}</div>}
                         {(load.delivery_address || load.delivery_location) && <div className="text-xs text-muted-foreground">{load.delivery_address || load.delivery_location}{load.delivery_zip ? `, ${load.delivery_zip}` : ""}</div>}
                         <div className="text-xs text-muted-foreground">
-                          {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || (load.delivery_date ? format(new Date(load.delivery_date), 'HH:mm') : "—")}
+                          {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || (load.delivery_date ? String(load.delivery_date).match(/(\d{2}:\d{2})/)?.[1] || "—" : "—")}
                         </div>
                         {load.delivery_notes && <div className="text-[10px] text-muted-foreground mt-0.5 italic">{load.delivery_notes}</div>}
                       </div>
