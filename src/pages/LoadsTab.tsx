@@ -777,6 +777,9 @@ export default function LoadsTab() {
                     <DropdownMenuItem onClick={() => handleBulkStatusUpdate("tonu")}>
                       TONU
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate("closed")}>
+                      CLOSED
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -1073,6 +1076,7 @@ export default function LoadsTab() {
                                   <SelectItem value="ready_for_audit">Ready for Audit</SelectItem>
                                   <SelectItem value="cancelled">Cancelled</SelectItem>
                                   <SelectItem value="tonu">TONU</SelectItem>
+                                  <SelectItem value="closed">CLOSED</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
