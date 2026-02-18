@@ -707,9 +707,11 @@ export default function LoadDetail() {
       case "at_pickup": return "bg-yellow-500";
       case "in_transit": return "bg-orange-500";
       case "at_delivery": return "bg-green-500";
+      case "delivered": return "bg-green-600";
       case "completed": return "bg-green-700";
       case "tonu": return "bg-red-400";
       case "cancelled": return "bg-red-500";
+      case "closed": return "bg-black dark:bg-white";
       default: return "bg-gray-500";
     }
   };
@@ -1345,7 +1347,7 @@ export default function LoadDetail() {
                           <SelectItem value="in_transit">In Transit</SelectItem><SelectItem value="at_delivery">At Delivery</SelectItem>
                           <SelectItem value="delivered">Delivered</SelectItem><SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="ready_for_audit">Ready for Audit</SelectItem><SelectItem value="tonu">TONU</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem><SelectItem value="closed">CLOSED</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
