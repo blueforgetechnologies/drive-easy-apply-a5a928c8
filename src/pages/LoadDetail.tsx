@@ -1085,7 +1085,7 @@ export default function LoadDetail() {
                         <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">PU 1</Badge>
                         <div className="text-sm font-bold uppercase">{load.pickup_city && load.pickup_state ? `${load.pickup_city}, ${load.pickup_state}` : "Not set"}</div>
                         {load.shipper_name && <div className="text-xs text-muted-foreground">{load.shipper_name}</div>}
-                        {load.pickup_address && <div className="text-xs text-muted-foreground">{load.pickup_address}{load.pickup_zip ? `, ${load.pickup_zip}` : ""}</div>}
+                        {(load.pickup_address || load.pickup_location) && <div className="text-xs text-muted-foreground">{load.pickup_address || load.pickup_location}{load.pickup_zip ? `, ${load.pickup_zip}` : ""}</div>}
                         <div className="text-xs text-muted-foreground">
                           {load.pickup_date ? format(new Date(load.pickup_date), 'yyyy-MM-dd') : "—"} @ {load.pickup_time || "—"}
                         </div>
@@ -1139,7 +1139,7 @@ export default function LoadDetail() {
                         <Badge variant="outline" className="text-[9px] h-4 mb-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">DEL 1</Badge>
                         <div className="text-sm font-bold uppercase">{load.delivery_city && load.delivery_state ? `${load.delivery_city}, ${load.delivery_state}` : "Not set"}</div>
                         {load.receiver_name && <div className="text-xs text-muted-foreground">{load.receiver_name}</div>}
-                        {load.delivery_address && <div className="text-xs text-muted-foreground">{load.delivery_address}{load.delivery_zip ? `, ${load.delivery_zip}` : ""}</div>}
+                        {(load.delivery_address || load.delivery_location) && <div className="text-xs text-muted-foreground">{load.delivery_address || load.delivery_location}{load.delivery_zip ? `, ${load.delivery_zip}` : ""}</div>}
                         <div className="text-xs text-muted-foreground">
                           {load.delivery_date ? format(new Date(load.delivery_date), 'yyyy-MM-dd') : "—"} @ {load.delivery_time || "—"}
                         </div>
