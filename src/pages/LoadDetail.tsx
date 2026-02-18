@@ -880,7 +880,7 @@ export default function LoadDetail() {
           <div className="grid grid-cols-12 gap-3">
 
             {/* LEFT COL: Customer + Billing + Route (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 space-y-3">
+            <div className="col-span-12 md:col-span-8 space-y-3">
 
               {/* Customer */}
               <div className="border rounded-lg p-3 space-y-1.5 bg-card">
@@ -1025,6 +1025,123 @@ export default function LoadDetail() {
                         {((load as any).broker_city || (load as any).broker_state) && <div className="text-xs text-muted-foreground">{[(load as any).broker_address, (load as any).broker_city, (load as any).broker_state, (load as any).broker_zip].filter(Boolean).join(", ")}</div>}
                       </>
                     ) : <div className="text-xs text-muted-foreground italic">No billing party set</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* Carrier & Assignments */}
+              <div className="border rounded-lg p-3 space-y-1.5 bg-card">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Truck className="h-3.5 w-3.5 text-violet-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Carrier & Assignments</span>
+                </div>
+                {editMode ? (
+                  <div className="space-y-1.5">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Carrier</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.carrier_id || ""} onValueChange={(value) => {
+                          updateField("carrier_id", value);
+                          if (load.assigned_vehicle_id) {
+                            const currentVehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+                            if (currentVehicle?.carrier !== value) { updateField("assigned_vehicle_id", null); updateField("assigned_driver_id", null); }
+                          }
+                        }}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Vehicle</Label>
+                      {(() => {
+                        const carrierVehicles = load.carrier_id ? vehicles.filter(v => v.carrier === load.carrier_id) : vehicles;
+                        const hasCarrierVehicles = carrierVehicles.length > 0;
+                        if (load.carrier_id && !hasCarrierVehicles) {
+                          return <Input value={load.external_truck_reference || ""} onChange={(e) => updateField("external_truck_reference", e.target.value)} placeholder="Enter truck reference" className="h-6 text-xs" />;
+                        }
+                        return (
+                          <div className="flex gap-1">
+                            <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
+                              updateField("assigned_vehicle_id", value);
+                              updateField("external_truck_reference", null);
+                              const selectedVehicle = vehicles.find((v) => v.id === value);
+                              if (selectedVehicle?.driver_1_id) { updateField("assigned_driver_id", selectedVehicle.driver_1_id); } else { updateField("assigned_driver_id", null); }
+                              if (!load.equipment_type && selectedVehicle) {
+                                const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
+                                const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
+                                updateField("equipment_type", `${sizePrefix}${vehicleType}`);
+                              }
+                              if (selectedVehicle?.carrier) { updateField("carrier_id", selectedVehicle.carrier); }
+                            }}>
+                              <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectContent className="bg-background">
+                                {carrierVehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
+                            <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Driver</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background">
+                            <SelectItem value="n/a">N/A</SelectItem>
+                            {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
+                        <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Dispatcher</Label>
+                      <div className="flex gap-1">
+                        <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
+                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Load Owner</Label>
+                      <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
+                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {(() => {
+                      const carrier = carriers.find(c => c.id === load.carrier_id);
+                      const vehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
+                      const driver = drivers.find(d => d.id === load.assigned_driver_id);
+                      const dispatcher = dispatchers.find(d => d.id === load.assigned_dispatcher_id);
+                      const loadOwner = dispatchers.find(d => d.id === load.load_owner_id);
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Carrier</span><span className="font-medium text-right">{carrier?.name || "—"}</span></div>
+                          {carrier && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Safety</span><span className={`font-medium ${carrier.safer_status?.includes('NOT') ? 'text-destructive' : 'text-green-600'}`}>{carrier.safer_status || "Auth"} · {carrier.safety_rating || "No Rating"}</span></div>}
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Vehicle</span><span className="font-medium">{vehicle ? `${vehicle.vehicle_number} - ${vehicle.make}` : load.external_truck_reference || "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Driver</span><span className="font-medium">{driver?.personal_info ? `${driver.personal_info.firstName} ${driver.personal_info.lastName}` : "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Dispatcher</span><span className="font-medium">{dispatcher ? `${dispatcher.first_name} ${dispatcher.last_name}` : "—"}</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Load Owner</span><span className="font-medium">{loadOwner ? `${loadOwner.first_name} ${loadOwner.last_name}` : "—"}</span></div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -1224,126 +1341,7 @@ export default function LoadDetail() {
               </div>
             </div>
 
-            {/* CENTER COL: Carrier & Assignments (col-span-4) */}
-            <div className="col-span-12 md:col-span-4 space-y-3">
-
-              {/* Carrier & Assignments */}
-              <div className="border rounded-lg p-3 space-y-1.5 bg-card">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Truck className="h-3.5 w-3.5 text-violet-600" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Carrier & Assignments</span>
-                </div>
-                {editMode ? (
-                  <div className="space-y-1.5">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Carrier</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.carrier_id || ""} onValueChange={(value) => {
-                          updateField("carrier_id", value);
-                          if (load.assigned_vehicle_id) {
-                            const currentVehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
-                            if (currentVehicle?.carrier !== value) { updateField("assigned_vehicle_id", null); updateField("assigned_driver_id", null); }
-                          }
-                        }}>
-                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {carriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.dot_number ? `(${c.dot_number})` : ""}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCarrierDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Vehicle</Label>
-                      {(() => {
-                        const carrierVehicles = load.carrier_id ? vehicles.filter(v => v.carrier === load.carrier_id) : vehicles;
-                        const hasCarrierVehicles = carrierVehicles.length > 0;
-                        if (load.carrier_id && !hasCarrierVehicles) {
-                          return <Input value={load.external_truck_reference || ""} onChange={(e) => updateField("external_truck_reference", e.target.value)} placeholder="Enter truck reference" className="h-6 text-xs" />;
-                        }
-                        return (
-                          <div className="flex gap-1">
-                            <Select value={load.assigned_vehicle_id || ""} onValueChange={(value) => {
-                              updateField("assigned_vehicle_id", value);
-                              updateField("external_truck_reference", null);
-                              const selectedVehicle = vehicles.find((v) => v.id === value);
-                              if (selectedVehicle?.driver_1_id) { updateField("assigned_driver_id", selectedVehicle.driver_1_id); } else { updateField("assigned_driver_id", null); }
-                              if (!load.equipment_type && selectedVehicle) {
-                                const sizePrefix = selectedVehicle.vehicle_size ? `${selectedVehicle.vehicle_size}' ` : "";
-                                const vehicleType = selectedVehicle.asset_subtype || selectedVehicle.asset_type || "Truck";
-                                updateField("equipment_type", `${sizePrefix}${vehicleType}`);
-                              }
-                              if (selectedVehicle?.carrier) { updateField("carrier_id", selectedVehicle.carrier); }
-                            }}>
-                              <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                              <SelectContent className="bg-background">
-                                {carrierVehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.make}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            {load.assigned_vehicle_id && <EditEntityDialog entityId={load.assigned_vehicle_id} entityType="vehicle" onEntityUpdated={loadData} />}
-                            <AddVehicleDialog onVehicleAdded={async (vehicleId) => { await loadData(); updateField("assigned_vehicle_id", vehicleId); }} />
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Driver</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.assigned_driver_id || "n/a"} onValueChange={(value) => updateField("assigned_driver_id", value === "n/a" ? null : value)}>
-                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="n/a">N/A</SelectItem>
-                            {drivers.map((d) => <SelectItem key={d.id} value={d.id}>{d.personal_info?.firstName} {d.personal_info?.lastName}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        {load.assigned_driver_id && <EditEntityDialog entityId={load.assigned_driver_id} entityType="driver" onEntityUpdated={loadData} />}
-                        <AddDriverDialog onDriverAdded={async (driverId) => { await loadData(); updateField("assigned_driver_id", driverId); }} />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Dispatcher</Label>
-                      <div className="flex gap-1">
-                        <Select value={load.assigned_dispatcher_id || ""} onValueChange={(value) => updateField("assigned_dispatcher_id", value)}>
-                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Load Owner</Label>
-                      <Select value={load.load_owner_id || ""} onValueChange={(value) => updateField("load_owner_id", value)}>
-                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent className="bg-background z-50">
-                          {dispatchers.map((d) => <SelectItem key={d.id} value={d.id}>{d.first_name} {d.last_name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {(() => {
-                      const carrier = carriers.find(c => c.id === load.carrier_id);
-                      const vehicle = vehicles.find(v => v.id === load.assigned_vehicle_id);
-                      const driver = drivers.find(d => d.id === load.assigned_driver_id);
-                      const dispatcher = dispatchers.find(d => d.id === load.assigned_dispatcher_id);
-                      const loadOwner = dispatchers.find(d => d.id === load.load_owner_id);
-                      return (
-                        <>
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Carrier</span><span className="font-medium text-right">{carrier?.name || "—"}</span></div>
-                          {carrier && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Safety</span><span className={`font-medium ${carrier.safer_status?.includes('NOT') ? 'text-destructive' : 'text-green-600'}`}>{carrier.safer_status || "Auth"} · {carrier.safety_rating || "No Rating"}</span></div>}
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Vehicle</span><span className="font-medium">{vehicle ? `${vehicle.vehicle_number} - ${vehicle.make}` : load.external_truck_reference || "—"}</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Driver</span><span className="font-medium">{driver?.personal_info ? `${driver.personal_info.firstName} ${driver.personal_info.lastName}` : "—"}</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Dispatcher</span><span className="font-medium">{dispatcher ? `${dispatcher.first_name} ${dispatcher.last_name}` : "—"}</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-muted-foreground">Load Owner</span><span className="font-medium">{loadOwner ? `${loadOwner.first_name} ${loadOwner.last_name}` : "—"}</span></div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            </div>
+            
 
             {/* RIGHT COL: Status + Financial Summary + Notes (col-span-4) */}
             <div className="col-span-12 md:col-span-4 space-y-3">
