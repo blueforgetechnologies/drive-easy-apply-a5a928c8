@@ -1201,6 +1201,25 @@ export default function LoadDetail() {
                   </div>
                 )}
               </div>
+
+              {/* Mini Route Map */}
+              {stops.length >= 2 && (
+                <div className="border rounded-lg overflow-hidden bg-card" style={{ height: '280px' }}>
+                  <LoadRouteMap
+                    stops={stops.map(s => ({
+                      location_city: s.location_city,
+                      location_state: s.location_state,
+                      location_address: s.location_address,
+                      location_zip: s.location_zip,
+                      stop_type: s.stop_type,
+                      stop_sequence: s.stop_sequence,
+                      scheduled_date: s.scheduled_date,
+                      location_name: s.location_name,
+                    }))}
+                    vehicle={vehicles.find(v => v.id === load?.assigned_vehicle_id)}
+                  />
+                </div>
+              )}
             </div>
 
             {/* CENTER COL: Carrier & Assignments (col-span-4) */}
