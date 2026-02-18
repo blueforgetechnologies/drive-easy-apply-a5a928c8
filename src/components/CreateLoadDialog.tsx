@@ -175,12 +175,15 @@ export function CreateLoadDialog({
     [customers]
   );
 
+  // Extract the first HH:MM from a time string that may contain ranges like "17:45 - 19:00"
+  const sanitizeTime = (t?: string | null): string => {
+    if (!t) return "";
+    const m = t.match(/(\d{1,2}:\d{2})/);
+    return m ? m[1].padStart(5, "0") : "";
+  };
+
   const handleRCExtracted = (data: ExtractedLoadData) => {
-    const extractTime = (ts?: string) => {
-      if (!ts) return "";
-      const m = ts.match(/^(\d{1,2}:\d{2})/);
-      return m ? m[1].padStart(5, "0") : "";
-    };
+    const extractTime = (ts?: string) => sanitizeTime(ts);
 
     // Fill broker/customer
     if (data.customer_name) setBrokerName(data.customer_name);
@@ -430,8 +433,8 @@ export function CreateLoadDialog({
           pickup_location: firstPickup.address || null,
           pickup_zip: firstPickup.zip || null,
           pickup_date: firstPickup.date
-            ? firstPickup.time
-              ? `${firstPickup.date}T${firstPickup.time}`
+            ? sanitizeTime(firstPickup.time)
+              ? `${firstPickup.date}T${sanitizeTime(firstPickup.time)}`
               : `${firstPickup.date}T08:00`
             : null,
           // Last delivery → delivery fields
@@ -448,8 +451,8 @@ export function CreateLoadDialog({
           delivery_location: lastDelivery.address || null,
           delivery_zip: lastDelivery.zip || null,
           delivery_date: lastDelivery.date
-            ? lastDelivery.time
-              ? `${lastDelivery.date}T${lastDelivery.time}`
+            ? sanitizeTime(lastDelivery.time)
+              ? `${lastDelivery.date}T${sanitizeTime(lastDelivery.time)}`
               : `${lastDelivery.date}T08:00`
             : null,
           // Cargo
