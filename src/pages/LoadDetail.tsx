@@ -1029,7 +1029,8 @@ export default function LoadDetail() {
                 )}
               </div>
 
-              {/* Load Details (Route + Cargo merged) */}
+              {/* Load Details + Mini Map row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div className="border rounded-lg p-3 bg-card">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Package className="h-3.5 w-3.5 text-primary" />
@@ -1203,8 +1204,8 @@ export default function LoadDetail() {
               </div>
 
               {/* Mini Route Map */}
-              {stops.length >= 2 && (
-                <div className="border rounded-lg overflow-hidden bg-card" style={{ height: '280px' }}>
+              {stops.length >= 2 ? (
+                <div className="border rounded-lg overflow-hidden bg-card h-full min-h-[280px]">
                   <LoadRouteMap
                     stops={stops.map(s => ({
                       location_city: s.location_city,
@@ -1219,7 +1220,8 @@ export default function LoadDetail() {
                     vehicle={vehicles.find(v => v.id === load?.assigned_vehicle_id)}
                   />
                 </div>
-              )}
+              ) : <div />}
+              </div>
             </div>
 
             {/* CENTER COL: Carrier & Assignments (col-span-4) */}
