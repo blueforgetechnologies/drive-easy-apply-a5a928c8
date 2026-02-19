@@ -572,7 +572,7 @@ export function CreateLoadDialog({
             await supabase.from("load_documents").insert({
               load_id: loadId,
               tenant_id: tenantId,
-              document_type: "bol",
+              document_type: "bill_of_lading",
               file_name: bolFile.name,
               file_url: fileName,
               file_size: bolFile.size,
