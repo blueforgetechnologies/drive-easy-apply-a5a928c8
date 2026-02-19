@@ -1789,7 +1789,7 @@ export default function InvoicesTab() {
             </div>
           </TableCell>
         )}
-        {filter === 'failed' && (
+        {(filter === 'failed' || filter === 'delivered') && (
           <TableCell>
             <TooltipProvider>
               <Tooltip>
@@ -1810,7 +1810,7 @@ export default function InvoicesTab() {
                 <TooltipContent side="left" className="max-w-[220px] text-xs">
                   <p className="font-medium mb-1">Back to Ready to Send</p>
                   <p className="text-muted-foreground">
-                    Clears failure state so the invoice can be re-submitted.
+                    Clears delivery state so the invoice can be re-submitted.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -2055,7 +2055,7 @@ export default function InvoicesTab() {
               {(filter === 'paid' || filter === 'pending_payment') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Marked By</TableHead>
               )}
-              {(filter === 'needs_setup' || filter === 'ready' || filter === 'failed') && (
+              {(filter === 'needs_setup' || filter === 'ready' || filter === 'failed' || filter === 'delivered') && (
                 <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Actions</TableHead>
               )}
             </TableRow>
