@@ -1,15 +1,13 @@
 /**
- * Gmail Watch Renewal (Hardened v2)
+ * Gmail Watch Renewal (Hardened v3)
  * 
- * Ensures Gmail Pub/Sub push notifications stay active by calling
- * gmail.users.watch() for every active tenant with valid Gmail tokens.
- * Gmail watch subscriptions expire after ~7 days, so this runs every 2h.
+ * Ensures Gmail Pub/Sub push notifications stay active AND access tokens stay fresh.
  * 
  * Key behaviors:
- * - Processes ALL tokens that don't need reauth (removed 7-day filter)
- * - Always attempts watch renewal if watch_expiry is NULL or within 24h of expiry
+ * - On EVERY run (every 2h): refreshes access token for all tokens expiring within 5 min
+ * - Watch renewal: only calls watch() when watch_expiry is NULL or within 24h of expiry
+ * - This keeps the DB token_expiry current, preventing false "Token expired" UI warnings
  * - Only marks needs_reauth=true on invalid_grant (revoked token)
- * - Stores watch_expiry after each successful watch() call
  * 
  * Triggered via pg_cron every 2 hours.
  */
@@ -65,11 +63,10 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
   const startTime = Date.now();
 
-  console.log('[renew-gmail-watch] Starting watch renewal (v2-hardened, 2h cycle)...');
+  console.log('[renew-gmail-watch] Starting watch renewal (v3-always-refresh-token, 2h cycle)...');
 
   try {
-    // Get ALL tokens that don't need reauth - no 7-day filter
-    // This ensures tokens are always renewed regardless of activity
+    // Get ALL tokens that don't need reauth
     const { data: tokens, error: tokensError } = await supabase
       .from('gmail_tokens')
       .select('id, user_email, tenant_id, access_token, refresh_token, token_expiry, watch_expiry, needs_reauth')
@@ -101,24 +98,17 @@ Deno.serve(async (req) => {
         // - watch_expiry is within 24 hours of now (proactive renewal)
         const watchExpiry = token.watch_expiry ? new Date(token.watch_expiry) : null;
         const twentyFourHoursFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        
         const needsWatchRenewal = !watchExpiry || watchExpiry < twentyFourHoursFromNow;
-        
-        if (!needsWatchRenewal) {
-          console.log(`[renew-gmail-watch] ⏭️ ${token.user_email} watch still valid until ${watchExpiry?.toISOString()}`);
-          results.skipped++;
-          continue;
-        }
 
-        const renewalReason = !watchExpiry ? 'watch_expiry_null' : 'watch_expiring_soon';
-        console.log(`[renew-gmail-watch] 🔄 ${token.user_email} needs renewal: ${renewalReason}`);
-
-        // Always refresh the access token before calling watch
+        // ALWAYS check if access token needs refresh (1h expiry from Google).
+        // This runs on every 2h cycle regardless of watch status, keeping the DB
+        // token_expiry current and preventing false "Token expired" UI warnings.
         let accessToken = token.access_token;
         const tokenExpiry = token.token_expiry ? new Date(token.token_expiry) : new Date(0);
         const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000);
+        const tokenNeedsRefresh = tokenExpiry < fiveMinFromNow;
 
-        if (tokenExpiry < fiveMinFromNow) {
+        if (tokenNeedsRefresh) {
           console.log(`[renew-gmail-watch] 🔑 Refreshing access token for ${token.user_email}`);
           
           const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -167,10 +157,19 @@ Deno.serve(async (req) => {
 
           results.refreshed++;
           console.log(`[renew-gmail-watch] ✅ Token refreshed for ${token.user_email}`);
+        } else {
+          console.log(`[renew-gmail-watch] ⏭️ ${token.user_email} access token still valid until ${tokenExpiry.toISOString()}`);
         }
 
-        // Call Gmail watch API
-        console.log(`[renew-gmail-watch] 📡 Calling watch() for ${token.user_email}`);
+        // Only call Gmail watch API if the subscription needs renewal
+        if (!needsWatchRenewal) {
+          console.log(`[renew-gmail-watch] ⏭️ ${token.user_email} watch still valid until ${watchExpiry?.toISOString()}`);
+          results.skipped++;
+          continue;
+        }
+
+        const renewalReason = !watchExpiry ? 'watch_expiry_null' : 'watch_expiring_soon';
+        console.log(`[renew-gmail-watch] 📡 Calling watch() for ${token.user_email} (${renewalReason})`);
         const watchRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/watch', {
           method: 'POST',
           headers: {
