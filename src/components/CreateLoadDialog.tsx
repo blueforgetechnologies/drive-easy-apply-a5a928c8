@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   X, Plus, Truck, MapPin, DollarSign, FileText, Package, ArrowDown,
-  Calculator, Loader2, CheckCircle2, GripVertical, Trash2, CircleDot
+  Calculator, Loader2, CheckCircle2, GripVertical, Trash2, CircleDot, AlertTriangle
 } from "lucide-react";
 import { RateConfirmationUploader, ExtractedLoadData } from "@/components/RateConfirmationUploader";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
@@ -136,11 +137,20 @@ export function CreateLoadDialog({
   const [pendingCustomerData, setPendingCustomerData] = useState<any>(null);
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
 
+  // Duplicate load ID detection
+  const [duplicateLoad, setDuplicateLoad] = useState<any>(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
+  const duplicateCheckRef = useRef<string>("");
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setLoadNumber(generateManualLoadNumber());
       setCarrierId(defaultCarrierId || "");
+      setDuplicateLoad(null);
+      setDuplicateConfirmed(false);
+      duplicateCheckRef.current = "";
     }
   }, [open, defaultCarrierId]);
 
@@ -175,7 +185,29 @@ export function CreateLoadDialog({
     [customers]
   );
 
-  // Extract the first HH:MM from a time string that may contain ranges like "17:45 - 19:00"
+  const checkDuplicateLoadId = useCallback(async (value: string) => {
+    if (!value.trim() || !tenantId) return;
+    // Avoid re-checking same value
+    if (duplicateCheckRef.current === value.trim()) return;
+    duplicateCheckRef.current = value.trim();
+
+    const { data } = await (supabase.from("loads") as any)
+      .select("id, load_number, status, broker_name, pickup_city, pickup_state, delivery_city, delivery_state, pickup_date, delivery_date, rate, assigned_vehicle_id, shipper_load_id, reference_number")
+      .eq("tenant_id", tenantId)
+      .or(`shipper_load_id.eq.${value.trim()},reference_number.eq.${value.trim()}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setDuplicateLoad(data);
+      setDuplicateConfirmed(false);
+      setShowDuplicateDialog(true);
+    } else {
+      setDuplicateLoad(null);
+    }
+  }, [tenantId]);
+
+
   const sanitizeTime = (t?: string | null): string => {
     if (!t) return "";
     const m = t.match(/(\d{1,2}:\d{2})/);
@@ -392,6 +424,12 @@ export function CreateLoadDialog({
       return;
     }
 
+    // Block if duplicate found but not yet confirmed
+    if (duplicateLoad && !duplicateConfirmed) {
+      setShowDuplicateDialog(true);
+      return;
+    }
+
     try {
       const { data: insertedLoad, error } = await (supabase.from("loads") as any)
         .insert({
@@ -589,6 +627,9 @@ export function CreateLoadDialog({
     setRateConfirmationFile(null);
     setPendingCustomerData(null);
     setMatchedCustomerId(null);
+    setDuplicateLoad(null);
+    setDuplicateConfirmed(false);
+    duplicateCheckRef.current = "";
   };
 
   const ratePerMile = rate && estimatedMiles ? (parseFloat(rate) / parseFloat(estimatedMiles)).toFixed(2) : null;
@@ -611,6 +652,7 @@ export function CreateLoadDialog({
   );
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden sm:rounded-2xl">
         {/* Header */}
@@ -720,7 +762,25 @@ export function CreateLoadDialog({
                 <Input value={loadNumber} onChange={(e) => setLoadNumber(e.target.value)} className="h-9 rounded-lg shadow-sm border-2 font-semibold" required />
               </GlossyField>
               <GlossyField label="Customer Load ID">
-                <Input value={shipperLoadId} onChange={(e) => setShipperLoadId(e.target.value)} placeholder="Pro#, Order#..." className="h-9 rounded-lg shadow-sm border-2" />
+                <Input
+                  value={shipperLoadId}
+                  onChange={(e) => {
+                    setShipperLoadId(e.target.value);
+                    // Reset duplicate state when user changes the value
+                    if (e.target.value !== duplicateCheckRef.current) {
+                      setDuplicateLoad(null);
+                      setDuplicateConfirmed(false);
+                    }
+                  }}
+                  onBlur={(e) => { if (e.target.value.trim()) checkDuplicateLoadId(e.target.value.trim()); }}
+                  placeholder="Pro#, Order#..."
+                  className={`h-9 rounded-lg shadow-sm border-2 ${duplicateLoad && !duplicateConfirmed ? "border-destructive" : ""}`}
+                />
+                {duplicateLoad && !duplicateConfirmed && (
+                  <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                    <AlertTriangle className="h-3 w-3" /> Duplicate ID found in Load {duplicateLoad.load_number}
+                  </p>
+                )}
               </GlossyField>
               <GlossyField label="Load Type">
                 <Select value={loadType} onValueChange={setLoadType}>
@@ -998,6 +1058,79 @@ export function CreateLoadDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Duplicate Load ID Warning Dialog */}
+    <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Duplicate Customer Load ID
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm">
+              <p className="text-foreground">A load with this Customer Load ID already exists in your system:</p>
+              <div className="rounded-lg border bg-muted/50 p-3 space-y-2 text-left">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Load #</span>
+                  <span className="font-semibold text-foreground">{duplicateLoad?.load_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium capitalize text-foreground">{duplicateLoad?.status?.replace(/_/g, " ")}</span>
+                </div>
+                {duplicateLoad?.broker_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Customer</span>
+                    <span className="font-medium text-foreground">{duplicateLoad.broker_name}</span>
+                  </div>
+                )}
+                {(duplicateLoad?.pickup_city || duplicateLoad?.pickup_state) && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Pickup</span>
+                    <span className="font-medium text-foreground">{[duplicateLoad?.pickup_city, duplicateLoad?.pickup_state].filter(Boolean).join(", ")}</span>
+                  </div>
+                )}
+                {(duplicateLoad?.delivery_city || duplicateLoad?.delivery_state) && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery</span>
+                    <span className="font-medium text-foreground">{[duplicateLoad?.delivery_city, duplicateLoad?.delivery_state].filter(Boolean).join(", ")}</span>
+                  </div>
+                )}
+                {duplicateLoad?.rate && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rate</span>
+                    <span className="font-medium text-foreground">${duplicateLoad.rate.toLocaleString()}</span>
+                  </div>
+                )}
+                {duplicateLoad?.pickup_date && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Pickup Date</span>
+                    <span className="font-medium text-foreground">{new Date(duplicateLoad.pickup_date).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-muted-foreground">Do you want to proceed and create a new load with this same Customer Load ID?</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => { setShowDuplicateDialog(false); }}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              setDuplicateConfirmed(true);
+              setShowDuplicateDialog(false);
+            }}
+          >
+            Proceed Anyway
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
