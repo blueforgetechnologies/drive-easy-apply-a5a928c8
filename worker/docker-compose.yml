@@ -24,8 +24,8 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
-    ports:
-      - "8080-8081:8080"  # Health check ports for each replica
+    # ports removed — workers are queue processors, no inbound connections needed
+    # This allows unlimited scaling via: docker compose up -d --scale worker=N
     environment:
       - NODE_ENV=production
       - SUPABASE_URL=${SUPABASE_URL}
