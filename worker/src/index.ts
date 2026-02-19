@@ -584,6 +584,71 @@ function logDrainProgress(stubId: string, elapsedMs: number, remainingPending: n
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// STARTUP CLEANUP: Skip stale gmail_stubs to prevent circuit breaker trips
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function skipStaleGmailStubs(ageMinutes: number = 30): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - ageMinutes * 60 * 1000).toISOString();
+    
+    // Count first
+    const { count, error: countErr } = await supabase
+      .from('gmail_stubs')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .lt('created_at', cutoff);
+    
+    if (countErr) {
+      log('warn', '[STARTUP] Failed to count stale gmail_stubs', { error: countErr.message });
+      return;
+    }
+    
+    if (!count || count === 0) {
+      log('info', '[STARTUP] No stale gmail_stubs to skip');
+      return;
+    }
+    
+    log('warn', `[STARTUP] Found ${count} stale gmail_stubs older than ${ageMinutes}min — skipping`, { cutoff });
+    
+    // Update in batches of 500 to avoid timeouts
+    const BATCH = 500;
+    let totalSkipped = 0;
+    
+    while (totalSkipped < count) {
+      const { data, error: updErr } = await supabase
+        .from('gmail_stubs')
+        .update({
+          status: 'skipped',
+          processed_at: new Date().toISOString(),
+          error: `skipped_by_startup: older_than_${ageMinutes}_min`,
+        })
+        .eq('status', 'pending')
+        .lt('created_at', cutoff)
+        .limit(BATCH)
+        .select('id');
+      
+      if (updErr) {
+        log('error', '[STARTUP] Error skipping stale stubs batch', { error: updErr.message });
+        break;
+      }
+      
+      const batchCount = data?.length || 0;
+      totalSkipped += batchCount;
+      
+      if (batchCount === 0) break; // No more to skip
+      
+      log('info', `[STARTUP] Skipped ${totalSkipped}/${count} stale stubs`);
+    }
+    
+    log('info', `[STARTUP] Stale stubs cleanup complete`, { total_skipped: totalSkipped });
+  } catch (err) {
+    log('error', '[STARTUP] Exception during stale stubs cleanup', { 
+      error: err instanceof Error ? err.message : String(err) 
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN WORKER LOOP
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -600,6 +665,10 @@ async function workerLoop(): Promise<void> {
   
   // BACKLOG CUTOFF GUARDRAIL - Real-time only mode
   log('info', '[STARTUP] Backlog cutoff active — processing only emails newer than 30 minutes');
+  
+  // STARTUP CLEANUP: Skip stale gmail_stubs older than 30 minutes to prevent
+  // circuit breaker trips from accumulated backlog during downtime.
+  await skipStaleGmailStubs(30);
   
   log('info', 'Starting email queue worker (Resend)', {
     batch_size: currentConfig.batch_size,
