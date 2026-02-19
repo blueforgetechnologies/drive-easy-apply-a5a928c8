@@ -961,7 +961,7 @@ async function getExistingEmailIds(tenantId: string, emailIds: string[]): Promis
       return [];
     }
     
-    return (data || []).map(row => row.email_id);
+    return (data || []).map((row: { email_id: string }) => row.email_id);
   } catch (err) {
     log('error', 'Exception checking existing email_ids', { 
       error: err instanceof Error ? err.message : String(err) 

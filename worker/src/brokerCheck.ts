@@ -164,7 +164,7 @@ async function getExistingDecision(
 ): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null } | null> {
   const row = await readDecisionRow(tenantId, brokerKey, windowStartIso);
   if (row && row.status === 'complete') {
-    return { approvalStatus: row.approvalStatus, customerId: row.customerId, mcNumber: row.mcNumber };
+    return { approvalStatus: row.approval_status, customerId: row.customer_id, mcNumber: row.mc_number };
   }
   return null;
 }
@@ -184,9 +184,9 @@ async function waitForLeaderDecision(
     const row = await readDecisionRow(tenantId, brokerKey, windowStartIso);
     if (row && (row.status === 'complete' || row.status === 'error')) {
       return {
-        approvalStatus: row.approvalStatus || 'unchecked',
-        customerId: row.customerId,
-        mcNumber: row.mcNumber,
+        approvalStatus: row.approval_status,
+        customerId: row.customer_id,
+        mcNumber: row.mc_number,
       };
     }
     await sleep(FOLLOWER_POLL_MS);
