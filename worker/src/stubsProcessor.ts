@@ -1030,13 +1030,13 @@ async function reEnqueueOverflowMessages(
     
     try {
       const insertResult = await withTimeout<{ data: any; error: any }>(
-        supabase.from('gmail_stubs').insert({
+        supabase.from('gmail_stubs').upsert({
           tenant_id: tenantId,
           email_address: emailAddress,
           history_id: syntheticHistoryId,
           status: 'pending',
           source: 'overflow_reenqueue',
-        }),
+        }, { onConflict: 'tenant_id,email_address,history_id', ignoreDuplicates: true }),
         DB_WRITE_TIMEOUT_MS,
         'reEnqueueOverflowMessages_insert'
       );
