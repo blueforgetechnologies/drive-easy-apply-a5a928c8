@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   X, Plus, Truck, MapPin, DollarSign, FileText, Package, ArrowDown,
-  Calculator, Loader2, CheckCircle2, GripVertical, Trash2, CircleDot, AlertTriangle
+  Calculator, Loader2, CheckCircle2, GripVertical, Trash2, CircleDot, AlertTriangle, Upload, File as FileIcon
 } from "lucide-react";
 import { RateConfirmationUploader, ExtractedLoadData } from "@/components/RateConfirmationUploader";
 import { SearchableEntitySelect } from "@/components/SearchableEntitySelect";
@@ -134,6 +134,8 @@ export function CreateLoadDialog({
 
   // RC upload
   const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
+  const [bolFile, setBolFile] = useState<File | null>(null);
+  const [bolDragOver, setBolDragOver] = useState(false);
   const [pendingCustomerData, setPendingCustomerData] = useState<any>(null);
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
 
@@ -560,6 +562,27 @@ export function CreateLoadDialog({
         }
       }
 
+      // Upload BOL
+      if (bolFile && loadId) {
+        try {
+          const fileExt = bolFile.name.split(".").pop();
+          const fileName = `${loadId}/bol/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: bolUploadError } = await supabase.storage.from("load-documents").upload(fileName, bolFile);
+          if (!bolUploadError) {
+            await supabase.from("load_documents").insert({
+              load_id: loadId,
+              tenant_id: tenantId,
+              document_type: "bol",
+              file_name: bolFile.name,
+              file_url: fileName,
+              file_size: bolFile.size,
+            });
+          }
+        } catch (e) {
+          console.error("BOL upload failed:", e);
+        }
+      }
+
       // Auto-calculate miles if not provided
       if (!estimatedMiles && loadId && firstPickup.city && firstPickup.state && lastDelivery.city && lastDelivery.state) {
         try {
@@ -625,6 +648,8 @@ export function CreateLoadDialog({
     setBillingEmail("");
     setStops([emptyStop("pickup"), emptyStop("delivery")]);
     setRateConfirmationFile(null);
+    setBolFile(null);
+    setBolDragOver(false);
     setPendingCustomerData(null);
     setMatchedCustomerId(null);
     setDuplicateLoad(null);
@@ -705,6 +730,67 @@ export function CreateLoadDialog({
                   }}
                   onDismiss={() => setPendingCustomerData(null)}
                 />
+              )}
+            </div>
+
+            {/* BOL Upload */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-purple-500/15 shadow-sm border border-purple-200/50 dark:border-purple-700/40">
+                  <FileText className="h-4 w-4 text-purple-500" />
+                </div>
+                <h3 className="font-bold text-sm text-purple-600 dark:text-purple-400">Bill of Lading (BOL)</h3>
+                {bolFile && (
+                  <span className="text-xs text-muted-foreground">— {bolFile.name}</span>
+                )}
+              </div>
+              {bolFile ? (
+                <div className="flex items-center gap-3 rounded-xl border-2 border-purple-300/60 bg-purple-50/60 dark:bg-purple-950/20 dark:border-purple-700/40 px-4 py-3">
+                  <FileIcon className="h-5 w-5 text-purple-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{bolFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(bolFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBolFile(null)}
+                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setBolDragOver(true); }}
+                  onDragLeave={() => setBolDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setBolDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) setBolFile(file);
+                  }}
+                  onClick={() => document.getElementById("bol-file-input")?.click()}
+                  className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all px-4 py-5 text-center
+                    ${bolDragOver
+                      ? "border-purple-500 bg-purple-50/80 dark:bg-purple-950/30 scale-[1.01]"
+                      : "border-purple-200/70 dark:border-purple-700/40 bg-purple-50/30 dark:bg-purple-950/10 hover:border-purple-400 hover:bg-purple-50/60"
+                    }`}
+                >
+                  <input
+                    id="bol-file-input"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setBolFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Upload className="h-6 w-6 mx-auto mb-1.5 text-purple-400" />
+                  <p className="text-sm font-medium text-muted-foreground">Drop BOL here or <span className="text-purple-600 dark:text-purple-400 font-semibold">click to browse</span></p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">PDF or images (JPG, PNG) up to 20MB</p>
+                </div>
               )}
             </div>
 
