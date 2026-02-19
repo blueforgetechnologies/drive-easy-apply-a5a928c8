@@ -140,7 +140,7 @@ async function readDecisionRow(
   tenantId: string,
   brokerKey: string,
   windowStartIso: string
-): Promise<{ approvalStatus: string; customerId: string | null; mcNumber: string | null; status: string } | null> {
+): Promise<{ approval_status: string; customer_id: string | null; mc_number: string | null; status: string } | null> {
   const { data } = await supabase
     .from('broker_credit_checks')
     .select('approval_status, customer_id, mc_number, status')
@@ -151,7 +151,7 @@ async function readDecisionRow(
     .order('checked_at', { ascending: false })
     .limit(1);
 
-  return data?.[0] ?? null;
+  return (data?.[0] as { approval_status: string; customer_id: string | null; mc_number: string | null; status: string } | null) ?? null;
 }
 
 /**
