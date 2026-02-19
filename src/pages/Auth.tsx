@@ -75,26 +75,32 @@ export default function Auth() {
 
         if (error) throw error;
 
-        // Track login
+        // Track login + dispatcher check — non-blocking so DB timeouts don't block login
         if (data.user) {
-          await supabase.from("login_history").insert({
-            user_id: data.user.id,
+          const userId = data.user.id;
+
+          // Fire-and-forget login history (don't await)
+          void supabase.from("login_history").insert({
+            user_id: userId,
             ip_address: null,
             user_agent: navigator.userAgent,
             location: null,
           });
 
-          // Check if this is a dispatcher who needs to change password
-          const { data: dispatcher } = await supabase
-            .from("dispatchers")
-            .select("must_change_password")
-            .eq("user_id", data.user.id)
-            .single();
-
-          if (dispatcher?.must_change_password) {
-            setView("force-password-change");
-            setLoading(false);
-            return;
+          // Check dispatcher password change with timeout protection
+          try {
+            const dispatcherCheck = Promise.race([
+              supabase.from("dispatchers").select("must_change_password").eq("user_id", userId).maybeSingle(),
+              new Promise<{ data: null }>((resolve) => setTimeout(() => resolve({ data: null }), 3000))
+            ]);
+            const { data: dispatcher } = await dispatcherCheck as any;
+            if (dispatcher?.must_change_password) {
+              setView("force-password-change");
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // If dispatcher check fails, proceed to dashboard anyway
           }
         }
 
