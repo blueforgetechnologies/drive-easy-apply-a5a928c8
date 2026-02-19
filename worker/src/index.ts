@@ -124,6 +124,12 @@ interface WorkerMetrics {
   stubsProcessedThisLoop: number;
   stubsPendingCount: number;
   stubsProcessingCount: number;
+  // Hardening: degradation tracking
+  consecutiveGmail401s: number;
+  stubsSuccessWindow: number;
+  stubsFailWindow: number;
+  lastDegradationReport: Date;
+  deadLetterCount: number;
 }
 
 const METRICS: WorkerMetrics = {
@@ -145,6 +151,11 @@ const METRICS: WorkerMetrics = {
   stubsProcessedThisLoop: 0,
   stubsPendingCount: 0,
   stubsProcessingCount: 0,
+  consecutiveGmail401s: 0,
+  stubsSuccessWindow: 0,
+  stubsFailWindow: 0,
+  lastDegradationReport: new Date(),
+  deadLetterCount: 0,
 };
 
 let isShuttingDown = false;
@@ -649,6 +660,109 @@ async function skipStaleGmailStubs(ageMinutes: number = 30): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DEAD LETTER QUEUE: Move poison stubs that fail repeatedly
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEAD_LETTER_MAX_ATTEMPTS = parseInt(process.env.DEAD_LETTER_MAX_ATTEMPTS || '5', 10);
+
+async function moveDeadLetterStubs(maxAttempts: number = DEAD_LETTER_MAX_ATTEMPTS): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('gmail_stubs')
+      .update({
+        status: 'dead_letter',
+        processed_at: new Date().toISOString(),
+        error: `dead_letter: exceeded ${maxAttempts} attempts`,
+      })
+      .eq('status', 'pending')
+      .gte('attempts', maxAttempts)
+      .select('id');
+
+    if (error) {
+      log('warn', '[DEAD_LETTER] Error moving poison stubs', { error: error.message });
+      return;
+    }
+
+    const count = data?.length || 0;
+    if (count > 0) {
+      METRICS.deadLetterCount += count;
+      log('warn', `[DEAD_LETTER] Moved ${count} poison stubs to dead_letter`, {
+        max_attempts: maxAttempts,
+        total_dead_letter: METRICS.deadLetterCount,
+      });
+    }
+  } catch (err) {
+    log('error', '[DEAD_LETTER] Exception', { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GMAIL 401 AUTO-RECOVERY: Force token reload after consecutive failures
+// ═══════════════════════════════════════════════════════════════════════════
+
+const GMAIL_401_THRESHOLD = parseInt(process.env.GMAIL_401_THRESHOLD || '3', 10);
+
+function trackGmail401(errorMessage: string): void {
+  const is401 = errorMessage.includes('401') || 
+                errorMessage.includes('invalid_grant') || 
+                errorMessage.includes('Token has been expired') ||
+                errorMessage.includes('access_token_unavailable');
+  
+  if (is401) {
+    METRICS.consecutiveGmail401s++;
+    log('warn', `[GMAIL_401] Consecutive auth failure #${METRICS.consecutiveGmail401s}`, {
+      threshold: GMAIL_401_THRESHOLD,
+    });
+    
+    if (METRICS.consecutiveGmail401s >= GMAIL_401_THRESHOLD) {
+      log('error', `🔑 [GMAIL_401] Hit ${GMAIL_401_THRESHOLD} consecutive 401s — pausing stubs for 60s`, {
+        action: 'Gmail tokens likely revoked or expired in DB. Pausing stub processing.',
+      });
+      // Apply a 60s backoff to stop hammering Gmail with bad tokens
+      METRICS.rateLimitBackoffUntil = Date.now() + 60_000;
+      METRICS.consecutiveGmail401s = 0;
+    }
+  } else {
+    // Any non-401 error resets the counter
+    METRICS.consecutiveGmail401s = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEGRADATION SUMMARY LOGGING: Periodic health snapshot every 5 minutes
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEGRADATION_REPORT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+function maybeDegradationReport(): void {
+  const now = Date.now();
+  if (now - METRICS.lastDegradationReport.getTime() < DEGRADATION_REPORT_INTERVAL_MS) return;
+  
+  const total = METRICS.stubsSuccessWindow + METRICS.stubsFailWindow;
+  const successRate = total > 0 ? ((METRICS.stubsSuccessWindow / total) * 100).toFixed(1) : 'N/A';
+  const failRate = total > 0 ? ((METRICS.stubsFailWindow / total) * 100).toFixed(1) : 'N/A';
+  
+  const level = (total > 0 && METRICS.stubsFailWindow / total > 0.5) ? 'error' : 'info';
+  
+  log(level, '📊 DEGRADATION_REPORT', {
+    window_minutes: 5,
+    stubs_success: METRICS.stubsSuccessWindow,
+    stubs_failed: METRICS.stubsFailWindow,
+    success_rate_pct: successRate,
+    fail_rate_pct: failRate,
+    dead_letter_total: METRICS.deadLetterCount,
+    consecutive_401s: METRICS.consecutiveGmail401s,
+    loops: METRICS.loopCount,
+    uptime_min: Math.floor((now - METRICS.startedAt.getTime()) / 60000),
+  });
+  
+  // Reset window counters
+  METRICS.stubsSuccessWindow = 0;
+  METRICS.stubsFailWindow = 0;
+  METRICS.lastDegradationReport = new Date();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN WORKER LOOP
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -866,6 +980,13 @@ async function workerLoop(): Promise<void> {
       }
 
       // ═══════════════════════════════════════════════════════════════════════
+      // DEAD LETTER: Move poison stubs (5+ attempts) to dead_letter before processing
+      // ═══════════════════════════════════════════════════════════════════════
+      if (GMAIL_STUBS_ENABLED) {
+        await moveDeadLetterStubs(5);
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
       // GMAIL STUBS FIRST: Process stubs before legacy inbound (Phase 2 priority)
       // Each stub triggers Gmail API fetch + parsing + matching
       // ═══════════════════════════════════════════════════════════════════════
@@ -888,6 +1009,7 @@ async function workerLoop(): Promise<void> {
             
             if (result.success) {
               stubsSuccess++;
+              METRICS.stubsSuccessWindow++;
               messagesProcessed += result.messagesProcessed;
               loadsCreated += result.loadsCreated;
               remainingPending = Math.max(0, remainingPending - 1);
@@ -897,10 +1019,17 @@ async function workerLoop(): Promise<void> {
               METRICS.lastProgressAt = new Date();
               METRICS.stubsProcessedThisLoop++;
               
+              // Reset 401 counter on success
+              METRICS.consecutiveGmail401s = 0;
+              
               // Log DRAIN_PROGRESS for each completed stub
               logDrainProgress(stub.id, stubElapsed, remainingPending);
             } else {
               stubsFailed++;
+              METRICS.stubsFailWindow++;
+
+              // Track Gmail 401 errors for auto-recovery
+              if (result.error) trackGmail401(result.error);
 
               // Watchdog progress: failures still count as "progress" because the stub is finalized
               // (moved out of processing), preventing silent stalls.
@@ -915,7 +1044,11 @@ async function workerLoop(): Promise<void> {
             }
           } catch (error) {
             stubsFailed++;
+            METRICS.stubsFailWindow++;
             const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // Track Gmail 401 errors for auto-recovery
+            trackGmail401(errorMessage);
             
             // FIX #4: Watchdog progress - exceptions still count as "progress" because
             // processStub already called failStub internally (stub is finalized)
@@ -1229,6 +1362,10 @@ async function workerLoop(): Promise<void> {
 
       // Increment loop counter at END of successful iteration
       METRICS.loopCount++;
+      
+      // Periodic degradation summary (every 5 minutes)
+      maybeDegradationReport();
+      
       log('debug', 'Loop iteration complete', {
         loopNumber: METRICS.loopCount,
         loopDuration_ms: Date.now() - loopStartTime,
