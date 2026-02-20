@@ -4419,6 +4419,39 @@ export type Database = {
           },
         ]
       }
+      ops_alerts: {
+        Row: {
+          created_at: string | null
+          heartbeat_age_seconds: number | null
+          id: number
+          lag_seconds: number | null
+          note: string | null
+          pending_30m: number | null
+          status: string
+          workers_seen_5m: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          heartbeat_age_seconds?: number | null
+          id?: number
+          lag_seconds?: number | null
+          note?: string | null
+          pending_30m?: number | null
+          status: string
+          workers_seen_5m?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          heartbeat_age_seconds?: number | null
+          id?: number
+          lag_seconds?: number | null
+          note?: string | null
+          pending_30m?: number | null
+          status?: string
+          workers_seen_5m?: number | null
+        }
+        Relationships: []
+      }
       otr_invoice_submissions: {
         Row: {
           broker_mc: string
@@ -7001,6 +7034,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_gmail_stubs_health: {
+        Row: {
+          completed_30m: number | null
+          dead_letter_30m: number | null
+          newest_pending_created_at: string | null
+          oldest_pending_created_at: string | null
+          oldest_pending_lag_seconds: number | null
+          pending_30m: number | null
+          processing_30m: number | null
+          skipped_30m: number | null
+          ts: string | null
+        }
+        Relationships: []
+      }
+      ops_pipeline_health: {
+        Row: {
+          completed_30m: number | null
+          dead_letter_30m: number | null
+          newest_heartbeat_age_seconds: number | null
+          newest_heartbeat_at: string | null
+          newest_pending_created_at: string | null
+          oldest_heartbeat_age_seconds: number | null
+          oldest_heartbeat_at: string | null
+          oldest_pending_created_at: string | null
+          oldest_pending_lag_seconds: number | null
+          overall_status: string | null
+          pending_30m: number | null
+          processing_30m: number | null
+          skipped_30m: number | null
+          ts: string | null
+          workers_seen_5m: number | null
+        }
+        Relationships: []
+      }
+      ops_workers_health: {
+        Row: {
+          newest_heartbeat_age_seconds: number | null
+          newest_heartbeat_at: string | null
+          oldest_heartbeat_age_seconds: number | null
+          oldest_heartbeat_at: string | null
+          ts: string | null
+          workers_seen_5m: number | null
+        }
+        Relationships: []
+      }
       unreviewed_matches: {
         Row: {
           bid_at: string | null
@@ -7128,6 +7206,7 @@ export type Database = {
       check_circuit_breaker: { Args: { p_queue_limit?: number }; Returns: Json }
       check_circuit_breaker_depth: { Args: { p_limit?: number }; Returns: Json }
       check_circuit_breaker_stall: { Args: never; Returns: Json }
+      check_pipeline_alerts: { Args: never; Returns: undefined }
       check_plan_feature_access: {
         Args: { p_feature_key: string; p_tenant_id: string }
         Returns: Json
