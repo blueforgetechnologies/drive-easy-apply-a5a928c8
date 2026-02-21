@@ -6911,6 +6911,7 @@ export type Database = {
           enabled: boolean
           id: string
           loop_interval_ms: number
+          matching_enabled: boolean
           max_retries: number
           notes: string | null
           paused: boolean
@@ -6927,6 +6928,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           loop_interval_ms?: number
+          matching_enabled?: boolean
           max_retries?: number
           notes?: string | null
           paused?: boolean
@@ -6943,6 +6945,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           loop_interval_ms?: number
+          matching_enabled?: boolean
           max_retries?: number
           notes?: string | null
           paused?: boolean

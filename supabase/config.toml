@@ -257,3 +257,9 @@ verify_jwt = true
 
 [functions.renew-gmail-watch]
 verify_jwt = false
+
+[functions.trigger-matching-run]
+verify_jwt = false
+
+[functions.ops-alert-email]
+verify_jwt = false
