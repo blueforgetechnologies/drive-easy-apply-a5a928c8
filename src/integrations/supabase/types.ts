@@ -4352,6 +4352,30 @@ export type Database = {
           },
         ]
       }
+      matching_heartbeats: {
+        Row: {
+          last_match_processed_at: string | null
+          matches_processed_5m: number
+          note: string | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          last_match_processed_at?: string | null
+          matches_processed_5m?: number
+          note?: string | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          last_match_processed_at?: string | null
+          matches_processed_5m?: number
+          note?: string | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       missed_loads_history: {
         Row: {
           created_at: string | null
@@ -7048,10 +7072,26 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_matching_health: {
+        Row: {
+          matches_processed_5m_total: number | null
+          newest_match_age_seconds: number | null
+          newest_update_age_seconds: number | null
+          newest_worker_update_at: string | null
+          oldest_worker_update_at: string | null
+          ts: string | null
+          workers_reporting_5m: number | null
+        }
+        Relationships: []
+      }
       ops_pipeline_health: {
         Row: {
           completed_30m: number | null
           dead_letter_30m: number | null
+          matches_processed_5m_total: number | null
+          matching_newest_match_age_seconds: number | null
+          matching_newest_update_age_seconds: number | null
+          matching_workers_reporting_5m: number | null
           newest_heartbeat_age_seconds: number | null
           newest_heartbeat_at: string | null
           newest_pending_created_at: string | null
