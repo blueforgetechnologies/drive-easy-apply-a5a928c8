@@ -1409,7 +1409,7 @@ export default function InvoicesTab() {
           )}
         </TableCell>
         <TableCell className="py-2 px-3">
-          {filter === 'paid' ? (() => {
+          {(() => {
             const invoiceLoadIds = loadsByInvoice.get(invoice.id) || [];
             const firstLoadId = invoiceLoadIds[0];
             const loadInfo = firstLoadId ? loadInfoMap.get(firstLoadId) : null;
@@ -1423,23 +1423,7 @@ export default function InvoicesTab() {
               );
             }
             return <span className="text-xs text-muted-foreground">—</span>;
-          })() : invoice.billing_method === 'otr' ? (
-            <>
-              <div className="text-xs text-muted-foreground italic">Not Applicable</div>
-              <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
-                {accountingEmail || <span className="text-destructive">Missing</span>}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-xs max-w-[140px] truncate" title={customerEmail || ""}>
-                {customerEmail || <span className="text-destructive">Missing</span>}
-              </div>
-              <div className="text-xs text-muted-foreground max-w-[140px] truncate" title={accountingEmail || ""}>
-                {accountingEmail || <span className="text-destructive">Missing</span>}
-              </div>
-            </>
-          )}
+          })()}
         </TableCell>
         <TableCell className="py-2 px-3 whitespace-nowrap">
           <div className="mb-1">{getBillingMethodBadge(invoice.billing_method)}</div>
@@ -2023,16 +2007,9 @@ export default function InvoicesTab() {
                 <div className="text-muted-foreground font-normal normal-case">Customer Load</div>
               </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">Customer</TableHead>
-              {filter === 'paid' ? (
-                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                  <div>From → To</div>
-                </TableHead>
-              ) : (
-                <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
-                  <div>To Email</div>
-                  <div className="text-muted-foreground font-normal normal-case">CC (Acct)</div>
-                </TableHead>
-              )}
+              <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
+                <div>From → To</div>
+              </TableHead>
               <TableHead className="text-primary font-medium uppercase text-xs py-2 px-3">
                 <div>Billing Method</div>
                 <div className="text-muted-foreground font-normal normal-case">Delivery</div>
