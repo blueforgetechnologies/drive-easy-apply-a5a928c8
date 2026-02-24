@@ -7362,6 +7362,7 @@ export type Database = {
       cleanup_email_queue: { Args: never; Returns: number }
       cleanup_gmail_stubs_old: { Args: never; Returns: number }
       cleanup_old_load_email_bodies: { Args: never; Returns: undefined }
+      cleanup_old_matches: { Args: never; Returns: undefined }
       cleanup_pubsub_tracking: { Args: never; Returns: number }
       cleanup_tenant_rate_limits: { Args: never; Returns: number }
       cleanup_unroutable_emails: { Args: never; Returns: number }
