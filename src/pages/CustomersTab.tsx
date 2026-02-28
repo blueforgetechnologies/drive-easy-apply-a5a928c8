@@ -509,6 +509,15 @@ export default function CustomersTab() {
             variant="outline"
             size="sm"
             className="gap-1.5 h-8"
+            onClick={() => exportToExcel(customers, 'customers')}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8"
             onClick={() => aiUpdateMutation.mutate()}
             disabled={aiUpdateMutation.isPending}
           >
