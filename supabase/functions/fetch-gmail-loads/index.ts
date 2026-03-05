@@ -1385,6 +1385,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PAUSED: Load Hunter is paused to reduce cloud costs
+  return new Response(JSON.stringify({ paused: true, reason: 'Load Hunter paused to reduce cloud costs' }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
   try {
     const gmailUserEmail = 'p.d@talbilogistics.com';
     console.log('Fetching Gmail emails...');

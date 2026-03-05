@@ -33,6 +33,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PAUSED: Load Hunter is paused to reduce cloud costs
+  return new Response(JSON.stringify({ paused: true, reason: 'Load Hunter paused to reduce cloud costs' }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

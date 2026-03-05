@@ -49,6 +49,13 @@ function getCurrentEasternTime(): Date {
 }
 
 serve(async (req) => {
+  // PAUSED: Load Hunter is paused to reduce cloud costs
+  if (true) {
+    return new Response(JSON.stringify({ paused: true, reason: 'Load Hunter paused to reduce cloud costs' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
