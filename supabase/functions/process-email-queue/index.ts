@@ -1395,6 +1395,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PAUSED: Load Hunter is paused to reduce cloud costs
+  return new Response(JSON.stringify({ paused: true, reason: 'Load Hunter paused to reduce cloud costs' }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
   // Validate request for security (accepts cron secret or JWT from pg_cron)
   if (!validateRequest(req)) {
     return new Response(

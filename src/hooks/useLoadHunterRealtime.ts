@@ -55,6 +55,12 @@ export function useLoadHunterRealtime({
     // Always cleanup existing channels first
     cleanupChannels();
 
+    // PAUSED: All Load Hunter realtime subscriptions disabled to eliminate cloud costs.
+    // Re-enable when ready to resume Load Hunter on Lovable Cloud.
+    console.log('[Realtime] Load Hunter realtime is PAUSED to reduce cloud costs.');
+    return cleanupChannels;
+
+    // --- ORIGINAL CODE BELOW (paused) ---
     // Don't subscribe if no tenant
     if (!tenantId) {
       console.log('[Realtime] No tenantId, skipping subscriptions');
